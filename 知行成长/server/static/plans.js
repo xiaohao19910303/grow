@@ -114,14 +114,16 @@
   async function sourceEditor(pid){
     const data=await api('/'+pid+'/sources');shell(`第${data.lesson_no}课：准备参考资料`);button(root,'返回计划',()=>detail(pid));
     const help=node('details');help.open=true;help.append(node('summary','什么是备课资料？（点击展开说明）'));
-    help.append(node('p','备课资料是你为 AI 准备的参考材料清单。AI 会根据这些资料生成课程内容，确保内容准确、有依据。'));
-    help.append(node('p','如果你不想手动准备，可以直接点击"生成下一课草稿"，AI 会使用默认资料生成。','desc'));
-    help.append(node('p','每份资料需要包含：标题、原文链接、核验日期、以及你写的摘要（用自己的话概括资料内容）。','desc'));
+    help.append(node('p','备课资料是 AI 生成课程时的参考材料。你可以指定一本书、给一个网页链接、或直接粘贴相关内容。','desc'));
+    help.append(node('p','如果不想手动准备，可以直接返回点击"生成下一课草稿"，AI 会使用默认资料。','desc'));
     root.append(help);
-    root.append(node('p','这里保存你已核实的资料和原创摘要。系统不会自动联网验证，也不把格式检查当作事实核验。请勿粘贴私人笔记或密钥。'));
     const items=node('div');root.append(items);const editors=[];
-    function add(value={}){const box=node('section',undefined,'section');items.append(box);box.append(node('h4','资料条目'));const e={};for(const [k,label]of [['title','标题（必填）'],['author','作者或机构'],['published_at','发布日期（未知可注明）'],['url','原文链接（必填）'],['verified_at','核验日期（必填，格式：YYYY-MM-DD）'],['verification','实际核验范围与方法'],['claim','资料支持的观点与边界'],['summary','原创资料摘要（必填，用自己的话概括）']])e[k]=field(box,label,value[k]||'', ['summary','claim','verification'].includes(k)?'textarea':'text');editors.push(e);button(box,'移除这份资料',()=>{editors.splice(editors.indexOf(e),1);box.remove();});}
-    (data.entries.length?data.entries:[{}]).forEach(add);button(root,'增加来源',()=>add());button(root,'保存备课资料',async()=>{await api('/'+pid+'/sources',{entries:editors.map(e=>Object.fromEntries(Object.entries(e).map(([k,v])=>[k,v.value])))});await detail(pid);},true);
+    function add(value={}){const box=node('section',undefined,'section');items.append(box);box.append(node('h4','资料条目'));
+      const title=field(box,'标题（书名/文章名/主题）',value.title||'');
+      const content=field(box,'内容（链接、书名、或粘贴相关资料）',value.content||'','textarea');
+      content.rows=6;editors.push({title,content});button(box,'移除',()=>{editors.splice(editors.indexOf(editors[editors.length-1]),1);box.remove();});}
+    (data.entries.length?data.entries:[{}]).forEach(add);button(root,'增加资料',()=>add());
+    button(root,'保存',async()=>{await api('/'+pid+'/sources',{entries:editors.map(e=>({title:e.title.value,content:e.content.value}))});await detail(pid);},true);
   }
   async function watch(id){
     const status=shell('生成记录');const turn=navigation;button(root,'返回计划列表',window.loadPlans);button(root,'取消生成',async()=>{await api('/attempts/'+id+'/cancel',{});});

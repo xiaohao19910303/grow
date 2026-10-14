@@ -84,22 +84,16 @@ def document(data, conditions):
 
 def sources(entries):
     if not isinstance(entries, list) or not 1 <= len(entries) <= 10:
-        fail('invalid', '请准备1–10份已核验资料及摘要。', 422)
+        fail('invalid', '请准备1–10份参考资料。', 422)
     result = []
     for item in entries:
         if not isinstance(item, dict): fail('invalid', '资料格式错误。', 422)
-        row = {k: text(item.get(k), k, 15000 if k == 'summary' else 4000)
-               for k in ('title', 'author', 'published_at', 'url', 'verified_at', 'verification', 'claim', 'summary')}
-        url = urlparse(row['url'])
-        if url.scheme not in ('https', 'http') or not url.hostname or url.username or url.password:
-            fail('invalid', '来源需要有效的公开HTTP(S)链接。', 422)
-        try:
-            from datetime import date
-            if date.fromisoformat(row['verified_at']) > date.fromisoformat(now()[:10]): raise ValueError()
-        except ValueError:
-            fail('invalid', '核验日期不正确或晚于今天。', 422)
-        result.append(row)
-    if len(encoded(result)) > 80000: fail('invalid', '资料摘要总量过长，请精简。', 422)
+        title = text(item.get('title'), '标题', 4000)
+        content = text(item.get('content'), '内容', 15000)
+        if not title or not content:
+            fail('invalid', '每份资料需要标题和内容。', 422)
+        result.append({'title': title, 'content': content})
+    if len(encoded(result)) > 80000: fail('invalid', '资料总量过长，请精简。', 422)
     return result
 
 
@@ -189,7 +183,7 @@ class Plans:
             if not c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_settings'").fetchone():
                 return default
             row = c.execute('SELECT value FROM copilot_settings WHERE key=?', (key,)).fetchone()
-        return row[0] if row else default
+        return json.loads(row[0]) if row else default
 
     def rows(self, table):
         with self.conn() as c: return [json.loads(r[0]) for r in c.execute(f'SELECT data FROM {table}')]
@@ -373,7 +367,10 @@ class Plans:
         n = d['context']['lesson_no']
         if not re.search(rf'^#\s*第0*{n}课',content,re.M) or d['context']['date'] not in content:
             fail('invalid','正文课号或日期不正确。',422)
-        if '\n---\n' not in content: fail('invalid','请分隔练习与参考分析。',422)
+        exercise = re.search(r'^#{1,6}[^\n]*练习[^\n]*$', content, re.M)
+        analysis = re.search(r'^#{1,6}[^\n]*参考分析[^\n]*$', content, re.M)
+        if not exercise or not analysis or '\n---\n' not in content[exercise.end():analysis.start()]:
+            fail('invalid','请在练习之后、参考分析标题之前添加独立分隔线。',422)
         allowed = {e['url'] for e in d['context']['source_entries']}
         urls = set(re.findall(r'https?://[^\s<>\)\]"，。；]+', content+'\n'+notes))
         if not urls or not urls <= allowed: fail('invalid','引用必须来自已核验清单，且至少包含一个来源链接。',422)
