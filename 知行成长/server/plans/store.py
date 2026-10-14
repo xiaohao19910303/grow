@@ -339,8 +339,7 @@ class Plans:
             n = len(self.lessons(pid)) + 1
             if n > len(self.version(pid)['document']['lessons']): fail('conflict', '当前规划课程已生成完毕。')
             rel = f'{self.base(pid)}/备课资料/第{n:03d}课.json'
-            summary = f'{self.base(pid)}/备课资料/第{n:03d}课-摘要.md'
-            files = {rel: encoded(entries), summary: '\n\n'.join(f'# {e["title"]}\n{e["summary"]}' for e in entries)}
+            files = {rel: encoded(entries)}
             p['hashes'].update({k:digest(v) for k,v in files.items()})
             return self.publish(str(uuid.uuid4()), {'sources':pid,'n':n,'entries':entries}, files,
                                 [('UPDATE learning_plans SET data=? WHERE id=?',[encoded(p),pid])], {'lesson_no': n})
@@ -371,11 +370,12 @@ class Plans:
         analysis = re.search(r'^#{1,6}[^\n]*参考分析[^\n]*$', content, re.M)
         if not exercise or not analysis or '\n---\n' not in content[exercise.end():analysis.start()]:
             fail('invalid','请在练习之后、参考分析标题之前添加独立分隔线。',422)
-        allowed = {e['url'] for e in d['context']['source_entries']}
-        urls = set(re.findall(r'https?://[^\s<>\)\]"，。；]+', content+'\n'+notes))
-        if not urls or not urls <= allowed: fail('invalid','引用必须来自已核验清单，且至少包含一个来源链接。',422)
-        for target in re.findall(r'\]\(([^)]+)\)', content+'\n'+notes):
-            if target not in allowed: fail('invalid','正文与摘要只能引用清单内链接，本地链接由系统添加。',422)
+        allowed_urls = {e.get('url') for e in d['context']['source_entries'] if e.get('url')}
+        if allowed_urls:
+            urls = set(re.findall(r'https?://[^\s<>\)\]"，。；]+', content+'\n'+notes))
+            if not urls or not urls <= allowed_urls: fail('invalid','引用链接必须来自已准备资料清单。',422)
+            for target in re.findall(r'\]\(([^)]+)\)', content+'\n'+notes):
+                if target not in allowed_urls: fail('invalid','正文与摘要只能引用清单内链接。',422)
         if '<script' in content.lower() or '<script' in notes.lower(): fail('invalid','内容含不可接受的脚本。',422)
 
     def course_draft(self, context, content, notes, complete=True):
