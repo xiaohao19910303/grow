@@ -1,0 +1,10 @@
+.venv/
+.env
+server/data.db*
+server/.copilot/
+**/__pycache__/
+*.pyc
+.DS_Store
+
+server/.plans/
+server/.ai-generation.lock

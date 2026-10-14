@@ -1,0 +1,65 @@
+/* Keep the existing visual language while bringing daily actions forward. */
+[hidden]{display:none!important}
+button{font-family:inherit}
+button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var(--primary);outline-offset:3px}
+.btn,.tab,summary{min-height:44px}
+.btn:disabled{background:#f0f1f5!important;color:#626b7d!important;border-color:var(--border)!important;cursor:not-allowed}
+.badge.on{color:#23743a}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.main-nav{width:100%;display:grid;grid-template-columns:repeat(4,1fr);overflow:visible}
+.main-nav .tab{font-size:15px;background:transparent}
+.main-nav .tab.active{background:var(--primary)}
+.subnav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.day-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 20px}
+.day-heading h2{font-size:22px;letter-spacing:-.3px;margin:0 0 4px}
+.day-heading .desc{margin:0;color:var(--muted)}
+.day-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.day-actions input{max-width:155px;min-height:44px}
+.today-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
+.personal-grid{display:flex;flex-direction:column;gap:0;min-width:0}
+.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.section h2{font-size:18px}
+.section .desc{font-size:13px}
+.learning-panel{min-width:0}
+.learning-module{padding:16px 0;border-top:1px solid var(--border)}
+.learning-module:first-child{padding-top:0;border-top:0}
+.learning-module h3{font-size:15px;margin:0 0 4px}
+.learning-module .lesson-title{display:block;font-size:17px;line-height:1.6;margin:8px 0}
+.learning-module .lesson-row{align-items:flex-start;flex-wrap:wrap;padding:4px 0 12px;border:0}
+.learning-module .lesson-row .btn{margin-top:8px}
+.learning-module p{margin:4px 0 10px}
+.learning-module details summary{display:flex;align-items:center;cursor:pointer;color:var(--primary);font-weight:500}
+.learning-module details summary::before{content:'+';margin-right:8px;font-size:18px}
+.learning-module details[open] summary::before{content:'−'}
+.empty{padding:12px 0;text-align:left}
+.today-todos .manual-add{margin-bottom:8px}
+.today-todos .daily-review p{margin:8px 0}
+.tomorrow-plan summary{font-size:16px;font-weight:600;cursor:pointer}
+.tomorrow-content{padding-top:16px}
+.cp-reader{max-width:850px;margin-left:auto;margin-right:auto;font-size:16px}
+.cp-reader h2{font-size:22px;line-height:1.5;margin-top:18px}
+.cp-reader h3{font-size:19px}
+.cp-reader .cp-actions{margin-top:0}
+.reader-status:empty{display:none}
+.reader-status{padding:10px 12px;background:var(--primary-soft);border-radius:8px}
+.cp-management summary{cursor:pointer;font-size:16px;font-weight:600}
+#view-copilot.reading-mode>.cp-management{margin-top:20px}
+#view-copilot.reading-mode>.cp-management:not([open]){max-width:850px;margin-left:auto;margin-right:auto}
+#view-copilot:not(.reading-mode)>.cp-reader{display:none}
+#view-copilot:not(.reading-mode)>.cp-management>summary{margin-bottom:16px}
+@media(max-width:760px){
+ .today-layout{grid-template-columns:1fr;gap:0}
+ .day-heading{gap:10px;margin-bottom:14px}
+ .day-heading h2{font-size:20px}
+ .day-actions{width:100%}
+ .day-actions .primary{margin-left:auto}
+ .topbar{position:static;padding:12px 16px;gap:8px}
+ .topbar .brand h1{font-size:20px}
+ .toolbar{gap:6px}
+ .toolbar .badge{font-size:11px}
+ .main-nav{margin-bottom:16px}
+ .main-nav .tab{padding:7px 10px}
+ .section{padding:16px}
+ .cp-reader h2{font-size:20px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}

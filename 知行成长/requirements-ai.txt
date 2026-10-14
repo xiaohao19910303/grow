@@ -1,0 +1,2 @@
+# Optional AI transport, installed only with explicit permission.
+httpx==0.28.1
