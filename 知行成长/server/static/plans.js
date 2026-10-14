@@ -113,15 +113,21 @@
   }
   async function sourceEditor(pid){
     const data=await api('/'+pid+'/sources');shell(`第${data.lesson_no}课：准备参考资料`);button(root,'返回计划',()=>detail(pid));
+    const help=node('details');help.open=true;help.append(node('summary','什么是备课资料？（点击展开说明）'));
+    help.append(node('p','备课资料是你为 AI 准备的参考材料清单。AI 会根据这些资料生成课程内容，确保内容准确、有依据。'));
+    help.append(node('p','如果你不想手动准备，可以直接点击"生成下一课草稿"，AI 会使用默认资料生成。','desc'));
+    help.append(node('p','每份资料需要包含：标题、原文链接、核验日期、以及你写的摘要（用自己的话概括资料内容）。','desc'));
+    root.append(help);
     root.append(node('p','这里保存你已核实的资料和原创摘要。系统不会自动联网验证，也不把格式检查当作事实核验。请勿粘贴私人笔记或密钥。'));
     const items=node('div');root.append(items);const editors=[];
-    function add(value={}){const box=node('section',undefined,'section');items.append(box);const e={};for(const [k,label]of [['title','标题'],['author','作者或机构'],['published_at','发布日期（未知可注明）'],['url','原文链接'],['verified_at','核验日期'],['verification','实际核验范围与方法'],['claim','支持的观点与边界'],['summary','原创资料摘要']])e[k]=field(box,label,value[k]||'', ['summary','claim','verification'].includes(k)?'textarea':'text');editors.push(e);button(box,'移除这份资料',()=>{editors.splice(editors.indexOf(e),1);box.remove();});}
+    function add(value={}){const box=node('section',undefined,'section');items.append(box);box.append(node('h4','资料条目'));const e={};for(const [k,label]of [['title','标题（必填）'],['author','作者或机构'],['published_at','发布日期（未知可注明）'],['url','原文链接（必填）'],['verified_at','核验日期（必填，格式：YYYY-MM-DD）'],['verification','实际核验范围与方法'],['claim','资料支持的观点与边界'],['summary','原创资料摘要（必填，用自己的话概括）']])e[k]=field(box,label,value[k]||'', ['summary','claim','verification'].includes(k)?'textarea':'text');editors.push(e);button(box,'移除这份资料',()=>{editors.splice(editors.indexOf(e),1);box.remove();});}
     (data.entries.length?data.entries:[{}]).forEach(add);button(root,'增加来源',()=>add());button(root,'保存备课资料',async()=>{await api('/'+pid+'/sources',{entries:editors.map(e=>Object.fromEntries(Object.entries(e).map(([k,v])=>[k,v.value])))});await detail(pid);},true);
   }
   async function watch(id){
     const status=shell('生成记录');const turn=navigation;button(root,'返回计划列表',window.loadPlans);button(root,'取消生成',async()=>{await api('/attempts/'+id+'/cancel',{});});
-    const raw=node('pre');raw.style.whiteSpace='pre-wrap';root.append(raw);
-    async function poll(){try{const a=await api('/attempts/'+id);if(turn!==navigation)return;status.textContent=`${a.state} · ${a.model} · 费用：${a.cost==null?'未知':a.cost.toFixed(4)+'元'}${a.error?' · '+a.error:''}`;raw.textContent=a.raw;
+    const content=node('div',undefined,'cp-reader');root.append(content);
+    async function poll(){try{const a=await api('/attempts/'+id);if(turn!==navigation)return;status.textContent=`${a.state} · ${a.model} · 费用：${a.cost==null?'未知':a.cost.toFixed(4)+'元'}${a.error?' · '+a.error:''}`;
+      if(a.kind==='plan'){try{const doc=JSON.parse(a.raw);content.replaceChildren();const summary=node('div');summary.append(node('p',`${doc.lessons.length}课 · ${doc.stages.length}阶段`));content.append(summary);for(const s of doc.stages){const sec=node('section');sec.append(node('h3',s.title||'未命名阶段'));sec.append(node('p',s.goal||''));content.append(sec);}const lessons=node('details');lessons.append(node('summary',`逐课安排 (${doc.lessons.length}课)`));content.append(lessons);doc.lessons.forEach((l,i)=>{const row=node('div');row.style.cssText='padding:8px;border-bottom:1px solid var(--border)';row.append(node('strong',`第${l.number}课：${l.topic||'待填写'}`));row.append(node('p',l.goal||''));lessons.append(row);});}catch(_){content.replaceChildren(node('pre',a.raw));}}else{content.replaceChildren();markdown(content,a.raw||'');}
       if(['queued','generating'].includes(a.state)){setTimeout(poll,1500);return;}
       if(a.draft_id)button(root,'打开草稿',async()=>{const d=await api('/drafts/'+a.draft_id);if(d.kind==='plan')await editPlan(d);else courseEditor(d);},true);
       else if(a.kind==='plan'&&a.raw){button(root,'手动修正规划',()=>{let doc;try{doc=JSON.parse(a.raw);}catch(_){throw new Error('输出不是完整规划，请返回创建页手动填写或显式重新生成。');}return editPlan({...a.context,document:doc});});}
