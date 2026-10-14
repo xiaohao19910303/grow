@@ -348,11 +348,11 @@ class Plans:
         p = self.plan(pid); self.check_files(p)
         if p['status'] != 'active': fail('conflict', '计划已暂停，请先恢复。')
         lessons = self.lessons(pid); n = len(lessons)+1
-        if any(l['date'] == now()[:10] for l in lessons): fail('conflict', '本计划今天已有完整课程。')
+        if any(l['date'] == now()[:10] for l in lessons): fail('conflict', '本计划今天已有完整课程，请明天继续或选择其他计划。')
         doc = self.version(pid)['document']
         if n > len(doc['lessons']): fail('conflict', '当前规划课程已生成完毕，请修订或新建计划。')
         rel = f'{self.base(pid)}/备课资料/第{n:03d}课.json'
-        if not self.path(rel).exists(): fail('sources', '请先准备下一课的已核验资料与摘要。')
+        if not self.path(rel).exists(): fail('sources', '请先准备备课资料。')
         entries = sources(json.loads(self.path(rel).read_text()))
         return {'plan_id':pid, 'base_version':p['version'], 'lesson_no':n, 'date':now()[:10],
                 'brief':p['brief'], 'lesson':doc['lessons'][n-1], 'source_entries':entries,

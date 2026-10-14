@@ -31,6 +31,18 @@ class StoreTests(unittest.TestCase):
     def tearDown(self):self.tmp.cleanup()
     def adopt(self):
         d=self.s.draft({'brief':B,'document':D});return self.s.adopt(d['id'],d['id'])['plan_id']
+    def test_shared_model_settings_round_trip(self):
+        from copilot.core import Store
+        from copilot.generation import config
+        legacy=Store(self.root,self.s.db)
+        with legacy.conn() as c:
+            c.execute('CREATE TABLE copilot_settings (key TEXT PRIMARY KEY,value TEXT NOT NULL)')
+        values={'api_base_url':'https://example.org/v1/chat/completions',
+                'api_key':'test-only-key','model_name':'test-model'}
+        legacy.update_settings(values)
+        self.assertEqual(config(self.s),config(legacy))
+        self.assertEqual(config(self.s)['model'],'test-model')
+        self.assertEqual(config(self.s)['key'],'test-only-key')
     def course(self,pid):
         self.s.save_sources(pid,S);ctx=self.s.course_context(pid)
         d=self.s.course_draft(ctx,content(ctx),'摘要 [来源](https://example.org/lesson)')
@@ -58,6 +70,12 @@ class StoreTests(unittest.TestCase):
         pid=self.adopt();r=self.course(pid);self.assertTrue(Path(r['path']).exists());self.assertEqual(self.s.lessons(pid)[0]['learning_state'],'unknown')
         with self.assertRaises(Problem):self.s.course_context(pid)
         self.course(self.adopt());self.assertEqual(len(self.s.lessons(pid)),1)
+    def test_answer_separator_must_precede_analysis(self):
+        pid=self.adopt();self.s.save_sources(pid,S);ctx=self.s.course_context(pid)
+        misplaced=content(ctx).replace('\n---\n','').replace('## 自查','---\n\n## 自查')
+        d=self.s.course_draft(ctx,misplaced,'摘要 https://example.org/lesson')
+        self.assertEqual(d['state'],'failed')
+        with self.assertRaises(Problem):self.s.publish_course(d['id'],'misplaced')
     def test_source_boundaries(self):
         with self.assertRaises(Problem):sources([{**S[0],'url':'file:///etc/passwd'}])
         pid=self.adopt()
@@ -154,7 +172,7 @@ class StoreTests(unittest.TestCase):
         self.adopt()
         with self.s.conn() as c:
             c.execute('CREATE TABLE copilot_settings (key TEXT PRIMARY KEY,value TEXT)')
-            c.execute('INSERT INTO copilot_settings VALUES (?,?)',('api_key','NEVER_EXPORT_THIS_KEY'))
+            c.execute('INSERT INTO copilot_settings VALUES (?,?)',('api_key',encoded('NEVER_EXPORT_THIS_KEY')))
         with self.s.lock():b=snapshot(self.s)
         db=Path(b['path'])/'data.db'
         self.assertNotIn(b'NEVER_EXPORT_THIS_KEY',db.read_bytes())

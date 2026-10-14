@@ -24,7 +24,7 @@ def messages(kind, context):
         context={**context,'schema':PLAN_SHAPE}
     else:
         instruction = ('只依据给定source_entries生成一课，正文后独立一行<!-- COPILOT_SOURCES -->再输出资料摘要。'
-            '标题为# 第NNN课：主题，正文含日期（使用给定date）、引导问题、核心概念、完整示范、误区与边界、练习、'
+            '标题为# 第NNN课：主题，正文含日期（必须使用给定date的ISO格式，如2026-10-14，不要用中文格式）、引导问题、核心概念、完整示范、误区与边界、练习、'
             '参考分析、自查、记忆提示；练习和参考分析分别使用二级标题，练习结束后、参考分析标题之前放独立---分隔。复盘课需要回顾和应用题。'
             '正文600–1000字。source_entries中每条包含title（资料标题/书名）和content（链接、书名、或相关内容）。'
             '若content包含URL则在摘要中引用该URL，若为书名则注明书名，若为粘贴内容则概括要点。'
@@ -87,13 +87,12 @@ class PlanGenerator:
             a['state']='generating';self.store.put('learning_ai_attempts',key,a)
             from copilot.transport import qwen_stream
             done=False
-            async with asyncio.timeout(180):
-                async for packet in (self.transport or qwen_stream)(messages(a['kind'],a['context']),c):
-                    if packet.get('usage') is not None:a['usage']=packet['usage']
-                    if packet.get('done'):done=True
-                    a['raw']+=packet.get('text','')
-                    if len(a['raw'])>180000:fail('invalid','输出超出限制，请缩短规划。')
-                    self.store.put('learning_ai_attempts',key,a)
+            async for packet in (self.transport or qwen_stream)(messages(a['kind'],a['context']),c):
+                if packet.get('usage') is not None:a['usage']=packet['usage']
+                if packet.get('done'):done=True
+                a['raw']+=packet.get('text','')
+                if len(a['raw'])>180000:fail('invalid','输出超出限制，请缩短规划。')
+                self.store.put('learning_ai_attempts',key,a)
             if not done:fail('incomplete','响应未完整结束。')
             if a['kind']=='plan':
                 doc=json.loads(a['raw'])
