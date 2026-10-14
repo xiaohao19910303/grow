@@ -182,7 +182,7 @@
         <label>模型名称<input type="text" id="modelName" placeholder="kimi-k3"></label>
       </div>
       <div id="apiStatus" style="font-size:13px;color:var(--muted)"></div>
-      <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="loadApiSettings()">刷新状态</button></div>
+      <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="testApiConnection()">测试连接</button><button class="btn" onclick="loadApiSettings()">恢复保存的配置</button></div>
     </div>
   </div>
   <div id="view-library" style="display:none" class="section">
@@ -416,6 +416,22 @@ async function loadApiSettings(){
     el.textContent=d.generation_available?'✅ 生成可用：配置已保存':'⚠️ 生成不可用：请填写 Base URL 和 API Key';
     el.style.color=d.generation_available?'var(--green)':'var(--muted)';
   }catch(e){document.getElementById('apiStatus').textContent='读取配置失败';}
+}
+async function testApiConnection(){
+  const body={api_base_url:document.getElementById('apiBaseUrl').value.trim(),
+    api_key:document.getElementById('apiKey').value.trim(),
+    model_name:document.getElementById('modelName').value.trim()||'qwen-plus'};
+  if(!body.api_base_url){toast('请填写 API Base URL');return;}
+  if(!body.api_key){toast('请填写 API Key');return;}
+  const el=document.getElementById('apiStatus');
+  el.textContent='⏳ 正在测试连接...';
+  el.style.color='var(--muted)';
+  try{
+    const r=await fetch('/api/copilot/settings/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.ok){el.textContent='✅ '+d.message;el.style.color='var(--green)';}
+    else{el.textContent='❌ '+d.message;el.style.color='var(--red)';}
+  }catch(e){el.textContent='❌ 测试失败：'+e.message;el.style.color='var(--red)';}
 }
 async function saveApiSettings(){
   const body={api_base_url:document.getElementById('apiBaseUrl').value.trim(),

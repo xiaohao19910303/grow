@@ -78,6 +78,13 @@ class SettingsUpdate(BaseModel):
     output_price: str = ''
 
 
+class ConnectionTest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    api_base_url: str = Field(min_length=1)
+    api_key: str = Field(min_length=1)
+    model_name: str = Field(min_length=1, max_length=100)
+
+
 def register(app: FastAPI, root, db):
     store = Store(root, db)
     generator = Generator(store)
@@ -259,6 +266,27 @@ def register(app: FastAPI, root, db):
             store.require_writer()
             store.update_settings({k: v for k, v in body.model_dump().items() if v})
         return {'ok': True, 'generation_available': not availability(store)}
+
+    @router.post('/settings/test')
+    async def test_connection(body: ConnectionTest):
+        from .transport import qwen_stream
+        import asyncio
+        test_messages = [{'role': 'user', 'content': '请回复"连接成功"四个字'}]
+        test_config = {'url': body.api_base_url, 'key': body.api_key, 'model': body.model_name}
+        try:
+            collected = ''
+            async for packet in qwen_stream(test_messages, test_config):
+                if packet.get('done'):
+                    break
+                if packet.get('text'):
+                    collected += packet['text']
+                    if len(collected) > 100:
+                        break
+            if collected:
+                return {'ok': True, 'message': f'连接成功，模型 {body.model_name} 正常响应'}
+            return {'ok': False, 'message': '连接失败：未收到有效响应'}
+        except Exception as e:
+            return {'ok': False, 'message': f'连接失败：{str(e)[:100]}'}
 
     app.include_router(router)
     return store
