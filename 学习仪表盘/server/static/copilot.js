@@ -79,7 +79,8 @@
   const sourceInput = el('textarea'); sourceInput.rows = 8; sourceInput.setAttribute('aria-label', '资料Markdown摘要');
   const preview = el('div', undefined, 'cp-reader');
   let currentTask, currentDraft, aborter, generatingId, dirty = false, publicationKey;
-  const message = text => { status.textContent = text; };
+  const readerStatus = el('p', '', 'reader-status'); readerStatus.setAttribute('role','status');
+  const message = text => { status.textContent = text; readerStatus.textContent = text; };
   const uid = () => crypto.randomUUID();
   async function request(path, method = 'GET', body) {
     const headers = { 'X-Copilot-Request': '1' };
@@ -105,6 +106,7 @@
     message('本次写入确认有效至 ' + result.expires_at); await load(false);
   }, controls);
   button('查看与确认主题', async () => {
+    root.classList.add('reading-mode');
     const plan = await request('/plan'); reader.hidden = false; reader.replaceChildren(el('h3', '主题规划 · ' + plan.path));
     plan.items.forEach(x => reader.append(el('p', `第${x.lesson_no}课 · ${x.topic} · ${x.kind} · ${x.confirmed ? '已确认' : '待确认'}`)));
     button('确认以上主题', async () => {
@@ -120,10 +122,13 @@
   button('阅读设置', () => showReadingSettings(), controls);
   const generateButton = button('生成下一课草稿', () => generate(), controls, 'btn primary');
   heading.append(controls, summary, blockers);
-  root.append(heading, reader, editor);
+  const management=el('details',undefined,'section cp-management');
+  management.open=true; management.append(el('summary','课程管理与保存帮助'),heading);
+  heading.classList.remove('section');
+  root.append(reader,management,editor);
   const histories = el('section', undefined, 'section');
   histories.append(el('h3', '课程与学习记录'), history, el('h3', '草稿'), drafts, el('h3', '待恢复操作'), operations);
-  root.append(histories);
+  management.append(histories); histories.classList.remove('section');
 
   function showDraft(d) {
     currentDraft = d; publicationKey = uid(); dirty = false; editor.hidden = false;
@@ -154,9 +159,20 @@
   bodyInput.oninput = sourceInput.oninput = () => { dirty = true; };
   window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
+  let readingRequest=0, activeTracker=null;
+  const stopReading=()=>{if(activeTracker){activeTracker.stopTimer();window.removeEventListener('scroll',activeTracker.scrollHandler);activeTracker=null;}};
   async function read(number) {
+    const requestId=++readingRequest;
+    stopReading();root.classList.add('reading-mode');management.open=false;
+    reader.hidden=false;reader.replaceChildren();
+    button('返回学习列表',()=>returnFromLesson(),reader);
+    readerStatus.textContent='正在读取课程…';reader.append(readerStatus);
     const lesson = await request('/lessons/' + number);
+    if(requestId!==readingRequest)return;
+    root.classList.add('reading-mode');management.open=false;
     reader.hidden = false; reader.replaceChildren();
+    button('返回学习列表', () => returnFromLesson(), reader);
+    readerStatus.textContent='';reader.append(readerStatus);
     const actions = el('div', undefined, 'cp-actions');
     button('课程正文', () => markdown(content, lesson.content), actions);
     button('参考资料', () => markdown(content, lesson.sources), actions);
@@ -170,11 +186,13 @@
     }, actions);
     completion.disabled = !lesson.complete;
     const content = el('div', undefined, 'cp-reader');
-    reader.append(actions, content); markdown(content, lesson.content);
+    reader.append(content,actions,readerStatus); markdown(content, lesson.content);
+    button('保存需要帮助',()=>{management.open=true;management.scrollIntoView({block:'start'});},actions);
 
     // 添加阅读监控和复盘区（仅在未完成时）
     if (lesson.learning_state !== 'completed') {
       const readingTracker = new ReadingTracker(number, lesson.version, feedbackKey);
+      activeTracker=readingTracker;
       reader.append(readingTracker.createProgressBar());
       reader.append(readingTracker.createReviewSection());
       readingTracker.start();
@@ -347,7 +365,7 @@
 
     startTimer() {
       this.timer = setInterval(() => {
-        if (!this.completed) {
+        if (!this.completed && currentTab==='copilot' && root.classList.contains('reading-mode') && !document.hidden) {
           this.timeSpent++;
           this.updateUI();
           this.checkCompletion();
@@ -454,7 +472,7 @@
       currentTask.lessons.forEach(item => {
         const row = el('div', undefined, 'cp-row');
         row.append(el('span', `第${String(item.lesson_no).padStart(3, '0')}课 · ${item.topic} · ${item.learning_label}${item.complete ? '' : ' · 待修复'}`));
-        button('阅读', () => read(item.lesson_no), row); history.append(row);
+        button('阅读', () => {rememberLearningOrigin();return read(item.lesson_no);}, row); history.append(row);
       });
       const [saved, pending] = await Promise.all([request('/drafts'), request('/operations')]);
       drafts.replaceChildren();
@@ -524,9 +542,17 @@
     finally { aborter = null; cancel.disabled = true; await load(false); }
   }
   window.loadCopilot = load;
+  window.renderLearningMarkdown = markdown;
+  window.leaveCopilot = () => {++readingRequest;stopReading();};
+  window.showCopilotManagement = () => { ++readingRequest;stopReading();root.classList.remove('reading-mode');management.open=true; };
+  window.openCopilotLesson = async number => {
+    goTab('copilot', {reading:true});
+    try { await read(number); } catch (error) { message(error.message); }
+  };
 
   // 阅读设置
   function showReadingSettings() {
+    root.classList.add('reading-mode');
     const settings = JSON.parse(localStorage.getItem('copilot-reading-settings') || '{}');
     const defaults = {
       requireScrollToBottom: true,

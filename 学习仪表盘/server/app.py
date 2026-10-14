@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -38,6 +38,9 @@ DEFAULT_MODULES = [
 ]
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY, date TEXT NOT NULL, title TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS modules (
     id TEXT PRIMARY KEY, name TEXT, color TEXT, ord INTEGER
 );
@@ -101,6 +104,12 @@ def save_state(state: dict):
     cur = conn.cursor()
     for t in TABLES:
         cur.execute(f"DELETE FROM {t}")
+    # Older clients and sync scripts omit todos; preserve them in that case.
+    if "todos" in state:
+        cur.execute("DELETE FROM todos")
+        for item in state["todos"]:
+            cur.execute("INSERT INTO todos(id,date,title,done) VALUES(?,?,?,?)",
+                        (item["id"], item["date"], item["title"], int(bool(item.get("done", False)))))
     for m in state.get("modules", []):
         cur.execute("INSERT INTO modules(id,name,color,ord) VALUES(?,?,?,?)",
                     (m["id"], m["name"], m.get("color", "#4F6EF7"), m.get("order", 0)))
@@ -142,6 +151,7 @@ def load_state() -> dict:
     state = {"modules": [], "checkins": {}, "habits": {},
              "customFields": [], "customRecords": [],
              "decisions": [], "predictions": [], "reviews": [], "insights": []}
+    state["todos"] = [dict(r) for r in cur.execute("SELECT id,date,title,done FROM todos ORDER BY rowid")]
     for r in cur.execute("SELECT id,name,color,ord FROM modules ORDER BY ord, id"):
         state["modules"].append({"id": r["id"], "name": r["name"], "color": r["color"], "order": r["ord"]})
     for r in cur.execute("SELECT date,module_id,level FROM checkins"):
@@ -499,6 +509,64 @@ async def put_data(request: Request):
     data = await request.json()
     save_state(data)
     return {"ok": True}
+
+
+# Only expose lesson folders, never arbitrary workspace files.
+STUDY_MODULES = {
+    "yingyu": ("英文阅读", "每日文章", "35 分钟"),
+    "biaoda": ("结构化表达", "每日练习", "15 分钟"),
+}
+
+
+def study_files(module):
+    if module not in STUDY_MODULES:
+        raise HTTPException(404, "未找到学习模块")
+    name, folder, _ = STUDY_MODULES[module]
+    directory = (LEARN_ROOT / name / folder).resolve()
+    return [p for p in sorted(directory.glob("*.md"))
+            if p.is_file() and p.resolve().is_relative_to(directory)
+            and p.resolve().is_relative_to(LEARN_ROOT.resolve())]
+
+
+@app.get("/api/study-materials")
+def study_materials():
+    modules = []
+    for module, (name, _, duration) in STUDY_MODULES.items():
+        record = LEARN_ROOT / name / "学习记录.md"
+        record_text = record.read_text(encoding="utf-8") if record.exists() else ""
+        lessons = []
+        for path in study_files(module):
+            body = path.read_text(encoding="utf-8")
+            title = re.search(r"^#\s+(.+)", body, re.M)
+            day = re.search(r"Day\s*(\d+)", path.stem, re.I)
+            stamp = re.match(r"(\d{4}-\d{2}-\d{2})", path.name)
+            if not stamp:
+                stamp = re.search(r"日期[：:]\s*(\d{4}-\d{2}-\d{2})", body.replace("**", ""))
+            # English has an explicit completion column. Expression has no
+            # lesson-level completion contract, so never infer it from a check-in.
+            status = "待本人反馈"
+            if module == "yingyu" and day:
+                rows = []
+                for line in record_text.splitlines():
+                    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+                    if len(cells) >= 3 and re.fullmatch(r"Day\s*0*" + str(int(day[1])), cells[1], re.I):
+                        rows.append(cells)
+                if len(rows) == 1:
+                    status = rows[0][2] or status
+            completed = status.startswith(("已完成", "已学习")) or status in ("完成", "✅", "[x]", "[X]")
+            lessons.append({"filename": path.name, "topic": title[1] if title else path.stem,
+                            "date": stamp[1] if stamp else "", "learning_label": status,
+                            "learning_state": "completed" if completed else "unknown"})
+        modules.append({"id": module, "name": name, "duration": duration, "lessons": lessons})
+    return {"modules": modules}
+
+
+@app.get("/api/study-materials/{module}/{filename}")
+def study_material(module: str, filename: str):
+    path = next((p for p in study_files(module) if p.name == filename), None)
+    if path is None:
+        raise HTTPException(404, "未找到课程")
+    return {"content": path.read_text(encoding="utf-8")}
 
 
 @app.get("/api/knowledge")
