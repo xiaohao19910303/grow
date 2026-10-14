@@ -1,0 +1,16 @@
+.cp-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.cp-summary{font-size:17px;font-weight:600;margin:16px 0}
+.cp-status{color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.cp-blockers{color:#725619;line-height:1.9;padding-left:22px}
+.cp-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.cp-reader{line-height:1.9;overflow-wrap:anywhere}
+.cp-reader h2,.cp-reader h3{margin-top:24px}
+.cp-reader td{border:1px solid var(--border);padding:8px;white-space:normal}
+.cp-reader table{display:block;overflow-x:auto;width:100%}
+.cp-reader blockquote{border-left:3px solid var(--primary);margin:10px 0;padding-left:14px;color:var(--muted)}
+.cp-reader details{border:1px solid var(--border);border-radius:8px;padding:12px;margin:18px 0}
+.cp-reader summary{cursor:pointer;font-weight:600}
+.cp-reader pre,.cp-stream{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f7fb;padding:14px;border-radius:8px}
+#view-copilot textarea{display:block;width:100%;box-sizing:border-box;font:14px/1.7 monospace;margin:8px 0 18px;resize:vertical}
+#view-copilot [hidden]{display:none}
+@media(max-width:680px){.cp-row{align-items:flex-start}.cp-actions button{flex-grow:1}.cp-summary{font-size:15px}}

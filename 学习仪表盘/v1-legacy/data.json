@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "updatedAt": "2026-10-13T08:19:00.000Z",
+  "modules": [
+    { "id": "fupan", "name": "执行复盘", "color": "#4F6EF7", "order": 1 },
+    { "id": "zhenghe", "name": "整合练习", "color": "#7C5CF0", "order": 2 },
+    { "id": "renzhi", "name": "每日认知与通识学习", "color": "#00A6A6", "order": 3 },
+    { "id": "xiezuo", "name": "深度写作", "color": "#E07B39", "order": 4 },
+    { "id": "biaoda", "name": "结构化表达", "color": "#D64580", "order": 5 },
+    { "id": "yingyu", "name": "英文阅读", "color": "#2FA84F", "order": 6 },
+    { "id": "siwei", "name": "现代思维工具", "color": "#6B7280", "order": 7 },
+    { "id": "gaorenzhi", "name": "高认知能力训练", "color": "#C0362C", "order": 8 }
+  ],
+  "checkins": {},
+  "habits": {},
+  "customFields": [
+    { "key": "title", "label": "标题", "type": "text" },
+    { "key": "category", "label": "分类", "type": "text" },
+    { "key": "value", "label": "数值", "type": "number" },
+    { "key": "date", "label": "日期", "type": "date" }
+  ],
+  "customRecords": []
+}

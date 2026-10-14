@@ -1,0 +1,235 @@
+"""Additive API routes; construction does not open the database or start a service."""
+import json
+import secrets
+import os
+from typing import Literal
+
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, ConfigDict, Field
+
+from .core import Problem, Store
+from .generation import Generator, availability
+from .backup import snapshot
+
+
+class Input(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    module: Literal['renzhi'] = 'renzhi'
+
+
+class Key(Input):
+    key: str = Field(min_length=8, max_length=160)
+
+
+class Generation(Key):
+    lesson_no: int = Field(ge=1, le=168)
+
+
+class Edit(Input):
+    version: int = Field(ge=1)
+    content: str = Field(max_length=100000)
+    sources: str = Field(max_length=100000)
+
+
+class Publication(Key):
+    draft_id: str = Field(max_length=64)
+    version: int = Field(ge=1)
+
+
+class Learning(Key):
+    state: Literal['completed', 'unknown']
+    version: str = Field(min_length=64, max_length=64)
+
+
+class ReviewSubmission(Key):
+    answers: list[dict] = Field(min_length=1, max_length=10)
+    time_spent_seconds: int = Field(ge=0)
+    version: str = Field(min_length=64, max_length=64)
+
+
+class SummarySubmission(Key):
+    summary: str = Field(min_length=1, max_length=1000)
+    time_spent_seconds: int = Field(ge=0)
+    version: str = Field(min_length=64, max_length=64)
+
+
+class QuickCompletion(Key):
+    time_spent_seconds: int = Field(ge=0)
+    version: str = Field(min_length=64, max_length=64)
+
+
+class PlanConfirmation(Input):
+    hash: str = Field(min_length=64, max_length=64)
+    lessons: list[int] = Field(min_length=1, max_length=168)
+
+
+class WriterConfirmation(Input):
+    confirmed: Literal[True]
+
+
+def register(app: FastAPI, root, db):
+    store = Store(root, db)
+    generator = Generator(store)
+    router = APIRouter(prefix='/api/copilot')
+
+    @app.exception_handler(Problem)
+    async def problem_handler(request, error):
+        return JSONResponse({'error': error.code, 'message': error.message}, status_code=error.status)
+
+    @app.middleware('http')
+    async def local_access(request: Request, call_next):
+        hostname = request.url.hostname or ''
+        allowed = {'localhost', '127.0.0.1', '::1'}
+        lan_hosts = {h.strip() for h in os.getenv('COPILOT_ALLOWED_HOSTS', '').split(',') if h.strip()}
+        lan_token = os.getenv('COPILOT_ACCESS_TOKEN', '')
+        lan = os.getenv('COPILOT_LAN', '') == '1'
+        if hostname not in allowed and not (lan and hostname in lan_hosts and len(lan_token) >= 24):
+            return JSONResponse({'message': '此访问地址未获允许。'}, status_code=403)
+        if request.url.path.startswith('/api/'):
+            peer = request.client.host if request.client else ''
+            if peer not in ('127.0.0.1', '::1', 'testclient'):
+                supplied = request.headers.get('x-copilot-token', '')
+                if not lan or len(lan_token) < 24 or not secrets.compare_digest(supplied, lan_token):
+                    return JSONResponse({'message': '局域网访问需要有效凭证。'}, status_code=403)
+            origin = request.headers.get('origin')
+            expected = f'{request.url.scheme}://{request.url.netloc}'
+            if origin and origin != expected:
+                return JSONResponse({'message': '拒绝跨来源请求。'}, status_code=403)
+            if request.headers.get('sec-fetch-site') == 'cross-site':
+                return JSONResponse({'message': '拒绝跨站请求。'}, status_code=403)
+            if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.url.path.startswith('/api/copilot'):
+                if request.headers.get('x-copilot-request') != '1':
+                    return JSONResponse({'message': '写操作需要同源请求标识。'}, status_code=403)
+            if (store.runtime / 'restore-pending.json').exists():
+                return JSONResponse({'message': '存在未完成的离线恢复，请先按备份说明处理。'}, status_code=503)
+        if request.url.path.startswith('/api/copilot') and getattr(store, 'startup_error', None):
+            error = store.startup_error
+            return JSONResponse({'error': error.code, 'message': error.message + ' 处理后请重新启动本地服务。'}, status_code=503)
+        response = await call_next(request)
+        if request.url.path.startswith('/api/copilot'):
+            response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    @router.get('/today-task')
+    def today_task(module: Literal['renzhi'] = 'renzhi'):
+        with store.lock():
+            data, plan, sources, blockers = store.readiness()
+        unavailable = availability()
+        return {**data, 'blockers': blockers, 'plan': plan, 'generation_unavailable': unavailable,
+                'can_generate': not blockers and not unavailable, 'writer_coordinated': store.coordinated()}
+
+    @router.post('/scan')
+    def scan(body: Input):
+        return store.scan()
+
+    @router.get('/lessons')
+    def lessons(module: Literal['renzhi'] = 'renzhi', state: Literal['all', 'unknown', 'completed'] = 'all',
+                offset: int = 0, limit: int = 30):
+        data = store.scan()['lessons']
+        data = [x for x in data if state == 'all' or x['learning_state'] == state]
+        offset, limit = max(0, offset), min(168, max(1, limit))
+        return {'total': len(data), 'items': data[offset:offset + limit]}
+
+    @router.get('/lessons/{number}')
+    def lesson(number: int, module: Literal['renzhi'] = 'renzhi'):
+        return store.lesson(number)
+
+    @router.patch('/lessons/{number}/learning-state')
+    def learning(number: int, body: Learning):
+        return store.learning(number, body.state, body.version, body.key)
+
+    @router.post('/lessons/{number}/review')
+    def submit_review(number: int, body: ReviewSubmission):
+        return store.submit_review(number, body.answers, body.time_spent_seconds, body.version, body.key)
+
+    @router.post('/lessons/{number}/summary')
+    def submit_summary(number: int, body: SummarySubmission):
+        return store.submit_summary(number, body.summary, body.time_spent_seconds, body.version, body.key)
+
+    @router.post('/lessons/{number}/complete')
+    def quick_complete(number: int, body: QuickCompletion):
+        return store.quick_complete(number, body.time_spent_seconds, body.version, body.key)
+
+    @router.get('/lessons/{number}/learning-record')
+    def learning_record(number: int, module: Literal['renzhi'] = 'renzhi'):
+        return store.get_learning_record(number)
+
+    @router.get('/lessons/{number}/review-questions')
+    def review_questions(number: int, module: Literal['renzhi'] = 'renzhi'):
+        questions = store.extract_review_questions(number)
+        if not questions:
+            return {'questions': []}
+        return {'questions': questions}
+
+    @router.get('/learning-history')
+    def learning_history(module: Literal['renzhi'] = 'renzhi', offset: int = 0, limit: int = 20):
+        return store.get_learning_history(offset, limit)
+
+    @router.get('/plan')
+    def plan(module: Literal['renzhi'] = 'renzhi'):
+        return store.plan()
+
+    @router.post('/plan/confirm')
+    def confirm_plan(body: PlanConfirmation):
+        return store.confirm_plan(body.hash, body.lessons)
+
+    @router.post('/writer-session')
+    def writer_session(body: WriterConfirmation):
+        return store.writer_session(body.confirmed)
+
+    @router.post('/generations')
+    def generate(body: Generation):
+        draft_id, fresh = generator.begin(body.lesson_no, body.key)
+        return StreamingResponse(generator.stream(draft_id, fresh), media_type='text/event-stream',
+                                 headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+    @router.post('/generations/{draft_id}/cancel')
+    async def cancel(draft_id: str, body: Input):
+        return generator.cancel(draft_id)
+
+    @router.get('/drafts')
+    def drafts(module: Literal['renzhi'] = 'renzhi'):
+        with store.conn() as c:
+            items = [dict(row) for row in c.execute(
+                'SELECT id,lesson_no,version,status,updated_at FROM copilot_drafts ORDER BY updated_at DESC LIMIT 50')]
+        return {'items': items}
+
+    @router.get('/drafts/{draft_id}')
+    def draft(draft_id: str, module: Literal['renzhi'] = 'renzhi'):
+        return store.draft(draft_id)
+
+    @router.patch('/drafts/{draft_id}')
+    def edit(draft_id: str, body: Edit):
+        return store.edit_draft(draft_id, body.version, body.content, body.sources)
+
+    @router.post('/publications')
+    def publish(body: Publication):
+        return store.publish(body.draft_id, body.version, body.key)
+
+    @router.get('/operations')
+    def operations(module: Literal['renzhi'] = 'renzhi'):
+        with store.conn() as c:
+            rows = [dict(r) for r in c.execute(
+                "SELECT id,status,created_at,data FROM copilot_operations WHERE status!='done' ORDER BY created_at")]
+        for row in rows:
+            row['error'] = json.loads(row.pop('data')).get('error', '')
+        return {'items': rows}
+
+    @router.get('/operations/{op_id}')
+    def operation(op_id: str):
+        op = store.operation(op_id)
+        return {'id': op['id'], 'status': op['status'], 'created_at': op['created_at'], 'error': json.loads(op['data']).get('error', '')}
+
+    @router.post('/operations/{op_id}/recover')
+    def recover(op_id: str, body: Input):
+        return store.recover(op_id)
+
+    @router.post('/backups')
+    def backup(body: Input):
+        with store.lock():
+            store.require_writer()
+            return snapshot(store)
+
+    app.include_router(router)
+    return store
