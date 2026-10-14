@@ -12,7 +12,7 @@ import fcntl
 from copilot.core import encoded, digest, fail, now
 from .store import Plans
 
-ROOTS=('学习计划','每日认知与通识学习','英文阅读','结构化表达','现代思维工具教程','深度写作','执行复盘','整合练习','热门与深度文章')
+ROOTS=('认知阅读','学习计划','每日认知与通识学习','英文阅读','结构化表达','现代思维工具教程','深度写作','执行复盘','整合练习','热门与深度文章')
 EXTENSIONS={'.md','.json','.png','.jpg','.jpeg','.webp','.pdf'}
 
 

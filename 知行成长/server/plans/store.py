@@ -1,4 +1,5 @@
 """Plan identities, validated documents and recoverable local publications."""
+import copy
 import fcntl
 import json
 import os
@@ -11,6 +12,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from copilot.core import digest, encoded, fail, now
+from .refinement import content_hash, payload, sections, differences
 
 PLAN_ID = re.compile(r'^plan-\d{8}-\d{3,}$')
 LEGACY = [{'id': 'renzhi', 'name': '认知与通识', 'path': '每日认知与通识学习'},
@@ -24,6 +26,7 @@ CREATE TABLE IF NOT EXISTS learning_drafts (id TEXT PRIMARY KEY, data TEXT NOT N
 CREATE TABLE IF NOT EXISTS learning_ai_attempts (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS learning_feedback (plan_id TEXT, lesson_no INTEGER, data TEXT NOT NULL, PRIMARY KEY(plan_id,lesson_no));
 CREATE TABLE IF NOT EXISTS learning_publications (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS learning_draft_families (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS learning_settings (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 '''
 
@@ -157,7 +160,7 @@ class Plans:
             fail('restore_pending', '存在未完成的恢复，请先核对日志。', 503)
         with self.lock():
             with self.conn() as c:
-                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='learning_plans'").fetchone()
+                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='learning_draft_families'").fetchone()
             if not installed:
                 target = self.runtime / f'before-migration-{uuid.uuid4().hex}.db'
                 from .backup import database_snapshot
@@ -170,6 +173,12 @@ class Plans:
                         a.update(state='failed', error='服务已重启，生成中断；不会自动重试。')
                         c.execute('UPDATE learning_ai_attempts SET data=? WHERE id=?', (encoded(a), row['id']))
             self.recover_locked()
+            # Old drafts become independent roots; do not infer historical parentage.
+            for d in self.rows('learning_drafts'):
+                if not d.get('family_id'):
+                    d.update(family_id=d['id'], parent_draft_id=None, operation='original')
+                    self.put('learning_drafts', d['id'], d)
+                    self.put('learning_draft_families', d['id'], {'id':d['id'], 'published_draft_id':d['id'] if d['state']=='published' else None})
 
     def get(self, table, key):
         with self.conn() as c:
@@ -259,20 +268,80 @@ class Plans:
                     key = c.execute('SELECT id FROM learning_publications WHERE data=?', (encoded(row),)).fetchone()[0]
                 self.finish(key, row)
 
+    def read_draft(self, did):
+        d = self.get('learning_drafts', did)
+        d['content_hash'] = content_hash(d)
+        d['family_id'] = d.get('family_id', did)
+        family = self.get('learning_draft_families', d['family_id'])
+        d['family_published'] = family.get('published_draft_id')
+        if d['kind']=='plan':d['budget']=self.budget(d['brief'],d.get('plan_id'))
+        d['sections'] = sections(d.get('content','')) if d['kind']=='course' else []
+        d['frozen_lessons'] = [l['lesson_no'] for l in self.lessons(d['plan_id'])] if d.get('plan_id') else []
+        parent = d.get('parent_draft_id')
+        d['diff'] = differences(self.get('learning_drafts',parent),d) if parent else []
+        return d
+
+    def parent(self, did, expected_hash, kind):
+        self.recover_locked()
+        d = self.get('learning_drafts', did)
+        if d['kind']!=kind or d['state']=='published' or (kind=='course' and not d.get('complete')):
+            fail('conflict','该草稿不能继续修改，请从当前正式规划开始修订。')
+        if not expected_hash or content_hash(d)!=expected_hash: fail('conflict','草稿基线已变化，请重新读取。')
+        self.check_family(d)
+        if kind=='plan' and d.get('plan_id') and self.plan(d['plan_id'])['version']!=d['base_version']:
+            fail('conflict','正式规划已改变，请从当前版本重新修订。')
+        if kind=='course':
+            current=self.course_context(d['context']['plan_id'])
+            if any(current[k]!=d['context'][k] for k in ('base_version','lesson_no','source_hash')):
+                fail('conflict','规划或资料已改变，请重新生成课程。')
+        return d
+
+    def check_family(self, d):
+        family=self.get('learning_draft_families',d.get('family_id',d['id']))
+        if family.get('published_draft_id'):fail('conflict','本组草稿已有版本正式保存，请从正式版本开始后续修订。')
+        return family
+
+    def family_sql(self, d, target):
+        family=self.check_family(d)
+        family.update(published_draft_id=d['id'], target=target)
+        return ('UPDATE learning_draft_families SET data=? WHERE id=?',[encoded(family),family['id']])
+
+    def save_draft_locked(self, d, parent=None, operation='manual', instruction=None, scope=None):
+        if parent and payload(parent)==payload(d):return self.read_draft(parent['id'])
+        d.update(family_id=parent.get('family_id',parent['id']) if parent else d['id'],
+                 parent_draft_id=parent['id'] if parent else None, operation=operation,
+                 instruction=instruction, scope=scope)
+        if not parent:self.put('learning_draft_families',d['family_id'],{'id':d['family_id'],'published_draft_id':None})
+        self.put('learning_drafts',d['id'],d)
+        return self.read_draft(d['id'])
+
     def draft(self, data):
         with self.lock():
+            parent=self.parent(data['parent_draft_id'],data.get('parent_hash'),'plan') if data.get('parent_draft_id') else None
             b = brief(data.get('brief')); doc = document(data.get('document'), b)
-            pid = data.get('plan_id'); base_version = data.get('base_version', 0)
+            pid = parent.get('plan_id') if parent else data.get('plan_id')
+            base_version = parent.get('base_version',0) if parent else data.get('base_version', 0)
             if pid and base_version != self.plan(pid)['version']: fail('conflict', '规划版本已改变。')
-            overrides = {}
+            overrides = copy.deepcopy(parent.get('overrides',{})) if parent else {}
             if data.get('external_hash') and pid:
                 rel = self.base(pid) + '/学习规划.md'
                 if self.hash(rel) != data['external_hash']: fail('conflict', '外部文件已再次变化。')
                 overrides[rel] = data['external_hash']
+            if parent and pid:
+                old=self.version(pid)['document']['lessons']
+                for lesson in self.lessons(pid):
+                    n=lesson['lesson_no']
+                    if n>len(doc['lessons']) or doc['lessons'][n-1]!=old[n-1]:fail('conflict','已发布课次不能修改或移动。')
             d = {'id': str(uuid.uuid4()), 'kind': 'plan', 'brief': b, 'document': doc, 'plan_id': pid,
                  'base_version': base_version, 'overrides': overrides, 'state': 'ready', 'created_at': now()}
-            self.put('learning_drafts', d['id'], d)
-            return d
+            return self.save_draft_locked(d,parent,data.get('operation','manual'),data.get('instruction'),data.get('scope'))
+
+    def draft_history(self, did, offset=0, limit=20):
+        d=self.read_draft(did); family=d['family_id']
+        rows=[x for x in self.rows('learning_drafts') if x.get('family_id',x['id'])==family]
+        rows.sort(key=lambda x:(x.get('created_at',''),x['id']))
+        return {'items':[{k:x.get(k) for k in ('id','parent_draft_id','created_at','operation','instruction','state')} for x in rows[offset:offset+limit]],
+                'next_offset':offset+limit if offset+limit<len(rows) else None, 'total':len(rows)}
 
     def budget(self, candidate=None, replacing=None):
         settings = {r['id']: r for r in self.rows('learning_settings')}
@@ -286,13 +355,17 @@ class Plans:
         return {'weekly': limit, 'legacy_weekly': legacy, 'known_minutes': total,
                 'legacy_unknown': legacy is None, 'over': max(0, total - limit) if limit is not None else None}
 
-    def adopt(self, did, key, accept_over=False):
+    def adopt(self, did, key, accept_over=False, expected_hash=None):
         request = {'op': 'adopt', 'draft': did, 'accept_over': accept_over}
+        if expected_hash:request['expected_hash']=expected_hash
         with self.lock():
+            self.recover_locked()
             old = self.replay(key, request)
             if old is not None: return old
             d = self.get('learning_drafts', did)
             if d['kind'] != 'plan' or d['state'] != 'ready': fail('conflict', '规划草稿尚未就绪。')
+            self.check_family(d)
+            if expected_hash and content_hash(d)!=expected_hash:fail('conflict','草稿已变化，请重新预览。')
             b, doc = brief(d['brief']), document(d['document'], d['brief'])
             if self.budget(b, d.get('plan_id'))['over'] and not accept_over: fail('budget', '超出每周预算，请调整规划或明确接受超额。')
             pid = d.get('plan_id'); files = {}
@@ -330,6 +403,7 @@ class Plans:
             sql = [('INSERT INTO learning_plans VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data', [pid, encoded(p)]),
                    ('INSERT INTO learning_plan_versions VALUES (?,?,?)', [pid,p['version'],encoded(v)]),
                    ('UPDATE learning_drafts SET data=? WHERE id=?', [encoded(d),did])]
+            sql.append(self.family_sql(d,{'plan_id':pid,'version':p['version']}))
             return self.publish(key, request, files, sql, {'plan_id': pid, 'version': p['version']})
 
     def save_sources(self, pid, entries):
@@ -371,6 +445,8 @@ class Plans:
         if not exercise or not analysis or '\n---\n' not in content[exercise.end():analysis.start()]:
             fail('invalid','请在练习之后、参考分析标题之前添加独立分隔线。',422)
         allowed_urls = {e.get('url') for e in d['context']['source_entries'] if e.get('url')}
+        for entry in d['context']['source_entries']:
+            allowed_urls.update(re.findall(r'https?://[^\s<>\)\]\"，。；]+',entry.get('content','')))
         if allowed_urls:
             urls = set(re.findall(r'https?://[^\s<>\)\]"，。；]+', content+'\n'+notes))
             if not urls or not urls <= allowed_urls: fail('invalid','引用链接必须来自已准备资料清单。',422)
@@ -378,22 +454,42 @@ class Plans:
                 if target not in allowed_urls: fail('invalid','正文与摘要只能引用清单内链接。',422)
         if '<script' in content.lower() or '<script' in notes.lower(): fail('invalid','内容含不可接受的脚本。',422)
 
-    def course_draft(self, context, content, notes, complete=True):
-        d = {'id':str(uuid.uuid4()), 'kind':'course', 'context':context, 'content':content, 'sources':notes,
-             'complete':complete, 'state':'ready', 'created_at':now()}
-        try: self.validate_course(d)
-        except Exception: d['state']='failed'
-        if not complete: d['state']='failed'
-        self.put('learning_drafts',d['id'],d)
-        return d
-
-    def publish_course(self, did, key):
-        request={'op':'course','draft':did}
+    def course_draft(self, context, content, notes, complete=True, parent_id=None, parent_hash=None, operation='manual', instruction=None, scope=None):
         with self.lock():
+            parent=self.parent(parent_id,parent_hash,'course') if parent_id else None
+            if parent and context!=parent['context']:fail('conflict','不能静默改变课程上下文。')
+            d = {'id':str(uuid.uuid4()), 'kind':'course', 'context':copy.deepcopy(context), 'content':content, 'sources':notes,
+                 'complete':complete, 'state':'ready', 'created_at':now()}
+            try: self.validate_course(d)
+            except Exception:
+                if parent:raise
+                d['state']='failed'
+            if not complete: d['state']='failed'
+            return self.save_draft_locked(d,parent,operation,instruction,scope)
+
+    def redate_course(self, did, expected_hash):
+        with self.lock():
+            parent=self.parent(did,expected_hash,'course')
+            old_date=parent['context']['date']; today=now()[:10]
+            if old_date==today:return self.read_draft(did)
+            d=copy.deepcopy(parent);d.update(id=str(uuid.uuid4()),created_at=now())
+            d['context']['date']=today
+            parts=sections(d['content']);end=parts[0]['start'] if parts else len(d['content'])
+            d['content']=d['content'][:end].replace(old_date,today)+d['content'][end:]
+            self.validate_course(d);d['state']='ready'
+            return self.save_draft_locked(d,parent,'redate')
+
+    def publish_course(self, did, key, expected_hash=None):
+        request={'op':'course','draft':did}
+        if expected_hash:request['expected_hash']=expected_hash
+        with self.lock():
+            self.recover_locked()
             old=self.replay(key,request)
             if old is not None:return old
             d=self.get('learning_drafts',did)
             if d['kind']!='course' or not d.get('complete') or d['state']!='ready':fail('conflict','课程尚未完整生成并通过校验。')
+            self.check_family(d)
+            if expected_hash and content_hash(d)!=expected_hash:fail('conflict','草稿已变化，请重新预览。')
             self.validate_course(d)
             ctx=d['context']; pid=ctx['plan_id']; n=ctx['lesson_no']; p=self.plan(pid)
             current=self.course_context(pid)
@@ -414,7 +510,8 @@ class Plans:
             d['state']='published'
             return self.publish(key,request,files,[('INSERT INTO learning_lessons VALUES (?,?,?)',[pid,n,encoded(lesson)]),
                 ('UPDATE learning_plans SET data=? WHERE id=?',[encoded(p),pid]),
-                ('UPDATE learning_drafts SET data=? WHERE id=?',[encoded(d),did])],{'plan_id':pid,'lesson_no':n,'path':str(self.path(base+'/'+course))})
+                ('UPDATE learning_drafts SET data=? WHERE id=?',[encoded(d),did]),
+                self.family_sql(d,{'plan_id':pid,'lesson_no':n})],{'plan_id':pid,'lesson_no':n,'path':str(self.path(base+'/'+course))})
 
     def feedback(self, pid, n, data, key):
         state=data.get('state')
@@ -423,6 +520,7 @@ class Plans:
         if not isinstance(comment,str) or len(comment)>4000:fail('invalid','反馈过长。',422)
         request={'op':'feedback','plan_id':pid,'lesson_no':n,'state':state,'comment':comment}
         with self.lock():
+            self.recover_locked()
             old=self.replay(key,request)
             if old is not None:return old
             p=self.plan(pid);self.check_files(p)

@@ -19,8 +19,7 @@ B={'title':'经济学','goal':'理解经济新闻','level':'零基础','weeks':2
 D={'prerequisites':'无需先修','stages':[{'title':'基础','goal':'解释概念'}],
    'lessons':[{'number':n,'topic':'主题'+str(n),'goal':'解释概念','exercise':'举例','assessment':'说明边界','stage':1,
                'kind':'review' if n==2 else 'lesson','minutes':20,'requires':[] if n==1 else [1]} for n in (1,2)]}
-S=[{'title':'资料','author':'机构','published_at':'未知','url':'https://example.org/lesson','verified_at':now()[:10],
-    'verification':'测试样本','claim':'仅用于测试','summary':'明确选择的教学摘要。'}]
+S=[{'title':'资料','content':'明确选择的教学摘要。 https://example.org/lesson'}]
 def content(ctx):
     return f'# 第{ctx["lesson_no"]:03d}课：示范\n日期：{ctx["date"]}\n## 引导问题\n问题\n## 核心概念\n概念\n## 完整示范\n示范\n## 误区与边界\n边界\n## 练习\n练习\n\n---\n\n## 参考分析\n分析\n## 自查\n自查\n## 记忆提示\n提示\n[来源](https://example.org/lesson)'
 
@@ -77,7 +76,7 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(d['state'],'failed')
         with self.assertRaises(Problem):self.s.publish_course(d['id'],'misplaced')
     def test_source_boundaries(self):
-        with self.assertRaises(Problem):sources([{**S[0],'url':'file:///etc/passwd'}])
+        with self.assertRaises(Problem):sources([{'title':'资料','content':''}])
         pid=self.adopt()
         with self.assertRaises(Problem):self.s.course_context(pid)
         self.s.save_sources(pid,S);ctx=self.s.course_context(pid);d=self.s.course_draft(ctx,content(ctx),'https://other.example/test')
@@ -149,7 +148,7 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(c.get('/api/plans').status_code,200)
             self.assertEqual(c.post('/api/plans/drafts',json={'data':{'brief':B,'document':D}}).status_code,403)
             d=c.post('/api/plans/drafts',json={'data':{'brief':B,'document':D}},headers=headers).json()
-            p=c.post('/api/plans/drafts/'+d['id']+'/adopt',json={'data':{'key':'adopt'}},headers=headers).json();pid=p['plan_id'];path=s.base(pid)
+            p=c.post('/api/plans/drafts/'+d['id']+'/adopt',json={'data':{'key':'adopt','expected_hash':d['content_hash']}},headers=headers).json();pid=p['plan_id'];path=s.base(pid)
             self.assertEqual(c.post('/api/plans/'+pid+'/metadata',json={'data':{'key':'rename','name':'新名字'}},headers=headers).status_code,200)
             self.assertEqual(s.plan(pid)['name'],'新名字');self.assertEqual(path,s.base(pid))
             self.assertEqual(c.post('/api/plans/budget',json={'data':{}},headers={**headers,'Origin':'https://evil.example'}).status_code,403)
@@ -201,6 +200,8 @@ class StoreTests(unittest.TestCase):
         headers={'X-Copilot-Request':'1'}
         with TestClient(app,base_url='http://localhost') as c:
             def post(path,data):
+                if path.endswith(('/adopt','/publish')):
+                    data={**data,'expected_hash':c.get('/api/plans'+path.rsplit('/',1)[0]).json()['content_hash']}
                 r=c.post('/api/plans'+path,json={'data':data},headers=headers)
                 self.assertEqual(r.status_code,200,r.text);return r.json()
             def generate(data):
@@ -242,7 +243,7 @@ class GenerationTests(unittest.IsolatedAsyncioTestCase):
     async def test_no_private_notes_and_restarts(self):
         d=self.s.draft({'brief':B,'document':D});pid=self.s.adopt(d['id'],'a')['plan_id'];self.s.save_sources(pid,S)
         self.s.path(self.s.base(pid)+'/学习记录.md').write_text('SECRET PERSONAL NOTE');payload=encoded(messages('course',self.s.course_context(pid)))
-        self.assertNotIn('SECRET PERSONAL NOTE',payload);self.assertIn(S[0]['summary'],payload)
+        self.assertNotIn('SECRET PERSONAL NOTE',payload);self.assertIn(S[0]['content'],payload)
         self.s.put('learning_ai_attempts','old',{'state':'generating','raw':'partial'});self.s.initialize();self.assertEqual(self.s.get('learning_ai_attempts','old')['state'],'failed')
 
 class TransportTests(unittest.IsolatedAsyncioTestCase):

@@ -5,3 +5,13 @@
 #view-plans pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto}
 #view-plans .section{margin-top:14px}#view-plans .btn:disabled{opacity:.6;cursor:wait}
 @media(max-width:640px){.plan-grid{grid-template-columns:1fr}}
+.plan-stream{max-height:55vh;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border-radius:12px;background:var(--bg,#f7f8fc);padding:0 16px}
+.plan-stream-item{padding:12px 0;border-bottom:1px solid var(--border)}
+.plan-stream-item h3{margin:0 0 8px;font-size:15px}.plan-pending-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}
+.plan-summary,.plan-stage{background:var(--bg,#f7f8fc);border-radius:10px;padding:14px;line-height:1.7}
+.plan-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.plan-confirm{padding:18px;border:1px solid var(--border);border-radius:12px}
+.plan-notice{position:fixed;bottom:18px;right:18px;max-width:min(520px,calc(100vw - 36px));z-index:1000;padding:14px;background:var(--card,#fff);border:1px solid var(--border);box-shadow:0 4px 24px #0002;border-radius:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}.plan-notice span{flex-basis:100%}
+#view-plans .plan-field:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:8px}#view-plans input[type=checkbox]{width:auto;order:-1}
+#view-plans .btn{max-width:100%;white-space:normal;margin:4px}#view-plans summary{cursor:pointer;line-height:1.8}#view-plans select{max-width:100%;padding:8px}
+#view-plans :focus-visible{outline:2px solid var(--primary,#4f5ee8);outline-offset:3px}.plan-history{padding:12px 0;border-bottom:1px solid var(--border)}
+@media(prefers-reduced-motion:reduce){.plan-stream{scroll-behavior:auto}}

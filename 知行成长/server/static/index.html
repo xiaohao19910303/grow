@@ -137,7 +137,8 @@
 </style>
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
 <link rel="stylesheet" href="/static/growth.css?v=20261014-design2">
-<link rel="stylesheet" href="/static/plans.css?v=20261014-1">
+<link rel="stylesheet" href="/static/plans.css?v=20261014-2">
+<link rel="stylesheet" href="/static/reading.css?v=1">
 </head>
 <body>
 
@@ -211,6 +212,7 @@
     <div class="section"><h2>最近 7 天记录</h2><div id="recentList"></div></div>
   </div>
 
+  <div id="view-reading" style="display:none" class="section"></div>
   <div id="view-plans" style="display:none" class="section"></div>
   <div id="view-copilot" style="display:none"></div>
 
@@ -761,7 +763,7 @@ function exportReportMarkdown(){
 /* ================= Tab ================= */
 const navGroups={
   personal:[['personal','今日']],
-  learning:[['library','我的课程'],['plans','学习计划'],['progress','学习打卡'],['copilot','课程管理']],
+  learning:[['library','我的课程'],['plans','学习计划'],['reading','认知阅读'],['progress','学习打卡'],['copilot','课程管理']],
   records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['custom','自定义记录']],
   growth:[['overview','成长总览'],['knowledge','知识图谱'],['report','周报']]
 };
@@ -775,6 +777,8 @@ function returnFromLesson(){
   requestAnimationFrame(()=>{window.scrollTo({top:origin.scroll,behavior:'instant'});if(origin.focus?.isConnected)origin.focus.focus({preventScroll:true});});
 }
 function goTab(name, options={}){
+  if(currentTab==='reading' && window.beforeReadingLeave && !window.beforeReadingLeave(name))return;
+  if(currentTab==='plans' && window.beforePlansLeave && !window.beforePlansLeave(name))return;
   if(window.leaveCopilot && currentTab==='copilot' && name!=='copilot') window.leaveCopilot();
   currentTab=name;
   const group=name==='reader'?'learning':Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===name));
@@ -786,10 +790,11 @@ function goTab(name, options={}){
   const subnav=document.getElementById('subnav');
   subnav.hidden=!group || group==='personal' || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
-  ['plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','custom','knowledge','report'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','custom','knowledge','report'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='personal' && !options.restore){ renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
-  if(name==='plans')window.loadPlans?.();
+  if(name==='reading')window.enterReading?.();
+  if(name==='plans')window.enterPlans?.();
   if(name==='library')window.renderDailyLearning?.();
   if(name==='copilot' && !options.reading){window.showCopilotManagement?.();window.loadCopilot();}
   if(name==='knowledge') loadKnowledge();
@@ -936,7 +941,8 @@ function init(){
 init();
 </script>
 <script src="/static/copilot.js?v=20261014-design2"></script>
-<script src="/static/plans.js?v=20261014-1"></script>
+<script src="/static/plans.js?v=20261014-2"></script>
 <script src="/static/daily-learning.js?v=20261014-design2"></script>
+<script src="/static/reading.js?v=1"></script>
 </body>
 </html>

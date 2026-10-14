@@ -9,6 +9,7 @@ from copilot.core import fail, Problem, encoded, digest
 from copilot.generation import availability, config
 from .store import Plans, LEGACY, integer, text
 from .generation import PlanGenerator
+from .progress import projection
 
 
 class Payload(BaseModel):
@@ -62,28 +63,45 @@ def register(app, root, db):
         return store.draft(body.data)
 
     @router.get('/drafts/{did}')
-    def read_draft(did:str):return store.get('learning_drafts',did)
+    def read_draft(did:str):return store.read_draft(did)
+
+    @router.get('/drafts/{did}/history')
+    def history(did:str,offset:int=0):
+        integer(offset,0,1000000,'分页位置')
+        return store.draft_history(did,offset)
 
     @router.post('/drafts/{did}/adopt')
-    def adopt(did:str,body:Payload):return store.adopt(did,key(body.data),body.data.get('accept_over') is True)
+    def adopt(did:str,body:Payload):return store.adopt(did,key(body.data),body.data.get('accept_over') is True,text(body.data.get('expected_hash'),'草稿校验值',100))
 
     @router.post('/drafts/{did}/edit-course')
     def edit_course(did:str,body:Payload):
-        with store.lock():
-            d=store.get('learning_drafts',did)
-            if d['kind']!='course' or not d.get('complete') or d['state']=='published':fail('conflict','未完成片段或已发布课程不可编辑发布。')
-            ctx=d['context']
-            from copilot.core import now
-            ctx['date']=now()[:10]
-            return store.course_draft(ctx,text(body.data.get('content'),'正文',100000),text(body.data.get('sources'),'资料',100000))
+        d=store.get('learning_drafts',did)
+        if d['kind']!='course':fail('invalid','请选择课程草稿。',422)
+        return store.course_draft(d['context'],text(body.data.get('content'),'正文',100000),text(body.data.get('sources'),'资料',100000),
+                                  parent_id=did,parent_hash=body.data.get('parent_hash'))
+
+    @router.post('/drafts/{did}/redate')
+    def redate(did:str,body:Payload):
+        if body.data.get('confirm_date') is not True:fail('invalid','请确认将课程日期改为今天。',422)
+        return store.redate_course(did,body.data.get('parent_hash'))
+
+    @router.post('/drafts/{did}/refine')
+    async def refine(did:str,body:Payload):
+        key(body.data)
+        d=store.get('learning_drafts',did)
+        return generator.begin({**body.data,'operation':'refine','parent_draft_id':did,'kind':d['kind']})
 
     @router.post('/drafts/{did}/publish')
-    def publish(did:str,body:Payload):return store.publish_course(did,key(body.data))
+    def publish(did:str,body:Payload):return store.publish_course(did,key(body.data),text(body.data.get('expected_hash'),'草稿校验值',100))
 
     @router.post('/generate')
     async def generate(body:Payload):
         key(body.data)
         return generator.begin(body.data)
+
+    @router.get('/attempts/{aid}/progress')
+    def progress(aid:str,after_revision:int|None=None):
+        return projection(store.get('learning_ai_attempts',aid),after_revision)
 
     @router.get('/attempts/{aid}')
     def attempt(aid:str):return store.get('learning_ai_attempts',aid)
