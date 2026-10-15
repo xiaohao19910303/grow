@@ -123,18 +123,16 @@ class PlanGenerator:
             from copilot.transport import qwen_stream
             done=False
             prompt=refinement_messages(a['context']) if a['operation']=='refine' else messages(a['kind'],a['context'])
-            remaining=max(0,(datetime.fromisoformat(a['deadline_at'])-datetime.fromisoformat(now())).total_seconds())
-            async with asyncio.timeout(remaining):
-                async for packet in (self.transport or qwen_stream)(prompt,c):
-                    if packet.get('usage') is not None:a['usage']=packet['usage']
-                    if packet.get('done'):done=True
-                    delta=packet.get('text','')
-                    if delta:
-                        a['first_content_at']=a['first_content_at'] or now()
-                        a.update(last_content_at=now(),phase='receiving')
-                        a['raw']+=delta
-                    if len(a['raw'])>180000:fail('invalid','输出超出限制，请缩短规划。')
-                    self.persist(a)
+            async for packet in (self.transport or qwen_stream)(prompt,c):
+                if packet.get('usage') is not None:a['usage']=packet['usage']
+                if packet.get('done'):done=True
+                delta=packet.get('text','')
+                if delta:
+                    a['first_content_at']=a['first_content_at'] or now()
+                    a.update(last_content_at=now(),phase='receiving')
+                    a['raw']+=delta
+                if len(a['raw'])>180000:fail('invalid','输出超出限制，请缩短规划。')
+                self.persist(a)
             if not done:fail('incomplete','响应未完整结束。')
             a['complete']=True
             a['phase']='validating';self.persist(a)

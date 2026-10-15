@@ -71,13 +71,12 @@ class Reader:
                 with (self.store.runtime.parent/'.ai-generation.lock').open('a') as gate:
                     try:fcntl.flock(gate,fcntl.LOCK_EX|fcntl.LOCK_NB)
                     except BlockingIOError:fail('busy','其他AI任务正在进行，请稍后再试。')
-                    async with asyncio.timeout(300):
-                        async for packet in (self.transport or qwen_stream)(prompt,c):
-                            j['raw']+=packet.get('text','')
-                            if len(j['raw'])>8000:fail('invalid','导读超出长度限制。')
-                            if packet.get('usage'):j['usage']=packet['usage']
-                            if packet.get('done'):done=True
-                            j['phase']='正在生成中文导读';self.store.put(TABLE,jid,j)
+                    async for packet in (self.transport or qwen_stream)(prompt,c):
+                        j['raw']+=packet.get('text','')
+                        if len(j['raw'])>8000:fail('invalid','导读超出长度限制。')
+                        if packet.get('usage'):j['usage']=packet['usage']
+                        if packet.get('done'):done=True
+                        j['phase']='正在生成中文导读';self.store.put(TABLE,jid,j)
                 if not done or not j['raw'].strip():fail('incomplete','导读未完整返回，原资料保留。')
                 if '<script' in j['raw'].lower() or re.search(r'https?://',j['raw']):fail('invalid','导读含未经核验的链接或脚本，原资料保留。')
                 guide=basic_guide(self.store.article(ctx['id'])).replace('平台尚未生成文章专属AI中文导读；可在页面显式请求，个人笔记不会发送。','以下AI导读仅依据已有摘要生成，个人笔记未发送。')+'\n## AI中文导读（基于摘要，待核对）\n\n'+j['raw']+'\n'
