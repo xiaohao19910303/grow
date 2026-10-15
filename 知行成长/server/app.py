@@ -21,6 +21,11 @@ from copilot.api import register as register_copilot
 from copilot.core import Problem
 from plans.api import register as register_plans
 from reading.api import register as register_reading
+from behavior.api import register as register_behavior
+from errors.api import register as register_errors
+from predictions.api import register as register_predictions
+from behavior_report.api import register as register_behavior_report
+from knowledge.api import register as register_knowledge
 from reflections.api import register as register_reflections
 import asyncio
 
@@ -506,6 +511,30 @@ async def lifespan(app: FastAPI):
     except (Problem, OSError) as exc:
         reflections_store.startup_error = exc
         print('日常记录暂不可用，请检查磁盘或恢复日志。')
+    try:
+        behavior_store.initialize()
+        behavior_store.startup_error = None
+    except Exception as exc:
+        behavior_store.startup_error = exc
+        print(f'行为应用追踪暂不可用：{exc}')
+    try:
+        error_store.initialize()
+        error_store.startup_error = None
+    except Exception as exc:
+        error_store.startup_error = exc
+        print(f'重复错误追踪暂不可用：{exc}')
+    try:
+        behavior_report_store.initialize()
+        behavior_report_store.startup_error = None
+    except Exception as exc:
+        behavior_report_store.startup_error = exc
+        print(f'AI 行为分析报告暂不可用：{exc}')
+    try:
+        knowledge_graph_store.initialize()
+        knowledge_graph_store.startup_error = None
+    except Exception as exc:
+        knowledge_graph_store.startup_error = exc
+        print(f'知识图谱可视化暂不可用：{exc}')
     # 首次启动自动扫描一次知识图谱（若为空）
     conn = get_conn()
     empty = conn.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0] == 0
@@ -524,6 +553,11 @@ copilot_store = register_copilot(app, LEARN_ROOT, DB_PATH)
 plans_store, plans_generator = register_plans(app, LEARN_ROOT, DB_PATH)
 reading_store, reading_service = register_reading(app, LEARN_ROOT, DB_PATH)
 reflections_store, reflections_assistant = register_reflections(app, LEARN_ROOT, DB_PATH)
+behavior_store = register_behavior(app, LEARN_ROOT, DB_PATH)
+error_store = register_errors(app, LEARN_ROOT, DB_PATH)
+prediction_stats = register_predictions(app, LEARN_ROOT, DB_PATH)
+behavior_report_store = register_behavior_report(app, LEARN_ROOT, DB_PATH)
+knowledge_graph_store = register_knowledge(app, LEARN_ROOT, DB_PATH)
 
 
 @app.get("/api/health")

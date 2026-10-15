@@ -211,6 +211,10 @@
     <div class="section"><h2>本周各模块投入度</h2><p class="desc">近 7 天（周一起）各模块完成情况，完成度 = 有进展(≥1)的天数 ÷ 7</p><div id="barChart"></div></div>
     <div class="section"><h2>活动记录热力图</h2><p class="desc">最近约 4 个月，颜色越深表示当天学习活动越多</p><div id="heatmap"></div><div class="legend"><span><i style="background:#ebedf0"></i>无</span><span><i style="background:#c6e48b"></i>少</span><span><i style="background:#7bc96f"></i>中</span><span><i style="background:#239a3b"></i>多</span><span><i style="background:#196127"></i>很多</span></div></div>
     <div class="section"><h2>最近 7 天记录</h2><div id="recentList"></div></div>
+    <div class="section"><h2>成长度量 · 行为应用</h2><p class="desc">你在真实场景中使用学到的概念/工具的频率。在每日复盘中记录"今天用了什么"。</p><div id="behaviorStatsCards" class="cards"></div><div id="behaviorTrendChart"></div><div id="behaviorTopConcepts" style="margin-top:16px"></div><div id="behaviorModuleDist" style="margin-top:16px"></div></div>
+    <div class="section"><h2>错误模式 · 重复追踪</h2><p class="desc">识别重复出现的错误模式，聚焦改进方向。</p><div id="errorStatsCards" class="cards"></div><div id="errorTypeChart" style="margin-top:16px"></div><div id="errorTrendChart" style="margin-top:16px"></div><div id="errorRepeatedList" style="margin-top:16px"></div></div>
+    <div class="section"><h2>预测校准</h2><p class="desc">你的预测有多准确？校准直觉，识别过度自信或保守。</p><div id="predictionCalibrationCards" class="cards"></div><div id="predictionCalibrationChart" style="margin-top:16px"></div></div>
+    <div class="section"><h2>AI 行为分析报告</h2><p class="desc">AI 分析你的行为数据，提供个性化洞察和建议。</p><div id="aiReportLatest"></div><button class="btn primary" onclick="generateNewReport()" style="margin-top:12px">生成新报告</button></div>
   </div>
 
   <div id="view-reading" style="display:none" class="section"></div>
@@ -256,6 +260,13 @@
   </div>
 
   <div id="view-predictions" style="display:none">
+    <div class="section">
+      <h2>预测校准分析</h2><p class="desc">可视化你的预测准确度，识别校准偏差。</p>
+      <div id="predictionAnalysisCalibration"></div>
+      <div id="predictionAnalysisDistribution" style="margin-top:20px"></div>
+      <div id="predictionAnalysisOverconfident" style="margin-top:20px"></div>
+      <div id="predictionAnalysisTrend" style="margin-top:20px"></div>
+    </div>
     <div class="section">
       <h2>预测校准</h2><p class="desc">记录预测 + 自报概率 + 结果，长期校准「我觉得」与「实际发生」的偏差。</p>
       <div class="cards" id="predictionStats" style="margin-bottom:16px"></div>
@@ -304,7 +315,44 @@
     </div>
   </div>
 
+  <div id="view-applications" style="display:none">
+    <div class="section">
+      <h2>应用记录</h2><p class="desc">记录你在真实场景中使用学到的概念/工具。这是"知行合一"的核心度量。</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="appModuleFilter" onchange="renderApplications()" style="max-width:180px"><option value="">全部模块</option></select>
+        <button class="btn primary" onclick="openApplicationForm()">新增应用记录</button>
+      </div>
+      <div id="applicationList"></div>
+    </div>
+  </div>
+
+  <div id="view-errors" style="display:none">
+    <div class="section">
+      <h2>错误记录</h2><p class="desc">追踪重复出现的错误模式，聚焦改进方向。</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="errorModuleFilter" onchange="renderErrors()" style="max-width:160px"><option value="">全部模块</option></select>
+        <select id="errorTypeFilter" onchange="renderErrors()" style="max-width:160px"><option value="">全部类型</option></select>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="errorRepeatFilter" onchange="renderErrors()">仅重复错误</label>
+        <button class="btn primary" onclick="openErrorForm()">+ 记录错误</button>
+      </div>
+      <div id="errorList"></div>
+    </div>
+  </div>
+
   <div id="view-knowledge" style="display:none">
+    <div class="section">
+      <h2>知识图谱可视化</h2>
+      <p class="desc">交互式力导向图，展示知识点之间的关联。</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn primary" onclick="scanKnowledgeLinks()">扫描关系</button>
+        <select id="graphCategoryFilter" onchange="renderKnowledgeGraph()" style="max-width:160px">
+          <option value="">全部分类</option>
+        </select>
+        <input id="graphSearch" placeholder="搜索节点..." style="max-width:200px" oninput="filterGraphNodes()">
+      </div>
+      <div class="cards" id="graphStats"></div>
+      <div id="graphContainer" style="border:1px solid var(--border);border-radius:8px;background:#fafbfd;margin-top:16px;min-height:400px"></div>
+    </div>
     <div class="section">
       <h2>知识图谱</h2>
       <p class="desc">自动扫描工作区的 Markdown（知识索引 + 思维工具教程 + 课程/文章/练习足迹），节点点击可回查来源。</p>
@@ -331,6 +379,16 @@
         <h2 style="font-size:14px">模块完成度</h2><div id="reportBarChart"></div>
       </div>
       <div id="reportDetail"></div>
+    </div>
+  </div>
+
+  <div id="view-ai-report" style="display:none">
+    <div class="section">
+      <h2>AI 行为分析报告</h2>
+      <p class="desc">AI 分析你的行为数据，提供个性化洞察和建议。</p>
+      <button class="btn primary" onclick="generateNewReport()">生成新报告</button>
+      <div style="height:14px"></div>
+      <div id="aiReportList"></div>
     </div>
   </div>
 </div>
@@ -382,7 +440,7 @@ let dataLoaded = false;
 async function loadFromServer(){
   try{
     const r = await fetch('/api/data');
-    if(r.ok){ const d = await r.json(); if(d && d.modules){ state = d; dataLoaded = Array.isArray(d.todos); state.todos = state.todos || []; } setStatus(dataLoaded?'已连接本地库':'请重启本地服务以启用待办',dataLoaded?'on':'warn'); }
+    if(r.ok){ const d = await r.json(); if(d && d.modules){ state = d; dataLoaded = Array.isArray(d.todos); state.todos = state.todos || []; refreshModuleNames(); } setStatus(dataLoaded?'已连接本地库':'请重启本地服务以启用待办',dataLoaded?'on':'warn'); }
     else setStatus('服务异常','err');
   }catch(e){ setStatus('服务未连接','warn'); }
   render();
@@ -686,9 +744,1005 @@ function renderCustom(){
   let body=state.customRecords.map((r,i)=>{ const cells=fs.map(f=>{let v=r[f.key]; if(v==null||v==='') v='—'; return '<td>'+esc(v)+'</td>';}).join(''); return '<tr>'+cells+'<td><button class="icon-btn" onclick="openRecordForm('+i+')">编辑</button><button class="icon-btn del" onclick="delRecord('+i+')">删除</button></td></tr>'; }).join('');
   document.getElementById('recordTable').innerHTML=fs.length?(head+body):'<div class="empty">请先添加字段</div>';
 }
+
+/* ================= 行为应用追踪 ================= */
+const MODULE_NAMES = {};
+function refreshModuleNames(){ (state.modules||[]).forEach(m => MODULE_NAMES[m.id] = m.name); }
+let behaviorAppsCache = [];
+let behaviorConceptsCache = [];
+
+async function renderBehaviorStats(){
+  const container = document.getElementById('behaviorStatsCards');
+  if(!container) return;
+  try {
+    const r = await fetch('/api/behavior/stats?period=30');
+    if(!r.ok) throw new Error('stats failed');
+    const stats = await r.json();
+    // Stat cards
+    container.innerHTML = `
+      <div class="card"><div class="k">近30天应用次数</div><div class="v">${stats.total}</div></div>
+      <div class="card"><div class="k">涉及模块数</div><div class="v">${Object.keys(stats.by_module).length}</div></div>
+      <div class="card"><div class="k">不同概念数</div><div class="v">${stats.top_concepts.length}</div></div>
+    `;
+    // Trend chart (SVG line chart)
+    const trendEl = document.getElementById('behaviorTrendChart');
+    if(trendEl && stats.trend.length > 0){
+      const labels = stats.trend.map(t => t.date.slice(5)); // MM-DD
+      const values = stats.trend.map(t => t.count);
+      const max = Math.max(1, ...values);
+      const W=720,H=180,padL=40,padB=30,padT=14,padR=14;
+      const xAt = i => padL + i*(W-padL-padR)/Math.max(1,labels.length-1);
+      const yAt = v => H-padB-(v/max)*(H-padT-padB);
+      const pts = values.map((v,i) => xAt(i)+','+yAt(v)).join(' ');
+      let s = '<svg class="chart-svg" viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">';
+      // gridlines
+      for(let g=0;g<=max;g+=Math.max(1,Math.ceil(max/4))){
+        const y=yAt(g);
+        s+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="#e6e8f0" stroke-width="1"/>';
+        s+='<text x="'+(padL-6)+'" y="'+(y+4)+'" text-anchor="end" fill="#a0a5b5" font-size="10">'+g+'</text>';
+      }
+      // polygon fill
+      s+='<polygon points="'+padL+','+yAt(0)+' '+pts+' '+(W-padR)+','+yAt(0)+'" fill="rgba(0,166,166,0.10)"/>';
+      // polyline
+      s+='<polyline points="'+pts+'" fill="none" stroke="#00A6A6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      // points
+      values.forEach((v,i) => {
+        if(v > 0) s+='<circle cx="'+xAt(i)+'" cy="'+yAt(v)+'" r="3.5" fill="#00A6A6"><title>'+labels[i]+': '+v+'次</title></circle>';
+      });
+      // x labels (every 5 days)
+      labels.forEach((lb,i) => { if(i%5===0) s+='<text x="'+xAt(i)+'" y="'+(H-8)+'" text-anchor="middle" fill="#a0a5b5" font-size="10">'+lb+'</text>'; });
+      s+='</svg>';
+      trendEl.innerHTML = s;
+    } else if(trendEl) {
+      trendEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">暂无趋势数据</p>';
+    }
+    // Top concepts (horizontal bar chart)
+    const topEl = document.getElementById('behaviorTopConcepts');
+    if(topEl && stats.top_concepts.length > 0){
+      let html = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">常用概念 Top 5</h3>';
+      const maxCount = stats.top_concepts[0]?.count || 1;
+      stats.top_concepts.forEach(tc => {
+        const pct = Math.round(tc.count / maxCount * 100);
+        html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="width:120px;font-size:13px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(tc.concept)}">${esc(tc.concept)}</span>
+          <div style="flex:1;height:20px;background:#f0f1f5;border-radius:4px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:#00A6A6;border-radius:4px;min-width:2px"></div>
+          </div>
+          <span style="font-size:12px;color:var(--muted);width:30px">${tc.count}次</span>
+        </div>`;
+      });
+      topEl.innerHTML = html;
+    } else if(topEl) {
+      topEl.innerHTML = '';
+    }
+    // Module distribution
+    const modEl = document.getElementById('behaviorModuleDist');
+    if(modEl && Object.keys(stats.by_module).length > 0){
+      let html = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">按模块分布</h3><div style="display:flex;gap:8px;flex-wrap:wrap">';
+      Object.entries(stats.by_module).forEach(([mid, cnt]) => {
+        const name = MODULE_NAMES[mid] || mid;
+        html += `<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:99px;background:#eef1ff;color:#465ce0;font-size:13px;font-weight:550">${esc(name)} <span style="font-weight:700">${cnt}</span></span>`;
+      });
+      html += '</div>';
+      modEl.innerHTML = html;
+    } else if(modEl) {
+      modEl.innerHTML = '';
+    }
+  } catch(e) {
+    container.innerHTML = '<div class="card"><div class="k">行为应用</div><div class="v" style="font-size:14px;color:var(--muted)">暂无数据 — 在每日复盘中记录"今天用了什么"</div></div>';
+  }
+}
+
+async function renderApplications(){
+  const listEl = document.getElementById('applicationList');
+  const filterEl = document.getElementById('appModuleFilter');
+  if(!listEl) return;
+  // Populate module filter
+  if(filterEl && filterEl.options.length <= 1){
+    (state.modules||[]).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id; opt.textContent = m.name;
+      filterEl.appendChild(opt);
+    });
+  }
+  const moduleId = filterEl ? filterEl.value : '';
+  const params = moduleId ? `?module_id=${moduleId}` : '';
+  try {
+    const r = await fetch('/api/behavior/applications' + params);
+    if(!r.ok) throw new Error('fetch failed');
+    behaviorAppsCache = await r.json();
+  } catch(e) {
+    listEl.innerHTML = '<div class="empty">加载失败</div>';
+    return;
+  }
+  if(behaviorAppsCache.length === 0){
+    listEl.innerHTML = '<div class="empty">尚无应用记录。在每日复盘中记录"今天用了什么"，或点击上方"新增应用记录"。</div>';
+    return;
+  }
+  let html = '<table class="record-table"><thead><tr><th>日期</th><th>模块</th><th>概念</th><th>场景</th><th>效果</th><th style="width:80px">操作</th></tr></thead><tbody>';
+  behaviorAppsCache.forEach(app => {
+    const modName = MODULE_NAMES[app.module_id] || app.module_id;
+    const stars = app.effectiveness > 0 ? '★'.repeat(app.effectiveness) + '☆'.repeat(5 - app.effectiveness) : '—';
+    const scenario = app.scenario ? (app.scenario.length > 40 ? app.scenario.slice(0,40)+'…' : app.scenario) : '—';
+    html += `<tr>
+      <td>${esc(app.date)}</td>
+      <td>${esc(modName)}</td>
+      <td><strong>${esc(app.concept)}</strong></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(app.scenario||'')}">${esc(scenario)}</td>
+      <td style="white-space:nowrap;color:#e8a33d">${stars}</td>
+      <td><button class="icon-btn" onclick="openApplicationForm(${app.id})">编辑</button><button class="icon-btn del" onclick="deleteApplication(${app.id})">删除</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  listEl.innerHTML = html;
+}
+
+async function openApplicationForm(editId){
+  // Fetch concepts for autocomplete
+  if(behaviorConceptsCache.length === 0){
+    try {
+      const r = await fetch('/api/behavior/applications/concepts');
+      if(r.ok) behaviorConceptsCache = await r.json();
+    } catch(e){}
+  }
+  const existing = editId ? behaviorAppsCache.find(a => a.id === editId) : null;
+  const today = new Date().toISOString().slice(0,10);
+  const moduleOpts = (state.modules||[]).map(m =>
+    `<option value="${m.id}" ${existing && existing.module_id===m.id?'selected':''}>${esc(m.name)}</option>`
+  ).join('');
+  const conceptList = behaviorConceptsCache.map(c => esc(c)).join('');
+  const datalistId = 'conceptDatalist';
+
+  let html = `<h3>${editId ? '编辑应用记录' : '新增应用记录'}</h3>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <label>日期<input type="date" id="appFormDate" value="${existing ? existing.date : today}" style="width:100%"></label>
+      <label>模块<select id="appFormModule" style="width:100%">${moduleOpts}</select></label>
+      <label>概念/工具<input id="appFormConcept" list="${datalistId}" value="${existing ? esc(existing.concept) : ''}" placeholder="如：确认偏误、结论先行、MECE" style="width:100%" maxlength="100">
+        <datalist id="${datalistId}">${behaviorConceptsCache.map(c => '<option value="'+esc(c)+'">').join('')}</datalist>
+      </label>
+      <label>应用场景<textarea id="appFormScenario" rows="3" placeholder="在什么场景下用了？效果如何？" style="width:100%" maxlength="500">${existing ? esc(existing.scenario||'') : ''}</textarea></label>
+      <label>效果自评
+        <div id="appFormStars" style="display:flex;gap:4px;font-size:24px;cursor:user-select:none;user-select:none">
+          ${[1,2,3,4,5].map(n => `<span onclick="document.getElementById('appFormEffectiveness').value=${n};document.querySelectorAll('#appFormStars span').forEach((s,i)=>s.style.color=i<${n}?'#e8a33d':'#ddd');${existing&&existing.effectiveness===n?'document.getElementById(\'appFormEffectiveness\').value='+n+';':''}" style="color:${existing && existing.effectiveness>=n?'#e8a33d':'#ddd'}">★</span>`).join('')}
+        </div>
+        <input type="hidden" id="appFormEffectiveness" value="${existing ? existing.effectiveness : 0}">
+      </label>
+    </div>
+    <div class="actions" style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn primary" onclick="saveApplication(${editId || 'null'})">保存</button>
+    </div>`;
+  openModal(html);
+}
+
+async function saveApplication(editId){
+  const date = document.getElementById('appFormDate').value;
+  const module_id = document.getElementById('appFormModule').value;
+  const concept = document.getElementById('appFormConcept').value.trim();
+  const scenario = document.getElementById('appFormScenario').value.trim();
+  const effectiveness = parseInt(document.getElementById('appFormEffectiveness').value) || 0;
+  if(!concept){ toast('请填写概念/工具名称','err'); return; }
+  const body = {date, module_id, concept, scenario, effectiveness};
+  try {
+    const url = editId ? `/api/behavior/applications/${editId}` : '/api/behavior/applications';
+    const method = editId ? 'PUT' : 'POST';
+    const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || 'save failed'); }
+    closeModal();
+    toast('已保存');
+    renderApplications();
+    renderBehaviorStats();
+  } catch(e) {
+    toast('保存失败: '+e.message,'err');
+  }
+}
+
+async function deleteApplication(id){
+  openModal(`<h3>确认删除</h3><p style="color:var(--muted);font-size:13px">删除后不可恢复。</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doDeleteApplication(${id})">删除</button></div>`);
+}
+async function doDeleteApplication(id){
+  try {
+    const r = await fetch(`/api/behavior/applications/${id}`, {method:'DELETE'});
+    if(!r.ok) throw new Error('delete failed');
+    closeModal();
+    toast('已删除');
+    renderApplications();
+    renderBehaviorStats();
+  } catch(e) {
+    toast('删除失败','err');
+  }
+}
+
+/* ================= 错误追踪 ================= */
+let errorTypesCache = [];
+let errorsCache = [];
+
+async function renderErrorStats(){
+  const container = document.getElementById('errorStatsCards');
+  if(!container) return;
+  try {
+    const r = await fetch('/api/errors/stats?period=30');
+    if(!r.ok) throw new Error('stats failed');
+    const stats = await r.json();
+    container.innerHTML = `
+      <div class="card"><div class="k">近30天错误数</div><div class="v">${stats.total}</div></div>
+      <div class="card"><div class="k">重复错误率</div><div class="v">${Math.round(stats.repeat_rate * 100)}%</div></div>
+      <div class="card"><div class="k">平均严重程度</div><div class="v">${stats.severity_avg}</div></div>
+    `;
+    // Error type distribution
+    const typeEl = document.getElementById('errorTypeChart');
+    if(typeEl && Object.keys(stats.by_type).length > 0){
+      let html = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">错误类型分布</h3>';
+      const entries = Object.entries(stats.by_type).sort((a,b) => b[1]-a[1]);
+      const maxCount = entries[0][1];
+      entries.forEach(([type, cnt]) => {
+        const pct = Math.round(cnt / maxCount * 100);
+        html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="width:100px;font-size:13px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(type)}">${esc(type)}</span>
+          <div style="flex:1;height:20px;background:#f0f1f5;border-radius:4px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:#E07B39;border-radius:4px;min-width:2px"></div>
+          </div>
+          <span style="font-size:12px;color:var(--muted);width:30px">${cnt}次</span>
+        </div>`;
+      });
+      typeEl.innerHTML = html;
+    } else if(typeEl) {
+      typeEl.innerHTML = '';
+    }
+    // Trend chart
+    const trendEl = document.getElementById('errorTrendChart');
+    if(trendEl && stats.trend.length > 0){
+      const labels = stats.trend.map(t => t.date.slice(5));
+      const values = stats.trend.map(t => t.count);
+      const max = Math.max(1, ...values);
+      const W=720,H=180,padL=40,padB=30,padT=14,padR=14;
+      const xAt = i => padL + i*(W-padL-padR)/Math.max(1,labels.length-1);
+      const yAt = v => H-padB-(v/max)*(H-padT-padB);
+      const pts = values.map((v,i) => xAt(i)+','+yAt(v)).join(' ');
+      let s = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">近30天错误趋势</h3>';
+      s += '<svg class="chart-svg" viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">';
+      for(let g=0;g<=max;g+=Math.max(1,Math.ceil(max/4))){
+        const y=yAt(g);
+        s+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="#e6e8f0" stroke-width="1"/>';
+        s+='<text x="'+(padL-6)+'" y="'+(y+4)+'" text-anchor="end" fill="#a0a5b5" font-size="10">'+g+'</text>';
+      }
+      s+='<polygon points="'+padL+','+yAt(0)+' '+pts+' '+(W-padR)+','+yAt(0)+'" fill="rgba(224,123,57,0.10)"/>';
+      s+='<polyline points="'+pts+'" fill="none" stroke="#E07B39" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      values.forEach((v,i) => {
+        if(v > 0) s+='<circle cx="'+xAt(i)+'" cy="'+yAt(v)+'" r="3.5" fill="#E07B39"><title>'+labels[i]+': '+v+'次</title></circle>';
+      });
+      labels.forEach((lb,i) => { if(i%5===0) s+='<text x="'+xAt(i)+'" y="'+(H-8)+'" text-anchor="middle" fill="#a0a5b5" font-size="10">'+lb+'</text>'; });
+      s+='</svg>';
+      trendEl.innerHTML = s;
+    } else if(trendEl) {
+      trendEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">暂无趋势数据</p>';
+    }
+    // Repeated errors
+    const r2 = await fetch('/api/errors/repeated');
+    if(!r2.ok) throw new Error('repeated failed');
+    const repeated = await r2.json();
+    const repEl = document.getElementById('errorRepeatedList');
+    if(repEl && repeated.length > 0){
+      let html = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">重复错误组</h3>';
+      repeated.slice(0, 5).forEach(group => {
+        html += `<div style="padding:10px 14px;background:#fff8f3;border:1px solid #f0d9c4;border-radius:8px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong style="color:#E07B39">${esc(group.error_type)}</strong>
+            <span style="font-size:12px;color:var(--muted)">出现 ${group.count} 次 · ${group.first_occurrence.slice(5)} ~ ${group.last_occurrence.slice(5)}</span>
+          </div>
+        </div>`;
+      });
+      repEl.innerHTML = html;
+    } else if(repEl) {
+      repEl.innerHTML = '';
+    }
+  } catch(e) {
+    container.innerHTML = '<div class="card"><div class="k">错误追踪</div><div class="v" style="font-size:14px;color:var(--muted)">暂无数据 — 记录你的错误模式</div></div>';
+  }
+}
+
+async function renderErrors(){
+  const listEl = document.getElementById('errorList');
+  const moduleFilterEl = document.getElementById('errorModuleFilter');
+  const typeFilterEl = document.getElementById('errorTypeFilter');
+  const repeatFilterEl = document.getElementById('errorRepeatFilter');
+  if(!listEl) return;
+  // Populate module filter
+  if(moduleFilterEl && moduleFilterEl.options.length <= 1){
+    (state.modules||[]).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id; opt.textContent = m.name;
+      moduleFilterEl.appendChild(opt);
+    });
+  }
+  // Populate type filter
+  if(typeFilterEl && typeFilterEl.options.length <= 1){
+    try {
+      const r = await fetch('/api/errors/types');
+      if(r.ok){
+        errorTypesCache = await r.json();
+        errorTypesCache.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.name; opt.textContent = t.name;
+          typeFilterEl.appendChild(opt);
+        });
+      }
+    } catch(e) {}
+  }
+  const moduleId = moduleFilterEl ? moduleFilterEl.value : '';
+  const errorType = typeFilterEl ? typeFilterEl.value : '';
+  const isRepeat = repeatFilterEl && repeatFilterEl.checked ? 1 : null;
+  const params = new URLSearchParams();
+  if(moduleId) params.set('module_id', moduleId);
+  if(errorType) params.set('error_type', errorType);
+  if(isRepeat !== null) params.set('is_repeat', isRepeat);
+  const query = params.toString() ? '?' + params.toString() : '';
+  try {
+    const r = await fetch('/api/errors' + query);
+    if(!r.ok) throw new Error('fetch failed');
+    errorsCache = await r.json();
+    if(errorsCache.length === 0){
+      listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:30px">尚无错误记录。点击"+ 记录错误"开始追踪你的错误模式。</p>';
+      return;
+    }
+    let html = '';
+    errorsCache.forEach(err => {
+      const moduleName = MODULE_NAMES[err.module_id] || err.module_id;
+      const stars = '★'.repeat(err.severity) + '☆'.repeat(5 - err.severity);
+      const repeatBadge = err.is_repeat ? '<span style="display:inline-block;padding:2px 8px;background:#fff3cd;color:#856404;font-size:11px;border-radius:4px;margin-left:6px">重复</span>' : '';
+      html += `<div class="card" style="cursor:pointer" onclick="openErrorForm(${err.id})">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+          <div>
+            <strong>${esc(err.error_type)}</strong>
+            <span style="display:inline-block;padding:2px 8px;background:#eef1ff;color:#465ce0;font-size:11px;border-radius:4px;margin-left:6px">${esc(moduleName)}</span>
+            ${repeatBadge}
+          </div>
+          <div style="color:#f5a623;font-size:14px;letter-spacing:1px">${stars}</div>
+        </div>
+        <p style="margin:6px 0;font-size:13px;color:var(--text)">${esc(err.description)}</p>
+        ${err.improvement_action ? `<div style="margin-top:8px;padding:8px 12px;background:#f8f9fb;border-radius:6px;font-size:12px;color:var(--muted)">改进：${esc(err.improvement_action)}</div>` : ''}
+        <div style="margin-top:8px;font-size:11px;color:var(--muted)">${err.date}</div>
+      </div>`;
+    });
+    listEl.innerHTML = html;
+  } catch(e) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:30px">加载失败</p>';
+  }
+}
+
+async function openErrorForm(editId){
+  let err = {date: new Date().toISOString().slice(0,10), module_id: '', error_type: '', description: '', severity: 3, context: '', improvement_action: '', is_repeat: 0};
+  if(editId){
+    const found = errorsCache.find(e => e.id === editId);
+    if(found) err = found;
+  }
+  // Load error types if not cached
+  if(errorTypesCache.length === 0){
+    try {
+      const r = await fetch('/api/errors/types');
+      if(r.ok) errorTypesCache = await r.json();
+    } catch(e) {}
+  }
+  const typeOptions = errorTypesCache.map(t => `<option value="${esc(t.name)}" ${err.error_type===t.name?'selected':''}>${esc(t.name)}</option>`).join('');
+  const moduleOptions = (state.modules||[]).map(m => `<option value="${m.id}" ${err.module_id===m.id?'selected':''}>${esc(m.name)}</option>`).join('');
+  const html = `<h3>${editId ? '编辑错误' : '记录错误'}</h3>
+    <div class="field-row"><label>日期<input type="date" id="errFormDate" value="${err.date}"></label></div>
+    <div class="field-row"><label>模块<select id="errFormModule"><option value="">选择模块</option>${moduleOptions}</select></label></div>
+    <div class="field-row"><label>错误类型<select id="errFormType"><option value="">选择类型</option>${typeOptions}</select></label></div>
+    <div class="field-row"><label style="flex:1">错误描述<textarea id="errFormDesc" rows="3" placeholder="描述犯了什么错">${esc(err.description)}</textarea></label></div>
+    <div class="field-row"><label>严重程度</label><div id="errFormSeverity" style="display:flex;gap:4px;font-size:20px;cursor:pointer">
+      ${[1,2,3,4,5].map(i => `<span onclick="setErrorSeverity(${i})" style="color:${i<=err.severity?'#f5a623':'#ddd'}">★</span>`).join('')}
+      <input type="hidden" id="errFormSevValue" value="${err.severity}">
+    </div></div>
+    <div class="field-row"><label style="flex:1">上下文（可选）<textarea id="errFormContext" rows="2" placeholder="在什么场景下犯的错">${esc(err.context)}</textarea></label></div>
+    <div class="field-row"><label style="flex:1">改进措施（可选）<textarea id="errFormAction" rows="2" placeholder="下次怎么改进">${esc(err.improvement_action)}</textarea></label></div>
+    <div class="field-row"><label><input type="checkbox" id="errFormRepeat" ${err.is_repeat?'checked':''}> 这是重复错误</label></div>
+    <div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="saveError(${editId || 'null'})">保存</button></div>`;
+  openModal(html);
+}
+
+function setErrorSeverity(val){
+  document.getElementById('errFormSevValue').value = val;
+  const stars = document.getElementById('errFormSeverity').querySelectorAll('span');
+  stars.forEach((s, i) => { s.style.color = (i < val) ? '#f5a623' : '#ddd'; });
+}
+
+async function saveError(editId){
+  const date = document.getElementById('errFormDate').value;
+  const module_id = document.getElementById('errFormModule').value;
+  const error_type = document.getElementById('errFormType').value;
+  const description = document.getElementById('errFormDesc').value.trim();
+  const severity = parseInt(document.getElementById('errFormSevValue').value) || 3;
+  const context = document.getElementById('errFormContext').value.trim();
+  const improvement_action = document.getElementById('errFormAction').value.trim();
+  const is_repeat = document.getElementById('errFormRepeat').checked ? 1 : 0;
+  if(!module_id){ toast('请选择模块','err'); return; }
+  if(!error_type){ toast('请选择错误类型','err'); return; }
+  if(!description){ toast('请填写错误描述','err'); return; }
+  const body = {date, module_id, error_type, description, severity, context, improvement_action, is_repeat};
+  try {
+    const url = editId ? `/api/errors/${editId}` : '/api/errors';
+    const method = editId ? 'PUT' : 'POST';
+    const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || 'save failed'); }
+    closeModal();
+    toast('已保存');
+    renderErrors();
+    renderErrorStats();
+  } catch(e) {
+    toast('保存失败: '+e.message,'err');
+  }
+}
+
+async function deleteError(id){
+  openModal(`<h3>确认删除</h3><p style="color:var(--muted);font-size:13px">删除后不可恢复。</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doDeleteError(${id})">删除</button></div>`);
+}
+async function doDeleteError(id){
+  try {
+    const r = await fetch(`/api/errors/${id}`, {method:'DELETE'});
+    if(!r.ok) throw new Error('delete failed');
+    closeModal();
+    toast('已删除');
+    renderErrors();
+    renderErrorStats();
+  } catch(e) {
+    toast('删除失败','err');
+  }
+}
+
+/* ================= 预测校准可视化 ================= */
+async function renderPredictionCalibration(){
+  const cardsEl = document.getElementById('predictionCalibrationCards');
+  const chartEl = document.getElementById('predictionCalibrationChart');
+  if(!cardsEl) return;
+  try {
+    const r = await fetch('/api/predictions/stats');
+    if(!r.ok) throw new Error('stats failed');
+    const stats = await r.json();
+
+    if(stats.total === 0){
+      cardsEl.innerHTML = '<div class="card"><div class="k">预测校准</div><div class="v" style="font-size:14px;color:var(--muted)">暂无数据 — 开始记录你的预测</div></div>';
+      if(chartEl) chartEl.innerHTML = '';
+      return;
+    }
+
+    cardsEl.innerHTML = `
+      <div class="card"><div class="k">总预测数</div><div class="v">${stats.total}</div></div>
+      <div class="card"><div class="k">准确率</div><div class="v">${Math.round(stats.accuracy * 100)}%</div></div>
+      <div class="card"><div class="k">Brier Score</div><div class="v">${stats.brier_score}</div></div>
+      <div class="card"><div class="k">待判定</div><div class="v">${stats.pending}</div></div>
+    `;
+
+    // 校准曲线
+    if(chartEl){
+      const r2 = await fetch('/api/predictions/calibration');
+      if(!r2.ok) throw new Error('calibration failed');
+      const cal = await r2.json();
+
+      if(cal.resolved < 10){
+        chartEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">至少需要 10 条已判定预测才能生成校准曲线</p>';
+      } else {
+        chartEl.innerHTML = renderCalibrationSVG(cal.buckets);
+      }
+    }
+  } catch(e) {
+    cardsEl.innerHTML = '<div class="card"><div class="k">预测校准</div><div class="v" style="font-size:14px;color:var(--muted)">加载失败</div></div>';
+  }
+}
+
+function renderCalibrationSVG(buckets){
+  const W = 600, H = 400;
+  const padL = 50, padR = 20, padT = 20, padB = 50;
+  const xScale = p => padL + (p / 100) * (W - padL - padR);
+  const yScale = r => H - padB - (r / 100) * (H - padT - padB);
+
+  let svg = `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+
+  // 网格线
+  for(let i = 0; i <= 10; i++){
+    const x = xScale(i * 10);
+    const y = yScale(i * 10);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#eee" stroke-width="1"/>`;
+    svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${H-padB}" stroke="#eee" stroke-width="1"/>`;
+    svg += `<text x="${x}" y="${H-padB+15}" text-anchor="middle" fill="#a0a5b5" font-size="10">${i*10}</text>`;
+    svg += `<text x="${padL-8}" y="${y+4}" text-anchor="end" fill="#a0a5b5" font-size="10">${i*10}</text>`;
+  }
+
+  // 45° 对角线（理想校准）
+  svg += `<line x1="${xScale(0)}" y1="${yScale(0)}" x2="${xScale(100)}" y2="${yScale(100)}" stroke="#999" stroke-width="1.5" stroke-dasharray="5,5"/>`;
+  svg += `<text x="${xScale(70)}" y="${yScale(75)}" fill="#999" font-size="11" transform="rotate(-45 ${xScale(70)} ${yScale(75)})">理想校准</text>`;
+
+  // 数据点
+  buckets.forEach(b => {
+    if(b.count > 0){
+      const x = xScale((b.min + b.max) / 2);
+      const y = yScale(b.rate * 100);
+      const r = Math.max(5, Math.sqrt(b.count) * 3);
+      svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="#4F6EF7" opacity="0.6" stroke="#4F6EF7" stroke-width="1.5">`;
+      svg += `<title>${b.range}%: ${b.correct}/${b.count} 正确 (${(b.rate*100).toFixed(0)}%)</title>`;
+      svg += `</circle>`;
+    }
+  });
+
+  // 轴标签
+  svg += `<text x="${W/2}" y="${H-5}" text-anchor="middle" fill="#666" font-size="12">自报概率 (%)</text>`;
+  svg += `<text x="15" y="${H/2}" text-anchor="middle" transform="rotate(-90 15 ${H/2})" fill="#666" font-size="12">实际发生率 (%)</text>`;
+
+  svg += `</svg>`;
+  return svg;
+}
+
+async function renderPredictionAnalysis(){
+  const calEl = document.getElementById('predictionAnalysisCalibration');
+  const distEl = document.getElementById('predictionAnalysisDistribution');
+  const overEl = document.getElementById('predictionAnalysisOverconfident');
+  const trendEl = document.getElementById('predictionAnalysisTrend');
+
+  if(!calEl) return;
+
+  try {
+    // 校准数据
+    const r = await fetch('/api/predictions/calibration');
+    if(!r.ok) throw new Error('calibration failed');
+    const cal = await r.json();
+
+    if(cal.resolved < 10){
+      calEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">至少需要 10 条已判定预测才能生成校准分析</p>';
+      if(distEl) distEl.innerHTML = '';
+      if(overEl) overEl.innerHTML = '';
+      if(trendEl) trendEl.innerHTML = '';
+      return;
+    }
+
+    // 校准曲线
+    calEl.innerHTML = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">校准曲线</h3>' + renderCalibrationSVG(cal.buckets);
+
+    // 置信度分布
+    if(distEl){
+      const labels = cal.buckets.map(b => b.range + '%');
+      const values = cal.buckets.map(b => b.count);
+      const max = Math.max(1, ...values);
+      let html = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">置信度分布</h3>';
+      html += '<div style="display:flex;gap:8px;align-items:end;height:120px">';
+      values.forEach((v, i) => {
+        const h = (v / max) * 100;
+        html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="font-size:11px;color:var(--muted)">${v}</div>
+          <div style="width:100%;height:${h}%;background:#4F6EF7;border-radius:4px 4px 0 0;min-height:2px"></div>
+          <div style="font-size:10px;color:var(--muted);transform:rotate(-45deg);white-space:nowrap">${labels[i]}</div>
+        </div>`;
+      });
+      html += '</div>';
+      distEl.innerHTML = html;
+    }
+
+    // 过度自信事件
+    if(overEl){
+      const r2 = await fetch('/api/predictions/overconfident?threshold=80');
+      if(r2.ok){
+        const over = await r2.json();
+        if(over.length > 0){
+          let html = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">过度自信事件（概率≥80%但错误）</h3>';
+          html += '<div style="overflow-x:auto"><table class="record-table"><thead><tr><th>日期</th><th>预测内容</th><th>概率</th><th>结果</th></tr></thead><tbody>';
+          over.slice(0, 10).forEach(o => {
+            html += `<tr><td>${o.date}</td><td>${esc(o.statement)}</td><td>${o.probability}%</td><td style="color:#d64545">${o.result}</td></tr>`;
+          });
+          html += '</tbody></table></div>';
+          overEl.innerHTML = html;
+        } else {
+          overEl.innerHTML = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">过度自信事件</h3><p style="color:var(--muted);font-size:13px">暂无高概率但错误的事件</p>';
+        }
+      }
+    }
+
+    // 时间趋势
+    if(trendEl){
+      const r3 = await fetch('/api/predictions/trend?window=10');
+      if(r3.ok){
+        const trend = await r3.json();
+        if(trend.trend.length > 0){
+          const labels = trend.trend.map(t => t.date.slice(5));
+          const values = trend.trend.map(t => t.accuracy * 100);
+          const max = 100;
+          const W = 600, H = 180, padL = 40, padB = 30, padT = 14, padR = 14;
+          const xAt = i => padL + i * (W - padL - padR) / Math.max(1, labels.length - 1);
+          const yAt = v => H - padB - (v / max) * (H - padT - padB);
+          const pts = values.map((v, i) => xAt(i) + ',' + yAt(v)).join(' ');
+
+          let svg = '<h3 style="font-size:14px;margin:0 0 10px;font-weight:600">校准趋势（滚动10条准确率）</h3>';
+          svg += '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">';
+          for(let g = 0; g <= max; g += 25){
+            const y = yAt(g);
+            svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="#e6e8f0" stroke-width="1"/>';
+            svg += '<text x="' + (padL - 6) + '" y="' + (y + 4) + '" text-anchor="end" fill="#a0a5b5" font-size="10">' + g + '%</text>';
+          }
+          svg += '<polygon points="' + padL + ',' + yAt(0) + ' ' + pts + ' ' + (W - padR) + ',' + yAt(0) + '" fill="rgba(79,110,247,0.10)"/>';
+          svg += '<polyline points="' + pts + '" fill="none" stroke="#4F6EF7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+          values.forEach((v, i) => {
+            svg += '<circle cx="' + xAt(i) + '" cy="' + yAt(v) + '" r="3" fill="#4F6EF7"><title>' + labels[i] + ': ' + v.toFixed(0) + '%</title></circle>';
+          });
+          labels.forEach((lb, i) => { if(i % 5 === 0) svg += '<text x="' + xAt(i) + '" y="' + (H - 8) + '" text-anchor="middle" fill="#a0a5b5" font-size="10">' + lb + '</text>'; });
+          svg += '</svg>';
+          trendEl.innerHTML = svg;
+        } else {
+          trendEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">暂无趋势数据</p>';
+        }
+      }
+    }
+  } catch(e) {
+    calEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">加载失败</p>';
+  }
+}
+
+/* ================= AI 行为分析报告 ================= */
+async function renderAIReportLatest(){
+  const el = document.getElementById('aiReportLatest');
+  if(!el) return;
+  try {
+    const r = await fetch('/api/behavior-report');
+    if(!r.ok) throw new Error('fetch failed');
+    const reports = await r.json();
+    if(reports.length === 0){
+      el.innerHTML = '<p style="color:var(--muted);font-size:13px">尚无报告。点击"生成新报告"开始。</p>';
+      return;
+    }
+    const latest = reports[0];
+    const preview = latest.content.split('\n').slice(0, 3).join('\n');
+    el.innerHTML = `
+      <div class="card" style="margin-top:12px;cursor:pointer" onclick="goTab('ai-report')">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${latest.date} · ${latest.period_days}天</div>
+        <div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${esc(preview)}...</div>
+        <div style="margin-top:8px;font-size:12px;color:#4F6EF7">查看详情 →</div>
+      </div>
+    `;
+  } catch(e) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px">加载失败</p>';
+  }
+}
+
+async function renderAIReports(){
+  const el = document.getElementById('aiReportList');
+  if(!el) return;
+  try {
+    const r = await fetch('/api/behavior-report');
+    if(!r.ok) throw new Error('fetch failed');
+    const reports = await r.json();
+    if(reports.length === 0){
+      el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:30px">尚无报告。点击"生成新报告"开始。</p>';
+      return;
+    }
+    let html = '';
+    reports.forEach(report => {
+      const preview = report.content.split('\n').filter(l => l.trim()).slice(0, 2).join('\n');
+      html += `
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+            <div>
+              <strong>${report.date}</strong>
+              <span style="font-size:12px;color:var(--muted);margin-left:8px">${report.period_days}天</span>
+            </div>
+            <button class="btn" style="padding:4px 10px;font-size:12px" onclick="deleteAIReport(${report.id})">删除</button>
+          </div>
+          <div style="font-size:13px;line-height:1.6;white-space:pre-wrap;cursor:pointer" onclick="viewAIReport(${report.id})">${esc(preview)}...</div>
+          <div style="margin-top:8px;font-size:12px;color:#4F6EF7;cursor:pointer" onclick="viewAIReport(${report.id})">查看完整报告 →</div>
+        </div>
+      `;
+    });
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:30px">加载失败</p>';
+  }
+}
+
+async function viewAIReport(id){
+  try {
+    const r = await fetch(`/api/behavior-report/${id}`);
+    if(!r.ok) throw new Error('fetch failed');
+    const report = await r.json();
+    const html = `
+      <h3>AI 行为分析报告</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${report.date} · ${report.period_days}天</div>
+      <div style="font-size:13px;line-height:1.8;white-space:pre-wrap;max-height:60vh;overflow-y:auto;padding:16px;background:#f8f9fb;border-radius:8px">${renderMarkdown(report.content)}</div>
+      <div class="actions"><button class="btn" onclick="closeModal()">关闭</button></div>
+    `;
+    openModal(html);
+  } catch(e) {
+    toast('加载失败','err');
+  }
+}
+
+function renderMarkdown(text){
+  // 简单的 Markdown 渲染
+  return text
+    .replace(/^### (.*$)/gm, '<h4 style="margin:12px 0 8px;font-size:14px">$1</h4>')
+    .replace(/^## (.*$)/gm, '<h3 style="margin:16px 0 10px;font-size:15px">$1</h3>')
+    .replace(/^# (.*$)/gm, '<h2 style="margin:20px 0 12px;font-size:16px">$1</h2>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^\d+\. (.*$)/gm, '<li style="margin-left:20px;margin-bottom:4px">$1</li>')
+    .replace(/^- (.*$)/gm, '<li style="margin-left:20px;margin-bottom:4px;list-style-type:disc">$1</li>');
+}
+
+async function generateNewReport(){
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '正在生成...';
+  try {
+    const r = await fetch('/api/behavior-report/generate?period_days=30', {method:'POST'});
+    if(!r.ok){
+      const e = await r.json().catch(()=>({}));
+      throw new Error(e.detail || '生成失败');
+    }
+    toast('报告已生成');
+    renderAIReportLatest();
+    if(currentTab === 'ai-report') renderAIReports();
+  } catch(e) {
+    toast('生成失败: '+e.message,'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '生成新报告';
+  }
+}
+
+async function deleteAIReport(id){
+  openModal(`<h3>确认删除</h3><p style="color:var(--muted);font-size:13px">删除后不可恢复。</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doDeleteAIReport(${id})">删除</button></div>`);
+}
+async function doDeleteAIReport(id){
+  try {
+    const r = await fetch(`/api/behavior-report/${id}`, {method:'DELETE'});
+    if(!r.ok) throw new Error('delete failed');
+    closeModal();
+    toast('已删除');
+    renderAIReportLatest();
+    renderAIReports();
+  } catch(e) {
+    toast('删除失败','err');
+  }
+}
+
+/* ================= 知识图谱可视化 ================= */
+let graphData = null;
+let forceGraphInstance = null;
+
+const categoryColors = {
+  '框架': '#4F6EF7',
+  '工具': '#00A6A6',
+  '概念': '#E07B39',
+  '方法': '#7C5CF0',
+  '词汇': '#D64580',
+  '句式': '#2FA84F',
+  '默认': '#6B7280',
+};
+
+class ForceGraph {
+  constructor(container, nodes, links) {
+    this.container = container;
+    this.width = container.offsetWidth || 800;
+    this.height = 500;
+    this.nodes = nodes.map(n => ({...n, x: Math.random() * this.width, y: Math.random() * this.height, vx: 0, vy: 0}));
+    this.links = links;
+    this.nodeMap = new Map(this.nodes.map(n => [n.id, n]));
+
+    this.repulsion = 800;
+    this.attraction = 0.005;
+    this.damping = 0.85;
+    this.running = true;
+    this.dragging = null;
+
+    this.start();
+  }
+
+  start() {
+    const tick = () => {
+      if (!this.running) return;
+      this.applyForces();
+      this.updatePositions();
+      this.render();
+      requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  stop() {
+    this.running = false;
+  }
+
+  applyForces() {
+    // 节点间斥力
+    for (let i = 0; i < this.nodes.length; i++) {
+      for (let j = i + 1; j < this.nodes.length; j++) {
+        const n1 = this.nodes[i];
+        const n2 = this.nodes[j];
+        const dx = n2.x - n1.x;
+        const dy = n2.y - n1.y;
+        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+        const force = this.repulsion / (dist * dist);
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        if (!n1.dragging) { n1.vx -= fx; n1.vy -= fy; }
+        if (!n2.dragging) { n2.vx += fx; n2.vy += fy; }
+      }
+    }
+
+    // 边的引力
+    this.links.forEach(link => {
+      const source = this.nodeMap.get(link.source_id || link.source);
+      const target = this.nodeMap.get(link.target_id || link.target);
+      if (!source || !target) return;
+
+      const dx = target.x - source.x;
+      const dy = target.y - source.y;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      const force = dist * this.attraction * (link.weight || 1);
+      const fx = (dx / dist) * force;
+      const fy = (dy / dist) * force;
+      if (!source.dragging) { source.vx += fx; source.vy += fy; }
+      if (!target.dragging) { target.vx -= fx; target.vy -= fy; }
+    });
+  }
+
+  updatePositions() {
+    this.nodes.forEach(n => {
+      if (n.dragging) return;
+      n.vx *= this.damping;
+      n.vy *= this.damping;
+      n.x += n.vx;
+      n.y += n.vy;
+      n.x = Math.max(20, Math.min(this.width - 20, n.x));
+      n.y = Math.max(20, Math.min(this.height - 20, n.y));
+    });
+  }
+
+  render() {
+    let svg = `<svg width="100%" height="${this.height}" viewBox="0 0 ${this.width} ${this.height}" style="display:block">`;
+
+    // 绘制边
+    this.links.forEach(link => {
+      const source = this.nodeMap.get(link.source_id || link.source);
+      const target = this.nodeMap.get(link.target_id || link.target);
+      if (!source || !target) return;
+      const opacity = Math.min(0.6, (link.weight || 1) * 0.2);
+      svg += `<line x1="${source.x}" y1="${source.y}" x2="${target.x}" y2="${target.y}" stroke="#ccc" stroke-width="${link.weight || 1}" opacity="${opacity}"/>`;
+    });
+
+    // 绘制节点
+    this.nodes.forEach(n => {
+      const color = categoryColors[n.category] || categoryColors['默认'];
+      const r = n.size || 8;
+      svg += `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${color}" stroke="#fff" stroke-width="1.5" style="cursor:pointer" data-id="${n.id}">`;
+      svg += `<title>${n.name}\n分类: ${n.category || '未分类'}\n${n.summary || ''}</title>`;
+      svg += `</circle>`;
+    });
+
+    svg += '</svg>';
+    this.container.innerHTML = svg;
+
+    // 添加拖拽事件
+    this.container.querySelectorAll('circle').forEach(circle => {
+      circle.addEventListener('mousedown', (e) => this.onMouseDown(e, circle));
+    });
+  }
+
+  onMouseDown(e, circle) {
+    const id = parseInt(circle.dataset.id);
+    const node = this.nodeMap.get(id);
+    if (!node) return;
+
+    node.dragging = true;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const origX = node.x;
+    const origY = node.y;
+
+    const onMouseMove = (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      node.x = origX + dx;
+      node.y = origY + dy;
+    };
+
+    const onMouseUp = () => {
+      node.dragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+}
+
+async function renderKnowledgeGraph(){
+  const container = document.getElementById('graphContainer');
+  const statsEl = document.getElementById('graphStats');
+  const filterEl = document.getElementById('graphCategoryFilter');
+  if(!container) return;
+
+  const category = filterEl ? filterEl.value : '';
+
+  try {
+    const r = await fetch('/api/knowledge/graph' + (category ? `?category=${encodeURIComponent(category)}` : ''));
+    if(!r.ok) throw new Error('fetch failed');
+    graphData = await r.json();
+
+    // 统计
+    if(statsEl){
+      statsEl.innerHTML = `
+        <div class="card"><div class="k">节点数</div><div class="v">${graphData.stats.total_nodes}</div></div>
+        <div class="card"><div class="k">关系数</div><div class="v">${graphData.stats.total_links}</div></div>
+        <div class="card"><div class="k">分类数</div><div class="v">${Object.keys(graphData.stats.categories).length}</div></div>
+      `;
+    }
+
+    // 分类过滤
+    if(filterEl && filterEl.options.length <= 1){
+      Object.keys(graphData.stats.categories).forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat; opt.textContent = cat;
+        filterEl.appendChild(opt);
+      });
+    }
+
+    // 渲染图谱
+    if(graphData.nodes.length === 0){
+      container.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px">暂无知识节点。请先扫描知识。</p>';
+      return;
+    }
+
+    if(graphData.nodes.length > 500){
+      container.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">节点过多（>500），请使用分类过滤减少节点数。</p>';
+      return;
+    }
+
+    if(forceGraphInstance) forceGraphInstance.stop();
+    forceGraphInstance = new ForceGraph(container, graphData.nodes, graphData.links);
+  } catch(e) {
+    container.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px">加载失败</p>';
+  }
+}
+
+function filterGraphNodes(){
+  // 搜索过滤（简单实现：高亮匹配节点）
+  const search = (document.getElementById('graphSearch')?.value || '').toLowerCase();
+  if(!forceGraphInstance) return;
+
+  if(!search){
+    forceGraphInstance.nodes.forEach(n => n.dimmed = false);
+    forceGraphInstance.render();
+    return;
+  }
+
+  forceGraphInstance.nodes.forEach(n => {
+    n.dimmed = !n.name.toLowerCase().includes(search) && !(n.summary || '').toLowerCase().includes(search);
+  });
+  forceGraphInstance.render();
+}
+
+async function scanKnowledgeLinks(){
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '正在扫描...';
+  try {
+    const r = await fetch('/api/knowledge/scan-links', {method:'POST'});
+    if(!r.ok){
+      const e = await r.json().catch(()=>({}));
+      throw new Error(e.detail || '扫描失败');
+    }
+    const result = await r.json();
+    toast(`已创建 ${result.links_created} 条关系`);
+    renderKnowledgeGraph();
+  } catch(e) {
+    toast('扫描失败: '+e.message,'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '扫描关系';
+  }
+}
+
 function render(){
   renderPersonal(); renderOverview(); renderProgress(); renderHabits();
   renderDecisions(); renderPredictions(); renderReviews(); renderInsights(); renderCustom();
+  renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest();
 }
 
 /* ================= 知识图谱 ================= */
@@ -785,8 +1839,8 @@ function exportReportMarkdown(){
 const navGroups={
   personal:[['personal','今日']],
   learning:[['library','我的课程'],['plans','学习计划'],['reading','认知阅读'],['progress','学习打卡'],['copilot','课程管理']],
-  records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['custom','自定义记录']],
-  growth:[['overview','成长总览'],['knowledge','知识图谱'],['report','周报']]
+  records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录']],
+  growth:[['overview','成长总览'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告']]
 };
 const lastGroupTab={};
 let lessonOrigin=null;
@@ -811,7 +1865,7 @@ function goTab(name, options={}){
   const subnav=document.getElementById('subnav');
   subnav.hidden=!group || group==='personal' || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
-  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','custom','knowledge','report'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','custom','applications','errors','knowledge','report','ai-report'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='personal' && !options.restore){ renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
@@ -820,6 +1874,12 @@ function goTab(name, options={}){
   if(name==='copilot' && !options.reading){window.showCopilotManagement?.();window.loadCopilot();}
   if(name==='knowledge') loadKnowledge();
   if(name==='report') loadReport(reportRange);
+  if(name==='applications') renderApplications();
+  if(name==='errors') renderErrors();
+  if(name==='predictions') renderPredictionAnalysis();
+  if(name==='ai-report') renderAIReports();
+  if(name==='knowledge') renderKnowledgeGraph();
+  if(name==='overview'){ renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
   if(name==='settings') loadApiSettings();
 }
 
