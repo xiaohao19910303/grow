@@ -179,6 +179,18 @@ def register(app: FastAPI, root, db):
             return {'questions': []}
         return {'questions': questions}
 
+    @router.get('/learning-history/by-date')
+    def learning_history_by_date(date: str, module: Literal['renzhi'] = 'renzhi'):
+        """Get learning history for a specific date."""
+        # date format: YYYY-MM-DD
+        return store.get_learning_history_by_date(module, date)
+
+    @router.get('/learning-history/months')
+    def learning_history_months(start: str, end: str, module: Literal['renzhi'] = 'renzhi'):
+        """Get learning records for a date range (for calendar view)."""
+        # start/end format: YYYY-MM-DD
+        return store.get_learning_history_months(module, start, end)
+
     @router.get('/learning-history')
     def learning_history(module: Literal['renzhi'] = 'renzhi', offset: int = 0, limit: int = 20):
         return store.get_learning_history(offset, limit)

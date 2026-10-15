@@ -653,6 +653,39 @@ class Store:
 
         return {'total': total, 'items': items}
 
+    def get_learning_history_by_date(self, module_id, date):
+        """Get learning records for a specific date."""
+        with self.conn() as c:
+            rows = c.execute('''
+                SELECT lesson_no, completion_type, review_answers, summary_text,
+                       time_spent_seconds, completed_at
+                FROM copilot_learning_records
+                WHERE module_id = ? AND DATE(completed_at) = ?
+                ORDER BY completed_at DESC
+            ''', (module_id, date)).fetchall()
+
+        items = []
+        for row in rows:
+            record = dict(row)
+            if record['review_answers']:
+                record['review_answers'] = json.loads(record['review_answers'])
+            items.append(record)
+
+        return {'date': date, 'total': len(items), 'items': items}
+
+    def get_learning_history_months(self, module_id, start_date, end_date):
+        """Get learning records for a date range (for calendar view)."""
+        with self.conn() as c:
+            rows = c.execute('''
+                SELECT DATE(completed_at) as date, COUNT(*) as count
+                FROM copilot_learning_records
+                WHERE module_id = ? AND completed_at >= ? AND completed_at < ?
+                GROUP BY DATE(completed_at)
+                ORDER BY date DESC
+            ''', (module_id, start_date, end_date)).fetchall()
+
+        return {r['date']: r['count'] for r in rows}
+
     def extract_review_questions(self, number):
         """Extract review questions from lesson content."""
         lesson = self.lesson(number)

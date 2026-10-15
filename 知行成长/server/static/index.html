@@ -140,6 +140,7 @@
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
 <link rel="stylesheet" href="/static/reading.css?v=1">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
+<link rel="stylesheet" href="/static/learning-history.css?v=1">
 </head>
 <body>
 
@@ -337,6 +338,10 @@
       </div>
       <div id="errorList"></div>
     </div>
+  </div>
+
+  <div id="view-learning-history" style="display:none">
+    <!-- Learning history will be rendered here by learning-history.js -->
   </div>
 
   <div id="view-knowledge" style="display:none">
@@ -1839,7 +1844,7 @@ function exportReportMarkdown(){
 const navGroups={
   personal:[['personal','今日']],
   learning:[['library','我的课程'],['plans','学习计划'],['reading','认知阅读'],['progress','学习打卡'],['copilot','课程管理']],
-  records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录']],
+  records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
   growth:[['overview','成长总览'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告']]
 };
 const lastGroupTab={};
@@ -1865,7 +1870,7 @@ function goTab(name, options={}){
   const subnav=document.getElementById('subnav');
   subnav.hidden=!group || group==='personal' || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
-  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','custom','applications','errors','knowledge','report','ai-report'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','custom','applications','errors','knowledge','report','ai-report','learning-history'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='personal' && !options.restore){ renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
@@ -1881,6 +1886,7 @@ function goTab(name, options={}){
   if(name==='knowledge') renderKnowledgeGraph();
   if(name==='overview'){ renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
   if(name==='settings') loadApiSettings();
+  if(name==='learning-history') window.loadLearningHistory?.();
 }
 
 /* ================= 学习进度 / 习惯 / 自定义 ================= */
@@ -2026,5 +2032,6 @@ init();
 <script src="/static/daily-learning.js?v=20261014-design2"></script>
 <script src="/static/reading.js?v=1"></script>
 <script src="/static/reflections.js?v=1"></script>
+<script src="/static/learning-history.js?v=1"></script>
 </body>
 </html>

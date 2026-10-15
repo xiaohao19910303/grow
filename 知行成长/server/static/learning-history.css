@@ -1,0 +1,337 @@
+/* Learning history calendar and records */
+
+.learning-calendar {
+  margin: 1rem 0;
+  padding: 1.5rem;
+  background: var(--bg-elevated, #fff);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Completed today section */
+.completed-today {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--bg-subtle, #f9f9f9);
+  border-radius: 8px;
+  border-left: 3px solid var(--success, #28a745);
+}
+
+.completed-today summary {
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  color: var(--text-primary, #333);
+}
+
+.completed-today .todo-row.lesson-row.completed {
+  opacity: 0.8;
+}
+
+.completed-today .todo-row.lesson-row.completed strong {
+  text-decoration: line-through;
+  color: var(--text-secondary, #666);
+}
+
+.completed-today .todo-row.lesson-row.completed .desc {
+  color: var(--success, #28a745);
+}
+
+/* Learning record dialog */
+.learning-record-dialog {
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 90%;
+}
+
+.learning-record-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.learning-record-content {
+  padding: 2rem;
+}
+
+.learning-record-content h3 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary, #333);
+}
+
+.learning-record-content .desc {
+  margin: 0.5rem 0;
+  color: var(--text-secondary, #666);
+}
+
+.record-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--bg-subtle, #f9f9f9);
+  border-radius: 8px;
+}
+
+.record-section h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: var(--text-primary, #333);
+}
+
+.record-section p {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--text-primary, #333);
+}
+
+.record-section ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  list-style: none;
+}
+
+.record-section ul li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  color: var(--text-primary, #333);
+}
+
+.record-section ul li:last-child {
+  margin-bottom: 0;
+}
+
+.record-section ul li strong {
+  color: var(--accent, #4a90e2);
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  padding: 1rem 2rem;
+  background: var(--text-primary, #333);
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+}
+
+.calendar-header .month-label {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.calendar-header .btn-small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  background: var(--bg-base, #f5f5f5);
+  color: var(--text-primary, #333);
+}
+
+.calendar-cell.empty {
+  background: transparent;
+  cursor: default;
+}
+
+.calendar-cell.weekday-header {
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  cursor: default;
+  background: transparent;
+}
+
+.calendar-cell:hover:not(.empty):not(.weekday-header) {
+  background: var(--bg-hover, #e8e8e8);
+  transform: scale(1.05);
+}
+
+.calendar-cell.today {
+  border: 2px solid var(--accent, #4a90e2);
+  font-weight: 600;
+}
+
+.calendar-cell.selected {
+  background: var(--accent, #4a90e2);
+  color: white;
+  font-weight: 600;
+}
+
+.calendar-cell.has-records {
+  background: var(--success-light, #d4edda);
+  border: 1px solid var(--success, #28a745);
+}
+
+.calendar-cell.has-records:hover {
+  background: var(--success, #28a745);
+  color: white;
+}
+
+.calendar-cell.has-records.selected {
+  background: var(--success-dark, #218838);
+  border-color: var(--success-dark, #218838);
+}
+
+.selected-date-label {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  color: var(--text-primary, #333);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.history-stats {
+  padding: 0.75rem 1rem;
+  background: var(--bg-subtle, #f9f9f9);
+  border-radius: 6px;
+  border-left: 3px solid var(--accent, #4a90e2);
+}
+
+.history-card {
+  padding: 1.5rem;
+  background: var(--bg-elevated, #fff);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border, #e0e0e0);
+  transition: all 0.2s ease;
+}
+
+.history-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.history-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+}
+
+.history-card-header h4 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--text-primary, #333);
+}
+
+.history-card-header .desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+}
+
+.history-section {
+  margin-top: 1rem;
+}
+
+.history-section h5 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.history-section p {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--text-primary, #333);
+}
+
+.history-answers {
+  margin: 0;
+  padding-left: 1.5rem;
+  list-style: none;
+}
+
+.history-answers li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  color: var(--text-primary, #333);
+}
+
+.history-answers li:last-child {
+  margin-bottom: 0;
+}
+
+.history-answers li strong {
+  color: var(--accent, #4a90e2);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .learning-calendar {
+    background: var(--bg-elevated, #1e1e1e);
+  }
+
+  .calendar-cell {
+    background: var(--bg-base, #2a2a2a);
+    color: var(--text-primary, #e0e0e0);
+  }
+
+  .calendar-cell:hover:not(.empty):not(.weekday-header) {
+    background: var(--bg-hover, #3a3a3a);
+  }
+
+  .calendar-cell.has-records {
+    background: var(--success-dark, #1e4d2b);
+    border-color: var(--success, #28a745);
+  }
+
+  .calendar-cell.has-records:hover {
+    background: var(--success, #28a745);
+  }
+
+  .history-card {
+    background: var(--bg-elevated, #1e1e1e);
+    border-color: var(--border, #3a3a3a);
+  }
+
+  .history-stats {
+    background: var(--bg-subtle, #2a2a2a);
+  }
+}
