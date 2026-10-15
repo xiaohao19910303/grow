@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from plans.api import Payload
 from copilot.generation import availability,config
 from copilot.core import fail
-from .sources import FEEDS,TOPICS
+from .sources import DEFAULT_FEEDS,TOPICS
 from .store import ReadingStore
 from .service import Reader
 
@@ -27,12 +27,21 @@ def register(app,root,db):
         return r
     @router.get('')
     def listing():
-        return {'preferences':store.prefs(),'sources':[{k:v for k,v in s.items() if k!='domains'} for s in FEEDS],
-                'topics':list(TOPICS),'articles':sorted(store.articles(),key=lambda a:a['saved_at'],reverse=True),
+        all_sources = store.all_sources()
+        return {'preferences':store.prefs(),
+                'sources':[{k:v for k,v in s.items() if k!='domains'} for s in all_sources],
+                'default_sources':[{k:v for k,v in s.items() if k!='domains'} for s in DEFAULT_FEEDS],
+                'custom_sources':[{k:v for k,v in s.items() if k!='domains'} for s in store.custom_sources()],
+                'topics':list(TOPICS),
+                'articles':sorted(store.articles(),key=lambda a:a['saved_at'],reverse=True),
                 'jobs':[public_job(j) for j in sorted(store.jobs(),key=lambda x:x['created_at'],reverse=True)[:30]],
                 'model':config(store)['model'],'unavailable':availability(store)}
     @router.post('/preferences')
     def prefs(body:Payload):return store.save_preferences(body.data)
+    @router.post('/sources')
+    def add_source(body:Payload):return store.add_custom_source(body.data)
+    @router.delete('/sources/{sid}')
+    def remove_source(sid:str):return store.remove_custom_source(sid)
     @router.post('/collect')
     async def collect(body:Payload):return public_job(reader.begin({**body.data,'kind':'collect'}))
     @router.get('/jobs/{jid}')
@@ -46,9 +55,14 @@ def register(app,root,db):
         a=store.article(aid);rel=f'认知阅读/文章资料/{aid}/中文导读.md';file=store.path(rel)
         summary_file=store.path(f'认知阅读/文章资料/{aid}/详细总结.md')
         english_file=store.path(f'认知阅读/文章资料/{aid}/英语学习.md')
-        return {'article':a,'note':store.note(aid),'guide':file.read_text() if file.exists() else '导读文件缺失，请核对本地目录。','path':str(file),
+        full_text_file=store.path(f'认知阅读/文章资料/{aid}/原文.md')
+        return {'article':a,
+                'note':store.note(aid),
+                'guide':file.read_text() if file.exists() else None,
                 'summary':summary_file.read_text() if summary_file.exists() else None,
-                'english_learning':english_file.read_text() if english_file.exists() else None}
+                'english_learning':english_file.read_text() if english_file.exists() else None,
+                'full_text':full_text_file.read_text() if full_text_file.exists() else None,
+                'path':str(file)}
     @router.post('/articles/{aid}/personal')
     def personal(aid:str,body:Payload):return store.update_personal(aid,body.data)
     @router.post('/articles/{aid}/guide')
@@ -57,4 +71,6 @@ def register(app,root,db):
     async def summary(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'summary'}))
     @router.post('/articles/{aid}/english')
     async def english(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'english'}))
+    @router.post('/articles/{aid}/fetch_full')
+    async def fetch_full(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'fetch_full'}))
     app.include_router(router);return store,reader

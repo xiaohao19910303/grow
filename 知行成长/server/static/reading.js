@@ -42,8 +42,73 @@
   async function settings(){const status=shell('阅读偏好与来源');const turn=revision;button(root,'返回认知阅读',window.loadReading);const data=await api();if(turn!==revision)return;const get=preferenceFields(root,data.preferences,true);
     root.append(node('p','服务停止期间不会搜集。重启后仅补当日；来源失败或数量不足会明确记录。已保存文章不会重复推荐。','desc'));
     button(root,'保存偏好',async()=>{await api('/preferences',get());toast('阅读偏好已保存');await window.loadReading();},true);
-    root.append(node('h3','来源范围'),node('p','首版在以下订阅与经典目录内筛选，不代表全网搜索。链接或订阅摘要不等于已读取全文。'));
-    for(const s of data.sources){const row=node('p',`${s.name} · ${s.language==='zh'?'中文':'英文'} · ${s.topics.join('、')} `);const link=node('a','查看订阅');link.href=s.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);root.append(row);}
+
+    // 自定义来源管理
+    root.append(node('h3','内容来源管理'));
+    root.append(node('p','系统会从以下来源搜集文章。你可以添加自定义来源（RSS/Atom订阅），也可以使用推荐的默认来源。','desc'));
+
+    // 默认来源
+    root.append(node('h4','默认推荐来源'));
+    const defaultBox=node('div',undefined,'sources-list');root.append(defaultBox);
+    for(const s of data.default_sources){
+      const row=node('div',undefined,'source-row');
+      row.append(node('strong',s.name),' · ',s.language==='zh'?'中文':'英文',' · ',s.topics.join('、'));
+      const link=node('a','查看');link.href=s.url;link.target='_blank';link.rel='noopener noreferrer';
+      row.append(' ',link);
+      defaultBox.append(row);
+    }
+
+    // 自定义来源
+    root.append(node('h4','自定义来源'));
+    const customBox=node('div',undefined,'sources-list');root.append(customBox);
+    function renderCustomSources(){
+      customBox.replaceChildren();
+      if(!data.custom_sources||!data.custom_sources.length){
+        customBox.append(node('p','还没有自定义来源。点击下方"添加来源"按钮添加你喜欢的RSS/Atom订阅。','desc'));
+        return;
+      }
+      for(const s of data.custom_sources){
+        const row=node('div',undefined,'source-row');
+        row.append(node('strong',s.name),' · ',s.language==='zh'?'中文':'英文',' · ',s.topics.join('、'));
+        const link=node('a','查看');link.href=s.url;link.target='_blank';link.rel='noopener noreferrer';
+        const del=node('button','删除','btn');del.type='button';
+        del.onclick=async()=>{
+          if(!confirm(`确定删除来源"${s.name}"？`))return;
+          await api('/sources/'+s.id,undefined);
+          toast('来源已删除');
+          data.custom_sources=data.custom_sources.filter(x=>x.id!==s.id);
+          renderCustomSources();
+        };
+        row.append(' ',link,' ',del);
+        customBox.append(row);
+      }
+    }
+    renderCustomSources();
+
+    // 添加新来源表单
+    const addBox=node('details');root.append(addBox);
+    addBox.append(node('summary','添加自定义来源'));
+    const form=node('div',undefined,'plan-grid');addBox.append(form);
+    addBox.append(node('p','添加你常用的RSS或Atom订阅源。请确保链接是有效的订阅地址（通常以.xml或.rss结尾，或包含/feed/）。','desc'));
+    const name=field(form,'来源名称','','text');name.placeholder='例如：我的博客';
+    const url=field(form,'订阅地址','','text');url.placeholder='https://example.com/feed';
+    const lang=select(form,'语言',[['zh','中文'],['en','英文']],'zh');
+    const topicBox=node('fieldset');topicBox.append(node('legend','主题（可多选）'));addBox.append(topicBox);
+    const topicChecks=[];
+    for(const t of data.topics){
+      const el=field(topicBox,t,'','checkbox');
+      topicChecks.push([t,el]);
+    }
+    button(addBox,'添加来源',async()=>{
+      const topics=topicChecks.filter(([,x])=>x.checked).map(([v])=>v);
+      if(!topics.length){toast('请至少选择一个主题');return;}
+      const source=await api('/sources',{name:name.value,url:url.value,language:lang.value,topics});
+      toast('来源已添加');
+      data.custom_sources.push(source);
+      renderCustomSources();
+      name.value='';url.value='';
+    },true);
+
     status.textContent='AI导读模型：'+data.model+'；只有明确点击生成导读才调用，可能产生费用。';
   }
   async function collectForm(){shell('帮我找文章');const turn=revision;button(root,'返回认知阅读',window.loadReading);const data=await api();if(turn!==revision)return;
@@ -68,14 +133,121 @@
     }catch(e){if(watching.get(id)!==turn)return;if(turn===revision)status.textContent='暂时无法读取，正在重新连接；不会重复搜集。';delay=Math.min(delay*2,15000);setTimeout(poll,delay);}}
     await poll();
   }
-  async function read(id){const status=shell('阅读导读','article',id);const turn=revision;button(root,'返回认知阅读',window.loadReading);const d=await api('/articles/'+id);if(turn!==revision)return;const a=d.article;root.querySelector('h2').textContent=a.zh_title||a.title;status.textContent=`${a.source} · ${a.language==='zh'?'中文':'英文'} · ${a.access}`;
-    const actions=node('div',undefined,'reading-actions');root.append(actions);original(actions,a);
+  async function read(id){const status=shell('文章阅读','article',id);const turn=revision;button(root,'返回认知阅读',window.loadReading);const d=await api('/articles/'+id);if(turn!==revision)return;const a=d.article;root.querySelector('h2').textContent=a.zh_title||a.title;status.textContent=`${a.source} · ${a.language==='zh'?'中文':'英文'} · ${a.access}`;
+
+    // 操作按钮区
+    const actions=node('div',undefined,'reading-actions');root.append(actions);
+
+    // 收藏、稍后阅读、完成状态
     for(const [key,label] of [['bookmarked',a.bookmarked?'取消收藏':'收藏'],['read_later',a.read_later?'移出稍后阅读':'稍后阅读'],['read',a.read?'改为尚未读完':'本人确认读完']])button(actions,label,async()=>{await api('/articles/'+id+'/personal',{[key]:!a[key]});a[key]=!a[key];toast('阅读状态已保存，笔记输入保留。');const b=actions.querySelectorAll('button');const index=['bookmarked','read_later','read'].indexOf(key);b[index].textContent=key==='bookmarked'?(a[key]?'取消收藏':'收藏'):key==='read_later'?(a[key]?'移出稍后阅读':'稍后阅读'):(a[key]?'改为尚未读完':'本人确认读完');});
-    markdown(root,d.guide);root.append(node('p','本地资料：'+d.path,'desc'));
-    const guide=node('details');guide.append(node('summary','生成文章专属AI中文导读'));root.append(guide);guide.append(node('p','将发送本篇标题、来源与已有短摘要给已配置模型，不发送你的笔记。基于摘要的导读无法替代全文；本次调用可能产生费用。'));
-    button(guide,'确认发送摘要并生成导读',async()=>{if(dirty?.())throw new Error('请先保存笔记，再生成导读。');const token=revision;const j=await api('/articles/'+id+'/guide',{key:crypto.randomUUID()});if(token===revision)await watch(j.id);},true);
-    const notes=field(root,'我的思考与笔记',d.note.text,'textarea');notes.rows=7;notes.placeholder='哪个观点改变了我的假设？哪些证据还不够？';dirty=()=>notes.value!==d.note.text;
+
+    // 本地文章内容展示
+    const contentBox=node('section',undefined,'article-content-box');root.append(contentBox);
+
+    if(d.full_text){
+      // 显示完整文章
+      contentBox.append(node('h3','完整文章'));
+      const contentDiv=node('div',undefined,'article-full-content');
+      markdown(contentDiv,d.full_text);
+      contentBox.append(contentDiv);
+    } else {
+      // 没有完整文章，提供获取按钮
+      contentBox.append(node('p','本文尚未保存完整内容。点击下方按钮获取并保存到本地。','desc'));
+      button(contentBox,'获取并保存完整文章',async()=>{
+        const j=await api('/articles/'+id+'/fetch_full',{key:crypto.randomUUID()});
+        toast('正在获取文章...');
+        await watch(j.id);
+        // 重新加载文章
+        const new_d=await api('/articles/'+id);
+        if(new_d.full_text){
+          contentBox.replaceChildren();
+          contentBox.append(node('h3','完整文章'));
+          const contentDiv=node('div',undefined,'article-full-content');
+          markdown(contentDiv,new_d.full_text);
+          contentBox.append(contentDiv);
+        }
+      },true);
+    }
+
+    // 摘要和总结
+    const summaryBox=node('section',undefined,'article-summary-box');root.append(summaryBox);
+    summaryBox.append(node('h3','内容总结'));
+    if(d.summary){
+      const summaryDiv=node('div',undefined,'article-summary');
+      markdown(summaryDiv,d.summary);
+      summaryBox.append(summaryDiv);
+    } else {
+      summaryBox.append(node('p','暂无总结。点击下方按钮生成中文总结。','desc'));
+    }
+    const summaryBtnBox=node('div',undefined,'summary-actions');summaryBox.append(summaryBtnBox);
+    button(summaryBtnBox,'生成/更新中文总结',async()=>{
+      const j=await api('/articles/'+id+'/summary',{key:crypto.randomUUID()});
+      await watch(j.id);
+      const new_d=await api('/articles/'+id);
+      if(new_d.summary){
+        summaryBox.querySelector('.article-summary')?.remove();
+        const summaryDiv=node('div',undefined,'article-summary');
+        markdown(summaryDiv,new_d.summary);
+        summaryBox.insertBefore(summaryDiv,summaryBtnBox);
+      }
+    },true);
+
+    // 英语学习（仅英文文章）
+    if(a.language==='en'){
+      const englishBox=node('section',undefined,'article-english-box');root.append(englishBox);
+      englishBox.append(node('h3','英语学习'));
+      if(d.english_learning){
+        const englishDiv=node('div',undefined,'article-english');
+        markdown(englishDiv,d.english_learning);
+        englishBox.append(englishDiv);
+      } else {
+        englishBox.append(node('p','暂无英语学习材料。点击下方按钮生成单词解释、语法分析和翻译。','desc'));
+      }
+      const englishBtnBox=node('div',undefined,'english-actions');englishBox.append(englishBtnBox);
+      button(englishBtnBox,'生成/更新英语学习材料',async()=>{
+        const j=await api('/articles/'+id+'/english',{key:crypto.randomUUID()});
+        await watch(j.id);
+        const new_d=await api('/articles/'+id);
+        if(new_d.english_learning){
+          englishBox.querySelector('.article-english')?.remove();
+          const englishDiv=node('div',undefined,'article-english');
+          markdown(englishDiv,new_d.english_learning);
+          englishBox.insertBefore(englishDiv,englishBtnBox);
+        }
+      },true);
+    }
+
+    // AI导读
+    const guideBox=node('section',undefined,'article-guide-box');root.append(guideBox);
+    guideBox.append(node('h3','AI导读与解读'));
+    if(d.guide&&d.guide!=='导读文件缺失，请核对本地目录。'){
+      const guideDiv=node('div',undefined,'article-guide');
+      markdown(guideDiv,d.guide);
+      guideBox.append(guideDiv);
+    } else {
+      guideBox.append(node('p','暂无AI导读。点击下方按钮生成AI导读，包含核心观点分析和我的理解。','desc'));
+    }
+    const guideBtnBox=node('div',undefined,'guide-actions');guideBox.append(guideBtnBox);
+    guideBox.append(node('p','将发送本篇文章的标题、来源和内容给已配置模型。本次调用可能产生费用。','desc'));
+    button(guideBtnBox,'生成/更新AI导读',async()=>{
+      if(dirty?.())throw new Error('请先保存笔记，再生成导读。');
+      const j=await api('/articles/'+id+'/guide',{key:crypto.randomUUID()});
+      await watch(j.id);
+      const new_d=await api('/articles/'+id);
+      if(new_d.guide&&new_d.guide!=='导读文件缺失，请核对本地目录。'){
+        guideBox.querySelector('.article-guide')?.remove();
+        const guideDiv=node('div',undefined,'article-guide');
+        markdown(guideDiv,new_d.guide);
+        guideBox.insertBefore(guideDiv,guideBtnBox);
+      }
+    },true);
+
+    // 个人笔记
+    root.append(node('h3','我的思考与笔记'));
+    const notes=field(root,'',d.note.text,'textarea');notes.rows=7;notes.placeholder='哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...';dirty=()=>notes.value!==d.note.text;
     button(root,'保存笔记',async()=>{const submitted=notes.value;const saved=await api('/articles/'+id+'/personal',{note:submitted,note_hash:d.note.hash});d.note.text=submitted;d.note.hash=saved.note_hash;toast('笔记已保存到本地');},true);
+
+    root.append(node('p','本地资料：'+d.path,'desc'));
   }
   window.enterReading=()=>{const m=location.hash.match(/^#reading\/(job|article)\/([a-zA-Z0-9-]+)$/);return m?(m[1]==='job'?watch(m[2]):read(m[2])):window.loadReading();};
   window.addEventListener('load',()=>{if(location.hash.startsWith('#reading/'))goTab('reading');});

@@ -15,13 +15,23 @@ TOPICS={
  '社会学':['social','societ','culture','institution','community','社会','文化','制度','人口'],
  '心理':['psycholog','emotion','mind','mental','memory','心理','情绪','记忆','幸福'],
  '成长':['learn','work','career','habit','productiv','成长','职业','工作','习惯','教育','学习']}
-FEEDS=[
- {'id':'aeon','name':'Aeon','url':'https://aeon.co/feed.rss','language':'en','domains':['aeon.co'],'topics':['认知','社会学','心理']},
- {'id':'behavioral','name':'Behavioral Scientist','url':'https://behavioralscientist.org/feed/','language':'en','domains':['behavioralscientist.org'],'topics':['认知','心理','社会学']},
- {'id':'ftchinese','name':'FT中文网','url':'https://www.ftchinese.com/rss/feed','language':'zh','domains':['www.ftchinese.com','ftchinese.com'],'topics':['经济学','社会学']},
- {'id':'ruanyifeng','name':'阮一峰的网络日志','url':'https://www.ruanyifeng.com/blog/atom.xml','language':'zh','domains':['www.ruanyifeng.com','ruanyifeng.com'],'topics':['成长','社会学']},
- {'id':'owid','name':'Our World in Data','url':'https://ourworldindata.org/atom.xml','language':'en','domains':['ourworldindata.org'],'topics':['经济学','社会学','认知']},
+
+# 默认来源推荐
+DEFAULT_FEEDS=[
+ {'id':'aeon','name':'Aeon','url':'https://aeon.co/feed.rss','language':'en','domains':['aeon.co'],'topics':['认知','社会学','心理'],'custom':False},
+ {'id':'behavioral','name':'Behavioral Scientist','url':'https://behavioralscientist.org/feed/','language':'en','domains':['behavioralscientist.org'],'topics':['认知','心理','社会学'],'custom':False},
+ {'id':'ftchinese','name':'FT中文网','url':'https://www.ftchinese.com/rss/feed','language':'zh','domains':['www.ftchinese.com','ftchinese.com'],'topics':['经济学','社会学'],'custom':False},
+ {'id':'ruanyifeng','name':'阮一峰的网络日志','url':'https://www.ruanyifeng.com/blog/atom.xml','language':'zh','domains':['www.ruanyifeng.com','ruanyifeng.com'],'topics':['成长','社会学'],'custom':False},
+ {'id':'owid','name':'Our World in Data','url':'https://ourworldindata.org/atom.xml','language':'en','domains':['ourworldindata.org'],'topics':['经济学','社会学','认知'],'custom':False},
+ {'id':'36kr','name':'36氪','url':'https://36kr.com/feed','language':'zh','domains':['36kr.com'],'topics':['成长','经济学'],'custom':False},
+ {'id':'sspai','name':'少数派','url':'https://sspai.com/feed','language':'zh','domains':['sspai.com'],'topics':['成长','认知'],'custom':False},
+ {'id':'hbr','name':'Harvard Business Review','url':'https://hbr.org/feed','language':'en','domains':['hbr.org'],'topics':['成长','认知','心理'],'custom':False},
+ {'id':'psychology_today','name':'Psychology Today','url':'https://www.psychologytoday.com/us/blog/rss','language':'en','domains':['psychologytoday.com'],'topics':['心理','认知'],'custom':False},
+ {'id':'waitbutwhy','name':'Wait But Why','url':'https://waitbutwhy.com/feed','language':'en','domains':['waitbutwhy.com'],'topics':['认知','成长','心理'],'custom':False},
 ]
+
+# 向后兼容
+FEEDS = DEFAULT_FEEDS
 CLASSICS=[
  {'title':'The short history of global living conditions and why it matters that we know it','zh_title':'用长期数据理解全球生活条件的变化','url':'https://ourworldindata.org/a-history-of-global-living-conditions','author':'Max Roser','source':'Our World in Data','language':'en','published_at':'2016-12-14','topics':['经济学','社会学','认知'],'summary':'文章用贫困、教育、健康等长期指标讨论生活条件的变化，提醒读者区分即时新闻与长期趋势。阅读时应检查指标定义、历史估计的不确定性，以及总体改善是否掩盖群体差异。','access':'编辑核验原始页面；原创中文摘要，页面2024年有修订'},
  {'title':'Maps of Bounded Rationality: A Perspective on Intuitive Judgment and Choice','zh_title':'有限理性：直觉判断与选择','url':'https://www.nobelprize.org/uploads/2018/06/kahnemann-lecture.pdf','author':'Daniel Kahneman','source':'Nobel Foundation','language':'en','published_at':'2002-12-08','topics':['认知','心理','经济学'],'summary':'这份诺贝尔讲座回顾判断启发式、风险选择和框架效应，讨论快速直觉与审慎思考。适合带着具体决策例子阅读；经典研究框架不等于对每个个体行为的诊断或预测。','access':'核验官方讲座摘要；未逐页核验PDF'},

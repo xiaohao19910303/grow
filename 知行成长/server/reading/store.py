@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 from copilot.core import digest, encoded, fail, now
 from plans.store import Plans, integer
-from .sources import TOPICS
+from .sources import TOPICS, DEFAULT_FEEDS
 
 DEFAULT={'enabled':True,'hour':10,'minute':0,'count':3,'mode':'mixed','topics':list(TOPICS),'languages':['zh','en'],'query':''}
 TABLE='reading_records'
@@ -53,6 +53,75 @@ class ReadingStore(Plans):
     def prefs(self):return self.record('preferences')['value']
     def jobs(self):return [r for r in self.rows(TABLE) if r.get('type')=='job']
     def articles(self):return [r for r in self.rows(TABLE) if r.get('type')=='article']
+    def custom_sources(self):
+        """获取所有自定义来源"""
+        record = self.optional('custom_sources')
+        return record['value'] if record else []
+    def all_sources(self):
+        """获取所有来源（默认+自定义）"""
+        custom = self.custom_sources()
+        return DEFAULT_FEEDS + custom
+    def add_custom_source(self, source_data):
+        """添加自定义来源"""
+        if not isinstance(source_data, dict):
+            fail('invalid', '来源格式无效。', 422)
+        # 验证必填字段
+        required = ['name', 'url', 'language', 'topics']
+        for field in required:
+            if field not in source_data or not source_data[field]:
+                fail('invalid', f'缺少必填字段：{field}', 422)
+        # 验证语言
+        if source_data['language'] not in ('zh', 'en'):
+            fail('invalid', '语言只能是 zh 或 en', 422)
+        # 验证主题
+        if not isinstance(source_data['topics'], list) or not source_data['topics']:
+            fail('invalid', '至少选择一个主题', 422)
+        for topic in source_data['topics']:
+            if topic not in TOPICS:
+                fail('invalid', f'未知主题：{topic}', 422)
+        # 提取域名
+        from urllib.parse import urlsplit
+        try:
+            parsed = urlsplit(source_data['url'])
+            if parsed.scheme not in ('http', 'https'):
+                fail('invalid', 'URL 必须是 http 或 https', 422)
+            domain = parsed.hostname
+            if not domain:
+                fail('invalid', 'URL 格式无效', 422)
+        except Exception:
+            fail('invalid', 'URL 格式无效', 422)
+        # 创建来源对象
+        custom = self.custom_sources()
+        source_id = 'custom-' + str(uuid.uuid4())[:8]
+        new_source = {
+            'id': source_id,
+            'name': source_data['name'],
+            'url': source_data['url'],
+            'language': source_data['language'],
+            'domains': [domain],
+            'topics': source_data['topics'],
+            'custom': True
+        }
+        custom.append(new_source)
+        # 保存
+        self.put(TABLE, 'custom_sources', {
+            'id': 'custom_sources',
+            'type': 'custom_sources',
+            'value': custom
+        })
+        return new_source
+    def remove_custom_source(self, source_id):
+        """删除自定义来源"""
+        if not source_id.startswith('custom-'):
+            fail('invalid', '只能删除自定义来源', 422)
+        custom = self.custom_sources()
+        custom = [s for s in custom if s['id'] != source_id]
+        self.put(TABLE, 'custom_sources', {
+            'id': 'custom_sources',
+            'type': 'custom_sources',
+            'value': custom
+        })
+        return {'removed': source_id}
     def recover_exports(self):
         for r in self.rows(TABLE):
             if r.get('type')=='export' and r['state']=='pending':self.finish_export(r)
@@ -164,6 +233,20 @@ class ReadingStore(Plans):
             full_content=f'# {a["title"]} - 英语学习材料\n\n{content}\n'
             expected={rel:a['hashes'].get(rel)}
             a['hashes'][rel]=digest(full_content)
+            self.export({rel:full_content},[a],expected);return a
+    def save_full_text(self,aid,content):
+        """Save full article text to local file."""
+        with self.lock():
+            self.recover_exports();a=self.article(aid);rel=f'认知阅读/文章资料/{aid}/原文.md'
+            # Clean up content and format as markdown
+            # Remove excessive whitespace
+            content = re.sub(r'\n{3,}', '\n\n', content)
+            content = re.sub(r' {2,}', ' ', content)
+            full_content=f'# {a.get("zh_title") or a["title"]}\n\n> 原标题：{a["title"]}\n> 作者：{a.get("author","未知")} | 来源：{a.get("source","未知")} | 发表：{a.get("published_at","未知")}\n> 原文链接：{a["url"]}\n\n---\n\n{content}\n'
+            expected={rel:a['hashes'].get(rel)}
+            a['hashes'][rel]=digest(full_content)
+            # Also save to full_content field in article record
+            a['full_content']=content
             self.export({rel:full_content},[a],expected);return a
 
 def basic_guide(a):
