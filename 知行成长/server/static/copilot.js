@@ -472,7 +472,9 @@
       currentTask.lessons.forEach(item => {
         const row = el('div', undefined, 'cp-row');
         row.append(el('span', `第${String(item.lesson_no).padStart(3, '0')}课 · ${item.topic} · ${item.learning_label}${item.complete ? '' : ' · 待修复'}`));
-        button('阅读', () => {rememberLearningOrigin();return read(item.lesson_no);}, row); history.append(row);
+        button('阅读', () => {rememberLearningOrigin();return read(item.lesson_no);}, row);
+        button('查看详情', () => showLessonDetail(item.lesson_no), row, 'btn btn-small');
+        history.append(row);
       });
       const [saved, pending] = await Promise.all([request('/drafts'), request('/operations')]);
       drafts.replaceChildren();
@@ -619,5 +621,169 @@
 
     reader.append(form);
     reader.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+
+  // 课程详情页面
+  async function showLessonDetail(lessonNo) {
+    stopReading();
+    root.classList.remove('reading-mode');
+    reader.hidden = false;
+    reader.replaceChildren();
+
+    try {
+      // 获取课程信息和规划
+      const [lesson, planData, learningRecord] = await Promise.all([
+        request('/lessons/' + lessonNo),
+        request('/plan'),
+        request('/lessons/' + lessonNo + '/learning-record').catch(() => null)
+      ]);
+
+      reader.append(el('h3', `第${String(lessonNo).padStart(3, '0')}课详情`));
+      reader.append(el('p', `${lesson.topic}`, 'desc'));
+
+      // 学习进度统计
+      const statsSection = el('div', undefined, 'lesson-detail-section');
+      statsSection.append(el('h4', '📊 学习进度'));
+
+      const totalLessons = currentTask.total_lessons || 168;
+      const generatedCount = currentTask.generated_count || 0;
+      const completedCount = currentTask.completed_count || 0;
+      const progress = Math.round((completedCount / totalLessons) * 100);
+
+      const progressCard = el('div', undefined, 'lesson-progress-card');
+      progressCard.append(el('div', undefined, 'progress-stat'))
+        .lastChild.append(
+          el('span', '已完成'),
+          el('strong', `${completedCount} / ${totalLessons} 课`)
+        );
+      progressCard.append(el('div', undefined, 'progress-stat'))
+        .lastChild.append(
+          el('span', '已生成'),
+          el('strong', `${generatedCount} / ${totalLessons} 课`)
+        );
+      progressCard.append(el('div', undefined, 'progress-stat'))
+        .lastChild.append(
+          el('span', '学习进度'),
+          el('strong', `${progress}%`)
+        );
+
+      // 进度条
+      const progressBar = el('div', undefined, 'lesson-progress-bar');
+      const progressFill = el('div', undefined, 'lesson-progress-fill');
+      progressFill.style.width = `${progress}%`;
+      progressBar.append(progressFill);
+      progressCard.append(progressBar);
+
+      statsSection.append(progressCard);
+
+      // 当前课程信息
+      const lessonInfoSection = el('div', undefined, 'lesson-detail-section');
+      lessonInfoSection.append(el('h4', '📖 当前课程'));
+
+      const lessonInfo = el('div', undefined, 'lesson-info');
+      lessonInfo.append(el('p', `主题：${lesson.topic}`));
+      lessonInfo.append(el('p', `日期：${lesson.date || '未标注'}`));
+      lessonInfo.append(el('p', `类型：${lesson.kind || '普通课'}`));
+      lessonInfo.append(el('p', `学习状态：${lesson.learning_label}`));
+
+      if (lesson.complete) {
+        lessonInfo.append(el('p', '✅ 课程资料已就绪'));
+      } else {
+        lessonInfo.append(el('p', '⚠️ 课程资料待修复'));
+      }
+
+      lessonInfoSection.append(lessonInfo);
+
+      // 学习记录
+      if (learningRecord && learningRecord.lesson_no) {
+        const recordSection = el('div', undefined, 'lesson-detail-section');
+        recordSection.append(el('h4', '📝 学习记录'));
+
+        const recordInfo = el('div', undefined, 'lesson-record');
+        if (learningRecord.completed_at) {
+          recordInfo.append(el('p', `完成时间：${new Date(learningRecord.completed_at).toLocaleString('zh-CN')}`));
+        }
+        if (learningRecord.time_spent_seconds) {
+          recordInfo.append(el('p', `学习时长：${Math.round(learningRecord.time_spent_seconds / 60)} 分钟`));
+        }
+        if (learningRecord.summary_text) {
+          recordInfo.append(el('h5', '核心收获'));
+          recordInfo.append(el('p', learningRecord.summary_text));
+        }
+        if (learningRecord.review_answers && Object.keys(learningRecord.review_answers).length) {
+          recordInfo.append(el('h5', '练习反馈'));
+          const answersList = el('ul');
+          Object.entries(learningRecord.review_answers).forEach(([qNum, answer]) => {
+            const li = el('li');
+            li.append(el('strong', `问题${qNum}: `));
+            li.append(el('span', answer));
+            answersList.append(li);
+          });
+          recordInfo.append(answersList);
+        }
+        recordSection.append(recordInfo);
+        lessonInfoSection.append(recordSection);
+      }
+
+      // 整体课程规划
+      const planSection = el('div', undefined, 'lesson-detail-section');
+      planSection.append(el('h4', '🗺️ 课程规划'));
+
+      const planInfo = el('div', undefined, 'lesson-plan-info');
+      planInfo.append(el('p', `总课程数：${planData.items.length} 课`));
+      planInfo.append(el('p', `规划文件：${planData.path}`));
+
+      // 显示当前课程在规划中的位置
+      const currentPlanItem = planData.items.find(item => item.lesson_no === lessonNo);
+      if (currentPlanItem) {
+        planInfo.append(el('h5', '当前课程规划'));
+        planInfo.append(el('p', `目标：${currentPlanItem.goal}`));
+        planInfo.append(el('p', `类型：${currentPlanItem.kind}`));
+        planInfo.append(el('p', `确认状态：${currentPlanItem.confirmed ? '✅ 已确认' : '⏳ 待确认'}`));
+      }
+
+      // 显示前后课程
+      const prevLesson = planData.items.find(item => item.lesson_no === lessonNo - 1);
+      const nextLesson = planData.items.find(item => item.lesson_no === lessonNo + 1);
+
+      if (prevLesson || nextLesson) {
+        planInfo.append(el('h5', '课程顺序'));
+        if (prevLesson) {
+          planInfo.append(el('p', `上一课：第${String(prevLesson.lesson_no).padStart(3, '0')}课 - ${prevLesson.topic}`));
+        }
+        if (nextLesson) {
+          planInfo.append(el('p', `下一课：第${String(nextLesson.lesson_no).padStart(3, '0')}课 - ${nextLesson.topic}`));
+        }
+      }
+
+      planSection.append(planInfo);
+      lessonInfoSection.append(planSection);
+
+      statsSection.append(lessonInfoSection);
+      reader.append(statsSection);
+
+      // 操作按钮
+      const actions = el('div', undefined, 'cp-actions');
+      button('返回课程列表', () => {
+        reader.hidden = true;
+        management.open = true;
+      }, actions);
+      button('开始阅读', () => {
+        rememberLearningOrigin();
+        read(lessonNo);
+      }, actions, 'btn primary');
+
+      reader.append(actions);
+      reader.scrollIntoView({behavior: 'smooth', block: 'start'});
+
+    } catch (e) {
+      reader.replaceChildren();
+      reader.append(el('h3', '加载失败'));
+      reader.append(el('p', e.message, 'desc'));
+      button('返回', () => {
+        reader.hidden = true;
+        management.open = true;
+      }, reader);
+    }
   }
 })();

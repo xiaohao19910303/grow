@@ -232,6 +232,18 @@ class Store:
                       'version': digest(text + sources + record), 'complete': not errors,
                       'learning_state': 'completed' if completed else 'unknown',
                       'learning_label': status or '待本人记录', 'errors': errors}
+            # Also check database for completion records
+            with self.conn() as c:
+                db_record = c.execute('''
+                    SELECT completed_at, time_spent_seconds FROM copilot_learning_records
+                    WHERE module_id = 'renzhi' AND round_id = 1 AND lesson_no = ?
+                ''', (n,)).fetchone()
+                if db_record:
+                    lesson['learning_state'] = 'completed'
+                    lesson['completed_at'] = db_record['completed_at']
+                    lesson['time_spent_seconds'] = db_record['time_spent_seconds']
+                    if not status:
+                        lesson['learning_label'] = '已学习'
             courses.append(lesson)
         counts = Counter(x['date'] for x in courses if x['date'])
         for x in courses:

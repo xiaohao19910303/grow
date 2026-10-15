@@ -132,3 +132,105 @@
   margin-top: 8px;
   font-size: 13px;
 }
+
+/* 课程详情页面样式 */
+.lesson-detail-section {
+  margin: 20px 0;
+  padding: 16px;
+  background: var(--bg-subtle, #f9f9f9);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary, #4a90e2);
+}
+
+.lesson-detail-section h4 {
+  margin: 0 0 12px 0;
+  color: var(--text, #333);
+  font-size: 16px;
+}
+
+.lesson-progress-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.progress-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.progress-stat span {
+  font-size: 13px;
+  color: var(--muted, #666);
+}
+
+.progress-stat strong {
+  font-size: 18px;
+  color: var(--text, #333);
+}
+
+.lesson-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--border, #e0e0e0);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.lesson-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary, #4a90e2), var(--success, #28a745));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.lesson-info, .lesson-record, .lesson-plan-info {
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+.lesson-info p, .lesson-record p, .lesson-plan-info p {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+.lesson-info h5, .lesson-record h5, .lesson-plan-info h5 {
+  margin: 12px 0 8px 0;
+  font-size: 14px;
+  color: var(--primary, #4a90e2);
+}
+
+.lesson-record ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.lesson-record li {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+.lesson-record li strong {
+  color: var(--primary, #4a90e2);
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .lesson-detail-section {
+    background: var(--bg-subtle, #2a2a2a);
+  }
+
+  .lesson-info, .lesson-record, .lesson-plan-info {
+    background: var(--bg-elevated, #1e1e1e);
+  }
+}
