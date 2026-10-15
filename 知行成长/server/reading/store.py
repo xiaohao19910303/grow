@@ -126,10 +126,14 @@ class ReadingStore(Plans):
                 if self.optional(aid):continue
                 a=copy.deepcopy(lookup[aid]);a.update(type='article',saved_at=now(),bookmarked=False,read_later=False,read=False)
                 a['guide']=basic_guide(a);base=f'认知阅读/文章资料/{aid}'
-                files[base+'/文章信息.json']=encoded({k:v for k,v in a.items() if k!='guide'})
+                files[base+'/文章信息.json']=encoded({k:v for k,v in a.items() if k not in ('guide','full_content')})
                 files[base+'/中文导读.md']=a['guide']
-                for rel in (base+'/文章信息.json',base+'/中文导读.md'):expected[rel]=None
-                a['hashes']={rel:digest(files[rel]) for rel in (base+'/文章信息.json',base+'/中文导读.md')};records.append(a)
+                # Save full article content if available
+                if a.get('full_content'):
+                    files[base+'/原文.md']=f'# {a["title"]}\n\n{a["full_content"]}'
+                for rel in (base+'/文章信息.json',base+'/中文导读.md',base+'/原文.md'):
+                    if rel in files:expected[rel]=None
+                a['hashes']={rel:digest(files[rel]) for rel in files if rel in (base+'/文章信息.json',base+'/中文导读.md',base+'/原文.md')};records.append(a)
             label='今日精选' if job.get('daily') else '搜集-'+jid
             index=f'认知阅读/每日精选/{date[:4]}/{date[5:7]}/{date}-{label}.md'
             lines=[f'# {date} {label}','',f'实际保存{len(ids)}篇；热度未核实。','']
@@ -145,6 +149,22 @@ class ReadingStore(Plans):
             if a['hashes'][rel]!=expected_hash:fail('conflict','导读已经更新，请先查看新版。')
             a['guide']=guide;a['hashes'][rel]=digest(guide)
             self.export({rel:guide},[a],{rel:expected_hash});return a
+    def save_summary(self,aid,summary):
+        """Save comprehensive AI summary based on full article content."""
+        with self.lock():
+            self.recover_exports();a=self.article(aid);rel=f'认知阅读/文章资料/{aid}/详细总结.md'
+            content=f'# {a["title"]} - 详细总结\n\n{summary}\n'
+            expected={rel:a['hashes'].get(rel)}
+            a['hashes'][rel]=digest(content)
+            self.export({rel:content},[a],expected);return a
+    def save_english_learning(self,aid,content):
+        """Save English learning material (vocabulary, grammar, sentence analysis)."""
+        with self.lock():
+            self.recover_exports();a=self.article(aid);rel=f'认知阅读/文章资料/{aid}/英语学习.md'
+            full_content=f'# {a["title"]} - 英语学习材料\n\n{content}\n'
+            expected={rel:a['hashes'].get(rel)}
+            a['hashes'][rel]=digest(full_content)
+            self.export({rel:full_content},[a],expected);return a
 
 def basic_guide(a):
     return (f'# {a.get("zh_title") or a["title"]}\n\n原标题：{a["title"]}\n\n作者：{a["author"]}｜来源：{a["source"]}｜发表：{a.get("published_at") or "未知"}\n\n'

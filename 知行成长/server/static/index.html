@@ -139,6 +139,7 @@
 <link rel="stylesheet" href="/static/growth.css?v=20261014-design2">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
 <link rel="stylesheet" href="/static/reading.css?v=1">
+<link rel="stylesheet" href="/static/reflections.css?v=1">
 </head>
 <body>
 
@@ -266,8 +267,15 @@
 
   <div id="view-reviews" style="display:none">
     <div class="section">
-      <h2>复盘四问</h2><p class="desc">原来怎么想 → 实际结果 → 运气还是能力 → 下次怎么改（写可操作规则）。</p>
-      <button class="btn primary" onclick="openReviewForm()">新增复盘</button>
+      <h2>日常记录</h2><p class="desc">记下一件值得留下的小事，也可以晚些再写。可选让 AI 帮你想深一点或整理。</p>
+      <button class="btn primary" onclick="Reflections.openEditor(null, Reflections.today)">记几句</button>
+      <button class="btn" style="margin-left:8px" onclick="toggleArchivedReflections()" id="btnShowArchived">查看已归档</button>
+      <div style="height:14px"></div>
+      <div id="reflectionList"></div>
+    </div>
+    <div class="section">
+      <h2>复盘四问（历史形式）</h2><p class="desc">原来怎么想 → 实际结果 → 运气还是能力 → 下次怎么改（写可操作规则）。旧记录保留为历史四问。</p>
+      <button class="btn primary" onclick="openReviewForm()">新增四问复盘</button>
       <div style="height:14px"></div>
       <div style="overflow-x:auto"><table class="record-table" id="reviewTable"></table></div>
     </div>
@@ -471,10 +479,16 @@ function renderPersonal(){
       <p class="desc">已完成 ${done} / ${items.length} 项</p>
       <form class="manual-add" onsubmit="addTodo(event,'${date}',${day})"><input id="todoInput${day}" data-date="${date}" value="${esc(drafts[date] || '')}" aria-label="${label}待办内容" placeholder="添加一件想完成的事" required maxlength="500" style="max-width:none"><button class="btn primary" ${dataLoaded?'':'disabled'}>添加</button></form>
       ${items.map(({item,index})=>`<div class="todo-row"><label><input type="checkbox" ${item.done?'checked':''} onchange="toggleTodo(${index})"><span class="${item.done?'todo-done':''}">${esc(item.title)}</span></label><button class="icon-btn" onclick="editTodo(${index})">编辑</button><button class="icon-btn del" onclick="delItem('todos',${index})">删除</button></div>`).join('') || '<p class="empty">还没有待办，添加第一件小事吧。</p>'}
-      <div style="margin-top:24px"><h2>${label}复盘</h2><button class="btn" onclick="openReviewForm(null,'${date}')" ${dataLoaded?'':'disabled'}>添加${label}复盘</button></div>
+      <div style="margin-top:24px"><h2>${label}记录与复盘</h2><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn primary" onclick="Reflections.openEditor(null,'${date}')">记几句</button><button class="btn" onclick="openReviewForm(null,'${date}')" ${dataLoaded?'':'disabled'}>四问复盘</button></div></div>
+      <div id="refToday_${day}"></div>
       ${reviews.map(({item,index})=>`<article class="daily-review">${[['原来怎么想','thought'],['实际结果','actual'],['哪对哪错','gap'],['下次怎么改','action']].map(([title,key])=>`<p><strong>${title}</strong><br>${esc(item[key] || '待补充')}</p>`).join('')}<button class="icon-btn" onclick="openReviewForm(${index})">编辑</button><button class="icon-btn del" onclick="delItem('reviews',${index})">删除</button></article>`).join('') || '<p class="empty">还没有复盘，写下预期或今天的收获。</p>'}
     ${day?'</div></details>':'</section>'}`;
   }).join('');
+  // 渲染自由记录（新日常记录），旧 reviews 保留为历史四问
+  if (window.Reflections && window.Reflections.renderDay) {
+    window.Reflections.renderDay(document.getElementById('refToday_0'), dates[0]);
+    window.Reflections.renderDay(document.getElementById('refToday_1'), dates[1]);
+  }
 }
 function focusTodayTodo(){
   document.getElementById('todoInput0')?.focus();
@@ -651,6 +665,13 @@ function renderReviews(){
     return '<tr><td style="white-space:nowrap">'+esc(r.date)+'</td><td><div class="ellipsis" title="'+esc(r.thought)+'">'+esc(r.thought)+'</div></td><td><div class="ellipsis" title="'+esc(r.action)+'">'+esc(r.action)+'</div></td><td><button class="icon-btn" onclick="openReviewForm('+idx+')">编辑</button><button class="icon-btn del" onclick="delItem(\'reviews\','+idx+')">删除</button></td></tr>';
   }).join('');
   document.getElementById('reviewTable').innerHTML=state.reviews.length?head+body:'<div class="empty">尚未记录复盘</div>';
+  // 渲染自由记录列表（数据由 reflections.js 异步加载）
+  if(window.Reflections && window.Reflections.renderList){
+    window.Reflections.renderList(document.getElementById('reflectionList'), window.Reflections.showArchived);
+  }
+}
+function toggleArchivedReflections(){
+  if(window.Reflections) window.Reflections.toggleArchived();
 }
 function renderInsights(){
   document.getElementById('insightList').innerHTML=state.insights.slice().reverse().map((r,i)=>{
@@ -944,5 +965,6 @@ init();
 <script src="/static/plans.js?v=20261014-2"></script>
 <script src="/static/daily-learning.js?v=20261014-design2"></script>
 <script src="/static/reading.js?v=1"></script>
+<script src="/static/reflections.js?v=1"></script>
 </body>
 </html>

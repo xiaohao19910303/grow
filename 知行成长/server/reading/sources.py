@@ -106,6 +106,23 @@ def matches(article,prefs):
         if not groups or not any(any(w in hay for w in group) for group in groups):return False
     return True
 
+async def fetch_article_content(url):
+    """Fetch full article content from URL and extract main text."""
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30,connect=10),follow_redirects=True) as client:
+            response=await client.get(url,headers={'User-Agent':'ZhixingReading/1.0 (personal article reader)'})
+            response.raise_for_status()
+            html_content=response.text
+        # Extract main content (simplified - remove scripts, styles, nav)
+        parser=Plain();parser.feed(html_content)
+        text=''.join(parser.parts)
+        # Clean up whitespace
+        text=re.sub(r'\s+',' ',text).strip()
+        # Limit to reasonable size for AI processing
+        return text[:15000] if len(text)>15000 else text
+    except Exception:
+        return None
+
 def choose(candidates,prefs,seen,today):
     cutoff=(datetime.fromisoformat(today)-timedelta(days=30)).date().isoformat()
     eligible={}

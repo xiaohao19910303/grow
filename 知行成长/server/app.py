@@ -21,6 +21,7 @@ from copilot.api import register as register_copilot
 from copilot.core import Problem
 from plans.api import register as register_plans
 from reading.api import register as register_reading
+from reflections.api import register as register_reflections
 import asyncio
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -499,6 +500,12 @@ async def lifespan(app: FastAPI):
     except (Problem, OSError) as exc:
         reading_store.startup_error = exc
         print('认知阅读暂不可用，请检查磁盘或恢复日志。')
+    try:
+        reflections_store.initialize()
+        reflections_store.startup_error = None
+    except (Problem, OSError) as exc:
+        reflections_store.startup_error = exc
+        print('日常记录暂不可用，请检查磁盘或恢复日志。')
     # 首次启动自动扫描一次知识图谱（若为空）
     conn = get_conn()
     empty = conn.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0] == 0
@@ -516,6 +523,7 @@ app = FastAPI(title="知行成长", lifespan=lifespan)
 copilot_store = register_copilot(app, LEARN_ROOT, DB_PATH)
 plans_store, plans_generator = register_plans(app, LEARN_ROOT, DB_PATH)
 reading_store, reading_service = register_reading(app, LEARN_ROOT, DB_PATH)
+reflections_store, reflections_assistant = register_reflections(app, LEARN_ROOT, DB_PATH)
 
 
 @app.get("/api/health")

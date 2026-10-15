@@ -44,9 +44,17 @@ def register(app,root,db):
     @router.get('/articles/{aid}')
     def article(aid:str):
         a=store.article(aid);rel=f'认知阅读/文章资料/{aid}/中文导读.md';file=store.path(rel)
-        return {'article':a,'note':store.note(aid),'guide':file.read_text() if file.exists() else '导读文件缺失，请核对本地目录。','path':str(file)}
+        summary_file=store.path(f'认知阅读/文章资料/{aid}/详细总结.md')
+        english_file=store.path(f'认知阅读/文章资料/{aid}/英语学习.md')
+        return {'article':a,'note':store.note(aid),'guide':file.read_text() if file.exists() else '导读文件缺失，请核对本地目录。','path':str(file),
+                'summary':summary_file.read_text() if summary_file.exists() else None,
+                'english_learning':english_file.read_text() if english_file.exists() else None}
     @router.post('/articles/{aid}/personal')
     def personal(aid:str,body:Payload):return store.update_personal(aid,body.data)
     @router.post('/articles/{aid}/guide')
     async def guide(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'guide'}))
+    @router.post('/articles/{aid}/summary')
+    async def summary(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'summary'}))
+    @router.post('/articles/{aid}/english')
+    async def english(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'english'}))
     app.include_router(router);return store,reader

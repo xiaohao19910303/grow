@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from copilot.core import encoded,digest,fail,now,Problem
 from copilot.generation import config,availability
 from .store import TABLE,preferences,basic_guide
-from .sources import FEEDS,CLASSICS,fetch_feed,identify,choose
+from .sources import FEEDS,CLASSICS,fetch_feed,identify,choose,fetch_article_content
 
 class Reader:
     def __init__(self,store,fetcher=None,transport=None):
@@ -17,7 +17,7 @@ class Reader:
         key=data.get('key')
         if not isinstance(key,str) or not re.fullmatch(r'[a-zA-Z0-9-]{1,100}',key):fail('invalid','请求编号无效。',422)
         kind=data.get('kind','collect')
-        if kind not in ('collect','guide'):fail('invalid','任务类型无效。',422)
+        if kind not in ('collect','guide','summary','english'):fail('invalid','任务类型无效。',422)
         request=digest(encoded(data));jid='job-'+key
         with self.store.lock():
             old=self.store.optional(jid)
@@ -58,11 +58,54 @@ class Reader:
                         a=copy.deepcopy(classic);a.update(id=identify(a['url']),category='classic');candidates.append(a)
                     j['sources'].append({'name':'已核验经典目录','url':None,'count':len(CLASSICS),'error':None})
                 j['candidates']=choose(candidates,p,{a['id'] for a in self.store.articles()},j['date'])
+                # Fetch full article content for each candidate
+                for a in j['candidates']:
+                    j['phase']=f'正在获取原文：{a["title"][:30]}';self.store.put(TABLE,jid,j)
+                    content=await fetch_article_content(a['url'])
+                    a['full_content']=content or '内容获取失败'
                 for a in j['candidates']:a.update(checked_at=now(),heat='热度未核实',reason='符合所选主题；'+('长期阅读价值，经典目录推荐' if a['category']=='classic' else '来自已配置来源、最近30天发表；建议先核对摘要'))
                 if len(j['candidates'])<p['count']:j['warnings'].append(f'本次找到{len(j["candidates"])}篇符合条件且未保存的文章，少于目标{p["count"]}篇；没有用旧闻或重复文章凑数。')
                 if not j['candidates']:fail('empty','没有符合条件的新文章。可调整主题、语言、类型或稍后重新搜集。')
                 j.update(state='ready',phase='搜集完成');self.store.put(TABLE,jid,j)
                 if j['daily']:j=self.store.save_selection(jid,[a['id'] for a in j['candidates']])
+            elif j['kind']=='summary':
+                # Generate comprehensive summary based on full article content
+                from copilot.transport import qwen_stream
+                c=config(self.store);j['model']=c['model'];ctx=j['context'];done=False
+                a=self.store.article(ctx['article_id'])
+                content=a.get('full_content') or a.get('summary','')
+                prompt=[{'role':'system','content':'你是一个深度阅读助手。基于文章全文生成一份详细的中文总结报告。'},
+                        {'role':'user','content':encoded({'title':a['title'],'author':a.get('author',''),'source':a.get('source',''),'content':content[:12000],'instruction':'请生成包含以下部分的详细总结：1. 核心观点（3-5个要点）2. 关键论据和例子 3. 作者的主要论证逻辑 4. 文章的局限或待讨论之处 5. 对读者的启发（2-3点）'})}]
+                with (self.store.runtime.parent/'.ai-generation.lock').open('a') as gate:
+                    try:fcntl.flock(gate,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                    except BlockingIOError:fail('busy','其他AI任务正在进行，请稍后再试。')
+                    async for packet in (self.transport or qwen_stream)(prompt,c):
+                        j['raw']+=packet.get('text','')
+                        if len(j['raw'])>15000:fail('invalid','总结超出长度限制。')
+                        if packet.get('usage'):j['usage']=packet['usage']
+                        if packet.get('done'):done=True
+                        j['phase']='正在生成详细总结';self.store.put(TABLE,jid,j)
+                if not done or not j['raw'].strip():fail('incomplete','总结未完整返回。')
+                self.store.save_summary(ctx['article_id'],j['raw']);j.update(state='ready',phase='详细总结已保存',article_id=ctx['article_id'])
+            elif j['kind']=='english':
+                # Generate English learning material (grammar + vocabulary)
+                from copilot.transport import qwen_stream
+                c=config(self.store);j['model']=c['model'];ctx=j['context'];done=False
+                a=self.store.article(ctx['article_id'])
+                content=a.get('full_content') or a.get('summary','')
+                prompt=[{'role':'system','content':'你是一位英语教师。基于这篇英文文章，提取对英语学习者有价值的语法和词汇内容。'},
+                        {'role':'user','content':encoded({'title':a['title'],'content':content[:12000],'instruction':'请生成英语学习材料，包含：1. 重点词汇（8-12个高级词汇，含音标、中文释义、原文例句）2. 重要短语和搭配（5-8个）3. 关键语法点（2-3个复杂句式解析，含中文翻译）4. 长难句分析（挑选2-3个典型句子，逐层解析结构）'})}]
+                with (self.store.runtime.parent/'.ai-generation.lock').open('a') as gate:
+                    try:fcntl.flock(gate,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                    except BlockingIOError:fail('busy','其他AI任务正在进行，请稍后再试。')
+                    async for packet in (self.transport or qwen_stream)(prompt,c):
+                        j['raw']+=packet.get('text','')
+                        if len(j['raw'])>15000:fail('invalid','英语学习材料超出长度限制。')
+                        if packet.get('usage'):j['usage']=packet['usage']
+                        if packet.get('done'):done=True
+                        j['phase']='正在生成英语学习材料';self.store.put(TABLE,jid,j)
+                if not done or not j['raw'].strip():fail('incomplete','英语学习材料未完整返回。')
+                self.store.save_english_learning(ctx['article_id'],j['raw']);j.update(state='ready',phase='英语学习材料已保存',article_id=ctx['article_id'])
             else:
                 from copilot.transport import qwen_stream
                 c=config(self.store);j['model']=c['model'];ctx=j['context'];done=False
