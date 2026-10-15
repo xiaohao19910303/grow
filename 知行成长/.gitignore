@@ -8,3 +8,7 @@ server/.copilot/
 
 server/.plans/
 server/.ai-generation.lock
+
+# 服务管理临时文件
+.server.pid
+.server.log
