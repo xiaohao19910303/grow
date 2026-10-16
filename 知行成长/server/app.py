@@ -37,8 +37,8 @@ from legacy_state import load_state as read_legacy_state, save_state as write_le
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 # 运行时目录 — 用于锁文件、快照等（不再需要 SQLite 文件）
-DB_PATH = BASE_DIR / "runtime"
-DB_PATH.mkdir(exist_ok=True)
+DB_PATH = Path(os.environ.get('RUNTIME_ROOT', BASE_DIR / 'runtime'))
+DB_PATH.mkdir(parents=True, exist_ok=True)
 LEGACY_JSON = BASE_DIR.parent / "v1-legacy" / "data.json"  # v1 归档数据（迁移源）
 # 学习资料根目录 — 云端部署时使用项目内的学习资料文件夹
 LEARN_ROOT = Path(os.environ.get('LEARN_ROOT', BASE_DIR.parent / '学习资料'))
@@ -129,6 +129,14 @@ def migrate_if_empty():
     n = conn.execute("SELECT COUNT(*) FROM modules").fetchone()[0]
     conn.close()
     if n > 0:
+        return
+    if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
+        # Bootstrap the cloud pilot without the legacy SQLite full-state writer.
+        # Existing cloud records are never replaced or imported from local files.
+        with get_conn() as conn:
+            for m in DEFAULT_MODULES:
+                conn.execute('INSERT INTO modules VALUES (?,?,?,?) ON CONFLICT(id) DO NOTHING',
+                             (m['id'],m['name'],m['color'],m['order']))
         return
     if LEGACY_JSON.exists():
         try:
@@ -419,7 +427,7 @@ def build_report(days: int):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if (plans_store.runtime / 'restore-pending.json').exists():
+    if not getattr(plans_store,'remote',False) and (plans_store.runtime / 'restore-pending.json').exists():
         raise RuntimeError('存在未完成的学习计划恢复，请先核对恢复日志。')
     init_db()
     migrate_if_empty()
@@ -428,33 +436,33 @@ async def lifespan(app: FastAPI):
     try:
         copilot_store.initialize()
         copilot_store.startup_error = None
-    except Problem as exc:
-        copilot_store.startup_error = exc
+    except (Problem, OSError, db.psycopg2.Error) as exc:
+        copilot_store.startup_error = exc if isinstance(exc,Problem) else Problem('legacy_storage','旧认知模块存储暂不可用；新学习计划可独立使用。',503)
         # Do not reset missing workspaces or fail unrelated dashboard features.
-        print(f"学习副驾驶暂不可用：{exc.code}")
+        print('学习副驾驶暂不可用，请检查旧模块存储配置。')
     try:
         plans_store.initialize()
         plans_store.startup_error = None
-    except (Problem, OSError) as exc:
+    except (Problem, OSError, db.psycopg2.Error) as exc:
         plans_store.startup_error = exc
-        print("学习计划暂不可用，请检查磁盘或恢复日志。")
+        print('学习计划暂不可用，请检查内容存储、数据库配置或恢复记录。')
     try:
         reading_store.initialize()
         reading_store.startup_error = None
         reading_service.scheduler = asyncio.create_task(reading_service.schedule())
-    except (Problem, OSError) as exc:
+    except (Problem, OSError, db.psycopg2.Error) as exc:
         reading_store.startup_error = exc
         print('认知阅读暂不可用，请检查磁盘或恢复日志。')
     try:
         reflections_store.initialize()
         reflections_store.startup_error = None
-    except (Problem, OSError) as exc:
+    except (Problem, OSError, db.psycopg2.Error) as exc:
         reflections_store.startup_error = exc
         print('日常记录暂不可用，请检查磁盘或恢复日志。')
     try:
         stocks_store.initialize()
         stocks_store.startup_error = None
-    except (Problem, OSError) as exc:
+    except (Problem, OSError, db.psycopg2.Error) as exc:
         stocks_store.startup_error = exc
         print('股票复盘暂不可用，请检查磁盘或恢复日志。')
     try:

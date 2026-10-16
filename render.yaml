@@ -6,11 +6,30 @@ services:
     startCommand: cd 知行成长/server && uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        value: postgresql://postgres:SHUAIge.zhixingchengzhang@db.cafdvxlzmqavmvospgvd.supabase.co:5432/postgres
+        sync: false
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: CLOUD_DEPLOY
         value: "1"
       - key: LEARN_ROOT
         value: /opt/render/project/src/知行成长/学习资料
+      - key: PLAN_CONTENT_BACKEND
+        value: github
+      - key: GITHUB_CONTENT_REPO
+        value: xiaohao19910303/zhixing
+      - key: GITHUB_CONTENT_BRANCH
+        value: main
+      - key: GITHUB_CONTENT_TOKEN
+        sync: false
+      - key: APP_USERNAME
+        value: owner
+      - key: APP_PASSWORD
+        sync: false
+      - key: QWEN_BASE_URL
+        sync: false
+      - key: QWEN_API_KEY
+        sync: false
+      - key: QWEN_MODEL
+        value: qwen-plus
+    healthCheckPath: /api/health
     autoDeploy: true

@@ -14,11 +14,8 @@ from pathlib import Path
 import psycopg2
 import psycopg2.extras
 
-# 数据库连接字符串 — 优先从环境变量读取，否则使用默认值
-DATABASE_URL = os.environ.get(
-    'DATABASE_URL',
-    'postgresql://postgres:SHUAIge.zhixingchengzhang@db.cafdvxlzmqavmvospgvd.supabase.co:5432/postgres'
-)
+# 数据库凭证仅从服务端环境变量读取。
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 
 def _translate_sql(sql):
@@ -245,6 +242,8 @@ class CompatConnection:
 def connect(database=None, **kwargs):
     """创建数据库连接，返回兼容 sqlite3 接口的连接对象。"""
     url = database or DATABASE_URL
+    if not url:
+        raise OperationalError('请在服务端配置 DATABASE_URL。')
     conn = psycopg2.connect(url)
     conn.autocommit = False
     return CompatConnection(conn)

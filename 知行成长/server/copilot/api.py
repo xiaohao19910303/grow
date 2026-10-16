@@ -97,6 +97,13 @@ def register(app: FastAPI, root, db):
     @app.middleware('http')
     async def local_access(request: Request, call_next):
         hostname = request.url.hostname or ''
+        lan_token = os.getenv('COPILOT_ACCESS_TOKEN', '')
+        lan = os.getenv('COPILOT_LAN', '') == '1'
+        cloud_pilot = os.getenv('CLOUD_DEPLOY', '') == '1' and os.getenv('PLAN_CONTENT_BACKEND', '') == 'github'
+        if cloud_pilot:
+            from cloud_auth import guard
+            rejected = guard(request)
+            if rejected is not None:return rejected
         # 云端部署时允许所有主机（通过环境变量控制）
         if os.getenv('CLOUD_DEPLOY', '') == '1':
             pass  # 云端部署，跳过主机检查
@@ -109,7 +116,7 @@ def register(app: FastAPI, root, db):
                 return JSONResponse({'message': '此访问地址未获允许。'}, status_code=403)
         if request.url.path.startswith('/api/'):
             peer = request.client.host if request.client else ''
-            if peer not in ('127.0.0.1', '::1', 'testclient'):
+            if not cloud_pilot and peer not in ('127.0.0.1', '::1', 'testclient'):
                 supplied = request.headers.get('x-copilot-token', '')
                 if not lan or len(lan_token) < 24 or not secrets.compare_digest(supplied, lan_token):
                     return JSONResponse({'message': '局域网访问需要有效凭证。'}, status_code=403)
