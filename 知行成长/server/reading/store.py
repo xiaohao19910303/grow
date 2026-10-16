@@ -6,6 +6,7 @@ import re
 import tempfile
 import uuid
 from pathlib import Path
+from urllib.parse import urlsplit
 from copilot.core import digest, encoded, fail, now
 from plans.store import Plans, integer
 from .sources import TOPICS, DEFAULT_FEEDS
@@ -52,7 +53,22 @@ class ReadingStore(Plans):
     def record(self,key):return self.get(TABLE,key)
     def prefs(self):return self.record('preferences')['value']
     def jobs(self):return [r for r in self.rows(TABLE) if r.get('type')=='job']
-    def articles(self):return [r for r in self.rows(TABLE) if r.get('type')=='article']
+    def articles(self,search=None,include_archived=False):
+        """获取文章列表，支持搜索和归档过滤。"""
+        result=[]
+        for r in self.rows(TABLE):
+            if r.get('type')!='article':continue
+            if not include_archived and r.get('archived'):continue
+            if search:
+                q=search.lower()
+                hay=' '.join(str(r.get(f,'')) for f in ('title','zh_title','author','source','summary')).lower()
+                tags=' '.join(r.get('tags',[])).lower()
+                if q not in hay and q not in tags:continue
+            result.append(r)
+        return result
+    def search_articles(self,query,include_archived=False):
+        """按标题/作者/来源/标签搜索文章。"""
+        return self.articles(search=query,include_archived=include_archived)
     def custom_sources(self):
         """获取所有自定义来源"""
         record = self.optional('custom_sources')
@@ -248,6 +264,125 @@ class ReadingStore(Plans):
             # Also save to full_content field in article record
             a['full_content']=content
             self.export({rel:full_content},[a],expected);return a
+    def archive_article(self,aid):
+        """归档文章（不删除，可恢复）。"""
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            if a.get('archived'):return a
+            a['archived']=True;a['record_version']=a.get('record_version',1)+1
+            rel=f'认知阅读/文章资料/{aid}/文章信息.json'
+            expected={rel:a['hashes'].get(rel)}
+            mirror={k:v for k,v in a.items() if k not in ('hashes','guide')}
+            files={rel:encoded(mirror)}
+            a['hashes'][rel]=digest(files[rel])
+            self.export(files,[a],expected);return a
+    def restore_article(self,aid):
+        """恢复已归档文章。"""
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            if not a.get('archived'):return a
+            a['archived']=False;a['record_version']=a.get('record_version',1)+1
+            rel=f'认知阅读/文章资料/{aid}/文章信息.json'
+            expected={rel:a['hashes'].get(rel)}
+            mirror={k:v for k,v in a.items() if k not in ('hashes','guide')}
+            files={rel:encoded(mirror)}
+            a['hashes'][rel]=digest(files[rel])
+            self.export(files,[a],expected);return a
+    def import_from_url(self,url,content,title=None,author=None,language='zh',tags=None):
+        """从 URL 导入文章（正文已抓取）。"""
+        from .sources import identify
+        with self.lock():
+            self.recover_exports()
+            aid=identify(url)
+            if self.optional(aid):
+                fail('conflict','该链接已收藏。',409)
+            if not title or not title.strip():
+                fail('invalid','请填写标题。',422)
+            if not content or not content.strip():
+                fail('invalid','未获取到正文。',422)
+            content_scope='full' if len(content)>500 else 'partial'
+            a={
+                'id':aid,'type':'article','url':url,
+                'title':title.strip()[:300],
+                'zh_title':title.strip()[:300] if language=='zh' else '',
+                'author':(author or '未提供').strip()[:200],
+                'source':urlsplit(url).hostname or '手动导入',
+                'language':language if language in ('zh','en') else 'zh',
+                'published_at':now()[:10],
+                'summary':content[:500].strip(),
+                'full_content':content[:50000],
+                'topics':['认知'],
+                'access':'手动导入；正文已保存',
+                'category':'recent',
+                'saved_at':now(),
+                'bookmarked':False,'read_later':False,'read':False,
+                'archived':False,
+                'schema_version':2,
+                'content_scope':content_scope,
+                'source_version':1,
+                'record_version':1,
+                'import_method':'url',
+                'tags':tags or [],
+            }
+            a['guide']=basic_guide(a)
+            base=f'认知阅读/文章资料/{aid}'
+            files={}
+            files[base+'/文章信息.json']=encoded({k:v for k,v in a.items() if k not in ('guide','full_content')})
+            files[base+'/中文导读.md']=a['guide']
+            files[base+'/原文.md']=f'# {a["title"]}\n\n{content}'
+            for rel in files:
+                (self.path(rel)).parent.mkdir(parents=True,exist_ok=True)
+            a['hashes']={rel:digest(files[rel]) for rel in files}
+            self.export(files,[a],{rel:None for rel in files})
+            return a
+    def import_from_paste(self,title,content,author=None,language='zh',tags=None,url=None):
+        """从粘贴正文导入文章。"""
+        from .sources import identify
+        with self.lock():
+            self.recover_exports()
+            effective_url=url or f'paste://{digest(content[:200])[:16]}'
+            aid=identify(effective_url)
+            if self.optional(aid):
+                fail('conflict','该文章已存在。',409)
+            if not title or not title.strip():
+                fail('invalid','请填写标题。',422)
+            if not content or not content.strip():
+                fail('invalid','正文不能为空。',422)
+            content_scope='full' if len(content)>500 else 'partial'
+            a={
+                'id':aid,'type':'article','url':effective_url,
+                'title':title.strip()[:300],
+                'zh_title':title.strip()[:300] if language=='zh' else '',
+                'author':(author or '未提供').strip()[:200],
+                'source':urlsplit(effective_url).hostname if effective_url.startswith('http') else '手动粘贴',
+                'language':language if language in ('zh','en') else 'zh',
+                'published_at':now()[:10],
+                'summary':content[:500].strip(),
+                'full_content':content[:50000],
+                'topics':['认知'],
+                'access':'手动粘贴导入',
+                'category':'recent',
+                'saved_at':now(),
+                'bookmarked':False,'read_later':False,'read':False,
+                'archived':False,
+                'schema_version':2,
+                'content_scope':content_scope,
+                'source_version':1,
+                'record_version':1,
+                'import_method':'paste',
+                'tags':tags or [],
+            }
+            a['guide']=basic_guide(a)
+            base=f'认知阅读/文章资料/{aid}'
+            files={}
+            files[base+'/文章信息.json']=encoded({k:v for k,v in a.items() if k not in ('guide','full_content')})
+            files[base+'/中文导读.md']=a['guide']
+            files[base+'/原文.md']=f'# {a["title"]}\n\n{content}'
+            for rel in files:
+                (self.path(rel)).parent.mkdir(parents=True,exist_ok=True)
+            a['hashes']={rel:digest(files[rel]) for rel in files}
+            self.export(files,[a],{rel:None for rel in files})
+            return a
 
 def basic_guide(a):
     return (f'# {a.get("zh_title") or a["title"]}\n\n原标题：{a["title"]}\n\n作者：{a["author"]}｜来源：{a["source"]}｜发表：{a.get("published_at") or "未知"}\n\n'

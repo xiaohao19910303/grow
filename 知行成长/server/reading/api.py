@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from plans.api import Payload
 from copilot.generation import availability,config
 from copilot.core import fail
-from .sources import DEFAULT_FEEDS,TOPICS
+from .sources import DEFAULT_FEEDS,TOPICS,fetch_article_content
 from .store import ReadingStore
 from .service import Reader
 
@@ -26,14 +26,15 @@ def register(app,root,db):
         if request.url.path.startswith('/api/reading'):r.headers['Cache-Control']='no-store'
         return r
     @router.get('')
-    def listing():
+    def listing(search:str=None,include_archived:bool=False):
         all_sources = store.all_sources()
+        articles = store.search_articles(search, include_archived) if search else store.articles(include_archived=include_archived)
         return {'preferences':store.prefs(),
                 'sources':[{k:v for k,v in s.items() if k!='domains'} for s in all_sources],
                 'default_sources':[{k:v for k,v in s.items() if k!='domains'} for s in DEFAULT_FEEDS],
                 'custom_sources':[{k:v for k,v in s.items() if k!='domains'} for s in store.custom_sources()],
                 'topics':list(TOPICS),
-                'articles':sorted(store.articles(),key=lambda a:a['saved_at'],reverse=True),
+                'articles':sorted(articles,key=lambda a:a['saved_at'],reverse=True),
                 'jobs':[public_job(j) for j in sorted(store.jobs(),key=lambda x:x['created_at'],reverse=True)[:30]],
                 'model':config(store)['model'],'unavailable':availability(store)}
     @router.post('/preferences')
@@ -73,4 +74,34 @@ def register(app,root,db):
     async def english(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'english'}))
     @router.post('/articles/{aid}/fetch_full')
     async def fetch_full(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'fetch_full'}))
+    @router.post('/import-url')
+    async def import_url(body:Payload):
+        url=body.data.get('url','').strip()
+        if not url or not url.startswith(('http://','https://')):
+            fail('invalid','请输入有效的 URL（http/https）。',422)
+        content=await fetch_article_content(url)
+        if not content or len(content)<50:
+            return {'status':'preview','url':url,'content':None,'warning':'未能获取到有效正文，请检查链接或手动粘贴正文。'}
+        title=body.data.get('title','').strip()
+        author=body.data.get('author','').strip()
+        language=body.data.get('language','zh')
+        tags=body.data.get('tags',[])
+        if body.data.get('confirm'):
+            article=store.import_from_url(url,content,title=title or '未命名文章',author=author,language=language,tags=tags)
+            return {'status':'saved','article':article}
+        return {'status':'preview','url':url,'content':content[:2000],'title':title,'author':author,'language':language,'tags':tags}
+    @router.post('/import-paste')
+    async def import_paste(body:Payload):
+        title=body.data.get('title','').strip()
+        content=body.data.get('content','').strip()
+        author=body.data.get('author','').strip()
+        language=body.data.get('language','zh')
+        tags=body.data.get('tags',[])
+        url=body.data.get('url','').strip() or None
+        article=store.import_from_paste(title,content,author=author,language=language,tags=tags,url=url)
+        return {'status':'saved','article':article}
+    @router.post('/articles/{aid}/archive')
+    def archive(aid:str):return store.archive_article(aid)
+    @router.post('/articles/{aid}/restore')
+    def restore(aid:str):return store.restore_article(aid)
     app.include_router(router);return store,reader
