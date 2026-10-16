@@ -123,6 +123,38 @@ class ReflectionsStore:
         p = self.path(relative)
         return digest(p.read_bytes()) if p.exists() else None
 
+    def expected_mirror(self, entry):
+        # Legacy records are trusted only if the existing mirror exactly matches
+        # the stored entry rendered today. Never adopt an arbitrary disk hash.
+        expected = entry.get('mirror_hash') or digest(render_markdown(entry))
+        try:
+            actual = self.hash(entry['path'])
+        except OSError:
+            fail('external_change', '本地文件无法读取，已停止覆盖。请先核对文件。')
+        if actual != expected:
+            fail('external_change', '本地文件已被修改或移走，已停止覆盖。请核对文件与原保存内容。')
+        return expected
+
+    def mirror_status(self, entry_id):
+        entry = self.entry(entry_id)
+        p = self.path(entry['path'])
+        content = None
+        try:
+            if p.exists():
+                with p.open('rb') as stream:
+                    raw = stream.read(200001)
+                if len(raw) > 200000:
+                    fail('external_change', '本地文件过大，请在文件编辑器中核对；系统未覆盖。')
+                content = raw.decode('utf-8')
+        except UnicodeError:
+            fail('external_change', '文件已不是UTF-8文本，请在文件编辑器中核对；系统未覆盖。')
+        except OSError:
+            fail('external_change', '本地文件无法读取，请在文件编辑器中核对；系统未覆盖。')
+        expected = entry.get('mirror_hash') or digest(render_markdown(entry))
+        return {'id': entry_id, 'path': entry['path'],
+                'conflict': content is None or digest(content) != expected,
+                'saved_markdown': render_markdown(entry), 'file_markdown': content}
+
     def get(self, table, key):
         with self.conn() as c:
             row = c.execute(f'SELECT data FROM {table} WHERE id=?', (key,)).fetchone()
@@ -234,7 +266,7 @@ class ReflectionsStore:
                 stream.write(content)
                 stream.flush()
                 os.fsync(stream.fileno())
-            if old_hash is not None and self.hash(relative) != old_hash:
+            if self.hash(relative) != old_hash:
                 fail('conflict', f'文件在保存期间发生变化：{relative}。')
             os.replace(tmp, p)
             directory = os.open(p.parent, os.O_RDONLY)
@@ -310,6 +342,7 @@ class ReflectionsStore:
             }
             rel = entry['path'][len(REFLECTION_DIR) + 1:] if entry['path'].startswith(REFLECTION_DIR + '/') else entry['path']
             md = render_markdown(entry)
+            entry['mirror_hash'] = digest(md)
             files = {entry['path']: {'old': None, 'content': md, 'new': digest(md)}}
             version = {'entry_id': entry_id, 'version': 1, 'record_date': record_date,
                        'prompt_kind': entry['prompt_kind'], 'raw_text': entry['raw_text'],
@@ -342,6 +375,7 @@ class ReflectionsStore:
                 fail('conflict', '已归档记录不能直接修改。')
             if entry['version'] != base_version:
                 fail('conflict', '记录已被更新，请重新查看。')
+            expected_hash = self.expected_mirror(entry)
             new_version = entry['version'] + 1
             entry.update(
                 record_date=data['record_date'],
@@ -354,7 +388,8 @@ class ReflectionsStore:
             if entry.get('adopted_summary') and entry['summary_basis_version'] is not None:
                 entry['status'] = 'basis_updated'
             md = render_markdown(entry)
-            files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
+            entry['mirror_hash'] = digest(md)
+            files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             version = {'entry_id': entry_id, 'version': new_version, 'record_date': entry['record_date'],
                        'prompt_kind': entry['prompt_kind'], 'raw_text': entry['raw_text'],
                        'guided_answers': entry['guided_answers'], 'tags': entry['tags'],
@@ -402,13 +437,15 @@ class ReflectionsStore:
             sections = attempt.get('sections') or []
             if not sections:
                 fail('invalid', '整理内容为空。', 422)
+            expected_hash = self.expected_mirror(entry)
             new_version = entry['version'] + 1
             entry.update(
                 adopted_summary={'sections': sections, 'adopted_at': now()},
                 summary_basis_version=entry['version'],
                 status='organized', version=new_version, updated_at=now())
             md = render_markdown(entry)
-            files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
+            entry['mirror_hash'] = digest(md)
+            files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             records = [{'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
                         'params': [entry_id, encoded(entry)]}]
             return self.publish(key, request, files, records, {'id': entry_id, 'version': new_version})
@@ -425,11 +462,13 @@ class ReflectionsStore:
             entry = self.get('reflection_entries', entry_id)
             if entry.get('archived_at'):
                 return {'id': entry_id, 'archived': True}
+            expected_hash = self.expected_mirror(entry)
             entry['archived_at'] = now()
             entry['updated_at'] = now()
             entry['version'] += 1
             md = render_markdown(entry)
-            files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
+            entry['mirror_hash'] = digest(md)
+            files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             records = [{'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
                         'params': [entry_id, encoded(entry)]}]
             return self.publish(key, request, files, records, {'id': entry_id, 'archived': True})
@@ -446,11 +485,13 @@ class ReflectionsStore:
             entry = self.get('reflection_entries', entry_id)
             if not entry.get('archived_at'):
                 return {'id': entry_id, 'archived': False}
+            expected_hash = self.expected_mirror(entry)
             entry['archived_at'] = None
             entry['updated_at'] = now()
             entry['version'] += 1
             md = render_markdown(entry)
-            files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
+            entry['mirror_hash'] = digest(md)
+            files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             records = [{'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
                         'params': [entry_id, encoded(entry)]}]
             return self.publish(key, request, files, records, {'id': entry_id, 'archived': False})

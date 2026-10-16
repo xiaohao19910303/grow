@@ -1,7 +1,7 @@
 """知行成长 · 本地服务端（FastAPI + SQLite）
 
-- 单用户本地应用，采用「全量 state 同步」模式：前端启动 GET /api/data 拉全量，
-  任何修改 PUT /api/data 全量回写，服务端事务内落盘到 SQLite。
+- 单用户本地应用，采用带快照修订的 state 同步：前端 GET /api/data 读取状态与修订，
+  PUT /api/data 在同一事务内校验修订并保存，保留既有记录ID。
 - 规范化表结构便于后续做 SQL 查询 / 周月报 / 知识图谱。
 - v3：扫描工作区 Markdown 生成知识图谱（knowledge 表）+ 周报/月报汇总。
 - 首次启动若 data.db 为空，自动迁移归档的 v1 data.json。
@@ -14,7 +14,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from copilot.api import register as register_copilot
@@ -29,6 +29,7 @@ from knowledge.api import register as register_knowledge
 from reflections.api import register as register_reflections
 from stocks.api import register as register_stocks
 import asyncio
+from legacy_state import load_state as read_legacy_state, save_state as write_legacy_state
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data.db"
@@ -109,79 +110,13 @@ def init_db():
     conn.close()
 
 
-def save_state(state: dict):
-    conn = get_conn()
-    cur = conn.cursor()
-    for t in TABLES:
-        cur.execute(f"DELETE FROM {t}")
-    # Older clients and sync scripts omit todos; preserve them in that case.
-    if "todos" in state:
-        cur.execute("DELETE FROM todos")
-        for item in state["todos"]:
-            cur.execute("INSERT INTO todos(id,date,title,done) VALUES(?,?,?,?)",
-                        (item["id"], item["date"], item["title"], int(bool(item.get("done", False)))))
-    for m in state.get("modules", []):
-        cur.execute("INSERT INTO modules(id,name,color,ord) VALUES(?,?,?,?)",
-                    (m["id"], m["name"], m.get("color", "#4F6EF7"), m.get("order", 0)))
-    for d, cmap in state.get("checkins", {}).items():
-        for mid, lvl in cmap.items():
-            cur.execute("INSERT INTO checkins(date,module_id,level) VALUES(?,?,?)", (d, mid, int(lvl)))
-    for d, h in state.get("habits", {}).items():
-        cur.execute("INSERT INTO habits(date,minutes,note) VALUES(?,?,?)",
-                    (d, int(h.get("minutes", 0) or 0), h.get("note", "")))
-    for f in state.get("customFields", []):
-        cur.execute("INSERT INTO custom_fields(key,label,type) VALUES(?,?,?)",
-                    (f["key"], f["label"], f["type"]))
-    for r in state.get("customRecords", []):
-        cur.execute("INSERT INTO custom_records(data) VALUES(?)", (json.dumps(r, ensure_ascii=False),))
-    for d in state.get("decisions", []):
-        cur.execute("INSERT INTO decisions(date,title,context,options,reason,expected,probability,emotion,actual,bias) "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?)",
-                    (d.get("date", ""), d.get("title", ""), d.get("context", ""), d.get("options", ""),
-                     d.get("reason", ""), d.get("expected", ""), d.get("probability"),
-                     d.get("emotion", ""), d.get("actual", ""), d.get("bias", "")))
-    for p in state.get("predictions", []):
-        cur.execute("INSERT INTO predictions(date,statement,probability,result,deviation) VALUES(?,?,?,?,?)",
-                    (p.get("date", ""), p.get("statement", ""), p.get("probability"),
-                     p.get("result", ""), p.get("deviation", "")))
-    for r in state.get("reviews", []):
-        cur.execute("INSERT INTO reviews(date,thought,actual,gap,action) VALUES(?,?,?,?,?)",
-                    (r.get("date", ""), r.get("thought", ""), r.get("actual", ""),
-                     r.get("gap", ""), r.get("action", "")))
-    for i in state.get("insights", []):
-        cur.execute("INSERT INTO insights(date,insight,source) VALUES(?,?,?)",
-                    (i.get("date", ""), i.get("insight", ""), i.get("source", "")))
-    conn.commit()
-    conn.close()
+def save_state(state: dict, *, require_revision=False):
+    # Only bootstrap/internal callers may omit a revision. HTTP writes are strict.
+    return write_legacy_state(get_conn, state, require_revision=require_revision)
 
 
 def load_state() -> dict:
-    conn = get_conn()
-    cur = conn.cursor()
-    state = {"modules": [], "checkins": {}, "habits": {},
-             "customFields": [], "customRecords": [],
-             "decisions": [], "predictions": [], "reviews": [], "insights": []}
-    state["todos"] = [dict(r) for r in cur.execute("SELECT id,date,title,done FROM todos ORDER BY rowid")]
-    for r in cur.execute("SELECT id,name,color,ord FROM modules ORDER BY ord, id"):
-        state["modules"].append({"id": r["id"], "name": r["name"], "color": r["color"], "order": r["ord"]})
-    for r in cur.execute("SELECT date,module_id,level FROM checkins"):
-        state["checkins"].setdefault(r["date"], {})[r["module_id"]] = r["level"]
-    for r in cur.execute("SELECT date,minutes,note FROM habits"):
-        state["habits"][r["date"]] = {"minutes": r["minutes"], "note": r["note"] or ""}
-    for r in cur.execute("SELECT key,label,type FROM custom_fields"):
-        state["customFields"].append({"key": r["key"], "label": r["label"], "type": r["type"]})
-    for r in cur.execute("SELECT data FROM custom_records ORDER BY id"):
-        state["customRecords"].append(json.loads(r["data"]))
-    for r in cur.execute("SELECT * FROM decisions ORDER BY id"):
-        state["decisions"].append(dict(r))
-    for r in cur.execute("SELECT * FROM predictions ORDER BY id"):
-        state["predictions"].append(dict(r))
-    for r in cur.execute("SELECT * FROM reviews ORDER BY id"):
-        state["reviews"].append(dict(r))
-    for r in cur.execute("SELECT * FROM insights ORDER BY id"):
-        state["insights"].append(dict(r))
-    conn.close()
-    return state
+    return read_legacy_state(get_conn)
 
 
 def migrate_if_empty():
@@ -575,14 +510,21 @@ def health():
 
 @app.get("/api/data")
 def get_data():
-    return load_state()
+    return JSONResponse(load_state(), headers={'Cache-Control': 'no-store'})
 
 
 @app.put("/api/data")
 async def put_data(request: Request):
-    data = await request.json()
-    save_state(data)
-    return {"ok": True}
+    if request.headers.get('x-legacy-state-protocol') != '1':
+        return JSONResponse({'code': 'client_outdated',
+                             'message': '页面保存协议过旧，请先导出本地修改，再刷新页面。'}, status_code=409)
+    try:
+        data = await request.json()
+        return save_state(data, require_revision=True)
+    except Problem as exc:
+        return JSONResponse({'code': exc.code, 'message': exc.message}, status_code=exc.status)
+    except (ValueError, sqlite3.IntegrityError):
+        return JSONResponse({'code': 'invalid', 'message': '记录格式或编号无效，未保存。'}, status_code=422)
 
 
 # Only expose lesson folders, never arbitrary workspace files.

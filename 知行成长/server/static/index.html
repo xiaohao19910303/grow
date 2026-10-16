@@ -161,6 +161,11 @@
 </div>
 
 <div class="wrap">
+  <div id="legacyConflict" class="section" role="alert" hidden>
+    <p>其他页面或同步已更新记录，自动保存已暂停。当前页面的修改仍然保留；导出后可对照最新记录重新编辑。</p>
+    <button class="btn" onclick="exportJson()">下载本地修改副本</button>
+    <button class="btn" onclick="reloadLegacyState()">下载副本并载入最新记录</button>
+  </div>
   <nav class="tabs main-nav" id="tabs" aria-label="主导航">
     <button class="tab active" data-group="personal" aria-current="page" onclick="goGroup('personal')">今日</button>
     <button class="tab" data-group="learning" onclick="goGroup('learning')">学习</button>
@@ -448,26 +453,74 @@ let dataLoaded = false;
 
 /* ================= 与服务端同步 ================= */
 async function loadFromServer(){
+  const generation = editGeneration;
   try{
-    const r = await fetch('/api/data');
-    if(r.ok){ const d = await r.json(); if(d && d.modules){ state = d; dataLoaded = Array.isArray(d.todos); state.todos = state.todos || []; refreshModuleNames(); } setStatus(dataLoaded?'已连接本地库':'请重启本地服务以启用待办',dataLoaded?'on':'warn'); }
-    else setStatus('服务异常','err');
-  }catch(e){ setStatus('服务未连接','warn'); }
-  render();
+    const r = await fetch('/api/data', {cache:'no-store'});
+    if(!r.ok) throw Error('load failed');
+    const d = await r.json();
+    if(editGeneration !== generation){
+      setStatus('读取期间有新修改，未替换；请先导出副本再重试','warn'); return false;
+    }
+    if(!d || !Array.isArray(d.todos) || typeof d._revision !== 'string'){
+      setStatus('请重启服务并刷新页面以启用安全保存','warn'); return false;
+    }
+    state = d; dataLoaded = true; legacyConflict = false;
+    document.getElementById('legacyConflict').hidden = true;
+    refreshModuleNames(); setStatus('已连接本地库','on'); render(); return true;
+  }catch(e){ setStatus('读取失败，本地修改未替换','err'); return false; }
 }
-let saveTimer = null;
+let saveTimer = null, saveInFlight = false, legacyConflict = false, editGeneration = 0;
 function persist(){
+  editGeneration++;
   clearTimeout(saveTimer);
+  if(legacyConflict){ setStatus('存在版本冲突，本地修改尚未保存','warn'); return; }
   setStatus('保存中…','');
   saveTimer = setTimeout(saveToServer, 400);
 }
+async function reloadLegacyState(){
+  if(saveInFlight) return;
+  exportJson(); // The explicit button downloads the local copy before replacing it.
+  clearTimeout(saveTimer);
+  await loadFromServer();
+}
 async function saveToServer(){
   clearTimeout(saveTimer);
-  if(!dataLoaded){ setStatus('请先连接并读取本地记录','err'); return; }
+  if(saveInFlight || legacyConflict) return;
+  if(!dataLoaded){ setStatus('请先连接并读取本地记录；修改未保存','err'); return; }
+  for(const key of ['decisions','predictions','reviews','insights','customRecords']){
+    const field = key === 'customRecords' ? '_record_id' : 'id';
+    for(const item of state[key]){
+      if(item[field] == null && !item._client_id)
+        item._client_id = crypto.randomUUID ? crypto.randomUUID() : 'draft-'+Date.now()+'-'+Math.random();
+    }
+  }
+  const payload = JSON.stringify(state), generation = editGeneration;
+  saveInFlight = true;
+  let saved = false;
   try{
-    const r = await fetch('/api/data', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(state)});
-    if(r.ok) setStatus('已保存 · 本地数据库','on'); else setStatus('保存失败','err');
-  }catch(e){ setStatus('保存失败 · 服务未连接','err'); }
+    const r = await fetch('/api/data', {method:'PUT', headers:{'Content-Type':'application/json','X-Legacy-State-Protocol':'1'}, body:payload});
+    const d = await r.json();
+    if(!r.ok){
+      if(r.status === 409){
+        legacyConflict = true; document.getElementById('legacyConflict').hidden = false;
+        setStatus('其他页面或同步已更新记录；本地修改未覆盖，请先保留副本','warn');
+      }else setStatus(d.message || '保存失败，本地修改仍保留','err');
+      return;
+    }
+    if(!d.state || typeof d.state._revision !== 'string') throw Error('old server');
+    for(const [key, identities] of Object.entries(d.assigned_ids || {})){
+      const field = key === 'customRecords' ? '_record_id' : 'id';
+      for(const item of state[key] || []){
+        if(Object.prototype.hasOwnProperty.call(identities, item._client_id)) item[field] = identities[item._client_id];
+      }
+    }
+    state._revision = d.state._revision; saved = true;
+    setStatus(editGeneration === generation ? '已保存 · 本地数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
+  }catch(e){ setStatus('保存失败 · 本地修改保留，请重试；若有冲突请先导出副本','err'); }
+  finally{
+    saveInFlight = false;
+    if(saved && editGeneration !== generation) saveTimer = setTimeout(saveToServer, 0);
+  }
 }
 function setStatus(txt, cls){ const el=document.getElementById('storageStatus'); el.textContent=txt; el.className='badge'+(cls?(' '+cls):''); }
 function exportJson(){
@@ -478,7 +531,7 @@ function resetData(){
   openModal('<h3>确认重置</h3><p style="color:var(--muted);font-size:13px">将清空所有记录并恢复默认模块。此操作不可撤销，建议先「导出 JSON」备份。</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doReset()">确认重置</button></div>');
 }
 function doReset(){
-  state={modules:[],checkins:{},habits:{},customFields:[],customRecords:[],decisions:[],predictions:[],reviews:[],insights:[],todos:[]};
+  state={_revision:state._revision,modules:[],checkins:{},habits:{},customFields:[],customRecords:[],decisions:[],predictions:[],reviews:[],insights:[],todos:[]};
   persist(); render(); closeModal(); toast('已重置');
 }
 
@@ -1915,7 +1968,7 @@ function saveHabit(){
   const note=document.getElementById('habitNote').value.trim();
   if(!min&&!note){ if(state.habits[d]) delete state.habits[d]; persist(); render(); toast('已清除当天记录'); return; }
   if(!state.habits[d]) state.habits[d]={}; state.habits[d].minutes=isNaN(min)?0:min; state.habits[d].note=note;
-  persist(); render(); toast('已保存 '+fmtDateCN(d)+' 的记录');
+  persist(); render(); toast('已更新 '+fmtDateCN(d)+' 的记录，等待保存');
 }
 function addField(){
   const label=(document.getElementById('newFieldLabel').value||'').trim(); if(!label){toast('请输入字段名称');return;}
@@ -1928,7 +1981,7 @@ function openRecordForm(idx){ editingRecordId=(idx==null)?null:idx; const rec=ed
   const inputs=state.customFields.map(f=>{ const v=rec[f.key]!=null?rec[f.key]:''; let inp=f.type==='number'?'<input type="number" id="rf_'+esc(f.key)+'" value="'+esc(v)+'">':f.type==='date'?'<input type="date" id="rf_'+esc(f.key)+'" value="'+esc(v)+'">':'<input type="text" id="rf_'+esc(f.key)+'" value="'+esc(v)+'">'; return '<label>'+esc(f.label)+inp+'</label>'; }).join('');
   openModal('<h3>'+(editingRecordId!=null?'编辑记录':'新增记录')+'</h3><div class="form-grid">'+(inputs||'<p style="color:var(--muted);font-size:13px">尚无字段，请先添加</p>')+'</div><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="saveRecord()">保存</button></div>');
 }
-function saveRecord(){ const rec={}; state.customFields.forEach(f=>{ const el=document.getElementById('rf_'+f.key); let v=el?el.value.trim():''; if(f.type==='number') v=v===''?'':(parseFloat(v)||0); rec[f.key]=v; }); if(editingRecordId!=null) state.customRecords[editingRecordId]=rec; else state.customRecords.push(rec); persist(); render(); closeModal(); toast('已保存'); }
+function saveRecord(){ const rec=editingRecordId!=null?{...state.customRecords[editingRecordId]}:{}; state.customFields.forEach(f=>{ const el=document.getElementById('rf_'+f.key); let v=el?el.value.trim():''; if(f.type==='number') v=v===''?'':(parseFloat(v)||0); rec[f.key]=v; }); if(editingRecordId!=null) state.customRecords[editingRecordId]=rec; else state.customRecords.push(rec); persist(); render(); closeModal(); toast('已更新，等待保存'); }
 function delRecord(i){ openModal('<h3>删除记录</h3><p style="color:var(--muted);font-size:13px">确定删除这条记录？</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doDelRecord('+i+')">删除</button></div>'); }
 function doDelRecord(i){ state.customRecords.splice(i,1); persist(); render(); closeModal(); toast('已删除'); }
 
@@ -1981,14 +2034,14 @@ function openFormModal(title, fields, initial, onSave){
 function openDecisionForm(idx){
   const isEdit=(idx!=null);
   const rec=isEdit?state.decisions[idx]:{date:today(),probability:'',title:'',context:'',options:'',reason:'',expected:'',emotion:'',actual:'',bias:''};
-  openFormModal(isEdit?'编辑决策':'新增决策', DECISION_FIELDS, rec, obj=>{ if(isEdit) state.decisions[idx]=obj; else state.decisions.push(obj); persist(); render(); toast('已保存'); });
+  openFormModal(isEdit?'编辑决策':'新增决策', DECISION_FIELDS, rec, obj=>{ if(isEdit) state.decisions[idx]={...rec,...obj}; else state.decisions.push(obj); persist(); render(); toast('已更新，等待保存'); });
 }
 function openPredictionForm(idx){ const isEdit=(idx!=null); const rec=isEdit?state.predictions[idx]:{date:today(),statement:'',probability:'',result:'',deviation:''};
-  openFormModal(isEdit?'编辑预测':'新增预测', PREDICTION_FIELDS, rec, obj=>{ if(isEdit) state.predictions[idx]=obj; else state.predictions.push(obj); persist(); render(); toast('已保存'); }); }
+  openFormModal(isEdit?'编辑预测':'新增预测', PREDICTION_FIELDS, rec, obj=>{ if(isEdit) state.predictions[idx]={...rec,...obj}; else state.predictions.push(obj); persist(); render(); toast('已更新，等待保存'); }); }
 function openReviewForm(idx, reviewDate){ const isEdit=(idx!=null); const rec=isEdit?state.reviews[idx]:{date:reviewDate || today(),thought:'',actual:'',gap:'',action:''};
-  openFormModal(isEdit?'编辑复盘':'新增复盘', REVIEW_FIELDS, rec, obj=>{ if(isEdit) state.reviews[idx]=obj; else state.reviews.push(obj); persist(); render(); toast('已保存'); }); }
+  openFormModal(isEdit?'编辑复盘':'新增复盘', REVIEW_FIELDS, rec, obj=>{ if(isEdit) state.reviews[idx]={...rec,...obj}; else state.reviews.push(obj); persist(); render(); toast('已更新，等待保存'); }); }
 function openInsightForm(idx){ const isEdit=(idx!=null); const rec=isEdit?state.insights[idx]:{date:today(),source:'',insight:''};
-  openFormModal(isEdit?'编辑洞察':'新增洞察', INSIGHT_FIELDS, rec, obj=>{ if(isEdit) state.insights[idx]=obj; else state.insights.push(obj); persist(); render(); toast('已保存'); }); }
+  openFormModal(isEdit?'编辑洞察':'新增洞察', INSIGHT_FIELDS, rec, obj=>{ if(isEdit) state.insights[idx]={...rec,...obj}; else state.insights.push(obj); persist(); render(); toast('已更新，等待保存'); }); }
 function delItem(collection, idx){
   openModal('<h3>删除记录</h3><p style="color:var(--muted);font-size:13px">确定删除这条记录？</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doDelItem(\''+collection+'\','+idx+')">删除</button></div>');
 }
@@ -2037,7 +2090,7 @@ init();
 <script src="/static/plans.js?v=20261014-2"></script>
 <script src="/static/daily-learning.js?v=20261014-design2"></script>
 <script src="/static/reading.js?v=1"></script>
-<script src="/static/reflections.js?v=1"></script>
+<script src="/static/reflections.js?v=20261016-protection"></script>
 <script src="/static/learning-history.js?v=1"></script>
 <script src="/static/stocks.js?v=1"></script>
 </body>

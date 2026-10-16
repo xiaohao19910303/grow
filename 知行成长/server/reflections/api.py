@@ -98,6 +98,10 @@ def register(app, root, db):
     def versions(entry_id: str):
         return {'versions': store.versions(entry_id)}
 
+    @router.get('/{entry_id}/file-status')
+    def file_status(entry_id: str):
+        return store.mirror_status(entry_id)
+
     @router.post('/{entry_id}/archive')
     def archive(entry_id: str, body: Payload):
         return store.archive(entry_id, body.data.get('key', ''))

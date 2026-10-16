@@ -96,7 +96,10 @@
         <div class="ref-four" id="refFour"></div>
       </details>
       <div class="ref-err" id="refErr" role="alert"></div>
+      <div id="refConflict"></div>
       <div class="modal actions">
+        ${isEdit ? '<button class="btn" onclick="Reflections.reloadEditor()">下载当前草稿并重新读取</button>' : ''}
+        <button class="btn" onclick="Reflections.copyEditorText()">复制当前原文</button>
         <button class="btn" onclick="Reflections.closeEditor()">取消</button>
         <button class="btn primary" id="refSaveBtn" onclick="Reflections.saveEntry()">保存记录</button>
       </div>`;
@@ -192,9 +195,8 @@
         const msg = d.message || (r.status === 409 ? '记录已被更新，请重新查看。' : '保存失败，请重试。');
         errEl.textContent = msg;
         btn.disabled = false; btn.textContent = '保存记录';
-        if (r.status === 409) {
-          // 冲突：回到详情重新加载
-          await load();
+        if (r.status === 409 && d.error === 'external_change') {
+          await showFileConflict(editor.entryId);
         }
       } catch (e) {
         errEl.textContent = '保存失败 · 服务未连接，内容已保留。';
@@ -268,7 +270,9 @@
       <div class="ref-detail-raw">${esc(e.raw_text || '')}</div>
       ${sections ? '<h4 style="margin:16px 0 8px">本人采用的整理</h4>' + sections : ''}
       ${aiControls}
+      <div id="refConflict"></div>
       <div class="modal actions">
+        <button class="btn" onclick="Reflections.showFileConflict('${e.id}')">核对本地文件</button>
         <button class="btn" onclick="Reflections.exportOne('${e.id}')">导出</button>
         <button class="btn" onclick="closeModal()">关闭</button>
       </div>`;
@@ -404,6 +408,55 @@
     await assistSend(id);
   }
 
+  function downloadDraft(text, date) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url;
+    link.download = '未保存记录-' + date + '.txt'; link.click(); URL.revokeObjectURL(url);
+  }
+
+  async function copyEditorText() {
+    const text = document.getElementById('refRaw').value;
+    try { await navigator.clipboard.writeText(text); window.toast('已复制当前原文'); }
+    catch (e) { downloadDraft(text, editor.date); window.toast('已触发草稿下载，请确认浏览器保存结果'); }
+  }
+
+  async function reloadEditor() {
+    const id = editor && editor.entryId;
+    if (!id) return;
+    const raw = document.getElementById('refRaw').value;
+    downloadDraft(raw, editor.date);
+    const loaded = await load();
+    if (!editor || editor.entryId !== id || !document.getElementById('refRaw')) return;
+    if (document.getElementById('refRaw').value !== raw) {
+      window.toast('读取期间有新编辑，已保留；请先复制当前原文'); return;
+    }
+    if (loaded) openEditor(null, id);
+    else window.toast('读取失败，当前编辑内容仍保留');
+  }
+
+  async function showFileConflict(id) {
+    if (!id) return;
+    try {
+      const r = await fetch('/api/reflections/' + id + '/file-status');
+      const d = await r.json();
+      if (!r.ok) { window.toast(d.message || '文件核对失败'); return; }
+      let box = document.getElementById('refConflict');
+      if (!box) {
+        openModal('<h3>核对记录内容</h3><div id="refConflict"></div><button class="btn" onclick="closeModal()">关闭</button>');
+        box = document.getElementById('refConflict');
+      }
+      box.innerHTML = '<p role="status">' + (d.conflict ? '文件存在外部修改或已移走，系统不会自动覆盖。请先保留需要的内容，再人工核对。' : '文件与原保存内容一致。') + '</p>'
+        + '<label>原保存内容<textarea readonly rows="5">' + esc(d.saved_markdown) + '</textarea></label>'
+        + '<label>文件当前内容<textarea readonly rows="5">' + esc(d.file_markdown === null ? '文件不存在' : d.file_markdown) + '</textarea></label>';
+    } catch (e) { window.toast('无法读取文件，当前编辑内容仍保留'); }
+  }
+
+  async function mutationFailure(r, id, fallback) {
+    const d = await r.json().catch(() => ({}));
+    window.toast(d.message || fallback);
+    if (r.status === 409 && d.error === 'external_change') await showFileConflict(id);
+  }
+
   async function adoptSummary(id, attemptKey) {
     try {
       const r = await fetch('/api/reflections/' + id + '/adopt', {
@@ -411,7 +464,7 @@
       });
       const d = await r.json();
       if (r.ok) { await load(); window.toast('已保存整理'); viewEntry(id); }
-      else window.toast(d.message || '采用失败');
+      else { window.toast(d.message || '采用失败'); if (r.status === 409 && d.error === 'external_change') await showFileConflict(id); }
     } catch (e) { window.toast('采用失败'); }
   }
 
@@ -419,6 +472,7 @@
     try {
       const r = await fetch('/api/reflections/' + id + '/archive', { method: 'POST', headers: h(), body: JSON.stringify({ data: { key: uid() } }) });
       if (r.ok) { await load(); renderAll(); window.toast('已归档'); }
+      else await mutationFailure(r, id, '归档失败');
     } catch (e) { window.toast('归档失败'); }
   }
 
@@ -426,6 +480,7 @@
     try {
       const r = await fetch('/api/reflections/' + id + '/restore', { method: 'POST', headers: h(), body: JSON.stringify({ data: { key: uid() } }) });
       if (r.ok) { await load(); renderAll(); window.toast('已恢复'); }
+      else await mutationFailure(r, id, '恢复失败');
     } catch (e) { window.toast('恢复失败'); }
   }
 
@@ -447,7 +502,7 @@
 
   /* 暴露给 index.html 内联调用 */
   Object.assign(window.Reflections, {
-    load, renderDay, renderList, viewEntry,
+    load, renderDay, renderList, viewEntry, showFileConflict, copyEditorText, reloadEditor,
     assistOpen, assistSend, saveAnswers, organizeFromAnswered, adoptSummary,
     archiveEntry, restoreEntry, exportOne, renderAll,
     get entries() { return entries; },
