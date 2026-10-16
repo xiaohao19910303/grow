@@ -3,6 +3,7 @@ import asyncio
 import fcntl
 import json
 import uuid
+from contextlib import ExitStack
 from datetime import datetime, timedelta
 
 from copilot.core import encoded, digest, fail, now, Problem
@@ -112,13 +113,16 @@ class PlanGenerator:
 
     async def run(self, key):
         a=self.store.get('learning_ai_attempts',key)
-        gate=None
+        gate=ExitStack()
         c=config(self.store)
         a.update(model=c['model'], price_version=c['price_version'] or None)
         try:
-            gate=(self.store.runtime.parent/'.ai-generation.lock').open('a')
-            try:fcntl.flock(gate,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            except BlockingIOError:fail('busy','另一个生成任务正在运行。')
+            if getattr(self.store,'remote',False):
+                gate.enter_context(self.store.generation_gate())
+            else:
+                stream=gate.enter_context((self.store.runtime.parent/'.ai-generation.lock').open('a'))
+                try:fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                except BlockingIOError:fail('busy','另一个生成任务正在运行。')
             a.update(state='generating',phase='waiting',started_at=now());self.persist(a)
             from copilot.transport import qwen_stream
             done=False

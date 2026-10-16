@@ -154,6 +154,23 @@ class Plans:
         p = self.path(relative)
         return digest(p.read_bytes()) if p.exists() else None
 
+    def read_text(self, relative, ref=None):
+        return self.path(relative).read_text(encoding='utf-8')
+
+    def exists(self, relative):
+        return self.path(relative).exists()
+
+    def file_location(self, relative):
+        return str(self.path(relative))
+
+    def read_course(self, pid, number):
+        self.plan(pid)
+        lesson = next((x for x in self.lessons(pid) if x['lesson_no'] == number), None)
+        if not lesson: fail('not_found', '课程不存在。', 404)
+        base = self.base(pid)
+        return {'lesson': lesson, 'content': self.read_text(base+'/'+lesson['path']),
+                'sources': self.read_text(base+'/'+lesson['source'])}
+
     def initialize(self):
         if (self.runtime / 'restore-pending.json').exists():
             fail('restore_pending', '存在未完成的恢复，请先核对日志。', 503)
@@ -379,12 +396,12 @@ class Plans:
                         fail('conflict', '已发布课程必须完整保留，包括尚未学完的课。')
                 p['version'] += 1
                 for rel in d.get('overrides', {}):
-                    files[f'{self.base(pid)}/规划历史/外部修改-v{p["version"]:03d}.md'] = self.path(rel).read_text()
+                    files[f'{self.base(pid)}/规划历史/外部修改-v{p["version"]:03d}.md'] = self.read_text(rel)
             else:
                 prefix = 'plan-' + now()[:10].replace('-', '') + '-'
                 numbers = [int(p['id'].rsplit('-',1)[1]) for p in self.rows('learning_plans') if p['id'].startswith(prefix)]
                 pid = prefix + f'{max(numbers, default=0)+1:03d}'
-                if self.path(self.base(pid)).exists(): fail('conflict', '计划目录已存在，请检查未登记内容。')
+                if self.exists(self.base(pid)): fail('conflict', '计划目录已存在，请检查未登记内容。')
                 p = {'id': pid, 'version': 1, 'status': 'active', 'created_at': now(), 'hashes': {}}
                 files[f'{self.base(pid)}/学习记录.md'] = '# 学习记录\n\n## 个人笔记\n\n请在此保留自己的练习、疑问和记录。\n'
                 files[f'{self.base(pid)}/课程目录.md'] = '# 已发布课程\n\n| 课次 | 日期 | 课程 | 资料 |\n|---|---|---|---|\n'
@@ -425,8 +442,8 @@ class Plans:
         doc = self.version(pid)['document']
         if n > len(doc['lessons']): fail('conflict', '当前规划课程已生成完毕，请修订或新建计划。')
         rel = f'{self.base(pid)}/备课资料/第{n:03d}课.json'
-        if not self.path(rel).exists(): fail('sources', '请先准备备课资料。')
-        entries = sources(json.loads(self.path(rel).read_text()))
+        if not self.exists(rel): fail('sources', '请先准备备课资料。')
+        entries = sources(json.loads(self.read_text(rel)))
         return {'plan_id':pid, 'base_version':p['version'], 'lesson_no':n, 'date':now()[:10],
                 'brief':p['brief'], 'lesson':doc['lessons'][n-1], 'source_entries':entries,
                 'source_hash':self.hash(rel), 'previous_topics':[x['topic'] for x in lessons[-3:]]}
@@ -497,12 +514,12 @@ class Plans:
             if ctx['date']!=now()[:10]:fail('conflict','草稿日期已过期，请编辑为今天日期后保存。')
             title=re.sub(r'[^\w\u4e00-\u9fff-]+','-',ctx['lesson']['topic']).strip('-')[:60] or '课程'
             course=f'每日课程/{ctx["date"]}-第{n:03d}课-{title}.md'; source=f'参考资料/第{n:03d}课-参考资料.md';base=self.base(pid)
-            if self.path(base+'/'+course).exists() or self.path(base+'/'+source).exists():fail('conflict','课程或资料已存在。')
+            if self.exists(base+'/'+course) or self.exists(base+'/'+source):fail('conflict','课程或资料已存在。')
             files={base+'/'+course:d['content']+f'\n\n[参考资料](../{source})\n',
                    base+'/'+source:f'# 第{n:03d}课参考资料\n\n[对应课程](../{course})\n\n'+d['sources']}
             index=base+'/课程目录.md'
             topic=ctx['lesson']['topic'].replace('|','／').replace('\n',' ')
-            files[index]=self.path(index).read_text()+f'| {n:03d} | {ctx["date"]} | [{topic}]({course}) | [资料]({source}) |\n'
+            files[index]=self.read_text(index)+f'| {n:03d} | {ctx["date"]} | [{topic}]({course}) | [资料]({source}) |\n'
             p['hashes'].update({k:digest(v) for k,v in files.items()})
             lesson={'lesson_no':n,'topic':ctx['lesson']['topic'],'date':ctx['date'],'path':course,'source':source,
                     'version':ctx['base_version'],'learning_state':'unknown','learning_label':'待本人反馈'}
@@ -510,7 +527,7 @@ class Plans:
             return self.publish(key,request,files,[('INSERT INTO learning_lessons VALUES (?,?,?)',[pid,n,encoded(lesson)]),
                 ('UPDATE learning_plans SET data=? WHERE id=?',[encoded(p),pid]),
                 ('UPDATE learning_drafts SET data=? WHERE id=?',[encoded(d),did]),
-                self.family_sql(d,{'plan_id':pid,'lesson_no':n})],{'plan_id':pid,'lesson_no':n,'path':str(self.path(base+'/'+course))})
+                self.family_sql(d,{'plan_id':pid,'lesson_no':n})],{'plan_id':pid,'lesson_no':n,'path':self.file_location(base+'/'+course)})
 
     def feedback(self, pid, n, data, key):
         state=data.get('state')
@@ -528,7 +545,7 @@ class Plans:
             lesson.update(learning_state=state,learning_label='本人确认完成' if state=='completed' else '待本人反馈')
             feedback={'state':state,'comment':comment,'date':now()}
             rel=self.base(pid)+'/学习记录.md'
-            current=self.path(rel).read_text()
+            current=self.read_text(rel)
             updated=current+f'\n## 第{n:03d}课反馈 · {now()}\n\n{lesson["learning_label"]}\n\n{comment}\n'
             return self.publish(key,request,{rel:updated},[
                 ('UPDATE learning_lessons SET data=? WHERE plan_id=? AND lesson_no=?',[encoded(lesson),pid,n]),

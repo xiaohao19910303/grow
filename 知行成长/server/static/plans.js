@@ -25,6 +25,11 @@
     return status;
   }
   function markdown(parent,text){const p=node('div',undefined,'cp-reader');parent.append(p);window.renderLearningMarkdown(p,text);return p;}
+  function githubLink(parent,label,url){
+    if(!url)return;let parsed;try{parsed=new URL(url);}catch(_){return;}
+    if(parsed.protocol!=='https:'||parsed.hostname!=='github.com')return;
+    const a=node('a',label,'btn');a.href=parsed.href;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);
+  }
   function briefFields(parent,b={}) {
     const box=node('div',undefined,'plan-grid');parent.append(box);
     const fields={title:field(box,'学习方向',b.title),goal:field(box,'希望学会什么',b.goal),level:field(box,'当前基础',b.level||'零基础'),weeks:field(box,'周期（周）',b.weeks||8,'number'),sessions:field(box,'每周学习次数',b.sessions||5,'number'),minutes:field(box,'每次分钟数',b.minutes||20,'number')};
@@ -36,12 +41,17 @@
     const status=shell('学习计划');const turn=navigation;
     button(root,'创建学习计划',()=>create(),true);
     button(root,'检查未完成保存',async()=>{await api('/recover',{});toast('检查完成');await window.loadPlans();});
-    button(root,'完整学习备份',async()=>{
+    const backupButton=button(root,'完整学习备份',async()=>{
       if(!confirm('请先停止自动任务和外部编辑写入。已停止并准备备份全部学习模块与平台数据库？'))return;
       const d=await api('/backup',{writers_stopped:true});status.textContent='备份已保存：'+d.path;
     });
     try{
       const data=await api('');if(turn!==navigation)return;
+      if(data.storage==='github'){
+        backupButton.hidden=true;
+        root.append(node('p','正式课程保存在 GitHub；学习反馈保存在云端数据库。','desc'));
+      }
+      if(data.pending_publications?.length)root.append(node('p',`有 ${data.pending_publications.length} 项保存尚未完成。请点击“检查未完成保存”重试；草稿仍然保留。`,'desc'));
       status.textContent=data.generation_unavailable||('AI 模型：'+data.model+'；点击生成才会调用，可能产生费用。');
       const budget=node('details');budget.append(node('summary','每周总时间预算'));root.append(budget);
       budget.append(node('p',`已登记投入 ${data.budget.known_minutes} 分钟/周${data.budget.legacy_unknown?'；旧模块投入尚未登记':''}。新增计划默认不启用定时任务。`));
@@ -78,7 +88,7 @@
     const frozen=new Set(existing?.lessons.map(x=>x.lesson_no)||d.frozen_lessons||[]);
     button(root,d.id?'放弃修改并返回预览':'返回创建',()=>d.id?previewDraft(d.id):create(existing));
     const getBrief=briefFields(root,d.brief);const prereq=field(root,'先修说明',d.document.prerequisites,'textarea');
-    if(existing?.external.changed){const external=node('details');external.append(node('summary','本地规划存在外部修改，请核对'));markdown(external,existing.external.content);root.append(external);}
+    if(existing?.external.changed){const external=node('details');external.append(node('summary','规划文件存在外部修改，请核对'));markdown(external,existing.external.content);root.append(external);}
     const stageBox=node('section');root.append(stageBox);stageBox.append(node('h3','阶段目标'));const stages=[];
     const lessonBox=node('section');root.append(lessonBox);lessonBox.append(node('h3','逐课安排'));const editors=[];
     const mapping=node('p','','desc');root.append(mapping);
@@ -110,8 +120,8 @@
     const controls=node('div');root.append(controls);button(controls,'增加一课',()=>addLesson());button(controls,'移除最后一课',()=>{if(!editors.length||frozen.has(editors.length))throw new Error('不能删除已发布课次。');editors.pop().box.remove();});
     const getDoc=()=>({prerequisites:prereq.value,stages:stages.map(e=>({title:e.title.value,goal:e.goal.value})),lessons:editors.map((e,i)=>({number:i+1,...Object.fromEntries(['topic','goal','exercise','assessment','kind'].map(k=>[k,e[k].value])),stage:Number(e.stage.value),minutes:Number(e.minutes.value),requires:readRequires(e)}))});
     const initial=canonical({brief:getBrief(),document:getDoc()});dirtyCheck=()=>canonical({brief:getBrief(),document:getDoc()})!==initial;
-    const ack=existing?.external.changed?field(root,'已核对本地外部修改，允许导入并保留原文','','checkbox'):null;
-    button(root,'保存草稿并预览',async()=>{const turn=navigation;if(ack&&!ack.checked)throw new Error('请先核对本地外部修改。');const saved=await api('/drafts',{brief:getBrief(),document:getDoc(),plan_id:d.plan_id||null,base_version:d.base_version||0,external_hash:ack?existing.external.hash:null,...(d.id?{parent_draft_id:d.id,parent_hash:d.content_hash}:{})});if(turn===navigation){dirtyCheck=null;await previewDraft(saved.id);}else toast('草稿已保存，可从计划列表查看。');},true);
+    const ack=existing?.external.changed?field(root,'已核对规划文件的外部修改，允许导入并保留原文','','checkbox'):null;
+    button(root,'保存草稿并预览',async()=>{const turn=navigation;if(ack&&!ack.checked)throw new Error('请先核对规划文件的外部修改。');const saved=await api('/drafts',{brief:getBrief(),document:getDoc(),plan_id:d.plan_id||null,base_version:d.base_version||0,external_hash:ack?existing.external.hash:null,...(d.id?{parent_draft_id:d.id,parent_hash:d.content_hash}:{})});if(turn===navigation){dirtyCheck=null;await previewDraft(saved.id);}else toast('草稿已保存，可从计划列表查看。');},true);
   }
   async function detail(pid){
     const status=shell('计划详情');const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
@@ -120,7 +130,8 @@
     button(root,'修改显示名称',async()=>{const name=prompt('新的显示名称',data.plan.name);if(name){await api('/'+pid+'/metadata',{name,key:uuid()});await detail(pid);refresh();}});
     button(root,data.plan.status==='active'?'暂停计划':'恢复计划',async()=>{await api('/'+pid+'/metadata',{status:data.plan.status==='active'?'paused':'active',key:uuid()});await detail(pid);});
     const plan=node('details');plan.append(node('summary','查看当前规划'));root.append(plan);markdown(plan,data.external.content);
-    if(data.external.changed)root.append(node('p','本地规划文件已修改。请在“调整后续规划 → 手动编写规划”核对并导入。'));
+    githubLink(plan,'在 GitHub 打开规划',data.github_url);
+    if(data.external.changed)root.append(node('p','规划文件已被外部修改。请在“调整后续规划 → 手动编写规划”核对并导入。'));
     const versions=node('details');versions.append(node('summary','规划历史版本'));root.append(versions);for(const v of data.versions)versions.append(node('p',`v${v.version} · ${v.created_at} · ${v.brief.title} · ${v.document.lessons.length}课`));
     const next=data.lessons.length+1;root.append(node('h3',`下一课：第${next}课`));
     button(root,'准备本课资料',()=>sourceEditor(pid),true);
@@ -268,7 +279,7 @@
         try{result=await api('/drafts/'+id+'/adopt',{key:id+':adopt',expected_hash:d.content_hash,accept_over:false});}
         catch(e){if(!e.message.includes('预算')||!confirm(e.message+' 仍然采用并接受超额？'))throw e;result=await api('/drafts/'+id+'/adopt',{key:id+':over',expected_hash:d.content_hash,accept_over:true});}
       }else result=await api('/drafts/'+id+'/publish',{key:id+':publish',expected_hash:d.content_hash});
-      toast('已正式保存；学习状态仍待本人记录。');refresh();if(turn===navigation)await detail(result.plan_id);
+      toast(result.storage==='github'?'已提交 GitHub，可立即阅读；学习状态仍待本人记录。':'已正式保存；学习状态仍待本人记录。');refresh();if(turn===navigation)await detail(result.plan_id);
     },true);
   }
   function refineEditor(d){
@@ -310,7 +321,7 @@
   window.addEventListener('load',async()=>{if(location.hash.startsWith('#plans/'))goTab('plans');else try{const data=await api('');for(const a of data.attempts)if(['queued','generating'].includes(a.state))observe(a.id);}catch(_){/* The plans page offers a manual retry. */}});
   window.openPlanCourse=async(pid,n)=>{
     rememberLearningOrigin();goTab('reader',{reading:true});const reader=document.getElementById('dailyReader');reader.hidden=false;reader.replaceChildren(node('p','正在读取…'));
-    try{const d=await api('/'+pid+'/lessons/'+n);reader.replaceChildren();button(reader,'返回学习列表',returnFromLesson);markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);markdown(source,d.sources);
+    try{const d=await api('/'+pid+'/lessons/'+n);reader.replaceChildren();button(reader,'返回学习列表',returnFromLesson);githubLink(reader,'在 GitHub 打开课程',d.github_url);markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);githubLink(source,'在 GitHub 打开参考资料',d.sources_github_url);markdown(source,d.sources);
       const comment=field(reader,'本课反馈（可选，填写后保存；不会自动发送给AI）','','textarea');
       button(reader,'本人确认学完',async()=>{await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:comment.value});d.lesson.learning_state='completed';toast('已记录本人反馈');refresh();},true);
       button(reader,'保存反馈，暂不标记完成',async()=>{await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:d.lesson.learning_state,comment:comment.value});toast('反馈已保存');});
