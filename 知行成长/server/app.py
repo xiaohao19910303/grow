@@ -527,7 +527,10 @@ stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    return {"ok": True,
+            "revision": os.getenv('RENDER_GIT_COMMIT', 'local'),
+            "plan_storage": 'github' if getattr(plans_store, 'remote', False) else 'local',
+            "learning_plans_ready": plans_store.startup_error is None}
 
 
 @app.get("/api/data")

@@ -28,14 +28,18 @@ class CloudApplication(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {
                 'CLOUD_DEPLOY':'1', 'PLAN_CONTENT_BACKEND':'github', 'RUNTIME_ROOT':tmp+'/runtime',
-                'LEARN_ROOT':tmp+'/materials', 'APP_USERNAME':'owner', 'APP_PASSWORD':'CLOUD-TEST-PASSWORD-24-CHARACTERS'}), \
+                'LEARN_ROOT':tmp+'/materials', 'APP_USERNAME':'owner', 'APP_PASSWORD':'CLOUD-TEST-PASSWORD-24-CHARACTERS',
+                'RENDER_GIT_COMMIT':'test-deploy-revision'}), \
                 patch('db.connect', lambda *a, **kw: original(dsn+' options=-csearch_path='+schema)), \
                 patch('plans.api.make_store', side_effect=lambda root, runtime: GitHubPlans(root,runtime,
                     GitHubContent('owner/courses','main','TEST_ONLY_TOKEN',transport=httpx.MockTransport(repository)))):
                 dashboard = importlib.import_module('app')
                 dashboard.PENDING_SYNC_FILE = dashboard.DB_PATH/'no-pending-sync.json'
                 with TestClient(dashboard.app, base_url='https://cloud.example', client=('198.51.100.1',1234)) as client:
-                    self.assertEqual(client.get('/api/health').status_code,200)
+                    health=client.get('/api/health')
+                    self.assertEqual(health.status_code,200)
+                    self.assertEqual(health.json(),{'ok':True,'revision':'test-deploy-revision',
+                                                   'plan_storage':'github','learning_plans_ready':True})
                     self.assertEqual(client.get('/').status_code,401)
                     client.auth=('owner',os.environ['APP_PASSWORD'])
                     listing=client.get('/api/plans')
