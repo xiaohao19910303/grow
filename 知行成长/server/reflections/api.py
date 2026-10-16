@@ -21,6 +21,7 @@ class CreatePayload(BaseModel):
     prompt_kind: str = '自由记录'
     raw_text: str = Field(max_length=10000)
     guided_answers: dict = {}
+    tags: list[str] = []
     key: str = Field(min_length=8, max_length=160)
 
 
@@ -31,6 +32,7 @@ class UpdatePayload(BaseModel):
     prompt_kind: str = '自由记录'
     raw_text: str = Field(max_length=10000)
     guided_answers: dict = {}
+    tags: list[str] = []
     key: str = Field(min_length=8, max_length=160)
 
 

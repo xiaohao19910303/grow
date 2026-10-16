@@ -27,6 +27,7 @@ from predictions.api import register as register_predictions
 from behavior_report.api import register as register_behavior_report
 from knowledge.api import register as register_knowledge
 from reflections.api import register as register_reflections
+from stocks.api import register as register_stocks
 import asyncio
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -512,6 +513,12 @@ async def lifespan(app: FastAPI):
         reflections_store.startup_error = exc
         print('日常记录暂不可用，请检查磁盘或恢复日志。')
     try:
+        stocks_store.initialize()
+        stocks_store.startup_error = None
+    except (Problem, OSError) as exc:
+        stocks_store.startup_error = exc
+        print('股票复盘暂不可用，请检查磁盘或恢复日志。')
+    try:
         behavior_store.initialize()
         behavior_store.startup_error = None
     except Exception as exc:
@@ -558,6 +565,7 @@ error_store = register_errors(app, LEARN_ROOT, DB_PATH)
 prediction_stats = register_predictions(app, LEARN_ROOT, DB_PATH)
 behavior_report_store = register_behavior_report(app, LEARN_ROOT, DB_PATH)
 knowledge_graph_store = register_knowledge(app, LEARN_ROOT, DB_PATH)
+stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
 
 
 @app.get("/api/health")

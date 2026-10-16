@@ -1,0 +1,523 @@
+/* 股票复盘模块样式 - 优化版 */
+
+/* 使用系统变量，保持设计一致性 */
+.stocks-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* 统计卡片 - 使用系统卡片样式 */
+.stocks-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(20, 26, 51, 0.08);
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+.stat-value.profit {
+  color: var(--green);
+}
+
+.stat-value.loss {
+  color: var(--red);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* 操作栏 - 使用系统按钮样式 */
+.stocks-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.stocks-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+  white-space: nowrap;
+}
+
+.stocks-actions .btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.stocks-actions .btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.stocks-actions .btn.primary:hover {
+  background: #3d5ce8;
+  color: #fff;
+}
+
+/* 筛选器 - 使用系统 chip 样式 */
+.stocks-filter {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.15s;
+  background: #fff;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.filter-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-btn.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* 记录列表 */
+.stocks-list {
+  display: grid;
+  gap: 14px;
+}
+
+/* 股票卡片 - 使用系统卡片样式 */
+.stock-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.15s;
+}
+
+.stock-card:hover {
+  box-shadow: 0 4px 16px rgba(20, 26, 51, 0.08);
+}
+
+.stock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.stock-title {
+  font-size: 16px;
+  font-weight: 650;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.stock-code {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.stock-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.stock-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 操作标签 - 使用系统徽章样式 */
+.stock-action {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stock-action.buy {
+  background: #e8f7ec;
+  color: var(--green);
+}
+
+.stock-action.sell {
+  background: #fdeeee;
+  color: var(--red);
+}
+
+.stock-action.hold {
+  background: #fdf3e3;
+  color: var(--amber);
+}
+
+.stock-rationale {
+  font-size: 13px;
+  color: var(--text);
+  margin: 12px 0;
+  line-height: 1.6;
+  padding: 10px 12px;
+  background: #fafbfc;
+  border-radius: 8px;
+  border-left: 3px solid var(--primary);
+}
+
+.stock-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* 标签 - 使用系统徽章样式 */
+.tag {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.stock-outcome {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* 结果徽章 - 使用系统徽章样式 */
+.outcome-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.outcome-badge.pending {
+  background: #fdf3e3;
+  color: var(--amber);
+}
+
+.outcome-badge.success {
+  background: #e8f7ec;
+  color: var(--green);
+}
+
+.outcome-badge.failure {
+  background: #fdeeee;
+  color: var(--red);
+}
+
+.profit-loss {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 8px;
+  letter-spacing: -0.3px;
+}
+
+.profit-loss.positive {
+  color: var(--green);
+}
+
+.profit-loss.negative {
+  color: var(--red);
+}
+
+.stock-actions-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* 小按钮 - 使用系统图标按钮样式 */
+.btn-small {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  transition: 0.15s;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.btn-small:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.btn-small.primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.btn-small.primary:hover {
+  background: #3d5ce8;
+  color: #fff;
+}
+
+/* 表单 - 使用系统表单样式 */
+.stock-form {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+
+.form-title {
+  font-size: 16px;
+  font-weight: 650;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  transition: 0.15s;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.form-field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  justify-content: flex-end;
+}
+
+.form-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+
+.form-actions .btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.form-actions .btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.form-actions .btn.primary:hover {
+  background: #3d5ce8;
+  color: #fff;
+}
+
+/* 复盘表单 - 使用系统 note-card 样式 */
+.retrospective-form {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 16px;
+  box-shadow: var(--shadow);
+}
+
+.retrospective-form h4 {
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0 0 12px 0;
+  color: var(--text);
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 650;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.empty-state-description {
+  font-size: 13px;
+  margin-bottom: 20px;
+  color: var(--muted);
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .stocks-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .stocks-actions {
+    flex-direction: column;
+  }
+
+  .stocks-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .stock-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stock-meta {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 动画 */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .stock-card,
+  .btn,
+  .filter-btn,
+  .btn-small {
+    transition: none;
+  }
+}

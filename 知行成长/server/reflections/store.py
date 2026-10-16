@@ -41,6 +41,7 @@ def entry_path(entry_id, record_date):
 
 def render_markdown(entry):
     kind = entry.get('prompt_kind', '自由记录')
+    tags = entry.get('tags') or []
     lines = [
         f'# 日常记录',
         '',
@@ -48,6 +49,10 @@ def render_markdown(entry):
         f'- 日期：{entry["record_date"]}',
         f'- 方向：{kind}',
         f'- 版本：{entry["version"]}',
+    ]
+    if tags:
+        lines.append(f'- 标签：{", ".join(tags)}')
+    lines += [
         '',
         '## 记录',
         '',
@@ -297,6 +302,7 @@ class ReflectionsStore:
                 'prompt_kind': data.get('prompt_kind', '自由记录'),
                 'raw_text': data['raw_text'].strip(),
                 'guided_answers': data.get('guided_answers') or {},
+                'tags': data.get('tags') or [],
                 'adopted_summary': None, 'summary_basis_version': None,
                 'archived_at': None, 'created_at': now(), 'updated_at': now(),
                 'version': 1, 'path': entry_path(entry_id, record_date),
@@ -307,7 +313,8 @@ class ReflectionsStore:
             files = {entry['path']: {'old': None, 'content': md, 'new': digest(md)}}
             version = {'entry_id': entry_id, 'version': 1, 'record_date': record_date,
                        'prompt_kind': entry['prompt_kind'], 'raw_text': entry['raw_text'],
-                       'guided_answers': entry['guided_answers'], 'adopted_summary': None,
+                       'guided_answers': entry['guided_answers'], 'tags': entry['tags'],
+                       'adopted_summary': None,
                        'created_at': entry['created_at']}
             records = [
                 {'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
@@ -341,6 +348,7 @@ class ReflectionsStore:
                 prompt_kind=data.get('prompt_kind', '自由记录'),
                 raw_text=data['raw_text'].strip(),
                 guided_answers=data.get('guided_answers') or {},
+                tags=data.get('tags') or [],
                 updated_at=now(), version=new_version)
             # 采用整理后若原文变更，标记依据过期。
             if entry.get('adopted_summary') and entry['summary_basis_version'] is not None:
@@ -349,7 +357,8 @@ class ReflectionsStore:
             files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
             version = {'entry_id': entry_id, 'version': new_version, 'record_date': entry['record_date'],
                        'prompt_kind': entry['prompt_kind'], 'raw_text': entry['raw_text'],
-                       'guided_answers': entry['guided_answers'], 'adopted_summary': entry['adopted_summary'],
+                       'guided_answers': entry['guided_answers'], 'tags': entry['tags'],
+                       'adopted_summary': entry['adopted_summary'],
                        'created_at': now()}
             records = [
                 {'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',

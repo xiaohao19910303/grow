@@ -4,12 +4,70 @@
   let modules = [], errors = [], loaded = false, generation = 0, reading = 0;
   const root = document.getElementById('dailyLearning');
   const reader = document.getElementById('dailyReader');
+
+  // 自动学习时长追踪
+  let learningStartTime = null;
+  let currentLessonNo = null;
+  let elapsedTime = 0; // 已累积的时间（秒）
+  let timerInterval = null;
+
   const node = (tag, text, cls) => {
     const element = document.createElement(tag);
     if (text !== undefined) element.textContent = text;
     if (cls) element.className = cls;
     return element;
   };
+
+  // 开始追踪学习时间
+  function startLearningTimer(lessonNo) {
+    if (currentLessonNo === lessonNo && timerInterval) {
+      return; // 已经在追踪同一课程
+    }
+
+    stopLearningTimer(); // 停止之前的追踪
+
+    currentLessonNo = lessonNo;
+    learningStartTime = Date.now();
+    elapsedTime = 0;
+
+    // 每秒更新一次显示
+    timerInterval = setInterval(() => {
+      elapsedTime = Math.floor((Date.now() - learningStartTime) / 1000);
+      updateTimerDisplay();
+    }, 1000);
+
+    updateTimerDisplay();
+  }
+
+  // 停止追踪学习时间
+  function stopLearningTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    learningStartTime = null;
+    elapsedTime = 0;
+    updateTimerDisplay();
+  }
+
+  // 获取当前学习时长
+  function getElapsedTime() {
+    if (learningStartTime) {
+      return Math.floor((Date.now() - learningStartTime) / 1000);
+    }
+    return elapsedTime;
+  }
+
+  // 更新计时器显示
+  function updateTimerDisplay() {
+    const timerEl = document.getElementById('learningTimer');
+    if (timerEl) {
+      const seconds = getElapsedTime();
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      timerEl.textContent = `${minutes}:${String(secs).padStart(2, '0')}`;
+    }
+  }
   async function get(path) {
     const response = await fetch(path, {cache: 'no-store'});
     if (!response.ok) throw new Error('读取失败，请刷新；若刚升级页面，请重启本地服务。');
@@ -35,6 +93,8 @@
     rememberLearningOrigin();
     if (module.id === 'renzhi') {
       await window.openCopilotLesson(lesson.lesson_no);
+      // 开始自动追踪学习时间
+      startLearningTimer(lesson.lesson_no);
       return;
     }
     const request = ++reading;
@@ -45,7 +105,20 @@
       const data = await get('/api/study-materials/' + module.id + '/' + encodeURIComponent(lesson.filename));
       if (request !== reading) return;
       reader.replaceChildren();
-      button(reader, '返回学习列表', () => { ++reading; returnFromLesson(); });
+
+      // 添加计时器显示
+      const timerContainer = node('div', undefined, 'learning-timer-container');
+      timerContainer.innerHTML = `
+        <span style="color:var(--muted);font-size:12px;">学习时长：</span>
+        <span id="learningTimer" style="font-weight:600;color:var(--primary);font-size:14px;">0:00</span>
+      `;
+      timerContainer.style.cssText = 'margin:12px 0;padding:8px 12px;background:var(--primary-soft);border-radius:8px;display:inline-flex;align-items:center;gap:8px;';
+      reader.append(timerContainer);
+
+      // 开始自动追踪学习时间
+      startLearningTimer(lesson.lesson_no);
+
+      button(reader, '返回学习列表', () => { ++reading; stopLearningTimer(); returnFromLesson(); });
       reader.append(node('h2', lesson.topic));
       reader.append(node('p', '阅读不会自动标记学完；本模块的完成情况以本地学习记录中的本人反馈为准。', 'desc'));
       const content = node('div'); reader.append(content);
@@ -53,6 +126,7 @@
       reader.scrollIntoView({behavior: 'smooth', block: 'start'});
     } catch (error) {
       if (request !== reading) return;
+      stopLearningTimer();
       reader.replaceChildren(node('p', error.message));
       button(reader, '返回学习列表', () => { ++reading; returnFromLesson(); });
       button(reader, '重试', () => read(module, lesson));
@@ -132,12 +206,15 @@
 
   async function quickComplete(module, lesson) {
     try {
+      // 使用自动追踪的学习时长，如果没有则默认为0
+      const timeSpent = getElapsedTime();
       await fetch('/api/copilot/lessons/' + lesson.lesson_no + '/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Copilot-Request': '1' },
-        body: JSON.stringify({ time_spent_seconds: 0, version: lesson.version, key: crypto.randomUUID() })
+        body: JSON.stringify({ time_spent_seconds: timeSpent, version: lesson.version, key: crypto.randomUUID() })
       });
-      toast('课程已标记完成');
+      stopLearningTimer();
+      toast(`课程已标记完成（学习时长：${Math.round(timeSpent / 60)} 分钟）`);
       await window.loadDailyLearning();
     } catch (e) {
       alert('标记失败：' + e.message);
