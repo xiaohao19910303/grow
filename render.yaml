@@ -9,4 +9,6 @@ services:
         value: postgresql://postgres:SHUAIge.zhixingchengzhang@db.cafdvxlzmqavmvospgvd.supabase.co:5432/postgres
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: CLOUD_DEPLOY
+        value: "1"
     autoDeploy: true

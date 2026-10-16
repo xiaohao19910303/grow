@@ -97,12 +97,16 @@ def register(app: FastAPI, root, db):
     @app.middleware('http')
     async def local_access(request: Request, call_next):
         hostname = request.url.hostname or ''
-        allowed = {'localhost', '127.0.0.1', '::1'}
-        lan_hosts = {h.strip() for h in os.getenv('COPILOT_ALLOWED_HOSTS', '').split(',') if h.strip()}
-        lan_token = os.getenv('COPILOT_ACCESS_TOKEN', '')
-        lan = os.getenv('COPILOT_LAN', '') == '1'
-        if hostname not in allowed and not (lan and hostname in lan_hosts and len(lan_token) >= 24):
-            return JSONResponse({'message': '此访问地址未获允许。'}, status_code=403)
+        # 云端部署时允许所有主机（通过环境变量控制）
+        if os.getenv('CLOUD_DEPLOY', '') == '1':
+            pass  # 云端部署，跳过主机检查
+        else:
+            allowed = {'localhost', '127.0.0.1', '::1'}
+            lan_hosts = {h.strip() for h in os.getenv('COPILOT_ALLOWED_HOSTS', '').split(',') if h.strip()}
+            lan_token = os.getenv('COPILOT_ACCESS_TOKEN', '')
+            lan = os.getenv('COPILOT_LAN', '') == '1'
+            if hostname not in allowed and not (lan and hostname in lan_hosts and len(lan_token) >= 24):
+                return JSONResponse({'message': '此访问地址未获允许。'}, status_code=403)
         if request.url.path.startswith('/api/'):
             peer = request.client.host if request.client else ''
             if peer not in ('127.0.0.1', '::1', 'testclient'):
