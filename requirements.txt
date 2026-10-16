@@ -1,12 +1,12 @@
 # 知行成长 - Python 依赖（根目录版本，供 Render 使用）
 
 # Web 框架
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
 
 # PostgreSQL 数据库（替代 SQLite）
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9.10
 
 # 其他依赖
-python-multipart==0.0.6
-pydantic==2.5.0
+python-multipart>=0.0.12
+pydantic>=2.10.0
