@@ -212,7 +212,7 @@
     }catch(e){if(watching.get(id)!==turn)return;if(turn===revision)status.textContent='暂时无法读取，正在重新连接；不会重复搜集。';delay=Math.min(delay*2,15000);setTimeout(poll,delay);}}
     await poll();
   }
-  async function read(id){const status=shell('文章阅读','article',id);const turn=revision;button(root,'返回今日阅读',window.loadReading);const d=await api('/articles/'+id);if(turn!==revision)return;const a=d.article;root.querySelector('h2').textContent=a.zh_title||a.title;status.textContent=`${a.source} · ${a.language==='zh'?'中文':'英文'} · ${a.access}`;
+  async function read(id){const status=shell('文章阅读','article',id);const turn=revision;button(root,'返回今日阅读',window.loadReading);button(root,'我的生词本',()=>vocabPage(id));const d=await api('/articles/'+id);if(turn!==revision)return;const a=d.article;root.querySelector('h2').textContent=a.zh_title||a.title;status.textContent=`${a.source} · ${a.language==='zh'?'中文':'英文'} · ${a.access}`;
 
     // 操作按钮区
     const actions=node('div',undefined,'reading-actions');root.append(actions);
@@ -220,113 +220,257 @@
     // 收藏、稍后阅读、完成状态
     for(const [key,label] of [['bookmarked',a.bookmarked?'取消收藏':'收藏'],['read_later',a.read_later?'移出稍后阅读':'稍后阅读'],['read',a.read?'改为尚未读完':'本人确认读完']])button(actions,label,async()=>{await api('/articles/'+id+'/personal',{[key]:!a[key]});a[key]=!a[key];toast('阅读状态已保存，笔记输入保留。');const b=actions.querySelectorAll('button');const index=['bookmarked','read_later','read'].indexOf(key);b[index].textContent=key==='bookmarked'?(a[key]?'取消收藏':'收藏'):key==='read_later'?(a[key]?'移出稍后阅读':'稍后阅读'):(a[key]?'改为尚未读完':'本人确认读完');});
 
-    // 本地文章内容展示
-    const contentBox=node('section',undefined,'article-content-box');root.append(contentBox);
+    // Five-view tabs
+    const tabBox=node('div',undefined,'reading-tabs');root.append(tabBox);
+    const views=['original','bilingual','summary','english','notes'];
+    const viewLabels={original:'原文',bilingual:'双语',summary:'总结',english:'英语解析',notes:'我的笔记'};
+    let currentView='original';
+    const viewContents={};
+    for(const v of views){const btn=node('button',viewLabels[v],'btn'+(v===currentView?' primary':''));btn.type='button';btn.onclick=()=>{currentView=v;for(const v2 of views){viewContents[v2].style.display=v2===v?'':'none';tabBox.querySelectorAll('button')[views.indexOf(v2)].className='btn'+(v2===v?' primary':'');}};tabBox.append(btn);}
 
+    // Original view
+    const originalView=node('section',undefined,'article-content-box');root.append(originalView);viewContents.original=originalView;
     if(d.full_text){
-      // 显示完整文章
-      contentBox.append(node('h3','完整文章'));
+      originalView.append(node('h3','完整文章'));
       const contentDiv=node('div',undefined,'article-full-content');
       markdown(contentDiv,d.full_text);
-      contentBox.append(contentDiv);
+      originalView.append(contentDiv);
+      // Vocabulary selection
+      setupVocabSelection(contentDiv,id,a);
     } else {
-      // 没有完整文章，提供获取按钮
-      contentBox.append(node('p','本文尚未保存完整内容。点击下方按钮获取并保存到本地。','desc'));
-      button(contentBox,'获取并保存完整文章',async()=>{
+      originalView.append(node('p','本文尚未保存完整内容。点击下方按钮获取并保存到本地。','desc'));
+      button(originalView,'获取并保存完整文章',async()=>{
         const j=await api('/articles/'+id+'/fetch_full',{key:crypto.randomUUID()});
         toast('正在获取文章...');
         await watch(j.id);
-        // 重新加载文章
         const new_d=await api('/articles/'+id);
         if(new_d.full_text){
-          contentBox.replaceChildren();
-          contentBox.append(node('h3','完整文章'));
+          originalView.replaceChildren();
+          originalView.append(node('h3','完整文章'));
           const contentDiv=node('div',undefined,'article-full-content');
           markdown(contentDiv,new_d.full_text);
-          contentBox.append(contentDiv);
+          originalView.append(contentDiv);
+          setupVocabSelection(contentDiv,id,a);
         }
       },true);
     }
 
-    // 摘要和总结
-    const summaryBox=node('section',undefined,'article-summary-box');root.append(summaryBox);
-    summaryBox.append(node('h3','内容总结'));
+    // Bilingual view
+    const bilingualView=node('section',undefined,'article-content-box');root.append(bilingualView);viewContents.bilingual=bilingualView;
+    bilingualView.style.display='none';
+    bilingualView.append(node('h3','双语对照'));
+    if(d.full_text){
+      const drafts=d.article.translation_drafts||{};
+      if(Object.keys(drafts).length){
+        bilingualView.append(node('p','已有翻译草稿，可以逐段查看和采用。','desc'));
+        const draftList=node('div',undefined,'translation-drafts');
+        for(const [pid,draft] of Object.entries(drafts)){
+          const row=node('div',undefined,'translation-row');
+          row.append(node('p',`段落 ${pid}`,'desc'));
+          row.append(node('p',draft.text));
+          if(draft.adopted)row.append(node('span','✓ 已采用','reading-tag'));
+          else button(row,'采用',async()=>{await api('/articles/'+id+'/translation/adopt',{paragraph_id:pid});toast('已采用');await read(id);});
+          draftList.append(row);
+        }
+        bilingualView.append(draftList);
+      } else {
+        bilingualView.append(node('p','尚无翻译草稿。双语翻译功能正在开发中，可先阅读原文或生成总结。','desc'));
+        // Show original text with paragraph numbers for reference
+        const paraDiv=node('div',undefined,'article-full-content');
+        const paragraphs=d.full_text.split('\n\n').filter(Boolean);
+        for(let i=0;i<paragraphs.length;i++){
+          const pBox=node('div',undefined,'bilingual-paragraph');
+          pBox.append(node('span',`[${i+1}]`,'para-num'));
+          const pContent=node('span');markdown(pContent,paragraphs[i]);
+          pBox.append(pContent);
+          paraDiv.append(pBox);
+        }
+        bilingualView.append(paraDiv);
+      }
+    } else {
+      bilingualView.append(node('p','请先获取文章完整内容。','desc'));
+    }
+
+    // Summary view
+    const summaryView=node('section',undefined,'article-summary-box');root.append(summaryView);viewContents.summary=summaryView;
+    summaryView.style.display='none';
+    summaryView.append(node('h3','内容总结'));
+    // Draft status
+    const summaryDraft=d.article.summary_draft;
+    if(summaryDraft&&!summaryDraft.adopted){
+      const draftBanner=node('div',undefined,'reading-warning');
+      draftBanner.append(node('p',`有未采用的摘要草稿（版本 ${summaryDraft.version}）。`));
+      button(draftBanner,'采用草稿',async()=>{await api('/articles/'+id+'/summary-draft/adopt');toast('已采用');await read(id);});
+      summaryView.append(draftBanner);
+    }
     if(d.summary){
       const summaryDiv=node('div',undefined,'article-summary');
       markdown(summaryDiv,d.summary);
-      summaryBox.append(summaryDiv);
+      summaryView.append(summaryDiv);
     } else {
-      summaryBox.append(node('p','暂无总结。点击下方按钮生成中文总结。','desc'));
+      summaryView.append(node('p','暂无总结。点击下方按钮生成中文总结。','desc'));
     }
-    const summaryBtnBox=node('div',undefined,'summary-actions');summaryBox.append(summaryBtnBox);
+    const summaryBtnBox=node('div',undefined,'summary-actions');summaryView.append(summaryBtnBox);
     button(summaryBtnBox,'生成/更新中文总结',async()=>{
       const j=await api('/articles/'+id+'/summary',{key:crypto.randomUUID()});
       await watch(j.id);
       const new_d=await api('/articles/'+id);
       if(new_d.summary){
-        summaryBox.querySelector('.article-summary')?.remove();
+        summaryView.querySelector('.article-summary')?.remove();
         const summaryDiv=node('div',undefined,'article-summary');
         markdown(summaryDiv,new_d.summary);
-        summaryBox.insertBefore(summaryDiv,summaryBtnBox);
+        summaryView.insertBefore(summaryDiv,summaryBtnBox);
       }
     },true);
 
-    // 英语学习（仅英文文章）
+    // English view
+    const englishView=node('section',undefined,'article-english-box');root.append(englishView);viewContents.english=englishView;
+    englishView.style.display='none';
+    englishView.append(node('h3','英语学习'));
+    const englishDraft=d.article.english_draft;
+    if(englishDraft&&!englishDraft.adopted){
+      const draftBanner=node('div',undefined,'reading-warning');
+      draftBanner.append(node('p',`有未采用的英语学习草稿（版本 ${englishDraft.version}）。`));
+      button(draftBanner,'采用草稿',async()=>{await api('/articles/'+id+'/english-draft/adopt');toast('已采用');await read(id);});
+      englishView.append(draftBanner);
+    }
     if(a.language==='en'){
-      const englishBox=node('section',undefined,'article-english-box');root.append(englishBox);
-      englishBox.append(node('h3','英语学习'));
       if(d.english_learning){
         const englishDiv=node('div',undefined,'article-english');
         markdown(englishDiv,d.english_learning);
-        englishBox.append(englishDiv);
+        englishView.append(englishDiv);
       } else {
-        englishBox.append(node('p','暂无英语学习材料。点击下方按钮生成单词解释、语法分析和翻译。','desc'));
+        englishView.append(node('p','暂无英语学习材料。点击下方按钮生成单词解释、语法分析和翻译。','desc'));
       }
-      const englishBtnBox=node('div',undefined,'english-actions');englishBox.append(englishBtnBox);
+      const englishBtnBox=node('div',undefined,'english-actions');englishView.append(englishBtnBox);
       button(englishBtnBox,'生成/更新英语学习材料',async()=>{
         const j=await api('/articles/'+id+'/english',{key:crypto.randomUUID()});
         await watch(j.id);
         const new_d=await api('/articles/'+id);
         if(new_d.english_learning){
-          englishBox.querySelector('.article-english')?.remove();
+          englishView.querySelector('.article-english')?.remove();
           const englishDiv=node('div',undefined,'article-english');
           markdown(englishDiv,new_d.english_learning);
-          englishBox.insertBefore(englishDiv,englishBtnBox);
+          englishView.insertBefore(englishDiv,englishBtnBox);
         }
       },true);
+    } else {
+      englishView.append(node('p','本文非英文，英语学习材料不适用。','desc'));
     }
 
+    // Notes view
+    const notesView=node('section',undefined,'article-guide-box');root.append(notesView);viewContents.notes=notesView;
+    notesView.style.display='none';
     // AI导读
-    const guideBox=node('section',undefined,'article-guide-box');root.append(guideBox);
-    guideBox.append(node('h3','AI导读与解读'));
+    notesView.append(node('h3','AI导读与解读'));
     if(d.guide&&d.guide!=='导读文件缺失，请核对本地目录。'){
       const guideDiv=node('div',undefined,'article-guide');
       markdown(guideDiv,d.guide);
-      guideBox.append(guideDiv);
+      notesView.append(guideDiv);
     } else {
-      guideBox.append(node('p','暂无AI导读。点击下方按钮生成AI导读，包含核心观点分析和我的理解。','desc'));
+      notesView.append(node('p','暂无AI导读。点击下方按钮生成AI导读，包含核心观点分析和我的理解。','desc'));
     }
-    const guideBtnBox=node('div',undefined,'guide-actions');guideBox.append(guideBtnBox);
-    guideBox.append(node('p','将发送本篇文章的标题、来源和内容给已配置模型。本次调用可能产生费用。','desc'));
+    const guideBtnBox=node('div',undefined,'guide-actions');notesView.append(guideBtnBox);
+    notesView.append(node('p','将发送本篇文章的标题、来源和内容给已配置模型。本次调用可能产生费用。','desc'));
     button(guideBtnBox,'生成/更新AI导读',async()=>{
       if(dirty?.())throw new Error('请先保存笔记，再生成导读。');
       const j=await api('/articles/'+id+'/guide',{key:crypto.randomUUID()});
       await watch(j.id);
       const new_d=await api('/articles/'+id);
       if(new_d.guide&&new_d.guide!=='导读文件缺失，请核对本地目录。'){
-        guideBox.querySelector('.article-guide')?.remove();
+        notesView.querySelector('.article-guide')?.remove();
         const guideDiv=node('div',undefined,'article-guide');
         markdown(guideDiv,new_d.guide);
-        guideBox.insertBefore(guideDiv,guideBtnBox);
+        notesView.insertBefore(guideDiv,guideBtnBox);
       }
     },true);
 
     // 个人笔记
-    root.append(node('h3','我的思考与笔记'));
-    const notes=field(root,'',d.note.text,'textarea');notes.rows=7;notes.placeholder='哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...';dirty=()=>notes.value!==d.note.text;
-    button(root,'保存笔记',async()=>{const submitted=notes.value;const saved=await api('/articles/'+id+'/personal',{note:submitted,note_hash:d.note.hash});d.note.text=submitted;d.note.hash=saved.note_hash;toast('笔记已保存到本地');},true);
+    notesView.append(node('h3','我的思考与笔记'));
+    const notes=field(notesView,'',d.note.text,'textarea');notes.rows=7;notes.placeholder='哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...';dirty=()=>notes.value!==d.note.text;
+    button(notesView,'保存笔记',async()=>{const submitted=notes.value;const saved=await api('/articles/'+id+'/personal',{note:submitted,note_hash:d.note.hash});d.note.text=submitted;d.note.hash=saved.note_hash;toast('笔记已保存到本地');},true);
 
     root.append(node('p','本地资料：'+d.path,'desc'));
+  }
+  function setupVocabSelection(container,articleId,article){
+    container.addEventListener('mouseup',async()=>{
+      const sel=window.getSelection();
+      const text=sel?.toString().trim();
+      if(!text||text.length>50)return;
+      // Show a floating "加入生词" button
+      const existing=document.getElementById('vocab-add-float');
+      if(existing)existing.remove();
+      const rect=sel.getRangeAt(0).getBoundingClientRect();
+      const btn=node('button','加入生词','btn primary');
+      btn.id='vocab-add-float';
+      btn.style.cssText=`position:fixed;left:${rect.right+8}px;top:${rect.top}px;z-index:1000;font-size:12px;padding:4px 8px`;
+      btn.onclick=async()=>{
+        try{
+          const sent=sel.anchorNode?.parentElement?.closest('p')?.textContent?.slice(0,200)||text;
+          await api('/vocabulary',{article_id:articleId,word:text,context_sentence:sent});
+          toast(`已加入生词：${text.slice(0,20)}`);
+          btn.remove();
+        }catch(e){toast(e.message);}
+      };
+      document.body.append(btn);
+      setTimeout(()=>{document.addEventListener('mousedown',function rm(e){if(e.target!==btn){btn.remove();document.removeEventListener('mousedown',rm);}},{once:true});},100);
+    });
+  }
+  async function vocabPage(articleId){
+    const status=shell('我的生词本');const turn=revision;
+    button(root,'返回今日阅读',window.loadReading);
+    const stats=await api('/vocabulary/stats'+(articleId?'?article_id='+articleId:''));
+    const statsBox=node('div',undefined,'reading-banner');root.append(statsBox);
+    statsBox.append(node('p',`总计 ${stats.total} 个 · 活跃 ${stats.active} · 待复习 ${stats.due} · 已暂停 ${stats.paused} · 已归档 ${stats.archived}`));
+    const filterBox=node('div',undefined,'reading-actions');root.append(filterBox);
+    let includeArchived=false,includePaused=true;
+    const archBtn=node('button','显示已归档','btn');archBtn.type='button';
+    archBtn.onclick=()=>{includeArchived=!includeArchived;archBtn.className='btn'+(includeArchived?' primary':'');refresh();};
+    filterBox.append(archBtn);
+    const list=node('section');root.append(list);
+    async function refresh(){
+      const params=new URLSearchParams();
+      if(articleId)params.set('article_id',articleId);
+      if(includeArchived)params.set('include_archived','true');
+      if(!includePaused)params.set('include_paused','false');
+      const items=await api('/vocabulary?'+params.toString());
+      list.replaceChildren();
+      if(!items.length){list.append(node('p','还没有生词。阅读时选中单词可快速加入。','desc'));return;}
+      for(const v of items){
+        const row=node('div',undefined,'vocab-row');
+        row.append(node('strong',v.word));
+        if(v.part_of_speech)row.append(node('span',` (${v.part_of_speech})`,'desc'));
+        if(v.contextual_meaning)row.append(node('p',v.contextual_meaning));
+        if(v.context_sentence)row.append(node('p',`原文：${v.context_sentence}`,'desc'));
+        row.append(node('p',`步骤 ${v.step} · 下次复习 ${v.next_review}${v.paused?' · 已暂停':''}${v.archived?' · 已归档':''}`,'desc'));
+        const actions=node('div',undefined,'reading-actions');
+        if(v.paused)button(actions,'取消暂停',async()=>{await api('/vocabulary/'+v.id+'/pause',{paused:false});await refresh();});
+        else button(actions,'暂停',async()=>{await api('/vocabulary/'+v.id+'/pause',{paused:true});await refresh();});
+        if(v.archived)button(actions,'恢复',async()=>{await api('/vocabulary/'+v.id+'/archive',{archived:false});await refresh();});
+        else button(actions,'归档',async()=>{await api('/vocabulary/'+v.id+'/archive',{archived:true});await refresh();});
+        button(actions,'删除',async()=>{if(confirm('确定删除这个生词？所有复习记录也会删除。')){await api('/vocabulary/'+v.id,undefined);await refresh();}});
+        row.append(actions);
+        list.append(row);
+      }
+    }
+    await refresh();
+    // Due vocabulary section
+    const due=await api('/vocabulary/due'+(articleId?'?article_id='+articleId:''));
+    if(due.length){
+      root.append(node('h3','待复习'));
+      const dueList=node('section');root.append(dueList);
+      for(const v of due){
+        const row=node('div',undefined,'vocab-row');
+        row.append(node('strong',v.word),node('p',`步骤 ${v.step} · 到期 ${v.next_review}`,'desc'));
+        if(v.contextual_meaning)row.append(node('p',v.contextual_meaning));
+        const reviewBox=node('div',undefined,'reading-actions');
+        button(reviewBox,'忘了',async()=>{await api('/vocabulary/'+v.id+'/review',{feedback:'again'});toast('已重置');await refresh();await vocabPage(articleId);});
+        button(reviewBox,'模糊',async()=>{await api('/vocabulary/'+v.id+'/review',{feedback:'hard'});toast('已记录');await refresh();await vocabPage(articleId);});
+        button(reviewBox,'记得',async()=>{await api('/vocabulary/'+v.id+'/review',{feedback:'good'});toast('已记录');await refresh();await vocabPage(articleId);},true);
+        row.append(reviewBox);
+        dueList.append(row);
+      }
+    }
   }
   window.enterReading=()=>{const m=location.hash.match(/^#reading\/(job|article)\/([a-zA-Z0-9-]+)$/);return m?(m[1]==='job'?watch(m[2]):read(m[2])):window.loadReading();};
   window.addEventListener('load',()=>{if(location.hash.startsWith('#reading/'))goTab('reading');});

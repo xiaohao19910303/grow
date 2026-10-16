@@ -42,6 +42,25 @@ class ReadingStore(Plans):
                 from plans.backup import database_snapshot
                 database_snapshot(self,self.runtime/('before-reading-'+uuid.uuid4().hex+'.db'))
             with self.conn() as c:c.execute('CREATE TABLE IF NOT EXISTS reading_records (id TEXT PRIMARY KEY,data TEXT NOT NULL)')
+            # Phase 2: vocabulary and review tables
+            with self.conn() as c:
+                c.execute('''CREATE TABLE IF NOT EXISTS reading_vocabulary (
+                    id TEXT PRIMARY KEY, word TEXT NOT NULL, normalized TEXT NOT NULL,
+                    article_id TEXT, source_version INTEGER DEFAULT 1,
+                    context_sentence TEXT, contextual_meaning TEXT,
+                    part_of_speech TEXT, pronunciation TEXT,
+                    step INTEGER DEFAULT 0, next_review TEXT,
+                    paused INTEGER DEFAULT 0, archived INTEGER DEFAULT 0,
+                    created_at TEXT, updated_at TEXT, data TEXT NOT NULL DEFAULT '{}')''')
+                c.execute('CREATE INDEX IF NOT EXISTS idx_vocab_word ON reading_vocabulary(normalized)')
+                c.execute('CREATE INDEX IF NOT EXISTS idx_vocab_review ON reading_vocabulary(next_review) WHERE paused=0 AND archived=0')
+                c.execute('''CREATE TABLE IF NOT EXISTS reading_reviews (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    vocab_id TEXT NOT NULL, feedback TEXT NOT NULL,
+                    step_before INTEGER, step_after INTEGER,
+                    reviewed_at TEXT,
+                    FOREIGN KEY (vocab_id) REFERENCES reading_vocabulary(id))''')
+                c.execute('CREATE INDEX IF NOT EXISTS idx_review_vocab ON reading_reviews(vocab_id)')
             self.recover_exports()
             for job in self.jobs():
                 if job['state'] in ('queued','running'):
@@ -383,6 +402,150 @@ class ReadingStore(Plans):
             a['hashes']={rel:digest(files[rel]) for rel in files}
             self.export(files,[a],{rel:None for rel in files})
             return a
+    # Phase 2: translation drafts, summary/english drafts, vocabulary, review
+    REVIEW_INTERVALS=[1,3,7,14,30]
+    def _normalize_word(self,word):
+        if not isinstance(word,str):fail('invalid','词条必须是字符串。',422)
+        n=word.strip().lower()
+        if not n:fail('invalid','词条不能为空。',422)
+        return n
+    def add_vocabulary(self,article_id,word,context_sentence=None,contextual_meaning=None,part_of_speech=None,pronunciation=None,source_version=1):
+        normalized=self._normalize_word(word)
+        vid='vocab-'+uuid.uuid4().hex[:12]
+        now_str=now()
+        from datetime import datetime,timedelta
+        next_review=(datetime.now()+timedelta(days=1)).strftime('%Y-%m-%d')
+        with self.lock():
+            with self.conn() as c:
+                if c.execute('SELECT id FROM reading_vocabulary WHERE normalized=? AND article_id=?',(normalized,article_id)).fetchone():
+                    fail('conflict','该词条已存在。',409)
+                c.execute('''INSERT INTO reading_vocabulary
+                    (id,word,normalized,article_id,source_version,context_sentence,contextual_meaning,part_of_speech,pronunciation,step,next_review,created_at,updated_at,data)
+                    VALUES (?,?,?,?,?,?,?,?,?,0,?,?,?,'{}')''',
+                    (vid,word,normalized,article_id,source_version,context_sentence,contextual_meaning,part_of_speech,pronunciation,next_review,now_str,now_str))
+        return self.get_vocabulary(vid)
+    def get_vocabulary(self,vid):
+        with self.conn() as c:
+            r=c.execute('''SELECT id,word,normalized,article_id,source_version,context_sentence,contextual_meaning,part_of_speech,pronunciation,step,next_review,paused,archived,created_at,updated_at,data
+                FROM reading_vocabulary WHERE id=?''',(vid,)).fetchone()
+        if not r:fail('not_found','词条不存在。',404)
+        return {'id':r[0],'word':r[1],'normalized':r[2],'article_id':r[3],'source_version':r[4],'context_sentence':r[5],'contextual_meaning':r[6],'part_of_speech':r[7],'pronunciation':r[8],'step':r[9],'next_review':r[10],'paused':bool(r[11]),'archived':bool(r[12]),'created_at':r[13],'updated_at':r[14],'data':json.loads(r[15])}
+    def list_vocabulary(self,article_id=None,include_archived=False,include_paused=True):
+        q='SELECT id FROM reading_vocabulary WHERE 1=1'
+        p=[]
+        if article_id:q+=' AND article_id=?';p.append(article_id)
+        if not include_archived:q+=' AND archived=0'
+        if not include_paused:q+=' AND paused=0'
+        q+=' ORDER BY created_at DESC'
+        with self.conn() as c:rows=c.execute(q,p).fetchall()
+        return [self.get_vocabulary(r[0]) for r in rows]
+    def get_due_vocabulary(self,article_id=None):
+        today=now()[:10]
+        q='SELECT id FROM reading_vocabulary WHERE next_review <= ? AND paused=0 AND archived=0'
+        p=[today]
+        if article_id:q+=' AND article_id=?';p.append(article_id)
+        q+=' ORDER BY next_review ASC'
+        with self.conn() as c:rows=c.execute(q,p).fetchall()
+        return [self.get_vocabulary(r[0]) for r in rows]
+    def review_vocabulary(self,vid,feedback):
+        if feedback not in ('again','hard','good'):fail('invalid','反馈类型无效。',422)
+        with self.lock():
+            v=self.get_vocabulary(vid);old_step=v['step']
+            if feedback=='again':new_step=0
+            elif feedback=='hard':new_step=old_step
+            else:new_step=min(old_step+1,len(self.REVIEW_INTERVALS)-1)
+            from datetime import datetime,timedelta
+            next_review=(datetime.now()+timedelta(days=self.REVIEW_INTERVALS[new_step])).strftime('%Y-%m-%d')
+            now_str=now()
+            with self.conn() as c:
+                c.execute('INSERT INTO reading_reviews (vocab_id,feedback,step_before,step_after,reviewed_at) VALUES (?,?,?,?,?)',(vid,feedback,old_step,new_step,now_str))
+                c.execute('UPDATE reading_vocabulary SET step=?,next_review=?,updated_at=? WHERE id=?',(new_step,next_review,now_str,vid))
+        return self.get_vocabulary(vid)
+    def pause_vocabulary(self,vid,paused):
+        with self.lock():
+            with self.conn() as c:c.execute('UPDATE reading_vocabulary SET paused=?,updated_at=? WHERE id=?',(1 if paused else 0,now(),vid))
+        return self.get_vocabulary(vid)
+    def archive_vocabulary(self,vid,archived):
+        with self.lock():
+            with self.conn() as c:c.execute('UPDATE reading_vocabulary SET archived=?,updated_at=? WHERE id=?',(1 if archived else 0,now(),vid))
+        return self.get_vocabulary(vid)
+    def delete_vocabulary(self,vid):
+        with self.lock():
+            with self.conn() as c:
+                c.execute('DELETE FROM reading_reviews WHERE vocab_id=?',(vid,))
+                c.execute('DELETE FROM reading_vocabulary WHERE id=?',(vid,))
+        return {'deleted':vid}
+    def get_vocabulary_stats(self,article_id=None):
+        today=now()[:10]
+        q='''SELECT COUNT(*),SUM(CASE WHEN paused=0 AND archived=0 THEN 1 ELSE 0 END),SUM(CASE WHEN paused=1 THEN 1 ELSE 0 END),SUM(CASE WHEN archived=1 THEN 1 ELSE 0 END),SUM(CASE WHEN next_review <= ? AND paused=0 AND archived=0 THEN 1 ELSE 0 END) FROM reading_vocabulary WHERE 1=1'''
+        p=[today]
+        if article_id:q+=' AND article_id=?';p.append(article_id)
+        with self.conn() as c:r=c.execute(q,p).fetchone()
+        return {'total':r[0] or 0,'active':r[1] or 0,'paused':r[2] or 0,'archived':r[3] or 0,'due':r[4] or 0}
+    def _save_draft_field(self,a,field_key,text,version=None):
+        existing=a.get(field_key,{})
+        new_version=version or (existing.get('version',0)+1)
+        a[field_key]={'text':text,'version':new_version,'adopted':False,'created_at':now()}
+        a['record_version']=a.get('record_version',1)+1
+        return self._persist_article_info(a)
+    def _adopt_draft_field(self,a,field_key,file_rel,file_title):
+        draft=a.get(field_key)
+        if not draft or not draft.get('text'):fail('not_found','无草稿。',404)
+        draft['adopted']=True;draft['adopted_at']=now();a[field_key]=draft
+        a['record_version']=a.get('record_version',1)+1
+        content=f'# {file_title}\n\n{draft["text"]}\n'
+        expected={file_rel:a['hashes'].get(file_rel)}
+        a['hashes'][file_rel]=digest(content)
+        files={file_rel:content}
+        info_rel=f'认知阅读/文章资料/{a["id"]}/文章信息.json'
+        expected[info_rel]=a['hashes'].get(info_rel)
+        mirror={k:v for k,v in a.items() if k not in ('hashes','guide')}
+        files[info_rel]=encoded(mirror);a['hashes'][info_rel]=digest(files[info_rel])
+        self.export(files,[a],expected);return a
+    def _persist_article_info(self,a):
+        """Persist article info to file. Caller must hold self.lock()."""
+        rel=f'认知阅读/文章资料/{a["id"]}/文章信息.json'
+        expected={rel:a['hashes'].get(rel)}
+        mirror={k:v for k,v in a.items() if k not in ('hashes','guide')}
+        files={rel:encoded(mirror)};a['hashes'][rel]=digest(files[rel])
+        self.export(files,[a],expected)
+        return a
+    def save_translation_draft(self,aid,paragraph_id,translation,version=None):
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            drafts=a.get('translation_drafts',{})
+            existing=drafts.get(paragraph_id,{})
+            new_version=version or (existing.get('version',0)+1)
+            drafts[paragraph_id]={'text':translation,'version':new_version,'adopted':False,'created_at':now()}
+            a['translation_drafts']=drafts;a['record_version']=a.get('record_version',1)+1
+            return self._persist_article_info(a)
+    def adopt_translation(self,aid,paragraph_id):
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            drafts=a.get('translation_drafts',{})
+            if paragraph_id not in drafts:fail('not_found','该段落无翻译草稿。',404)
+            drafts[paragraph_id]['adopted']=True;drafts[paragraph_id]['adopted_at']=now()
+            a['translation_drafts']=drafts;a['record_version']=a.get('record_version',1)+1
+            return self._persist_article_info(a)
+    def get_translation_draft(self,aid,paragraph_id=None):
+        a=self.article(aid);drafts=a.get('translation_drafts',{})
+        return drafts.get(paragraph_id) if paragraph_id else drafts
+    def save_summary_draft(self,aid,summary_text,version=None):
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            return self._save_draft_field(a,'summary_draft',summary_text,version)
+    def adopt_summary(self,aid):
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            return self._adopt_draft_field(a,'summary_draft',f'认知阅读/文章资料/{aid}/详细总结.md',f'{a["title"]} - 详细总结')
+    def save_english_draft(self,aid,content,version=None):
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            return self._save_draft_field(a,'english_draft',content,version)
+    def adopt_english(self,aid):
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            return self._adopt_draft_field(a,'english_draft',f'认知阅读/文章资料/{aid}/英语学习.md',f'{a["title"]} - 英语学习材料')
 
 def basic_guide(a):
     return (f'# {a.get("zh_title") or a["title"]}\n\n原标题：{a["title"]}\n\n作者：{a["author"]}｜来源：{a["source"]}｜发表：{a.get("published_at") or "未知"}\n\n'
