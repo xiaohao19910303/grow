@@ -1,6 +1,6 @@
 .venv/
 .env
-server/data.db*
+server/runtime/
 server/.copilot/
 **/__pycache__/
 *.pyc

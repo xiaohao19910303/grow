@@ -1,19 +1,22 @@
-"""知行成长 · 本地服务端（FastAPI + SQLite）
+"""知行成长 · 云端服务端（FastAPI + PostgreSQL）
 
-- 单用户本地应用，采用带快照修订的 state 同步：前端 GET /api/data 读取状态与修订，
+- 单用户应用，采用带快照修订的 state 同步：前端 GET /api/data 读取状态与修订，
   PUT /api/data 在同一事务内校验修订并保存，保留既有记录ID。
 - 规范化表结构便于后续做 SQL 查询 / 周月报 / 知识图谱。
 - v3：扫描工作区 Markdown 生成知识图谱（knowledge 表）+ 周报/月报汇总。
-- 首次启动若 data.db 为空，自动迁移归档的 v1 data.json。
+- 数据库使用 Supabase PostgreSQL，支持多设备同步。
+- 支持云端部署（Render.com）。
 """
 import json
+import os
 import re
-import sqlite3
+import db
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -32,10 +35,13 @@ import asyncio
 from legacy_state import load_state as read_legacy_state, save_state as write_legacy_state
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "data.db"
 STATIC_DIR = BASE_DIR / "static"
+# 运行时目录 — 用于锁文件、快照等（不再需要 SQLite 文件）
+DB_PATH = BASE_DIR / "runtime"
+DB_PATH.mkdir(exist_ok=True)
 LEGACY_JSON = BASE_DIR.parent / "v1-legacy" / "data.json"  # v1 归档数据（迁移源）
-LEARN_ROOT = BASE_DIR.parent.parent  # /Volumes/Xiaohao/学习（Markdown 学习资料根目录）
+# 学习资料根目录 — 云端部署时使用项目内的学习资料文件夹
+LEARN_ROOT = Path(os.environ.get('LEARN_ROOT', BASE_DIR.parent / '学习资料'))
 
 DEFAULT_MODULES = [
     {"id": "fupan", "name": "执行复盘", "color": "#4F6EF7", "order": 1},
@@ -66,27 +72,27 @@ CREATE TABLE IF NOT EXISTS custom_fields (
     key TEXT PRIMARY KEY, label TEXT, type TEXT
 );
 CREATE TABLE IF NOT EXISTS custom_records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT
+    id SERIAL PRIMARY KEY, data TEXT
 );
 CREATE TABLE IF NOT EXISTS decisions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     date TEXT, title TEXT, context TEXT, options TEXT, reason TEXT,
     expected TEXT, probability INTEGER, emotion TEXT, actual TEXT, bias TEXT
 );
 CREATE TABLE IF NOT EXISTS predictions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     date TEXT, statement TEXT, probability INTEGER, result TEXT, deviation TEXT
 );
 CREATE TABLE IF NOT EXISTS reviews (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     date TEXT, thought TEXT, actual TEXT, gap TEXT, action TEXT
 );
 CREATE TABLE IF NOT EXISTS insights (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     date TEXT, insight TEXT, source TEXT
 );
 CREATE TABLE IF NOT EXISTS knowledge (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     name TEXT, category TEXT, summary TEXT, source TEXT, kind TEXT,
     date TEXT DEFAULT ''
 );
@@ -98,9 +104,7 @@ TABLES = ["modules", "checkins", "habits", "custom_fields", "custom_records",
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return db.connect()
 
 
 def init_db():
@@ -491,6 +495,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="知行成长", lifespan=lifespan)
+
+# 添加 CORS 中间件（允许跨域访问）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 copilot_store = register_copilot(app, LEARN_ROOT, DB_PATH)
 plans_store, plans_generator = register_plans(app, LEARN_ROOT, DB_PATH)
 reading_store, reading_service = register_reading(app, LEARN_ROOT, DB_PATH)
@@ -523,7 +537,7 @@ async def put_data(request: Request):
         return save_state(data, require_revision=True)
     except Problem as exc:
         return JSONResponse({'code': exc.code, 'message': exc.message}, status_code=exc.status)
-    except (ValueError, sqlite3.IntegrityError):
+    except (ValueError, db.IntegrityError):
         return JSONResponse({'code': 'invalid', 'message': '记录格式或编号无效，未保存。'}, status_code=422)
 
 

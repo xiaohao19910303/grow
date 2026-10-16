@@ -5,7 +5,7 @@ behavior_applications 表的 CRUD 和统计查询。
 """
 from __future__ import annotations
 
-import sqlite3
+import db
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
@@ -36,9 +36,8 @@ class BehaviorStore:
         self.db_path = db_path
         self.startup_error: Optional[Exception] = None
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+    def _conn(self) -> db.CompatConnection:
+        conn = db.connect()
         return conn
 
     def initialize(self):

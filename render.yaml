@@ -11,4 +11,6 @@ services:
         value: 3.11.0
       - key: CLOUD_DEPLOY
         value: "1"
+      - key: LEARN_ROOT
+        value: /opt/render/project/src/知行成长/学习资料
     autoDeploy: true

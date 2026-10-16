@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-import sqlite3
+import db
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -14,9 +14,7 @@ def collect_data_summary(db_path: Path, period_days: int = 30) -> dict:
     start_str = start.isoformat()
     end_str = today.isoformat()
 
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-
+    conn = db.connect()
     # 打卡数据
     total_days = conn.execute(
         "SELECT COUNT(DISTINCT date) FROM checkins WHERE date >= ? AND date <= ?",

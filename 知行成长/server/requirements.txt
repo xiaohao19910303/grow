@@ -1,4 +1,4 @@
-# 知行成长 - Python 依赖（根目录版本，供 Render 使用）
+# 知行成长 - Python 依赖
 
 # Web 框架
 fastapi==0.104.1

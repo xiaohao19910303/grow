@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-import sqlite3
+import db
 from pathlib import Path
 from typing import Optional
 
@@ -13,9 +13,8 @@ class PredictionStats:
     def __init__(self, db_path: Path):
         self.db_path = db_path
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+    def _conn(self) -> db.CompatConnection:
+        conn = db.connect()
         return conn
 
     def get_calibration(self) -> dict:

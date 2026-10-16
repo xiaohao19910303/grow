@@ -51,7 +51,7 @@ def register(app: FastAPI, root, db_path) -> ErrorStore:
             raise HTTPException(400, "date must be YYYY-MM-DD")
         return d
 
-    @router.get("/errors")
+    @router.get("/")
     def list_errors(
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
@@ -67,7 +67,7 @@ def register(app: FastAPI, root, db_path) -> ErrorStore:
             raise HTTPException(400, f"invalid module_id: {module_id}")
         return store.list_errors(date_from, date_to, module_id, error_type, is_repeat)
 
-    @router.post("/errors", status_code=201)
+    @router.post("/", status_code=201)
     def create_error(body: ErrorCreate):
         _validate_date(body.date)
         try:
@@ -79,18 +79,18 @@ def register(app: FastAPI, root, db_path) -> ErrorStore:
         except ValueError as e:
             raise HTTPException(400, str(e))
 
-    @router.get("/errors/types")
+    @router.get("/types")
     def list_error_types():
         return store.list_error_types()
 
-    @router.post("/errors/types", status_code=201)
+    @router.post("/types", status_code=201)
     def create_error_type(body: ErrorTypeCreate):
         try:
             return store.create_error_type(body.name, body.description)
         except ValueError as e:
             raise HTTPException(400, str(e))
 
-    @router.delete("/errors/types/{type_id}", status_code=204)
+    @router.delete("/types/{type_id}", status_code=204)
     def delete_error_type(type_id: int):
         try:
             if not store.delete_error_type(type_id):
@@ -98,24 +98,24 @@ def register(app: FastAPI, root, db_path) -> ErrorStore:
         except ValueError as e:
             raise HTTPException(400, str(e))
 
-    @router.get("/errors/stats")
+    @router.get("/stats")
     def get_stats(period: int = 30):
         if period < 1 or period > 365:
             raise HTTPException(400, "period must be 1-365")
         return store.get_stats(period)
 
-    @router.get("/errors/repeated")
+    @router.get("/repeated")
     def get_repeated_errors():
         return store.get_repeated_errors()
 
-    @router.get("/errors/{error_id}")
+    @router.get("/{error_id}")
     def get_error(error_id: int):
         row = store.get_error(error_id)
         if not row:
             raise HTTPException(404, "error not found")
         return row
 
-    @router.put("/errors/{error_id}")
+    @router.put("/{error_id}")
     def update_error(error_id: int, body: ErrorUpdate):
         if body.date:
             _validate_date(body.date)
@@ -127,7 +127,7 @@ def register(app: FastAPI, root, db_path) -> ErrorStore:
             raise HTTPException(404, "error not found")
         return row
 
-    @router.delete("/errors/{error_id}", status_code=204)
+    @router.delete("/{error_id}", status_code=204)
     def delete_error(error_id: int):
         if not store.delete_error(error_id):
             raise HTTPException(404, "error not found")

@@ -1,6 +1,6 @@
 """股票复盘记录存储：独立模块，追踪股票操作和复盘思考。"""
 import json
-import sqlite3
+import db
 import uuid
 from contextlib import contextmanager, closing
 from pathlib import Path
@@ -19,13 +19,12 @@ class StockStore:
     def __init__(self, root, db):
         self.root = Path(root).absolute()
         self.db = Path(db)
-        self.runtime = self.db.parent / '.plans'
+        self.runtime = self.db / '.plans'
         self.startup_error = None
 
     @contextmanager
     def conn(self):
-        with closing(sqlite3.connect(self.db, timeout=20)) as c:
-            c.row_factory = sqlite3.Row
+        with closing(db.connect()) as c:
             with c:
                 yield c
 

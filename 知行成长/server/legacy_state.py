@@ -1,6 +1,6 @@
 """Legacy dashboard state: stable row identities and transactional snapshot checks."""
 import json
-import sqlite3
+import db
 from contextlib import closing
 
 from copilot.core import digest, encoded, fail
@@ -126,5 +126,5 @@ def save_state(connect, state, *, require_revision=False):
                 assigned[table] = replace_rows(conn, table, state.get(table, []), fields, require_revision)
             assigned['customRecords'] = replace_rows(conn, 'custom_records', state.get('customRecords', []), ('data',), require_revision)
             return {'ok': True, 'state': read_state(conn), 'assigned_ids': assigned}
-    except (KeyError, TypeError, ValueError, sqlite3.IntegrityError, sqlite3.ProgrammingError, sqlite3.DataError) as exc:
+    except (KeyError, TypeError, ValueError, db.IntegrityError, db.ProgrammingError, db.DataError) as exc:
         fail('invalid', '记录快照字段无效，未保存：' + type(exc).__name__, 422)

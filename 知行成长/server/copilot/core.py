@@ -4,7 +4,7 @@ import hashlib
 import json
 import os
 import re
-import sqlite3
+import db
 import tempfile
 import uuid
 from collections import Counter
@@ -70,12 +70,11 @@ class Store:
         self.root = Path(root).absolute()
         self.db = Path(db)
         self.module = self.root / MODULE
-        self.runtime = self.db.parent / '.copilot'
+        self.runtime = self.db / '.copilot'
 
     @contextmanager
     def conn(self):
-        connection = sqlite3.connect(self.db, timeout=10)
-        connection.row_factory = sqlite3.Row
+        connection = db.connect()
         try:
             with connection:
                 yield connection
@@ -496,7 +495,7 @@ class Store:
                     c.execute("UPDATE copilot_drafts SET status='published' WHERE id=?", (data['draft_id'],))
                 c.execute("UPDATE copilot_operations SET status='done' WHERE id=?", (op_id,))
             return {'operation_id': op_id, 'status': 'done'}
-        except (OSError, sqlite3.Error, Problem) as e:
+        except (OSError, db.Error, Problem) as e:
             data['error'] = e.message if isinstance(e, Problem) else '文件或数据库写入失败，检查磁盘与权限后恢复。'
             with self.conn() as c:
                 c.execute("UPDATE copilot_operations SET status=?,data=? WHERE id=?",

@@ -7,7 +7,7 @@ import fcntl
 import json
 import os
 import re
-import sqlite3
+import db
 import tempfile
 import uuid
 from contextlib import contextmanager, closing
@@ -81,13 +81,12 @@ class ReflectionsStore:
     def __init__(self, root, db):
         self.root = Path(root).absolute()
         self.db = Path(db)
-        self.runtime = self.db.parent / '.plans'
+        self.runtime = self.db / '.plans'
         self.startup_error = None
 
     @contextmanager
     def conn(self):
-        with closing(sqlite3.connect(self.db, timeout=20)) as c:
-            c.row_factory = sqlite3.Row
+        with closing(db.connect()) as c:
             with c:
                 yield c
 
