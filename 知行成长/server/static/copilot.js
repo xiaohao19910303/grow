@@ -422,6 +422,7 @@
         this.reviewSection.hidden = true;
       } catch (e) {
         message('提交失败：' + e.message);
+        this.showInlineError(e.message);
       }
     }
 
@@ -438,6 +439,7 @@
         this.reviewSection.hidden = true;
       } catch (e) {
         message('提交失败：' + e.message);
+        this.showInlineError(e.message);
       }
     }
 
@@ -453,7 +455,18 @@
         this.reviewSection.hidden = true;
       } catch (e) {
         message('提交失败：' + e.message);
+        this.showInlineError(e.message);
       }
+    }
+
+    showInlineError(text) {
+      const existing = this.reviewSection.querySelector('.cp-inline-error');
+      if (existing) existing.remove();
+      const err = el('p', '⚠️ ' + text, 'cp-inline-error');
+      err.style.cssText = 'color:#c0392b;font-weight:600;margin:8px 0 0;padding:8px 12px;background:#fdecea;border-radius:6px;';
+      this.reviewSection.prepend(err);
+      err.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      setTimeout(() => { if (err.parentNode) err.remove(); }, 8000);
     }
   }
   async function load(clear = true) {

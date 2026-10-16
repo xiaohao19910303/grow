@@ -148,7 +148,7 @@ class Store:
                     module_id TEXT NOT NULL DEFAULT 'renzhi',
                     round_id INTEGER NOT NULL DEFAULT 1,
                     lesson_no INTEGER NOT NULL CHECK(lesson_no BETWEEN 1 AND 168),
-                    completion_type TEXT NOT NULL CHECK(completion_type IN ('review', 'summary', 'quick')),
+                    completion_type TEXT NOT NULL CHECK(completion_type IN ('review', 'summary', 'quick', 'manual')),
                     review_answers TEXT,
                     summary_text TEXT,
                     time_spent_seconds INTEGER,
@@ -158,6 +158,23 @@ class Store:
                     UNIQUE(module_id, round_id, lesson_no));
                 ''')
                 c.execute("INSERT INTO copilot_meta VALUES('schema_version','1') ON CONFLICT(key) DO NOTHING")
+                schema_ver = c.execute("SELECT value FROM copilot_meta WHERE key='schema_version'").fetchone()[0]
+                if schema_ver < '2':
+                    c.execute("DROP TABLE IF EXISTS copilot_learning_records")
+                    c.execute('''CREATE TABLE copilot_learning_records (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        module_id TEXT NOT NULL DEFAULT 'renzhi',
+                        round_id INTEGER NOT NULL DEFAULT 1,
+                        lesson_no INTEGER NOT NULL CHECK(lesson_no BETWEEN 1 AND 168),
+                        completion_type TEXT NOT NULL CHECK(completion_type IN ('review', 'summary', 'quick', 'manual')),
+                        review_answers TEXT,
+                        summary_text TEXT,
+                        time_spent_seconds INTEGER,
+                        scroll_depth REAL,
+                        completed_at TEXT NOT NULL,
+                        idempotency_key TEXT UNIQUE,
+                        UNIQUE(module_id, round_id, lesson_no))''')
+                    c.execute("UPDATE copilot_meta SET value='2' WHERE key='schema_version'")
                 # A stopped process must not leave drafts permanently 'generating'.
                 c.execute("UPDATE copilot_drafts SET status='failed' WHERE status='generating'")
                 c.execute("UPDATE copilot_generation_attempts SET status='failed' WHERE status='generating'")
@@ -502,8 +519,14 @@ class Store:
             if any(b['code'] == 'save_pending_recovery' for b in data['blockers']):
                 fail('save_pending_recovery', '请先恢复尚未完成的保存操作。')
             lesson = next((x for x in data['lessons'] if x['lesson_no'] == number), None)
-            if not lesson or lesson['version'] != version or not lesson['complete']:
-                fail('conflict', '课程或记录已经变化或不完整，请重新查看。')
+            if not lesson:
+                fail('not_found', '未找到课程。')
+            if not lesson['complete']:
+                fail('conflict', '课程记录不完整，请先生成完整课程再操作。')
+            if lesson['version'] != version:
+                fail('conflict', '课程已更新，请刷新页面后重试。')
+
+            ts = now()
             text = self.path('学习记录.md').read_text(encoding='utf-8')
             lines = text.splitlines(keepends=True)
             matches = [(i, line) for i, n, line in self.record_rows(text) if n == number]
@@ -511,9 +534,23 @@ class Store:
                 fail('conflict', '无法唯一定位学习记录。')
             i, line = matches[0]
             cells = line.rstrip('\r\n').split('|')
-            cells[-2] = f' 已完成（本人确认：{now()}） ' if state == 'completed' else f' 待本人记录（本人撤销：{now()}） '
+            cells[-2] = f' 已完成（本人确认：{ts}） ' if state == 'completed' else f' 待本人记录（本人撤销：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
+            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
+
+            if state == 'completed':
+                with self.conn() as c:
+                    c.execute('''
+                        INSERT OR REPLACE INTO copilot_learning_records
+                        (module_id, round_id, lesson_no, completion_type, time_spent_seconds,
+                         completed_at, idempotency_key)
+                        VALUES ('renzhi', 1, ?, 'manual', 0, ?, ?)
+                    ''', (number, ts, key))
+            elif state == 'unknown':
+                with self.conn() as c:
+                    c.execute('DELETE FROM copilot_learning_records WHERE module_id=? AND round_id=1 AND lesson_no=?',
+                              ('renzhi', number))
+            return result
 
     def submit_review(self, number, answers, time_spent, version, key):
         """Submit review answers and mark lesson as completed."""
@@ -527,19 +564,13 @@ class Store:
             if any(b['code'] == 'save_pending_recovery' for b in data['blockers']):
                 fail('save_pending_recovery', '请先恢复尚未完成的保存操作。')
             lesson = next((x for x in data['lessons'] if x['lesson_no'] == number), None)
-            if not lesson or lesson['version'] != version or not lesson['complete']:
-                fail('conflict', '课程或记录已经变化或不完整，请重新查看。')
+            if not lesson:
+                fail('not_found', '未找到课程。')
+            if not lesson['complete']:
+                fail('conflict', '课程记录不完整，请先生成完整课程再操作。')
+            if lesson['version'] != version:
+                fail('conflict', '课程已更新，请刷新页面后重试。')
 
-            # Insert into copilot_learning_records
-            with self.conn() as c:
-                c.execute('''
-                    INSERT INTO copilot_learning_records
-                    (module_id, round_id, lesson_no, completion_type, review_answers,
-                     time_spent_seconds, completed_at, idempotency_key)
-                    VALUES ('renzhi', 1, ?, 'review', ?, ?, ?, ?)
-                ''', (number, json.dumps(answers, ensure_ascii=False), time_spent, now(), key))
-
-            # Update learning state in 学习记录.md
             text = self.path('学习记录.md').read_text(encoding='utf-8')
             lines = text.splitlines(keepends=True)
             matches = [(i, line) for i, n, line in self.record_rows(text) if n == number]
@@ -547,9 +578,19 @@ class Store:
                 fail('conflict', '无法唯一定位学习记录。')
             i, line = matches[0]
             cells = line.rstrip('\r\n').split('|')
-            cells[-2] = f' 已完成（复盘提交：{now()}） '
+            ts = now()
+            cells[-2] = f' 已完成（复盘提交：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
+            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
+
+            with self.conn() as c:
+                c.execute('''
+                    INSERT INTO copilot_learning_records
+                    (module_id, round_id, lesson_no, completion_type, review_answers,
+                     time_spent_seconds, completed_at, idempotency_key)
+                    VALUES ('renzhi', 1, ?, 'review', ?, ?, ?, ?)
+                ''', (number, json.dumps(answers, ensure_ascii=False), time_spent, ts, key))
+            return result
 
     def submit_summary(self, number, summary, time_spent, version, key):
         """Submit learning summary and mark lesson as completed."""
@@ -563,19 +604,13 @@ class Store:
             if any(b['code'] == 'save_pending_recovery' for b in data['blockers']):
                 fail('save_pending_recovery', '请先恢复尚未完成的保存操作。')
             lesson = next((x for x in data['lessons'] if x['lesson_no'] == number), None)
-            if not lesson or lesson['version'] != version or not lesson['complete']:
-                fail('conflict', '课程或记录已经变化或不完整，请重新查看。')
+            if not lesson:
+                fail('not_found', '未找到课程。')
+            if not lesson['complete']:
+                fail('conflict', '课程记录不完整，请先生成完整课程再操作。')
+            if lesson['version'] != version:
+                fail('conflict', '课程已更新，请刷新页面后重试。')
 
-            # Insert into copilot_learning_records
-            with self.conn() as c:
-                c.execute('''
-                    INSERT INTO copilot_learning_records
-                    (module_id, round_id, lesson_no, completion_type, summary_text,
-                     time_spent_seconds, completed_at, idempotency_key)
-                    VALUES ('renzhi', 1, ?, 'summary', ?, ?, ?, ?)
-                ''', (number, summary, time_spent, now(), key))
-
-            # Update learning state in 学习记录.md
             text = self.path('学习记录.md').read_text(encoding='utf-8')
             lines = text.splitlines(keepends=True)
             matches = [(i, line) for i, n, line in self.record_rows(text) if n == number]
@@ -583,9 +618,19 @@ class Store:
                 fail('conflict', '无法唯一定位学习记录。')
             i, line = matches[0]
             cells = line.rstrip('\r\n').split('|')
-            cells[-2] = f' 已完成（总结提交：{now()}） '
+            ts = now()
+            cells[-2] = f' 已完成（总结提交：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
+            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
+
+            with self.conn() as c:
+                c.execute('''
+                    INSERT INTO copilot_learning_records
+                    (module_id, round_id, lesson_no, completion_type, summary_text,
+                     time_spent_seconds, completed_at, idempotency_key)
+                    VALUES ('renzhi', 1, ?, 'summary', ?, ?, ?, ?)
+                ''', (number, summary, time_spent, ts, key))
+            return result
 
     def quick_complete(self, number, time_spent, version, key):
         """Quick mark lesson as completed without review or summary."""
@@ -599,19 +644,13 @@ class Store:
             if any(b['code'] == 'save_pending_recovery' for b in data['blockers']):
                 fail('save_pending_recovery', '请先恢复尚未完成的保存操作。')
             lesson = next((x for x in data['lessons'] if x['lesson_no'] == number), None)
-            if not lesson or lesson['version'] != version or not lesson['complete']:
-                fail('conflict', '课程或记录已经变化或不完整，请重新查看。')
+            if not lesson:
+                fail('not_found', '未找到课程。')
+            if not lesson['complete']:
+                fail('conflict', '课程记录不完整，请先生成完整课程再操作。')
+            if lesson['version'] != version:
+                fail('conflict', '课程已更新，请刷新页面后重试。')
 
-            # Insert into copilot_learning_records
-            with self.conn() as c:
-                c.execute('''
-                    INSERT INTO copilot_learning_records
-                    (module_id, round_id, lesson_no, completion_type, time_spent_seconds,
-                     completed_at, idempotency_key)
-                    VALUES ('renzhi', 1, ?, 'quick', ?, ?, ?)
-                ''', (number, time_spent, now(), key))
-
-            # Update learning state in 学习记录.md
             text = self.path('学习记录.md').read_text(encoding='utf-8')
             lines = text.splitlines(keepends=True)
             matches = [(i, line) for i, n, line in self.record_rows(text) if n == number]
@@ -619,9 +658,19 @@ class Store:
                 fail('conflict', '无法唯一定位学习记录。')
             i, line = matches[0]
             cells = line.rstrip('\r\n').split('|')
-            cells[-2] = f' 已完成（快速完成：{now()}） '
+            ts = now()
+            cells[-2] = f' 已完成（快速完成：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
+            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
+
+            with self.conn() as c:
+                c.execute('''
+                    INSERT INTO copilot_learning_records
+                    (module_id, round_id, lesson_no, completion_type, time_spent_seconds,
+                     completed_at, idempotency_key)
+                    VALUES ('renzhi', 1, ?, 'quick', ?, ?, ?)
+                ''', (number, time_spent, ts, key))
+            return result
 
     def get_learning_record(self, number):
         """Get learning record for a specific lesson."""

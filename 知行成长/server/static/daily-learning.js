@@ -150,7 +150,8 @@
     modules.forEach(module => {
       const available = module.lessons.filter(lesson => !lesson.date || lesson.date <= selected);
       const todayLessons = available.filter(lesson => lesson.date === selected);
-      const pending = available.filter(lesson => lesson.date !== selected && lesson.learning_state !== 'completed');
+      const overdue = available.filter(lesson => lesson.date !== selected && lesson.date < selected && lesson.learning_state !== 'completed');
+      const pending = available.filter(lesson => lesson.date !== selected && (!lesson.date || lesson.date > selected) && lesson.learning_state !== 'completed');
       const completed = available.filter(lesson => lesson.learning_state === 'completed').length;
 
       // 分离今日待学习和已完成
@@ -159,15 +160,24 @@
 
       const section = node('section', undefined, 'learning-module');
       section.append(node('h3', module.name + ' · ' + module.duration));
-      section.append(node('p', `待学习 ${todayPending.length} 课 · 已完成 ${todayCompleted.length} 课`, 'desc'));
+      const totalPending = todayPending.length + overdue.length;
+      section.append(node('p', `待学习 ${totalPending} 课 · 已完成 ${completed} 课` + (overdue.length ? ` · 逾期 ${overdue.length} 课` : ''), 'desc'));
 
-      // 待学习课程
+      // 逾期课程
+      if (overdue.length) {
+        const overdueSection = node('div', undefined, 'overdue-section');
+        overdueSection.append(node('h4', `⚠ 逾期课程 · ${overdue.length} 课`));
+        overdue.forEach(lesson => lessonRow(overdueSection, module, lesson));
+        section.append(overdueSection);
+      }
+
+      // 今日待学习课程
       todayPending.forEach(lesson => lessonRow(section, module, lesson));
 
-      if (!todayLessons.length) section.append(node('p', prefix + '暂无新课。', 'desc'));
-      else if (!todayPending.length) section.append(node('p', prefix + '待学习课程已完成。', 'desc'));
+      if (!todayLessons.length && !overdue.length) section.append(node('p', prefix + '暂无新课。', 'desc'));
+      else if (!todayPending.length && !overdue.length) section.append(node('p', prefix + '待学习课程已完成。', 'desc'));
 
-      // 今日已完成区域（新增）
+      // 今日已完成区域
       if (todayCompleted.length) {
         const completedSection = node('details', undefined, 'completed-today');
         completedSection.open = true;
@@ -180,11 +190,9 @@
           text.append(node('p', `✓ 已完成 · ${lesson.date}`, 'desc'));
           row.append(text);
 
-          // 快速完成按钮（如果未标记）
           if (!lesson.completed_at) {
             button(row, '标记完成', () => quickComplete(module, lesson));
           }
-          // 查看记录按钮
           button(row, '查看记录', () => viewLearningRecord(module, lesson));
           completedSection.append(row);
         });
@@ -206,13 +214,16 @@
 
   async function quickComplete(module, lesson) {
     try {
-      // 使用自动追踪的学习时长，如果没有则默认为0
       const timeSpent = getElapsedTime();
-      await fetch('/api/copilot/lessons/' + lesson.lesson_no + '/complete', {
+      const response = await fetch('/api/copilot/lessons/' + lesson.lesson_no + '/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Copilot-Request': '1' },
         body: JSON.stringify({ time_spent_seconds: timeSpent, version: lesson.version, key: crypto.randomUUID() })
       });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || '请求失败');
+      }
       stopLearningTimer();
       toast(`课程已标记完成（学习时长：${Math.round(timeSpent / 60)} 分钟）`);
       await window.loadDailyLearning();
