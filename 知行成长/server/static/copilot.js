@@ -87,7 +87,7 @@
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     const response = await fetch('/api/copilot' + path, {method, headers, body: body === undefined ? undefined : JSON.stringify(body)});
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || data.detail || '请求失败，请检查本地服务。');
+    if (!response.ok) throw new Error(data.message || data.detail || '请求失败，请检查服务。');
     return data;
   }
   function button(label, action, parent, cls = 'btn') {
@@ -134,7 +134,7 @@
     currentDraft = d; publicationKey = uid(); dirty = false; editor.hidden = false;
     editor.replaceChildren(el('h3', `第${d.lesson_no}课草稿 · ${d.status}`));
     bodyInput.value = d.content; sourceInput.value = d.sources;
-    editor.append(el('label', '课程正文'), bodyInput, el('label', '本地资料摘要'), sourceInput);
+    editor.append(el('label', '课程正文'), bodyInput, el('label', '参考资料摘要'), sourceInput);
     const actions = el('div', undefined, 'cp-actions');
     button('预览当前编辑', () => { markdown(preview, bodyInput.value + '\n\n## 参考资料\n' + sourceInput.value); }, actions);
     button('保存草稿修改', async () => {
@@ -187,6 +187,7 @@
     completion.disabled = !lesson.complete;
     const content = el('div', undefined, 'cp-reader');
     reader.append(content,actions,readerStatus); markdown(content, lesson.content);
+    if(lesson.github_url){const link=el('a','在 GitHub 打开课程');link.href=lesson.github_url;link.target='_blank';link.rel='noopener noreferrer';actions.append(link);}
     button('保存需要帮助',()=>{management.open=true;management.scrollIntoView({block:'start'});},actions);
 
     // 添加阅读监控和复盘区（仅在未完成时）
@@ -470,7 +471,7 @@
     }
   }
   async function load(clear = true) {
-    if (clear) message('正在读取本地课程…');
+    if (clear) message('正在读取课程…');
     try {
       currentTask = await request('/today-task');
       summary.textContent = `已生成 ${currentTask.generated_count}/168　本人确认完成 ${currentTask.completed_count}/168　待本人记录 ${currentTask.pending_learning_lessons.length} 课`;

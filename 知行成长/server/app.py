@@ -112,6 +112,8 @@ def init_db():
     conn.executescript(SCHEMA)
     conn.commit()
     conn.close()
+    from legacy_schema import migrate
+    migrate()
 
 
 def save_state(state: dict, *, require_revision=False):
@@ -173,7 +175,7 @@ def import_pending_sync():
     # 导入 reviews
     for r in data.get("reviews", []):
         cur.execute(
-            "INSERT OR REPLACE INTO reviews(date, thought, actual, gap, action) VALUES(?,?,?,?,?)",
+            "INSERT INTO reviews(date, thought, actual, gap, action) VALUES(?,?,?,?,?)",
             (r["date"], r.get("thought", ""), r.get("actual", ""),
              r.get("gap", ""), r.get("action", ""))
         )
@@ -226,7 +228,7 @@ def import_pending_sync():
     # 导入 checkins
     for c in data.get("checkins", []):
         cur.execute(
-            "INSERT OR REPLACE INTO checkins(date, module_id, level) VALUES(?,?,?)",
+            "INSERT INTO checkins(date, module_id, level) VALUES(?,?,?) ON CONFLICT(date,module_id) DO UPDATE SET level=excluded.level",
             (c["date"], c["module_id"], c["level"])
         )
         count += 1
@@ -339,8 +341,12 @@ def refresh_knowledge():
     nodes = scan_markdown()
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("DELETE FROM knowledge")
+    # Keep existing identities and imported nodes: knowledge links refer to these IDs.
     for n in nodes:
+        existing = cur.execute("SELECT id FROM knowledge WHERE name=? AND COALESCE(source,'')=? AND COALESCE(kind,'')=?",
+                               (n['name'], n.get('source',''), n.get('kind',''))).fetchone()
+        if existing:
+            continue
         cur.execute("INSERT INTO knowledge(name,category,summary,source,kind,date) VALUES(?,?,?,?,?,?)",
                     (n["name"], n["category"], n["summary"], n["source"], n["kind"], n.get("date", "")))
     conn.commit()
@@ -537,6 +543,8 @@ prediction_stats = register_predictions(app, LEARN_ROOT, DB_PATH)
 behavior_report_store = register_behavior_report(app, LEARN_ROOT, DB_PATH)
 knowledge_graph_store = register_knowledge(app, LEARN_ROOT, DB_PATH)
 stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
+from migration_api import register as register_migrations
+register_migrations(app, copilot_store, LEARN_ROOT)
 
 
 @app.get('/api/storage-status')

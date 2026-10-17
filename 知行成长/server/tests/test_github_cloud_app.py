@@ -13,6 +13,7 @@ import httpx
 import psycopg2
 from fastapi.testclient import TestClient
 from plans.github import GitHubContent
+from cloud_content import ModuleContent
 from plans.github_store import GitHubPlans
 from test_github_plans import Repository, B, D, S, content
 
@@ -33,6 +34,7 @@ class CloudApplication(unittest.TestCase):
                 'LEARN_ROOT':tmp+'/materials', 'APP_USERNAME':'owner', 'APP_PASSWORD':'CLOUD-TEST-PASSWORD-24-CHARACTERS',
                 'RENDER_GIT_COMMIT':'test-deploy-revision'}), \
                 patch('db.connect', lambda *a, **kw: original(dsn+' options=-csearch_path='+schema)), \
+                patch('cloud_content.configured_content', side_effect=lambda: ModuleContent('owner/courses','main','TEST_ONLY_TOKEN',transport=httpx.MockTransport(repository))), \
                 patch('plans.api.make_store', side_effect=lambda root, runtime: GitHubPlans(root,runtime,
                     GitHubContent('owner/courses','main','TEST_ONLY_TOKEN',transport=httpx.MockTransport(repository)))):
                 dashboard = importlib.import_module('app')
@@ -102,8 +104,9 @@ class CloudApplication(unittest.TestCase):
                     self.assertIsInstance(created.json()['id'],int)
                     storage = client.get('/api/storage-status').json()
                     self.assertTrue(storage['modules']['reflections']['ready'])
-                    self.assertFalse(storage['modules']['reading']['ready'])
-                    self.assertEqual(storage['modules']['reading']['reason'],'legacy_content_migration')
+                    self.assertTrue(storage['modules']['reading']['ready'])
+                    self.assertTrue(storage['modules']['copilot']['ready'])
+                    self.assertIsNone(storage['modules']['reading']['reason'])
                     listing=client.get('/api/plans')
                     self.assertEqual(listing.status_code,200,listing.text)
                     def post(path, data):

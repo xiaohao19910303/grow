@@ -115,8 +115,8 @@ class KnowledgeGraphStore:
         for source_id, target_id, link_type, weight in links:
             try:
                 conn.execute(
-                    "INSERT OR IGNORE INTO knowledge_links(source_id, target_id, link_type, weight) "
-                    "VALUES(?, ?, ?, ?)",
+                    "INSERT INTO knowledge_links(source_id, target_id, link_type, weight) "
+                    "VALUES(?, ?, ?, ?) ON CONFLICT(source_id,target_id,link_type) DO NOTHING",
                     (source_id, target_id, link_type, weight),
                 )
                 count += 1

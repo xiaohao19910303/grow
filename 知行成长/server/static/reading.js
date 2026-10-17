@@ -19,7 +19,7 @@
   window.loadReading=async()=>{
     const status=shell('今日阅读');const turn=revision;button(root,'帮我找文章',()=>collectForm(),true);button(root,'添加文章',()=>importForm());button(root,'阅读偏好与来源',()=>settings());
     const data=await api();if(turn!==revision)return;const p=data.preferences;
-    status.textContent=`${p.enabled?'每天':'已暂停每日搜集'} 北京时间 ${String(p.hour).padStart(2,'0')}:${String(p.minute).padStart(2,'0')} · ${p.count}篇 · ${category[p.mode]}。本地服务需保持运行；每日搜集不调用付费模型。`;
+    status.textContent=`${p.enabled?'每天':'已暂停每日搜集'} 北京时间 ${String(p.hour).padStart(2,'0')}:${String(p.minute).padStart(2,'0')} · ${p.count}篇 · ${category[p.mode]}。服务需保持运行；每日搜集不调用付费模型。`;
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const daily=data.jobs.find(j=>j.daily&&j.date===today);const banner=node('section',undefined,'reading-banner');root.append(banner);banner.append(node('h3','今日精选'));
     if(daily){banner.append(node('p',state[daily.state]+(daily.error?' · '+daily.error:'')));button(banner,'查看今日结果',()=>watch(daily.id));}
@@ -238,7 +238,7 @@
       // Vocabulary selection
       setupVocabSelection(contentDiv,id,a);
     } else {
-      originalView.append(node('p','本文尚未保存完整内容。点击下方按钮获取并保存到本地。','desc'));
+      originalView.append(node('p','本文尚未保存完整内容。点击下方按钮获取并保存。','desc'));
       button(originalView,'获取并保存完整文章',async()=>{
         const j=await api('/articles/'+id+'/fetch_full',{key:crypto.randomUUID()});
         toast('正在获取文章...');
@@ -388,9 +388,9 @@
     // 个人笔记
     notesView.append(node('h3','我的思考与笔记'));
     const notes=field(notesView,'',d.note.text,'textarea');notes.rows=7;notes.placeholder='哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...';dirty=()=>notes.value!==d.note.text;
-    button(notesView,'保存笔记',async()=>{const submitted=notes.value;const saved=await api('/articles/'+id+'/personal',{note:submitted,note_hash:d.note.hash});d.note.text=submitted;d.note.hash=saved.note_hash;toast('笔记已保存到本地');},true);
+    button(notesView,'保存笔记',async()=>{const submitted=notes.value;const saved=await api('/articles/'+id+'/personal',{note:submitted,note_hash:d.note.hash});d.note.text=submitted;d.note.hash=saved.note_hash;toast('笔记已保存');},true);
 
-    root.append(node('p','本地资料：'+d.path,'desc'));
+    if(d.github_url){const link=node('a','在 GitHub 打开资料');link.href=d.github_url;link.target='_blank';link.rel='noopener noreferrer';root.append(link);}else root.append(node('p','资料位置：'+d.path,'desc'));
   }
   function setupVocabSelection(container,articleId,article){
     container.addEventListener('mouseup',async()=>{

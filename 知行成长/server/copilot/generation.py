@@ -6,6 +6,7 @@ import json
 import re
 import time
 import uuid
+from contextlib import ExitStack
 
 from .core import digest, encoded, fail, now
 from .ai_config import config, generation_config
@@ -131,13 +132,16 @@ class Generator:
                    'total_seconds': None, 'error': None, 'started_at': now()}
         self.active[draft_id] = asyncio.current_task()
         status = 'failed'
-        gate = None
+        gate = ExitStack()
         try:
-            gate = (self.store.db.parent / '.ai-generation.lock').open('a')
-            try:
-                fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                fail('generation_busy', '另一个生成任务正在运行。')
+            if getattr(self.store, 'remote', False):
+                gate.enter_context(self.store.generation_gate())
+            else:
+                stream = gate.enter_context((self.store.db.parent / '.ai-generation.lock').open('a'))
+                try:
+                    fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    fail('generation_busy', '另一个生成任务正在运行。')
             yield event('started', {'id': draft_id, 'version': d['version']})
             if self.transport is None:
                 from .transport import qwen_stream

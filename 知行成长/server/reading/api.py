@@ -8,6 +8,7 @@ from copilot.ai_config import require_config
 from copilot.core import fail
 from .sources import DEFAULT_FEEDS,TOPICS,fetch_article_content
 from .store import ReadingStore
+from .cloud_store import make_store
 from .service import Reader
 
 def public_job(j):
@@ -15,7 +16,7 @@ def public_job(j):
     return {k:v for k,v in j.items() if k not in ('context','request')}
 
 def register(app,root,db):
-    store=ReadingStore(root,db);reader=Reader(store);router=APIRouter(prefix='/api/reading')
+    store=make_store(root,db);reader=Reader(store);router=APIRouter(prefix='/api/reading')
     @app.middleware('http')
     async def protect(request:Request,call_next):
         if request.url.path.startswith('/api/reading'):
@@ -58,7 +59,11 @@ def register(app,root,db):
         summary_file=store.path(f'认知阅读/文章资料/{aid}/详细总结.md')
         english_file=store.path(f'认知阅读/文章资料/{aid}/英语学习.md')
         full_text_file=store.path(f'认知阅读/文章资料/{aid}/原文.md')
+        metadata=store.documents.metadata(rel) if getattr(store,'remote',False) else None
         return {'article':a,
+                'storage':'github' if metadata and metadata['storage']=='github' else 'local',
+                'github_url':store.documents.content.url(rel,metadata['commit_sha']) if metadata and metadata['storage']=='github' else None,
+                'commit_sha':metadata.get('commit_sha') if metadata else None,
                 'note':store.note(aid),
                 'guide':file.read_text() if file.exists() else None,
                 'summary':summary_file.read_text() if summary_file.exists() else None,

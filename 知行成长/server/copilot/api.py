@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ConfigDict, Field
 
 from .core import Problem, Store, fail
+from .cloud_store import make_store
 from .ai_config import require_config
 from .generation import Generator, availability
 from .backup import snapshot
@@ -79,7 +80,7 @@ class ConnectionTest(BaseModel):
 
 
 def register(app: FastAPI, root, db):
-    store = Store(root, db)
+    store = make_store(root, db)
     generator = Generator(store)
     router = APIRouter(prefix='/api/copilot')
 
@@ -266,6 +267,8 @@ def register(app: FastAPI, root, db):
 
     @router.post('/backups')
     def backup(body: Input):
+        if getattr(store,'remote',False):
+            fail('remote_backup','云端资料请分别备份 GitHub 内容仓库和 PostgreSQL 数据库。',409)
         with store.lock():
             store.require_writer()
             return snapshot(store)
