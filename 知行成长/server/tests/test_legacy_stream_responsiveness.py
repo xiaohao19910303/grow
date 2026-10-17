@@ -74,3 +74,17 @@ class LegacyStreamResponsivenessTests(CloudFixture):
         self.assertEqual(self.reader.record('job-cancel-buffered-reading')['state'],'cancelled')
         self.assertLess(len(produced),300)
         self.assertEqual(self.reader.documents.read(path),before)
+
+    def test_markdown_line_break_spaces_around_source_marker_are_accepted(self):
+        self.migrate_files()
+        async def model(messages,cfg):
+            yield {'text':COURSE+'\n<!-- COPILOT_SOURCES -->  \n摘要 [来源](https://example.org/source)'}
+            yield {'done':True}
+        generator=Generator(self.course,model);did,fresh=generator.begin(3,'markdown-source-marker',OWN)
+        async def consume():
+            async for _ in generator.stream(did,fresh):pass
+        asyncio.run(consume())
+        draft=self.course.draft(did)
+        self.assertEqual(draft['status'],'ready',draft['errors'])
+        self.assertEqual(draft['content'],COURSE)
+        self.assertEqual(draft['sources'],'摘要 [来源](https://example.org/source)')
