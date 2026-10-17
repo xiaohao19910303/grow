@@ -33,7 +33,7 @@ def is_formal(path):
     if not path.endswith('.md'):return False
     if parts[0]=='每日认知与通识学习':
         return parts[1] in ('每日课程','参考资料','备课资料') or '/'.join(parts[1:]) in ('学习规划.md','课程主题规划.md','课程目录.md')
-    return len(parts)>3 and parts[1]=='文章资料'
+    return len(parts)==4 and parts[1]=='文章资料' and parts[3] in ('原文.md','中文导读.md','详细总结.md','英语学习.md')
 
 
 class ModuleContent(GitHubContent):

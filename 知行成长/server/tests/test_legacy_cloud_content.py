@@ -57,11 +57,12 @@ class CloudFixture(PostgreSQLFixture):
 class LegacyCloudContentTests(CloudFixture):
     def test_import_retains_originals_and_never_publishes_private_state(self):
         aid=self.source_article()
+        (self.root/'认知阅读/文章资料'/aid/'我的笔记.md').write_text('PRIVATE INLINE NOTE')
         old={str(p.relative_to(self.root)):p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
         self.migrate_files()
         self.assertEqual(old,{str(p.relative_to(self.root)):p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
         files=self.repository.commits[self.repository.head]['files']
-        for secret in ('PRIVATE ORIGINAL NOTE','PRIVATE READING NOTE','PRIVATE TRANSLATION','USER_TEST_ONLY'):
+        for secret in ('PRIVATE ORIGINAL NOTE','PRIVATE READING NOTE','PRIVATE INLINE NOTE','PRIVATE TRANSLATION','USER_TEST_ONLY'):
             self.assertNotIn(secret,json.dumps(files))
         self.assertFalse(any(p.endswith(('学习记录.md','文章信息.json')) or '/阅读笔记/' in p for p in files))
         self.assertEqual(self.reader.note(aid)['text'],'PRIVATE READING NOTE')
