@@ -285,6 +285,29 @@ class AccountIntegrationTests(unittest.TestCase):
         self.assertEqual(self.login('owner',os.environ['APP_PASSWORD']).status_code,200)
         self.assertEqual(self.client.get('/api/data').json()['todos'][0]['title'],'OWNER PRIVATE')
 
+    def test_article_feedback_is_private_and_isolated_for_same_article_id(self):
+        self.register('alice')
+        body={'data':{'title':'Evidence','content':'Evidence and careful decisions. '*30,'language':'en'}}
+        response=self.client.post('/api/reading/import-paste',json=body,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        aid=response.json()['article']['id'];path='/api/reading/articles/'+aid+'/feedback'
+        feedback={'data':{'version':0,'takeaway':'ALICE PRIVATE REFLECTION','tags':['判断']}}
+        self.assertEqual(self.client.post(path,json=feedback,headers=self.headers).status_code,200)
+        self.register('bob')
+        self.assertEqual(self.client.get('/api/reading/articles/'+aid).status_code,404)
+        self.assertEqual(self.client.post(path,json=feedback,headers=self.headers).status_code,404)
+        self.assertEqual(self.client.get('/api/reading',params={'search':'ALICE PRIVATE'}).json()['articles'],[])
+        response=self.client.post('/api/reading/import-paste',json=body,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()['article']['id'],aid)
+        self.assertNotIn('feedback',response.json()['article'])
+        self.login('alice')
+        self.assertEqual(self.client.get('/api/reading/articles/'+aid).json()['article']['feedback']['takeaway'],'ALICE PRIVATE REFLECTION')
+        self.login('owner',os.environ['APP_PASSWORD'])
+        self.assertEqual(self.client.get('/api/reading/articles/'+aid).status_code,404)
+        repo=self.repositories['owner/courses']
+        self.assertNotIn('ALICE PRIVATE',json.dumps(repo.commits[repo.head]['files']))
+
     def test_default_and_custom_github_encryption_prefix_and_binding(self):
         alice = self.register()
         settings = self.client.get('/api/account/github').json()

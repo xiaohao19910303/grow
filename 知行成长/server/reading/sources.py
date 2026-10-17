@@ -134,7 +134,7 @@ async def fetch_article_content(url):
     except Exception:
         return None
 
-def choose(candidates,prefs,seen,today):
+def choose(candidates,prefs,seen,today,seed=None,history=()):
     cutoff=(datetime.fromisoformat(today)-timedelta(days=30)).date().isoformat()
     eligible={}
     for a in candidates:
@@ -142,7 +142,16 @@ def choose(candidates,prefs,seen,today):
         if a['category']=='recent' and not (a.get('published_at') and cutoff<=a['published_at']<=today):continue
         if prefs['mode']!='mixed' and a['category']!=prefs['mode']:continue
         eligible.setdefault(a['id'],a)
-    rows=sorted(eligible.values(),key=lambda a:a.get('published_at') or '',reverse=True)
+    # Stable per job, but different jobs/days explore different eligible articles.
+    seed=str(seed or today)
+    shuffle={aid:int(hashlib.sha256((seed+':'+aid).encode()).hexdigest(),16) for aid in eligible}
+    rows=sorted(eligible.values(),key=lambda a:shuffle[a['id']])
+    signals={t:[] for t in prefs['topics']}
+    for a in sorted(history,key=lambda a:a.get('saved_at',''),reverse=True)[:60]:
+        value={'insightful':1,'neutral':0,'not_for_me':-1}.get((a.get('feedback') or {}).get('value'))
+        if value is None:continue
+        for t in set(a.get('topics',[])) & signals.keys():signals[t].append(value)
+    weights={t:sum(v)/(len(v)+3) for t,v in signals.items()}
     result=[];used=set();covered=set();interests=set(prefs['topics'])
     categories=['recent']*max(0,prefs['count']-1)+['classic'] if prefs['mode']=='mixed' else [prefs['mode']]*prefs['count']
     for category in categories:
@@ -150,7 +159,8 @@ def choose(candidates,prefs,seen,today):
         if not options and prefs['mode']=='mixed':
             options=[a for a in rows if a['id'] not in {x['id'] for x in result}]
         options.sort(key=lambda a:(-len((interests & set(a.get('topics',[])))-covered),
-                                   a['source'] in used, a['language'] in {x['language'] for x in result}))
+                                   0 if len(result)%3==2 else -sum(weights.get(t,0) for t in set(a.get('topics',[])))/max(1,len(a.get('topics',[]))),
+                                   a['source'] in used, a['language'] in {x['language'] for x in result},shuffle[a['id']]))
         if options:
             result.append(options[0]);used.add(options[0]['source']);covered.update(options[0].get('topics',[]))
     return result

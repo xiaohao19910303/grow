@@ -9,10 +9,10 @@
   function button(parent,label,action,primary=false){const b=node('button',label,'btn'+(primary?' primary':''));b.type='button';b.onclick=async()=>{b.disabled=true;try{await action();}catch(e){toast(e.message);root.querySelector('[role=status]').textContent=e.message;}finally{b.disabled=false;}};parent.append(b);return b;}
   function field(parent,label,value='',type='text'){const wrap=node('label',label,'plan-field');const input=node(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value;wrap.append(input);parent.append(wrap);return input;}
   function select(parent,label,values,value){const wrap=node('label',label,'plan-field'),input=node('select');for(const [v,t] of values){const o=node('option',t);o.value=v;input.append(o);}input.value=value;wrap.append(input);parent.append(wrap);return input;}
-  function leave(){if(dirty?.()&&!confirm('笔记有未保存的修改。确定放弃并离开？'))return false;dirty=null;++revision;return true;}
+  function leave(){if(dirty?.()&&!confirm('笔记或阅读反馈有未保存的修改。确定放弃并离开？'))return false;dirty=null;++revision;return true;}
   window.beforeReadingLeave=name=>{if(!leave())return false;if(name!=='reading'&&location.hash.startsWith('#reading/'))history.replaceState(null,'',location.pathname+location.search);return true;};
   window.addEventListener('beforeunload',e=>{if(dirty?.()){e.preventDefault();e.returnValue='';}});
-  function shell(title,kind,id){if(!leave())throw new Error('已保留未保存的笔记。');history.replaceState(null,'',kind?'#reading/'+kind+'/'+id:location.pathname+location.search);root.replaceChildren(node('h2',title));const status=node('p','','desc');status.setAttribute('role','status');root.append(status);return status;}
+  function shell(title,kind,id){if(!leave())throw new Error('已保留未保存的笔记和反馈。');history.replaceState(null,'',kind?'#reading/'+kind+'/'+id:location.pathname+location.search);root.replaceChildren(node('h2',title));const status=node('p','','desc');status.setAttribute('role','status');root.append(status);return status;}
   function markdown(parent,text){const box=node('div',undefined,'cp-reader');window.renderLearningMarkdown(box,text);parent.append(box);}
   function original(parent,a){const link=node('a','阅读原文 ↗','btn');link.href=a.url;link.target='_blank';link.rel='noopener noreferrer';parent.append(link);}
   function card(a,parent){const box=node('article',undefined,'reading-card');box.append(node('span',`${category[a.category]} · ${a.language==='zh'?'中文':'英文'} · 热度未核实`,'reading-tag'),node('h3',a.zh_title||a.title));if(a.zh_title)box.append(node('p',a.title,'desc'));box.append(node('p',`${a.source} · ${a.author} · ${a.published_at||'日期未知'}`,'desc'),node('p',a.summary||'来源未提供摘要，建议阅读原文。'),node('p',a.reason||'已保存到个人阅读资料'),node('p',a.access,'desc'));parent.append(box);return box;}
@@ -27,7 +27,7 @@
     const active=data.jobs.filter(j=>['queued','running'].includes(j.state));for(const j of active)button(root,'查看进行中的'+(j.kind==='guide'?'导读':'搜集'),()=>watch(j.id));
     // Search box
     const searchBar=node('div',undefined,'reading-actions');root.append(searchBar);
-    const searchInput=node('input',undefined,'plan-field');searchInput.type='text';searchInput.placeholder='搜索标题、作者、来源…';searchInput.style.cssText='flex:1;max-width:340px;padding:6px 10px';
+    const searchInput=node('input',undefined,'plan-field');searchInput.type='text';searchInput.placeholder='搜索文章、导读、标签或我的收获…';searchInput.style.cssText='flex:1;max-width:340px;padding:6px 10px';
     searchBar.append(searchInput);
     let currentSearch='';let currentFilter='all';
     searchInput.oninput=async()=>{currentSearch=searchInput.value.trim();await refreshList();};
@@ -39,16 +39,16 @@
       const qs=params.toString();
       const freshData=qs?await api('?'+qs):data;
       list.replaceChildren();
-      let articles=freshData.articles.filter(a=>currentFilter==='all'||currentFilter==='archived'||(currentFilter==='bookmark'&&a.bookmarked)||(currentFilter==='later'&&a.read_later)||(currentFilter==='read'&&a.read));
+      let articles=freshData.articles.filter(a=>currentFilter==='all'||currentFilter==='archived'||(currentFilter==='bookmark'&&a.bookmarked)||(currentFilter==='later'&&a.read_later)||(currentFilter==='read'&&a.read)||(currentFilter==='feedback'&&ReadingGrowth.hasFeedback(a)));
       if(currentFilter==='archived')articles=articles.filter(a=>a.archived);
       else if(currentFilter!=='archived')articles=articles.filter(a=>!a.archived);
       if(!articles.length)list.append(node('p','这里还没有文章。先搜集少量内容，或点击"添加文章"手动导入。','desc'));
-      for(const a of articles){const box=card(a,list);box.append(node('p',a.read?'本人确认读完':'尚未确认读完','desc'));button(box,'阅读导读与笔记',()=>read(a.id),true);original(box,a);
+      for(const a of articles){const box=card(a,list);box.append(node('p',a.read?'本人确认读完':'尚未确认读完','desc'));button(box,'阅读导读与笔记',()=>read(a.id),true);button(box,ReadingGrowth.hasFeedback(a)?'查看反馈':'写阅读反馈',()=>read(a.id,'feedback'));if(ReadingGrowth.hasFeedback(a))box.append(node('p',ReadingGrowth.feedbackLabel(a),'reading-feedback-label'));original(box,a);
         if(a.archived){button(box,'恢复',async()=>{await api('/articles/'+a.id+'/restore');toast('已恢复');await refreshList();});}
         else{button(box,'归档',async()=>{if(confirm('归档后列表默认隐藏，可在"已归档"中恢复。')){await api('/articles/'+a.id+'/archive');toast('已归档');await refreshList();}});}
       }
     }
-    for(const [key,label] of [['all','全部资料'],['bookmark','我的收藏'],['later','稍后阅读'],['read','本人读完'],['archived','已归档']])button(filters,label,()=>{currentFilter=key;refreshList();});refreshList();
+    for(const [key,label] of [['all','全部资料'],['bookmark','我的收藏'],['later','稍后阅读'],['read','本人读完'],['feedback','有反馈'],['archived','已归档']])button(filters,label,()=>{currentFilter=key;refreshList();});refreshList();
     const history=node('details');history.append(node('summary','最近搜集与导读记录'));root.append(history);for(const j of data.jobs)button(history,`${j.created_at} · ${j.kind==='guide'?'中文导读':'文章搜集'} · ${state[j.state]}`,()=>watch(j.id));
   };
   function preferenceFields(parent,p,includeSchedule,availableTopics){
@@ -57,8 +57,9 @@
     const topics=[],languages=[];const topicBox=node('fieldset');topicBox.append(node('legend','感兴趣的主题'));parent.append(topicBox);
     for(const value of availableTopics){const el=field(topicBox,value,'','checkbox');el.checked=p.topics.includes(value);topics.push([value,el]);}
     const languageBox=node('fieldset');languageBox.append(node('legend','文章语言'));parent.append(languageBox);for(const [value,label] of [['zh','中文'],['en','英文（可生成中文导读）']]){const el=field(languageBox,label,'','checkbox');el.checked=p.languages.includes(value);languages.push([value,el]);}
+    let autoGuide;if(includeSchedule){autoGuide=field(parent,'打开英文文章时自动生成并保存中文导读（使用我的个人模型）','','checkbox');autoGuide.checked=!!p.auto_guide;}
     let enabled,hour,minute;if(includeSchedule){enabled=field(parent,'启用每日搜集','','checkbox');enabled.checked=p.enabled;const time=node('div',undefined,'plan-grid');parent.append(time);hour=field(time,'北京时间：小时',p.hour,'number');minute=field(time,'分钟',p.minute,'number');}
-    return ()=>({...p,count:Number(count.value),mode:mode.value,topics:topics.filter(([,x])=>x.checked).map(([v])=>v),languages:languages.filter(([,x])=>x.checked).map(([v])=>v),...(includeSchedule?{enabled:enabled.checked,hour:Number(hour.value),minute:Number(minute.value)}:{})});
+    return ()=>({...p,count:Number(count.value),mode:mode.value,topics:topics.filter(([,x])=>x.checked).map(([v])=>v),languages:languages.filter(([,x])=>x.checked).map(([v])=>v),...(includeSchedule?{enabled:enabled.checked,hour:Number(hour.value),minute:Number(minute.value),auto_guide:autoGuide.checked}:{})});
   }
   async function settings(){const status=shell('阅读偏好与来源');const turn=revision;button(root,'返回今日阅读',window.loadReading);const data=await api();if(turn!==revision)return;const get=preferenceFields(root,data.preferences,true,data.topics);
     root.append(node('p',(data.storage_backend==='cloud'?'云端每日自动搜集，电脑和浏览器无需保持开启。':'服务停止期间不会搜集。重启后仅补当日。')+'来源失败或数量不足会明确记录。已保存文章不会重复推荐。','desc'));
@@ -212,7 +213,7 @@
     }catch(e){if(watching.get(id)!==turn)return;if(turn===revision)status.textContent='暂时无法读取，正在重新连接；不会重复搜集。';delay=Math.min(delay*2,15000);setTimeout(poll,delay);}}
     await poll();
   }
-  async function read(id){const status=shell('文章阅读','article',id);const turn=revision;button(root,'返回今日阅读',window.loadReading);button(root,'我的生词本',()=>vocabPage(id));const d=await api('/articles/'+id);if(turn!==revision)return;const a=d.article;root.querySelector('h2').textContent=a.zh_title||a.title;status.textContent=`${a.source} · ${a.language==='zh'?'中文':'英文'} · ${a.access}`;
+  async function read(id,requestedView){const status=shell('文章阅读','article',id);const turn=revision;button(root,'返回今日阅读',window.loadReading);button(root,'我的生词本',()=>vocabPage(id));const d=await api('/articles/'+id);if(turn!==revision)return;const a=d.article;root.querySelector('h2').textContent=a.zh_title||a.title;status.textContent=`${a.source} · ${a.language==='zh'?'中文':'英文'} · ${a.access}`;
 
     // 操作按钮区
     const actions=node('div',undefined,'reading-actions');root.append(actions);
@@ -220,18 +221,22 @@
     // 收藏、稍后阅读、完成状态
     for(const [key,label] of [['bookmarked',a.bookmarked?'取消收藏':'收藏'],['read_later',a.read_later?'移出稍后阅读':'稍后阅读'],['read',a.read?'改为尚未读完':'本人确认读完']])button(actions,label,async()=>{await api('/articles/'+id+'/personal',{[key]:!a[key]});a[key]=!a[key];toast('阅读状态已保存，笔记输入保留。');const b=actions.querySelectorAll('button');const index=['bookmarked','read_later','read'].indexOf(key);b[index].textContent=key==='bookmarked'?(a[key]?'取消收藏':'收藏'):key==='read_later'?(a[key]?'移出稍后阅读':'稍后阅读'):(a[key]?'改为尚未读完':'本人确认读完');});
 
-    // Five-view tabs
+    // Reading views
     const tabBox=node('div',undefined,'reading-tabs');root.append(tabBox);
-    const views=['original','bilingual','summary','english','notes'];
-    const viewLabels={original:'原文',bilingual:'双语',summary:'总结',english:'英语解析',notes:'我的笔记'};
-    let currentView='original';
+    const views=['guide','original','bilingual','summary','english','notes','feedback'];
+    const viewLabels={guide:'中文导读',original:'原文',bilingual:'双语',summary:'总结',english:'英语解析',notes:'我的笔记',feedback:'阅读反馈'};
+    let currentView=requestedView||(a.language==='en'?'guide':'original');
     const viewContents={};
     for(const v of views){const btn=node('button',viewLabels[v],'btn'+(v===currentView?' primary':''));btn.type='button';btn.onclick=()=>{currentView=v;for(const v2 of views){viewContents[v2].style.display=v2===v?'':'none';tabBox.querySelectorAll('button')[views.indexOf(v2)].className='btn'+(v2===v?' primary':'');}};tabBox.append(btn);}
+
+    const isCurrent=()=>turn===revision&&root.style.display!=='none';
+    const guideView=node('section',undefined,'article-guide-box');root.append(guideView);viewContents.guide=guideView;
+    ReadingGrowth.guide(guideView,a,d,{api,node,button,markdown,isCurrent,onSaved:saved=>{Object.assign(a,saved);root.querySelector('h2').textContent=a.zh_title||a.title;}});
 
     // Original view
     const originalView=node('section',undefined,'article-content-box');root.append(originalView);viewContents.original=originalView;
     if(d.full_text){
-      originalView.append(node('h3','完整文章'));
+      originalView.append(node('h3','已保存的原文'));
       const contentDiv=node('div',undefined,'article-full-content');
       markdown(contentDiv,d.full_text);
       originalView.append(contentDiv);
@@ -246,7 +251,7 @@
         const new_d=await api('/articles/'+id);
         if(new_d.full_text){
           originalView.replaceChildren();
-          originalView.append(node('h3','完整文章'));
+          originalView.append(node('h3','已保存的原文'));
           const contentDiv=node('div',undefined,'article-full-content');
           markdown(contentDiv,new_d.full_text);
           originalView.append(contentDiv);
@@ -389,6 +394,11 @@
     notesView.append(node('h3','我的思考与笔记'));
     const notes=field(notesView,'',d.note.text,'textarea');notes.rows=7;notes.placeholder='哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...';dirty=()=>notes.value!==d.note.text;
     button(notesView,'保存笔记',async()=>{const submitted=notes.value;const saved=await api('/articles/'+id+'/personal',{note:submitted,note_hash:d.note.hash});d.note.text=submitted;d.note.hash=saved.note_hash;toast('笔记已保存');},true);
+
+    const feedbackView=node('section',undefined,'article-guide-box');root.append(feedbackView);viewContents.feedback=feedbackView;
+    const feedbackDirty=ReadingGrowth.feedback(feedbackView,a,{api,node,button,field,isCurrent,onSaved:saved=>{Object.assign(a,{feedback:saved.feedback,read:saved.read});actions.querySelectorAll('button')[2].textContent=a.read?'改为尚未读完':'本人确认读完';}});
+    dirty=()=>notes.value!==d.note.text||feedbackDirty();
+    for(const view of views)viewContents[view].style.display=view===currentView?'':'none';
 
     if(d.github_url){const link=node('a','在 GitHub 打开资料');link.href=d.github_url;link.target='_blank';link.rel='noopener noreferrer';root.append(link);}else root.append(node('p','资料位置：'+d.path,'desc'));
   }
