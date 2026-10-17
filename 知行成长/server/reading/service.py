@@ -5,7 +5,7 @@ import fcntl
 import re
 import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from copilot.core import encoded,digest,fail,now,Problem
 from copilot.generation import config,availability
@@ -199,7 +199,20 @@ class Reader:
         p=self.store.prefs();dt=current or datetime.now(ZoneInfo('Asia/Shanghai'))
         if not p['enabled'] or (dt.hour,dt.minute)<(p['hour'],p['minute']):return None
         key='daily-'+dt.date().isoformat()
-        if self.store.optional('job-'+key):return None
+        # Keep failed runs for diagnosis. Allow two bounded retries after a
+        # cooldown; successful and active runs retain their daily idempotency.
+        for attempt in range(3):
+            candidate=key if attempt==0 else key+'-retry-'+str(attempt)
+            previous=self.store.optional('job-'+candidate)
+            if previous is None:
+                key=candidate
+                break
+            if previous['state']!='failed':return None
+            finished=datetime.fromisoformat(previous.get('finished_at') or previous['created_at'])
+            if finished.tzinfo is None:finished=finished.replace(tzinfo=ZoneInfo('Asia/Shanghai'))
+            if dt.tzinfo is None:dt=dt.replace(tzinfo=ZoneInfo('Asia/Shanghai'))
+            if dt-finished<timedelta(minutes=15):return None
+        else:return None
         if any(j['state'] in ('queued','running') for j in self.store.jobs()):return None
         return self.begin({'key':key,'preferences':p},daily=True)
     async def schedule(self):

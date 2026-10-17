@@ -11,6 +11,87 @@ from reading.store import ReadingStore,DEFAULT,TABLE
 from reading.service import Reader
 from plans.backup import snapshot
 
+class ReadingRecoveryTests(unittest.TestCase):
+    def setUp(self):
+        import sqlite3
+        from contextlib import contextmanager, closing
+        class LocalReadingStore(ReadingStore):
+            @contextmanager
+            def conn(store):
+                with closing(sqlite3.connect(store.root/'index.db')) as conn:
+                    conn.row_factory=sqlite3.Row
+                    with conn:yield conn
+        self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
+        self.root=Path(self.tmp.name)
+        self.store=LocalReadingStore(self.root,self.root/'runtime')
+        self.store.initialize()
+
+    def mirror(self):
+        import json
+        from copilot.core import encoded
+        a={**copy.deepcopy(CLASSICS[0]),'id':identify(CLASSICS[0]['url']),
+           'type':'article','saved_at':now(),'read':True,'bookmarked':True,'read_later':False}
+        folder=self.root/'认知阅读/文章资料'/a['id'];folder.mkdir(parents=True)
+        (folder/'文章信息.json').write_text(encoded(a))
+        (folder/'中文导读.md').write_text('保留的中文导读')
+        (folder/'原文.md').write_text('Preserved article content')
+        (folder/'详细总结.md').write_text('保留的总结')
+        notes=self.root/'认知阅读/阅读笔记';notes.mkdir(parents=True)
+        (notes/(a['id']+'.md')).write_text('保留的个人笔记')
+        return a,folder
+
+    def test_restart_restores_missing_index_without_changing_files(self):
+        a,folder=self.mirror()
+        files={p:p.read_bytes() for p in self.root.rglob('*') if p.suffix in ('.md','.json')}
+        self.store.initialize()
+        recovered=self.store.article(a['id'])
+        self.assertTrue(recovered['read']);self.assertTrue(recovered['bookmarked'])
+        self.assertEqual(recovered['guide'],'保留的中文导读')
+        self.assertEqual(recovered['full_content'],'Preserved article content')
+        self.assertEqual(self.store.note(a['id'])['text'],'保留的个人笔记')
+        self.assertEqual({p:p.read_bytes() for p in files},files)
+        self.assertEqual(choose([a],DEFAULT,{x['id'] for x in self.store.articles()},now()[:10]),[])
+        # Restored hashes support normal updates and retain conflict protection.
+        self.store.update_personal(a['id'],{'read_later':True})
+        self.assertTrue(self.store.article(a['id'])['read_later'])
+        (folder/'文章信息.json').write_text('external edit')
+        with self.assertRaises(Problem):self.store.update_personal(a['id'],{'read':False})
+
+    def test_restart_preserves_existing_index_and_rejects_invalid_mirror(self):
+        import json
+        a,folder=self.mirror();self.store.initialize()
+        (folder/'中文导读.md').write_text('external edit')
+        self.store.initialize()
+        self.assertEqual(self.store.article(a['id'])['guide'],'保留的中文导读')
+        bad={**a,'id':'article-'+'0'*20,'url':'javascript:alert(1)'}
+        target=self.root/'认知阅读/文章资料'/bad['id'];target.mkdir()
+        (target/'文章信息.json').write_text(json.dumps(bad))
+        self.store.initialize();self.assertIsNone(self.store.optional(bad['id']))
+
+    def test_technology_preference_matches_science_and_chinese_articles(self):
+        from reading.store import preferences
+        from reading.sources import matches
+        p=preferences({**DEFAULT,'topics':['科技']})
+        for title in ('New science in space and physics','人工智能与科技进展'):
+            self.assertTrue(matches({'title':title,'summary':'','language':'en','topics':[]},p))
+        self.assertFalse(matches({'title':'Everyday habits','summary':'','language':'en','topics':[]},p))
+
+    def test_daily_collection_after_recovery_does_not_overwrite_saved_articles(self):
+        a,folder=self.mirror();self.store.initialize()
+        saved=(folder/'文章信息.json').read_bytes()
+        self.store.save_preferences({**DEFAULT,'mode':'classic'})
+        async def run():
+            service=Reader(self.store)
+            with patch('reading.service.fetch_article_content',return_value='Fixture full text'):
+                job=service.daily_tick(datetime.fromisoformat(now()).replace(hour=23))
+                await asyncio.gather(*list(service.tasks.values()))
+            result=self.store.record(job['id'])
+            self.assertEqual(result['state'],'ready',result.get('error'))
+            self.assertNotIn(a['id'],result['saved_ids'])
+            self.assertTrue(result['saved_ids'])
+        asyncio.run(run())
+        self.assertEqual((folder/'文章信息.json').read_bytes(),saved)
+
 class SourceTests(unittest.TestCase):
     def test_atom_rss_and_unsafe_xml(self):
         src=FEEDS[0]
