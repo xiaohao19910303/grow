@@ -430,6 +430,14 @@ async def lifespan(app: FastAPI):
     if not getattr(plans_store,'remote',False) and (plans_store.runtime / 'restore-pending.json').exists():
         raise RuntimeError('存在未完成的学习计划恢复，请先核对恢复日志。')
     init_db()
+    from legacy_migrations import migrate as migrate_legacy_tables
+    try:
+        with get_conn() as connection:
+            migrated = migrate_legacy_tables(connection)
+        if migrated: print('旧表结构迁移完成：'+', '.join(migrated))
+    except (Problem, db.psycopg2.Error):
+        # Original records remain intact; unaffected modules and AI settings stay available.
+        print('部分旧表需要人工核对迁移，原数据已保留。')
     from copilot.ai_config import remove_server_config
     with get_conn() as connection:
         remove_server_config(connection)

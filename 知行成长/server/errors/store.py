@@ -71,13 +71,10 @@ class ErrorStore:
         conn.executescript(TABLE_SQL)
         # 预置错误类型
         for name, desc in DEFAULT_ERROR_TYPES:
-            try:
-                conn.execute(
-                    "INSERT INTO error_types(name, description) VALUES(?, ?)",
-                    (name, desc),
-                )
-            except db.IntegrityError:
-                pass  # 已存在
+            conn.execute(
+                "INSERT INTO error_types(name, description) VALUES(?, ?) ON CONFLICT(name) DO NOTHING",
+                (name, desc),
+            )
         conn.commit()
         conn.close()
 
