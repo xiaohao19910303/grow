@@ -114,8 +114,11 @@ class Documents:
             for identity in sorted({int(digest(name)[:15],16) for name in ('learning-plan-publications',schema+':learning-plan-publications')}):
                 c.execute('SELECT pg_advisory_xact_lock(?)',(identity,))
             self.local.locked=True
+            self.local.documents=None
             try:yield
-            finally:self.local.locked=False
+            finally:
+                self.local.documents=None
+                self.local.locked=False
 
     @contextmanager
     def generation_gate(self):
@@ -145,7 +148,13 @@ class Documents:
                 if exc.code not in ('content_conflict','conflict','github_conflict','github_unavailable','github_access'):raise
 
     def metadata(self,path):
-        return self.get('cloud_documents',valid_path(path),'path')
+        valid_path(path)
+        # Every document mutation holds this database publication lock. Reuse one
+        # committed metadata snapshot while it is held, then refresh after writes.
+        if getattr(self.local,'locked',False):
+            if self.local.documents is None:self.local.documents=dict(self.rows('cloud_documents'))
+            return self.local.documents.get(path)
+        return self.get('cloud_documents',path,'path')
 
     def read(self,path):
         item=self.metadata(path)
@@ -231,6 +240,7 @@ class Documents:
             journal['result'].update(storage='github' if public else 'database')
             if public:journal['result']['commit_sha']=journal['commit_sha']
             self.put('cloud_publications',key,journal,connection=c)
+        self.local.documents=None
 
 
 class ContentPath:
