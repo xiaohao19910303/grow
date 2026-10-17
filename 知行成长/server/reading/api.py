@@ -1,7 +1,7 @@
 """Local-only routes; model requests are always explicit."""
 from tenancy import scoped, learning_root, runtime_root
 import asyncio
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from plans.api import Payload
 from copilot.generation import availability
@@ -93,7 +93,12 @@ def register(app,root,db):
         require_config(body.data.get('ai_config'))
         return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'english','ai_config':body.data.get('ai_config')}))
     @router.post('/articles/{aid}/fetch_full')
-    async def fetch_full(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'fetch_full'}))
+    async def fetch_full(aid:str,body:Payload,background:BackgroundTasks):
+        job,created=await asyncio.to_thread(reader.begin,{'key':body.data.get('key'),'article_id':aid,'kind':'fetch_full'},defer=True)
+        if created:
+            async def launch():reader.launch(job['id'])
+            background.add_task(launch)
+        return public_job(job)
     @router.post('/import-url')
     async def import_url(body:Payload):
         url=body.data.get('url','').strip()

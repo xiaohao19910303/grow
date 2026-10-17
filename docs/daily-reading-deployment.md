@@ -28,3 +28,5 @@ Render 免费实例会休眠，因此 `.github/workflows/daily-reading.yml` 在�
 访问限制、付费墙或网络错误会显示失败原因和「重新加载正文」。来源摘要明确标注为摘要，不冒充正文；失败不会替换已有正文。刷新失败文章不会自动重复请求。抓取仅访问经 DNS 验证的公开地址，连接固定到所验证的 IP，每次重定向重新校验，限制响应大小和时间。HTML/PDF 超出正文上限时不会静默截断。
 
 验证：`test_reading_content.py`、`test_reading_site_browser.py`、`test_reading_growth_browser.py`、`test_legacy_cloud_browser.py`；浏览器验收需设置 `RUN_LEGACY_BROWSER=1`，数据库使用隔离的测试 PostgreSQL。
+
+正文任务的创建、数据库读写与 GitHub 发布在工作线程执行，避免远端保存阻塞 ASGI 健康检查。`test_reading_responsiveness.py` 在模拟慢发布时验证健康检查与任务查询仍可响应。
