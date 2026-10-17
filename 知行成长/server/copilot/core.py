@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import sqlite3
 import db
 import tempfile
 import uuid
@@ -121,8 +122,10 @@ class Store:
             fail('save_pending_recovery', '存在未完成的离线恢复，请先处理恢复日志。', 503)
         with self.lock():
             with self.conn() as c:
-                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_meta'").fetchone()
-            if not installed:
+                sqlite = isinstance(c, sqlite3.Connection)
+                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_meta'" if sqlite else
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='copilot_meta'").fetchone()
+            if not installed and sqlite:
                 # SQLite backup API captures a consistent database; never copy a live db file.
                 from .backup import snapshot
                 snapshot(self, 'before-migration')
@@ -161,6 +164,8 @@ class Store:
                 c.execute("INSERT INTO copilot_meta VALUES('schema_version','1') ON CONFLICT(key) DO NOTHING")
                 schema_ver = c.execute("SELECT value FROM copilot_meta WHERE key='schema_version'").fetchone()[0]
                 if schema_ver < '2':
+                    if not sqlite and c.execute('SELECT COUNT(*) FROM copilot_learning_records').fetchone()[0]:
+                        fail('legacy_schema_migration', '旧学习记录需要版本迁移，原记录已保留。', 503)
                     c.execute("DROP TABLE IF EXISTS copilot_learning_records")
                     c.execute('''CREATE TABLE copilot_learning_records (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,

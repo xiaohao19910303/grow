@@ -470,7 +470,7 @@ async function loadFromServer(){
     }
     state = d; dataLoaded = true; legacyConflict = false;
     document.getElementById('legacyConflict').hidden = true;
-    refreshModuleNames(); setStatus('已连接本地库','on'); render(); return true;
+    refreshModuleNames(); setStatus('已连接数据库','on'); render(); return true;
   }catch(e){ setStatus('读取失败，本地修改未替换','err'); return false; }
 }
 let saveTimer = null, saveInFlight = false, legacyConflict = false, editGeneration = 0;
@@ -519,7 +519,7 @@ async function saveToServer(){
       }
     }
     state._revision = d.state._revision; saved = true;
-    setStatus(editGeneration === generation ? '已保存 · 本地数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
+    setStatus(editGeneration === generation ? '已保存 · 数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
   }catch(e){ setStatus('保存失败 · 本地修改保留，请重试；若有冲突请先导出副本','err'); }
   finally{
     saveInFlight = false;
@@ -557,7 +557,7 @@ async function testApiConnection(){
   if(!body.api_base_url||!body.api_key||!body.model_name){el.textContent='请完整填写 Base URL、API Key 和模型名称。';return;}
   el.textContent='正在测试连接…';
   try{
-    const r=await fetch('/api/copilot/settings/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
+    const r=await fetch('/api/ai/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
     const d=await r.json();
     el.textContent=d.message||'连接测试失败，请检查配置。';
   }catch(e){el.textContent='测试失败，请检查网络与配置。';}
@@ -1837,7 +1837,7 @@ async function scanKnowledge(){
     const r = await fetch('/api/knowledge/scan', {method:'POST'});
     const j = await r.json();
     await loadKnowledge();
-    setStatus('已保存 · 本地数据库','on');
+    setStatus('已保存 · 数据库','on');
     toast('扫描完成，共 '+j.count+' 个节点');
   }catch(e){ setStatus('扫描失败','err'); }
 }
