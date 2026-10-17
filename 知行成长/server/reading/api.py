@@ -32,6 +32,7 @@ def register(app,root,db):
         all_sources = store.all_sources()
         articles = store.search_articles(search, include_archived) if search else store.articles(include_archived=include_archived)
         return {'preferences':store.prefs(),
+                'storage_backend':'cloud' if getattr(store,'remote',False) else 'local',
                 'sources':[{k:v for k,v in s.items() if k!='domains'} for s in all_sources],
                 'default_sources':[{k:v for k,v in s.items() if k!='domains'} for s in DEFAULT_FEEDS],
                 'custom_sources':[{k:v for k,v in s.items() if k!='domains'} for s in store.custom_sources()],
@@ -162,4 +163,6 @@ def register(app,root,db):
     def archive_vocab(vid:str,body:Payload):return store.archive_vocabulary(vid,body.data.get('archived',True))
     @router.delete('/vocabulary/{vid}')
     def delete_vocab(vid:str):return store.delete_vocabulary(vid)
+    from .scheduled import register as register_scheduled
+    register_scheduled(router,store,reader)
     app.include_router(router);return store,reader

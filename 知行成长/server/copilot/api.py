@@ -8,6 +8,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
 
 from .core import Problem, Store, fail
 from .cloud_store import make_store
@@ -101,7 +102,7 @@ def register(app: FastAPI, root, db):
         cloud_pilot = os.getenv('CLOUD_DEPLOY', '') == '1' and os.getenv('PLAN_CONTENT_BACKEND', '') == 'github'
         if cloud_pilot:
             from cloud_auth import guard
-            rejected = guard(request)
+            rejected = await run_in_threadpool(guard,request)
             if rejected is not None:return rejected
         # 云端部署时允许所有主机（通过环境变量控制）
         if os.getenv('CLOUD_DEPLOY', '') == '1':

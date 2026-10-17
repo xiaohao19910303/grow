@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from copilot.core import digest, encoded, fail, now
 from plans.store import Plans, integer
-from .sources import TOPICS, DEFAULT_FEEDS
+from .sources import TOPICS, DEFAULT_FEEDS, identify
 
 DEFAULT={'enabled':True,'hour':10,'minute':0,'count':3,'mode':'mixed','topics':list(TOPICS),'languages':['zh','en'],'query':''}
 TABLE='reading_records'
@@ -64,10 +64,47 @@ class ReadingStore(Plans):
                     FOREIGN KEY (vocab_id) REFERENCES reading_vocabulary(id))''')
                 c.execute('CREATE INDEX IF NOT EXISTS idx_review_vocab ON reading_reviews(vocab_id)')
             self.recover_exports()
+            self.restore_article_index()
             for job in self.jobs():
                 if job['state'] in ('queued','running'):
                     job.update(state='failed',error='服务重启导致任务中断，未自动重试。',finished_at=now());self.put(TABLE,job['id'],job)
             if self.optional('preferences') is None:self.set_preferences_locked(DEFAULT)
+    def restore_article_index(self):
+        """Reattach local mirrors missing from the index; never replace indexed records or files.
+
+        Called under the writer lock after pending exports have recovered.
+        """
+        records=[]
+        base=self.path('认知阅读/文章资料')
+        if not base.is_dir():return 0
+        for metadata in sorted(base.glob('article-*/文章信息.json')):
+            aid=metadata.parent.name
+            if not re.fullmatch(r'article-[a-f0-9]{20}',aid) or self.optional(aid):continue
+            rel=f'认知阅读/文章资料/{aid}'
+            try:
+                a=json.loads(self.path(rel+'/文章信息.json').read_text(encoding='utf-8'))
+                if not isinstance(a,dict) or a.get('id')!=aid or a.get('type')!='article':continue
+                if any(not isinstance(a.get(k),str) or not a[k] for k in ('title','url','source','saved_at')):continue
+                url=urlsplit(a['url'])
+                if url.scheme not in ('http','https') or not url.hostname or url.username or url.password:continue
+                if identify(a['url'])!=aid or a.get('language') not in ('zh','en'):continue
+                if any(k in a and type(a[k]) is not bool for k in ('read','read_later','bookmarked','archived')):continue
+                hashes={};contents={}
+                for name in ('文章信息.json','中文导读.md','原文.md','详细总结.md','英语学习.md'):
+                    path=rel+'/'+name;file=self.path(path)
+                    if file.is_file():
+                        raw=file.read_bytes();hashes[path]=digest(raw);contents[name]=raw.decode('utf-8')
+                a.update(hashes=hashes,guide=contents.get('中文导读.md',''))
+                if '原文.md' in contents and not a.get('full_content'):a['full_content']=contents['原文.md']
+                for key in ('read','read_later','bookmarked'):a.setdefault(key,False)
+                a.setdefault('access','从本地已保存资料恢复；未重新核验原文')
+                records.append(a)
+            except (OSError,ValueError,UnicodeError):
+                continue
+        with self.conn() as c:
+            for a in records:
+                c.execute('INSERT INTO reading_records VALUES (?,?) ON CONFLICT(id) DO NOTHING',(a['id'],encoded(a)))
+        return len(records)
     def optional(self,key):
         with self.conn() as c:r=c.execute('SELECT data FROM reading_records WHERE id=?',(key,)).fetchone()
         return json.loads(r[0]) if r else None

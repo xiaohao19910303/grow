@@ -10,3 +10,4 @@ psycopg2-binary==2.9.9
 # 其他依赖
 python-multipart==0.0.6
 pydantic==2.5.0
+PyJWT[crypto]>=2.10,<3

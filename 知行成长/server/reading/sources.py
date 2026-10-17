@@ -11,6 +11,7 @@ import httpx
 
 TOPICS={
  '认知':['cognition','thinking','reason','evidence','decision','思考','认知','判断','学习'],
+ '科技':['technolog','science','artificial intelligence','robot','space','physics','科技','科学','人工智能','航天','物理','医疗技术'],
  '经济学':['econom','market','money','growth','inequality','经济','金融','市场','贫富','增长'],
  '社会学':['social','societ','culture','institution','community','社会','文化','制度','人口'],
  '心理':['psycholog','emotion','mind','mental','memory','心理','情绪','记忆','幸福'],
@@ -21,10 +22,10 @@ DEFAULT_FEEDS=[
  {'id':'aeon','name':'Aeon','url':'https://aeon.co/feed.rss','language':'en','domains':['aeon.co'],'topics':['认知','社会学','心理'],'custom':False},
  {'id':'behavioral','name':'Behavioral Scientist','url':'https://behavioralscientist.org/feed/','language':'en','domains':['behavioralscientist.org'],'topics':['认知','心理','社会学'],'custom':False},
  {'id':'ftchinese','name':'FT中文网','url':'https://www.ftchinese.com/rss/feed','language':'zh','domains':['www.ftchinese.com','ftchinese.com'],'topics':['经济学','社会学'],'custom':False},
- {'id':'ruanyifeng','name':'阮一峰的网络日志','url':'https://www.ruanyifeng.com/blog/atom.xml','language':'zh','domains':['www.ruanyifeng.com','ruanyifeng.com'],'topics':['成长','社会学'],'custom':False},
+ {'id':'ruanyifeng','name':'阮一峰的网络日志','url':'https://www.ruanyifeng.com/blog/atom.xml','language':'zh','domains':['www.ruanyifeng.com','ruanyifeng.com'],'topics':['科技','成长','社会学'],'custom':False},
  {'id':'owid','name':'Our World in Data','url':'https://ourworldindata.org/atom.xml','language':'en','domains':['ourworldindata.org'],'topics':['经济学','社会学','认知'],'custom':False},
- {'id':'36kr','name':'36氪','url':'https://36kr.com/feed','language':'zh','domains':['36kr.com'],'topics':['成长','经济学'],'custom':False},
- {'id':'sspai','name':'少数派','url':'https://sspai.com/feed','language':'zh','domains':['sspai.com'],'topics':['成长','认知'],'custom':False},
+ {'id':'36kr','name':'36氪','url':'https://36kr.com/feed','language':'zh','domains':['36kr.com'],'topics':['科技','成长','经济学'],'custom':False},
+ {'id':'sspai','name':'少数派','url':'https://sspai.com/feed','language':'zh','domains':['sspai.com'],'topics':['科技','成长','认知'],'custom':False},
  {'id':'hbr','name':'Harvard Business Review','url':'https://hbr.org/feed','language':'en','domains':['hbr.org'],'topics':['成长','认知','心理'],'custom':False},
  {'id':'psychology_today','name':'Psychology Today','url':'https://www.psychologytoday.com/us/blog/rss','language':'en','domains':['psychologytoday.com'],'topics':['心理','认知'],'custom':False},
  {'id':'waitbutwhy','name':'Wait But Why','url':'https://waitbutwhy.com/feed','language':'en','domains':['waitbutwhy.com'],'topics':['认知','成长','心理'],'custom':False},
@@ -146,6 +147,8 @@ def choose(candidates,prefs,seen,today):
     categories=['recent']*max(0,prefs['count']-1)+['classic'] if prefs['mode']=='mixed' else [prefs['mode']]*prefs['count']
     for category in categories:
         options=[a for a in rows if a['category']==category and a['id'] not in {x['id'] for x in result}]
+        if not options and prefs['mode']=='mixed':
+            options=[a for a in rows if a['id'] not in {x['id'] for x in result}]
         options.sort(key=lambda a:(a['source'] in used, a['language'] in {x['language'] for x in result}))
         if options:result.append(options[0]);used.add(options[0]['source'])
     return result

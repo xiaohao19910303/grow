@@ -172,7 +172,10 @@
     <button class="tab" data-group="records" onclick="goGroup('records')">记录</button>
     <button class="tab" data-group="growth" onclick="goGroup('growth')">成长</button>
   </nav>
-  <nav id="subnav" class="subnav" aria-label="栏目导航" hidden></nav>
+  <nav id="subnav" class="subnav" aria-label="栏目导航">
+    <button class="btn primary" aria-current="page" onclick="goTab('personal')">今日</button>
+    <button class="btn" onclick="goTab('reading')">今日阅读</button>
+  </nav>
   <div id="view-settings" style="display:none" class="section">
     <h2>设置与数据</h2><p class="desc">记录会自动保存。需要时可手动重试保存或导出备份。</p>
     <div class="cp-actions"><button class="btn" onclick="saveToServer()">立即保存</button><button class="btn" onclick="exportJson()">导出 JSON</button></div>
@@ -1913,7 +1916,7 @@ function goTab(name, options={}){
     if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
   });
   const subnav=document.getElementById('subnav');
-  subnav.hidden=!group || group==='personal' || !!options.reading || name==='reader';
+  subnav.hidden=!group || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
   ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
