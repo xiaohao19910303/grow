@@ -10,8 +10,7 @@ from unittest.mock import patch
 
 from copilot.core import Problem, digest, encoded
 from plans import backup
-from plans.store import Plans
-from reflections.store import ReflectionsStore
+from offline_archive_fixture import OfflineArchivePlans as Plans,OfflineArchiveReflections as ReflectionsStore
 
 
 class PlatformBackupTests(unittest.TestCase):
