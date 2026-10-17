@@ -102,3 +102,12 @@ class ReadingSiteBrowser(CloudHTTPFixture):
             page.get_by_role('button',name='重新加载正文',exact=True).click()
             page.get_by_text('正文已保存，可直接在本站阅读。',exact=True).wait_for();self.assertEqual(len(calls),2)
             self.assertEqual(self.reader.note(self.aid)['text'],'PRIVATE READING NOTE')
+
+    def test_short_pasted_body_is_readable_without_network_fetch(self):
+        self.reader.import_from_paste('My short saved article','Short body.')
+        async def content(url):self.fail('A pasted body must never trigger a source request')
+        with patch('reading.service.fetch_article_content',content),self.browser() as (page,base):
+            page.goto(base);page.evaluate('enterReading()')
+            page.locator('.reading-card').filter(has_text='My short saved article').get_by_role('button',name='本站阅读',exact=True).click()
+            page.get_by_text('已保存的正文，可直接在本站阅读。',exact=True).wait_for()
+            page.locator('.article-content-box:visible .article-full-content').get_by_text('Short body.',exact=True).wait_for()

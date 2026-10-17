@@ -12,7 +12,8 @@
       const text=fresh.full_text||fresh.article.full_content;
       const legacyPdf=fresh.content_needs_refresh&&/\.pdf(?:$|[?#])/i.test(fresh.article.url);
       body.replaceChildren();
-      if(text&&text.length>=100&&!legacyPdf){markdown(body,text);onRendered(body);return true;}
+      const imported=['paste','url'].includes(fresh.article.import_method);
+      if(text&&(text.length>=100||imported)&&!legacyPdf){markdown(body,text);onRendered(body);return true;}
       body.append(node('h4','来源摘要（不是正文）'),node('p',fresh.article.summary||'来源未提供摘要。'));
       return false;
     }
