@@ -1,6 +1,7 @@
 """行为应用追踪 — API 路由。"""
 from __future__ import annotations
 
+from tenancy import scoped, learning_root, runtime_root
 import re
 from typing import Optional
 
@@ -30,7 +31,7 @@ class ApplicationUpdate(BaseModel):
 
 
 def register(app: FastAPI, root, db_path) -> BehaviorStore:
-    store = BehaviorStore(db_path)
+    store = scoped(app, lambda: BehaviorStore(runtime_root(db_path)), initialize=True)
     router = APIRouter(prefix="/api/behavior")
 
     def _validate_date(d: str):

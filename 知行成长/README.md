@@ -12,7 +12,8 @@
 在任何设备的浏览器中访问上面的网址
 
 ### 2. 开始使用
-- 查看学习任务
+- 使用已有账号登录；新用户通过已有用户的邀请链接注册
+- 查看自己的学习任务
 - 记录学习进度
 - 查看知识图谱
 - 管理个人成长
@@ -95,15 +96,16 @@ Render 不克隆内容仓库，不把正式课程、锁文件或发布恢复日�
 1. 使用已确定的内容仓库。空仓库会在首次正式发布时通过 Contents API 创建 README，再提交规划；生成草稿与阅读请求不会初始化仓库。若目标分支与空仓库的默认分支不同，须先在 GitHub 建立目标分支。需要私密课程时，先将仓库设置为私有。
 2. 创建仅授权该内容仓库的 fine-grained Token，授予 **Contents: Read and write**。目标分支应允许该凭证直接提交；要求 PR 的保护规则会阻止直接发布。不要授予 Workflows 权限。
 3. 在 Render 的 Environment 中配置仓库根目录 [.env.github.example](../.env.github.example) 所列变量。GitHub Token、数据库连接串、登录密码只写入服务端密钥配置，不写入 Git 或聊天。用户 AI 配置在浏览器设置页填写。
-4. `GITHUB_CONTENT_REPO` 使用 `账号/仓库`，`GITHUB_CONTENT_BRANCH` 默认 `main`。`DATABASE_URL` 使用 Supabase Connect → Session pooler 的完整连接串（端口 5432），以兼容 Render 的 IPv4 网络。AI 配置仅保存在当前站点的浏览器 localStorage；Base URL 可填写 `/v1` 等兼容接口根地址或完整 `/chat/completions` 地址。每次生成必须携带用户自己的三项配置，不回退读取服务端 `QWEN_*` 或数据库配置。
-5. `APP_PASSWORD` 至少 24 位，`APP_USERNAME` 默认 `owner`。公网浏览器首次打开时使用浏览器登录框认证；健康检查 `/api/health` 保持公开。仅经 HTTPS 访问。
-6. 使用根目录 `render.yaml` 的构建和启动命令；无需配置持久磁盘。使用**一个实例、一个 Uvicorn worker**，生成任务中断后需显式重新生成，不会自动重复调用模型。
+4. `GITHUB_CONTENT_REPO` 使用 `账号/仓库`，`GITHUB_CONTENT_BRANCH` 默认 `main`。`DATABASE_URL` 使用 Supabase Connect → Session pooler 的完整连接串（端口 5432），以兼容 Render 的 IPv4 网络。AI 配置按登录账号分别保存在当前站点的浏览器 localStorage；Base URL 可填写 `/v1` 等兼容接口根地址或完整 `/chat/completions` 地址。每次生成必须携带用户自己的三项配置，不回退读取服务端 `QWEN_*` 或数据库配置。
+5. `APP_PASSWORD` 至少 24 位，`APP_USERNAME` 默认 `owner`，用于初始化并维护原管理账号。用户通过 `/login` 登录，新用户必须持已有用户创建的邀请链接注册；健康检查 `/api/health` 保持公开。公网仅经 HTTPS 访问。
+6. 新增 `ACCOUNT_ENCRYPTION_KEY`（Fernet key），用于加密个人 GitHub Token。安装依赖后执行 `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`，只将输出保存到服务端环境变量；跨部署保持不变，丢失后需要用户重新填写 Token。数据库角色需有 CREATE SCHEMA 权限。
+7. 使用根目录 `render.yaml` 的构建和启动命令；无需配置持久磁盘。使用**一个实例、一个 Uvicorn worker**，生成任务中断后需显式重新生成，不会自动重复调用模型。
 
 通用百炼接口可配置为 `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`，并使用对应地区的通用 API Key 和可用模型。Coding Plan 专用密钥与通用 API Key 不能混用；[官方说明](https://help.aliyun.com/zh/model-studio/coding-plan-faq)将 Coding Plan 限定用于编程工具，长期运行的应用后台应使用通用 API。
 
 启动时会清理数据库中旧的 AI 配置字段（保留超时等运行设置），不会将旧密钥返回浏览器。用户需在「设置与数据」重新填写自己的 Base URL、API Key、模型名称；换浏览器需重新配置。连接测试不自动保存配置，清除本地配置后不能再发起生成。
 
-启动时会增量创建学习计划表，并绑定内容仓库和分支。已有绑定后不能直接换仓库或分支；先做显式数据迁移。
+启动时会增量创建账号表，按账号创建学习表和绑定内容仓库、分支。已有正式计划后不能直接换仓库或分支；先做显式数据迁移。
 若数据库已有旧本地计划，其文件不会自动上传：本轮先新建一套计划验收，历史课程仍需另行迁移。
 同一数据库不要同时运行 local 与 github 模式的写入服务。
 
@@ -175,5 +177,30 @@ GitHub 接口依据：[Contents](https://docs.github.com/en/rest/repos/contents)
 **状态**: ✅ 运行中
 
 当前改动的迁移边界与隔离验收见 [浏览器 AI 配置与云端存储验收](浏览器AI配置与云端存储验收.md)。
+
+
+## 多用户账号与个人存储
+
+平台仅限邀请注册：已有账号登录后，在「设置与数据 → 邀请其他人」生成并复制链接发给受邀人。每个链接仅可使用一次，7 天内有效；邀请人可撤销尚未使用的链接。普通登录页不提供直接注册，后端也会拒绝没有有效邀请的注册请求。受邀人通过链接设置用户名和密码（用户名 3–32 位字母、数字、下划线或短横线；密码至少 10 位），注册成功即登录。页面右上角显示当前账号并提供退出入口。原 APP_USERNAME / APP_PASSWORD 账号保留所有已有数据和原 GitHub 目录，注册用户不能认领旧数据。更新服务端 APP_PASSWORD 会在重启时更新管理账号密码并撤销该账号已有会话。
+
+各账号的待办、打卡、学习计划、课程、草稿、生成进度、反馈、日常记录、股票复盘、行为追踪、错误和知识图谱使用独立 PostgreSQL schema。新账号从空白记录开始，不导入原账号本地资料。后台任务和生成请求标识也按账号隔离。既有认知课程、阅读收藏和云端资料继续通过原存储读取。
+
+在「设置与数据 → GitHub 内容存储」中选择：
+
+- **使用平台默认配置**：沿用当前服务端仓库、分支和 Token。新账号课程放在 `用户/<用户ID>/学习计划/`，账号间不会覆盖；原管理账号沿用根目录 `学习计划/`。
+- **使用我的 GitHub 仓库**：填写 `账号/仓库`、已存在的分支和仅授权该仓库 Contents 读写权限的 fine-grained Token。测试连接仅检查读取能力，不提交文件；正式发布需要写权限。空仓库目标分支需匹配默认分支。
+- Token 以 Fernet 密文保存在数据库，不回传页面；留空保留原 Token。已有正式计划或待恢复发布时，可更新 Token，但不能直接切换仓库、分支或恢复到其他默认仓库，需要先迁移内容。生成或发布期间暂不允许更换配置。
+
+个人反馈和日常记录只存数据库。GitHub 的目录隔离防止不同账号相互覆盖；公开仓库中的课程仍会公开，需要私密内容时请选择自己的私有仓库。AI 配置按账号保存在当前浏览器，旧单人配置仅迁入原管理账号，其他账号需自行填写。
+
+数据库迁移均为增量建表，不删除已有数据。会话最长 7 天，可退出撤销；密码存储为 scrypt 哈希。数据库备份应覆盖原 schema、`auth_*` 表和所有 `learner_*` schema，并单独保管 `ACCOUNT_ENCRYPTION_KEY`。当前仍按单实例、单 worker 部署。
+
+实现规格和本地验证见 [多用户账号方案](../docs/multi-user-accounts.md)。集成测试仅连接专用本地 PostgreSQL，不连接生产数据库：
+
+```bash
+TEST_ACCOUNTS_PG_DSN='host=127.0.0.1 port=5432 dbname=postgres user=你的本地用户' \
+PYTHONPATH=知行成长/server python -m unittest discover -s 知行成长/server/tests -p 'test_accounts.py' -v
+# 加 RUN_ACCOUNTS_BROWSER=1 可运行已安装 Playwright Chromium 的真实浏览器验收。
+```
 
 旧模块、旧表和 SQLite 原记录的迁移步骤与边界见 [旧模块云端迁移说明](旧模块云端迁移说明.md)。

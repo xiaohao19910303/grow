@@ -12,9 +12,10 @@ from copilot.core import digest, fail
 
 
 class GitHubContent:
-    def __init__(self, repository, branch, token, transport=None):
+    def __init__(self, repository, branch, token, transport=None, prefix=''):
         self.repository, self.branch, self.token = repository, branch, token
         self.transport = transport
+        self.prefix = prefix
         self.cache = OrderedDict()
         self.cache_lock = RLock()
 
@@ -24,7 +25,9 @@ class GitHubContent:
                    os.getenv('GITHUB_CONTENT_TOKEN', ''))
 
     def validate(self):
-        if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', self.repository) or not self.token:
+        if (not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', self.repository)
+                or any(part in ('.', '..') for part in self.repository.split('/'))
+                or not self.token or any(ord(ch) < 33 or ord(ch) > 126 for ch in self.token)):
             fail('github_config', '请配置内容仓库 GITHUB_CONTENT_REPO 和后端凭证 GITHUB_CONTENT_TOKEN。', 503)
         if not self.branch or self.branch.startswith('-') or any(x in self.branch for x in ('..', '?', '#', '\\', ' ')):
             fail('github_config', '内容仓库分支配置无效。', 503)
@@ -36,7 +39,11 @@ class GitHubContent:
                 p.is_absolute() or '..' in p.parts or '\\' in relative or
                 any(ord(c) < 32 for c in relative) or str(p) != relative):
             fail('invalid', '路径不属于学习计划或含有无效片段。', 422)
-        return quote(relative, safe='/')
+        return quote(self.physical_path(relative), safe='/')
+
+    def physical_path(self, relative):
+        # prefix is server-generated and never supplied by users.
+        return self.prefix + relative
 
     def request(self, method, endpoint, missing=False, empty=False, **kwargs):
         self.validate()
@@ -112,7 +119,7 @@ class GitHubContent:
 
     def prepare(self, head, files, operation):
         commit = self.request('GET', 'git/commits/'+head)
-        entries = [{'path': path, 'mode': '100644', 'type': 'blob', 'content': value}
+        entries = [{'path': self.physical_path(path), 'mode': '100644', 'type': 'blob', 'content': value}
                    for path, value in files.items()]
         for path in files: self.path(path)
         tree = self.request('POST', 'git/trees', json={'base_tree': commit['tree']['sha'], 'tree': entries})

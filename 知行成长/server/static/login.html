@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 · 知行成长</title>
+  <link rel="stylesheet" href="/static/account.css">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <div class="account-mark" aria-hidden="true">知</div>
+    <p class="eyebrow">知行成长</p>
+    <h1 id="loginTitle">继续你的学习</h1>
+    <p class="login-description" id="loginDescription">登录后，接着记录每一天的思考与成长。</p>
+    <div class="auth-tabs" role="group" aria-label="账号操作">
+      <button type="button" id="loginTab" aria-pressed="true">登录</button>
+      <button type="button" id="registerTab" aria-pressed="false" hidden>受邀注册</button>
+    </div>
+    <form id="authForm">
+      <label for="username">用户名</label>
+      <input id="username" name="username" autocomplete="username" maxlength="32" required autofocus>
+      <label for="password">密码</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" maxlength="256" required>
+      <div id="confirmField" hidden>
+        <label for="confirmPassword">确认密码</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" maxlength="256">
+      </div>
+      <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
+      <button class="auth-submit" id="authSubmit" type="submit">登录</button>
+    </form>
+    <p class="login-footnote" id="invitationNotice">暂不开放直接注册，请向已有账号的用户获取邀请链接。<br>每个账号独立保存学习内容和记录。</p>
+  </main>
+  <script src="/static/login.js"></script>
+</body>
+</html>

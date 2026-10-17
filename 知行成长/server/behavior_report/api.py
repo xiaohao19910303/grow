@@ -1,6 +1,7 @@
 """AI 行为分析报告 — API 路由。"""
 from __future__ import annotations
 
+from tenancy import scoped, learning_root, runtime_root
 from datetime import date
 
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -10,7 +11,7 @@ from .analyzer import generate_report_content
 
 
 def register(app: FastAPI, root, db_path) -> BehaviorReportStore:
-    store = BehaviorReportStore(db_path)
+    store = scoped(app, lambda: BehaviorReportStore(runtime_root(db_path)), initialize=True)
     router = APIRouter(prefix="/api/behavior-report")
 
     @router.post("/generate", status_code=201)
