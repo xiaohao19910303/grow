@@ -11,13 +11,13 @@ from copilot.core import digest, encoded, fail, now
 from plans.store import Plans, integer
 from .sources import TOPICS, DEFAULT_FEEDS, identify
 
-DEFAULT={'enabled':True,'hour':10,'minute':0,'count':3,'mode':'mixed','topics':list(TOPICS),'languages':['zh','en'],'query':''}
+DEFAULT={'enabled':True,'hour':10,'minute':0,'count':3,'mode':'mixed','topics':list(TOPICS),'languages':['zh','en'],'query':'','auto_guide':False}
 TABLE='reading_records'
 
 def preferences(data):
     if not isinstance(data,dict):fail('invalid','阅读偏好格式无效。',422)
     p={**DEFAULT,**data}
-    if set(p)!=set(DEFAULT) or type(p['enabled']) is not bool:fail('invalid','阅读偏好字段无效。',422)
+    if set(p)!=set(DEFAULT) or any(type(p[k]) is not bool for k in ('enabled','auto_guide')):fail('invalid','阅读偏好字段无效。',422)
     for k,lo,hi in [('hour',0,23),('minute',0,59),('count',1,8)]:integer(p[k],lo,hi,k)
     if p['mode'] not in ('recent','classic','mixed'):fail('invalid','文章类型无效。',422)
     for k,allowed in [('topics',TOPICS),('languages',('zh','en'))]:
@@ -109,7 +109,7 @@ class ReadingStore(Plans):
         with self.conn() as c:r=c.execute('SELECT data FROM reading_records WHERE id=?',(key,)).fetchone()
         return json.loads(r[0]) if r else None
     def record(self,key):return self.get(TABLE,key)
-    def prefs(self):return self.record('preferences')['value']
+    def prefs(self):return {**DEFAULT,**self.record('preferences')['value']}
     def jobs(self):return [r for r in self.rows(TABLE) if r.get('type')=='job']
     def articles(self,search=None,include_archived=False):
         """获取文章列表，支持搜索和归档过滤。"""
@@ -119,9 +119,11 @@ class ReadingStore(Plans):
             if not include_archived and r.get('archived'):continue
             if search:
                 q=search.lower()
-                hay=' '.join(str(r.get(f,'')) for f in ('title','zh_title','author','source','summary')).lower()
-                tags=' '.join(r.get('tags',[])).lower()
-                if q not in hay and q not in tags:continue
+                feedback=r.get('feedback') or {}
+                hay=' '.join(str(r.get(f,'')) for f in ('title','zh_title','author','source','summary','guide','full_content'))
+                hay+=' '+' '.join(str(feedback.get(f,'')) for f in ('takeaway','question','action'))
+                hay+=' '+' '.join(r.get('tags',[])+feedback.get('tags',[]))
+                if q not in hay.lower():continue
             result.append(r)
         return result
     def search_articles(self,query,include_archived=False):
@@ -254,6 +256,30 @@ class ReadingStore(Plans):
             a['hashes'].update({r:digest(v) for r,v in files.items() if '/阅读笔记/' not in r})
             self.export(files,[a],expected)
             return {**a,**({'note_hash':digest(data['note'])} if 'note' in data else {})}
+    def save_feedback(self,aid,data):
+        if not isinstance(data,dict) or set(data)-{'version','value','difficulty','takeaway','question','action','tags','mark_read'}:
+            fail('invalid','阅读反馈字段无效。',422)
+        version=integer(data.get('version'),0,2147483647,'反馈版本')
+        result={}
+        for key,allowed in [('value',('','insightful','neutral','not_for_me')),('difficulty',('','easy','right','hard'))]:
+            if data.get(key,'') not in allowed:fail('invalid','请选择有效的价值和难度反馈。',422)
+            result[key]=data.get(key,'')
+        for key,limit in [('takeaway',4000),('question',2000),('action',2000)]:
+            value=data.get(key,'')
+            if not isinstance(value,str) or len(value)>limit:fail('invalid','反馈内容过长或格式无效。',422)
+            result[key]=value.strip()
+        tags=data.get('tags',[])
+        if not isinstance(tags,list) or len(tags)>8 or any(not isinstance(t,str) or not t.strip() or len(t)>32 for t in tags):
+            fail('invalid','最多填写 8 个标签，每个标签不超过 32 字。',422)
+        if type(data.get('mark_read',False)) is not bool:fail('invalid','读完状态无效。',422)
+        result.update(tags=list(dict.fromkeys(t.strip() for t in tags)),version=version+1,updated_at=now())
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            if a.get('feedback',{}).get('version',0)!=version:fail('conflict','反馈已在其他页面更新，请保留输入并重新核对。')
+            a['feedback']=result
+            if data.get('mark_read'):a['read']=True
+            a['record_version']=a.get('record_version',1)+1
+            return self._persist_article_info(a)
     def save_selection(self,jid,ids):
         with self.lock():
             self.recover_exports();job=self.record(jid)
@@ -286,12 +312,19 @@ class ReadingStore(Plans):
             log=f'认知阅读/搜集记录/{date}-{jid}.md';files[log]='# 搜集记录\n\n'+encoded({k:job[k] for k in ('date','preferences','sources','warnings')})+'\n';expected[log]=None
             job.update(saved_ids=ids,saved_at=now(),path=str(self.path(index)));records.append(job)
             self.export(files,records,expected);return job
-    def save_guide(self,aid,guide,expected_hash):
+    def save_guide(self,aid,guide,expected_hash,details=None):
         with self.lock():
             self.recover_exports();a=self.article(aid);rel=f'认知阅读/文章资料/{aid}/中文导读.md'
             if a['hashes'][rel]!=expected_hash:fail('conflict','导读已经更新，请先查看新版。')
             a['guide']=guide;a['hashes'][rel]=digest(guide)
-            self.export({rel:guide},[a],{rel:expected_hash});return a
+            files={rel:guide};expected={rel:expected_hash}
+            if details:
+                a.update(details)
+                info=f'认知阅读/文章资料/{aid}/文章信息.json'
+                expected[info]=a['hashes'].get(info)
+                files[info]=encoded({k:v for k,v in a.items() if k not in ('hashes','guide')})
+                a['hashes'][info]=digest(files[info])
+            self.export(files,[a],expected);return a
     def save_summary(self,aid,summary):
         """Save comprehensive AI summary based on full article content."""
         with self.lock():

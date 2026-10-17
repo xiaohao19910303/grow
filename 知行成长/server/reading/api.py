@@ -62,6 +62,7 @@ def register(app,root,db):
         full_text_file=store.path(f'认知阅读/文章资料/{aid}/原文.md')
         metadata=store.documents.metadata(rel) if getattr(store,'remote',False) else None
         return {'article':a,
+                'reading_preferences':store.prefs(),
                 'storage':'github' if metadata and metadata['storage']=='github' else 'local',
                 'github_url':store.documents.content.url(rel,metadata['commit_sha']) if metadata and metadata['storage']=='github' else None,
                 'commit_sha':metadata.get('commit_sha') if metadata else None,
@@ -73,10 +74,12 @@ def register(app,root,db):
                 'path':str(file)}
     @router.post('/articles/{aid}/personal')
     def personal(aid:str,body:Payload):return store.update_personal(aid,body.data)
+    @router.post('/articles/{aid}/feedback')
+    def feedback(aid:str,body:Payload):return store.save_feedback(aid,body.data)
     @router.post('/articles/{aid}/guide')
     async def guide(aid:str,body:Payload):
         require_config(body.data.get('ai_config'))
-        return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'guide','ai_config':body.data.get('ai_config')}))
+        return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'guide','guide_format':body.data.get('guide_format'),'ai_config':body.data.get('ai_config')}))
     @router.post('/articles/{aid}/summary')
     async def summary(aid:str,body:Payload):
         require_config(body.data.get('ai_config'))
