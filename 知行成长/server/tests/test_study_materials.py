@@ -188,6 +188,8 @@ class StudyMaterialTests(PostgreSQLFixture):
                     self.assertEqual(note.input_value(), '')
                     reader.get_by_role('button', name='返回学习列表', exact=True).click()
                     expression.get_by_text('已完成课程 · 1 课', exact=True).click()
+                    with page.expect_response(lambda response: response.url == base + '/api/study-materials'):
+                        page.locator('.learning-panel').get_by_role('button', name='刷新', exact=True).click()
                     expression.get_by_role('button', name='查看记录', exact=True).click()
                     page.get_by_role('dialog').get_by_text(first['summary_text'], exact=True).wait_for()
                     page.get_by_role('dialog').get_by_role('button', name='关闭', exact=True).click()

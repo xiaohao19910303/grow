@@ -221,6 +221,8 @@
     parent.append(row);
   }
   window.renderDailyLearning = () => {
+    const expanded = new Set([...root.querySelectorAll('.learning-module details[open]')]
+      .map(details => details.closest('.learning-module').dataset.module + ':' + details.dataset.kind));
     document.getElementById('dailyLearningTitle').textContent = '继续学习';
     root.replaceChildren();
     if (!loaded) { root.append(node('p', '正在读取学习内容…')); return; }
@@ -230,6 +232,7 @@
       const pending = lessons.filter(lesson => lesson.learning_state !== 'completed');
       const completed = lessons.filter(lesson => lesson.learning_state === 'completed');
       const section = node('section', undefined, 'learning-module');
+      section.dataset.module = module.id;
       section.append(node('h3', module.name + ' · ' + module.duration));
       section.append(node('p', `待学习 ${pending.length} 课 · 累计已完成 ${completed.length} 课`, 'desc'));
 
@@ -238,6 +241,8 @@
         lessonRow(section, module, pending[0]);
         if (pending.length > 1) {
           const details = node('details');
+          details.dataset.kind = 'pending';
+          details.open = expanded.has(module.id + ':pending');
           details.append(node('summary', `后续课程 · ${pending.length - 1} 课`));
           pending.slice(1).forEach(lesson => lessonRow(details, module, lesson));
           section.append(details);
@@ -247,6 +252,8 @@
       }
       if (completed.length) {
         const details = node('details', undefined, 'completed-today');
+        details.dataset.kind = 'completed';
+        details.open = expanded.has(module.id + ':completed');
         details.append(node('summary', `已完成课程 · ${completed.length} 课`));
         completed.forEach(lesson => lessonRow(details, module, lesson));
         section.append(details);
