@@ -109,6 +109,29 @@ class AccountIntegrationTests(unittest.TestCase):
         with self.dashboard.accounts.conn() as c:
             self.assertEqual(c.execute('SELECT COUNT(*) FROM auth_users WHERE is_owner=0').fetchone()[0],0)
 
+    def test_daily_schedule_identity_is_scoped_to_owner_schedule_only(self):
+        headers={**self.headers,'Authorization':'Bearer fixture-oidc-token'}
+        with patch('reading.scheduled.authorized',return_value=True):
+            response=self.client.get('/api/reading/scheduled-run',headers=headers)
+            self.assertEqual(response.status_code,200,response.text)
+            self.assertEqual(response.json()['state'],'paused')
+            self.assertEqual(self.client.get('/api/data',headers=headers).status_code,401)
+            self.assertEqual(self.client.post('/api/account/invitations',headers=headers).status_code,401)
+        self.login('owner',os.environ['APP_PASSWORD'])
+        self.assertEqual(self.client.get('/api/reading/scheduled-run').status_code,200)
+        self.register('alice')
+        self.assertEqual(self.client.get('/api/reading/scheduled-run').status_code,403)
+
+    def test_owner_login_reuses_initialized_services_without_restarting_jobs(self):
+        initialized=self.dashboard.reading_store.resolve()
+        with patch.object(initialized,'initialize',side_effect=AssertionError('Owner service must not restart')):
+            self.assertEqual(self.login('owner',os.environ['APP_PASSWORD']).status_code,200)
+            self.assertEqual(self.client.get('/api/auth/me').status_code,200)
+            from tenancy import current_user
+            token=current_user.set(self.dashboard.accounts.owner())
+            try:self.assertIs(self.dashboard.reading_store.resolve(),initialized)
+            finally:current_user.reset(token)
+
     def test_invitation_is_single_use_expiring_and_revocable(self):
         invitation = self.invite()
         body = {'username':'alice','password':'user-password-123','invitation':invitation}

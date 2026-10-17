@@ -36,8 +36,12 @@ def register(router, store, service):
     @router.api_route('/scheduled-run', methods=['GET', 'POST'])
     async def scheduled_run(request: Request):
         from cloud_auth import guard
+        from tenancy import current_user
+        user = current_user.get()
         # The owner can also inspect/retry using normal site authentication.
-        if await run_in_threadpool(guard,request) is not None:
+        if user and not user['is_owner']:
+            return JSONResponse({'message':'仅原管理账号可以触发平台定时搜集。'},status_code=403)
+        if not user and await run_in_threadpool(guard,request) is not None:
             return JSONResponse({'message': '定时搜集凭证无效。'}, status_code=403)
         date = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
         prefs = store.prefs()

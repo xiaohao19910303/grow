@@ -214,6 +214,11 @@ class Accounts:
                 (hashlib.sha256(token.encode()).hexdigest(), int(time.time()))).fetchone()
         return dict(row) if row else None
 
+    def owner(self):
+        with self.conn() as c:
+            row = c.execute("SELECT * FROM auth_users WHERE id='owner' AND is_owner=1").fetchone()
+        return dict(row) if row else None
+
     def revoke(self, token):
         with self.conn() as c:
             c.execute('DELETE FROM auth_sessions WHERE digest=?', (hashlib.sha256(token.encode()).hexdigest(),))
@@ -373,6 +378,12 @@ def install(app, static_dir, prepare_user):
         try:
             if not public:
                 user = await run_in_threadpool(accounts.session, request.cookies.get(COOKIE, ''))
+                # Existing daily-reading automation uses GitHub OIDC, scoped to
+                # this one route. It cannot log in, invite users or read other APIs.
+                if not user and path == '/api/reading/scheduled-run' and request.method in ('GET','POST'):
+                    from reading.scheduled import authorized
+                    if await run_in_threadpool(authorized, request):
+                        user = await run_in_threadpool(accounts.owner)
                 if not user:
                     return JSONResponse({'message': '请先登录。', 'code': 'login_required'}, status_code=401,
                                         headers={'Cache-Control':'no-store'}) if path.startswith('/api/') else RedirectResponse('/login', status_code=303, headers={'Cache-Control':'no-store'})
