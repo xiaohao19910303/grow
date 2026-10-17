@@ -3,6 +3,7 @@ import asyncio
 import copy
 import fcntl
 import re
+from contextlib import contextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from copilot.core import encoded,digest,fail,now,Problem
@@ -14,6 +15,15 @@ from .sources import CLASSICS,fetch_feed,identify,choose,fetch_article_content
 class Reader:
     def __init__(self,store,fetcher=None,transport=None):
         self.store=store;self.fetcher=fetcher or fetch_feed;self.transport=transport;self.tasks={};self.scheduler=None
+    @contextmanager
+    def gate(self):
+        if getattr(self.store,'remote',False):
+            with self.store.generation_gate():yield
+        else:
+            with (self.store.runtime.parent/'.ai-generation.lock').open('a') as stream:
+                try:fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                except BlockingIOError:fail('busy','其他AI任务正在进行，请稍后再试。')
+                yield
     def begin(self,data,daily=False):
         data = dict(data)
         credentials = data.pop('ai_config', None)
@@ -94,9 +104,7 @@ class Reader:
                 content=a.get('full_content') or a.get('summary','')
                 prompt=[{'role':'system','content':'你是一个深度阅读助手。基于文章全文生成一份详细的中文总结报告。'},
                         {'role':'user','content':encoded({'title':a['title'],'author':a.get('author',''),'source':a.get('source',''),'content':content[:12000],'instruction':'请生成包含以下部分的详细总结：\n1. 核心观点（3-5个要点，每个要点用一句话概括）\n2. 关键论据和例子（列举文章中的重要证据、数据或案例，每个论据简要说明）\n3. 作者的主要论证逻辑（作者如何从论据推导出观点？逻辑链条是什么？）\n4. 文章的局限或待讨论之处（有哪些假设未验证？有哪些反面观点未讨论？）\n5. 对读者的启发（2-3点实际帮助或思考方向）'})}]
-                with (self.store.runtime.parent/'.ai-generation.lock').open('a') as gate:
-                    try:fcntl.flock(gate,fcntl.LOCK_EX|fcntl.LOCK_NB)
-                    except BlockingIOError:fail('busy','其他AI任务正在进行，请稍后再试。')
+                with self.gate():
                     async for packet in (self.transport or qwen_stream)(prompt,c):
                         j['raw']+=packet.get('text','')
                         if len(j['raw'])>15000:fail('invalid','总结超出长度限制。')
@@ -113,9 +121,7 @@ class Reader:
                 content=a.get('full_content') or a.get('summary','')
                 prompt=[{'role':'system','content':'你是一位英语教师。基于这篇英文文章，提取对英语学习者有价值的语法和词汇内容。'},
                         {'role':'user','content':encoded({'title':a['title'],'content':content[:12000],'instruction':'请生成英语学习材料，包含：1. 重点词汇（8-12个高级词汇，含音标、中文释义、原文例句）2. 重要短语和搭配（5-8个）3. 关键语法点（2-3个复杂句式解析，含中文翻译）4. 长难句分析（挑选2-3个典型句子，逐层解析结构）'})}]
-                with (self.store.runtime.parent/'.ai-generation.lock').open('a') as gate:
-                    try:fcntl.flock(gate,fcntl.LOCK_EX|fcntl.LOCK_NB)
-                    except BlockingIOError:fail('busy','其他AI任务正在进行，请稍后再试。')
+                with self.gate():
                     async for packet in (self.transport or qwen_stream)(prompt,c):
                         j['raw']+=packet.get('text','')
                         if len(j['raw'])>15000:fail('invalid','英语学习材料超出长度限制。')
@@ -134,20 +140,18 @@ class Reader:
                     fail('incomplete','文章内容获取失败或内容过短。')
                 # Save to local file
                 self.store.save_full_text(ctx['article_id'],content)
-                j.update(state='ready',phase='文章已保存到本地',article_id=ctx['article_id'])
+                j.update(state='ready',phase='文章已保存',article_id=ctx['article_id'])
             else:
                 from copilot.transport import qwen_stream
                 c=cfg;j['model']=c['model'];ctx=j['context'];done=False
-                a=self.store.article(ctx['article_id'])
+                a=self.store.article(ctx['id'])
                 # Use full content if available, otherwise fall back to summary
                 content=a.get('full_content') or a.get('summary','')
                 # More comprehensive guide with personal insights
                 prompt=[{'role':'system','content':'你是一位深度阅读助手和思考伙伴。基于文章内容生成一份详细的中文导读和解读报告。'},
                         {'role':'user','content':encoded({'title':a['title'],'author':a.get('author',''),'source':a.get('source',''),'content':content[:12000],
                                     'instruction':'请生成包含以下部分的详细导读：\n1. 文章概览（100字简介）\n2. 核心观点（3-5个要点，每个要点展开说明）\n3. 关键论据和例子（列举文章中的重要证据、数据或案例）\n4. 论证逻辑分析（作者如何论证？逻辑链条是什么？）\n5. 批判性思考（文章的局限、可能的反驳、未讨论的方面）\n6. 实用启发（对读者有什么实际帮助？如何应用到生活中？）\n7. 延伸阅读建议（可以进一步探索的相关主题或问题）'})}]
-                with (self.store.runtime.parent/'.ai-generation.lock').open('a') as gate:
-                    try:fcntl.flock(gate,fcntl.LOCK_EX|fcntl.LOCK_NB)
-                    except BlockingIOError:fail('busy','其他AI任务正在进行，请稍后再试。')
+                with self.gate():
                     async for packet in (self.transport or qwen_stream)(prompt,c):
                         j['raw']+=packet.get('text','')
                         if len(j['raw'])>15000:fail('invalid','导读超出长度限制。')
