@@ -25,6 +25,8 @@
     const daily=data.jobs.find(j=>j.daily&&j.date===today);const banner=node('section',undefined,'reading-banner');root.append(banner);banner.append(node('h3','今日精选'));
     if(daily){banner.append(node('p',state[daily.state]+(daily.error?' · '+daily.error:'')));button(banner,'查看今日结果',()=>watch(daily.id));}
     else{banner.append(node('p','今天尚无定时搜集结果，也可以现在手动搜集。'));button(banner,'按我的偏好搜集',()=>start(p),true);}
+    const pending=data.jobs.filter(j=>j.kind==='collect'&&j.state==='ready'&&!j.saved_ids?.length);
+    if(pending.length){const box=node('section',undefined,'reading-banner');box.append(node('h3','待保存的搜集结果'),node('p','已找到的文章可先在本站预览。保存后会出现在下方「已搜集文章」中。','desc'));root.append(box);for(const j of pending.slice(0,5))button(box,`查看并保存 · ${j.candidates.length} 篇 · ${j.created_at}`,()=>watch(j.id));}
     const active=data.jobs.filter(j=>['queued','running'].includes(j.state));for(const j of active)button(root,'查看进行中的'+(jobLabels[j.kind]||'任务'),()=>watch(j.id));
     // Search box
     const searchBar=node('div',undefined,'reading-actions');root.append(searchBar);
@@ -388,6 +390,7 @@
     if(d.github_url){const link=node('a','在 GitHub 打开资料');link.href=d.github_url;link.target='_blank';link.rel='noopener noreferrer';provenance.append(link);}else provenance.append(node('p','资料位置：'+d.path,'desc'));
   }
   function setupVocabSelection(container,articleId,article){
+    if(container.dataset.vocabSelection)return;container.dataset.vocabSelection='1';
     container.addEventListener('mouseup',async()=>{
       const sel=window.getSelection();
       const text=sel?.toString().trim();
