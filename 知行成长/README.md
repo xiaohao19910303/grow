@@ -95,15 +95,19 @@ Render 不克隆内容仓库，不把正式课程、锁文件或发布恢复日�
 1. 使用已确定的内容仓库。空仓库会在首次正式发布时通过 Contents API 创建 README，再提交规划；生成草稿与阅读请求不会初始化仓库。若目标分支与空仓库的默认分支不同，须先在 GitHub 建立目标分支。需要私密课程时，先将仓库设置为私有。
 2. 创建仅授权该内容仓库的 fine-grained Token，授予 **Contents: Read and write**。目标分支应允许该凭证直接提交；要求 PR 的保护规则会阻止直接发布。不要授予 Workflows 权限。
 3. 在 Render 的 Environment 中配置仓库根目录 [.env.github.example](../.env.github.example) 所列变量。GitHub Token、数据库连接串、AI Key、登录密码只写入服务端密钥配置，不写入 Git 或聊天。
-4. `GITHUB_CONTENT_REPO` 使用 `账号/仓库`，`GITHUB_CONTENT_BRANCH` 默认 `main`。`DATABASE_URL` 使用现有 Supabase PostgreSQL 连接串。AI 接口使用 `QWEN_BASE_URL`（完整 chat/completions 地址）、`QWEN_API_KEY` 和 `QWEN_MODEL`。
+4. `GITHUB_CONTENT_REPO` 使用 `账号/仓库`，`GITHUB_CONTENT_BRANCH` 默认 `main`。`DATABASE_URL` 使用 Supabase Connect → Session pooler 的完整连接串（端口 5432），以兼容 Render 的 IPv4 网络。AI 接口使用 `QWEN_BASE_URL`（完整 chat/completions 地址）、`QWEN_API_KEY` 和 `QWEN_MODEL`。
 5. `APP_PASSWORD` 至少 24 位，`APP_USERNAME` 默认 `owner`。公网浏览器首次打开时使用浏览器登录框认证；健康检查 `/api/health` 保持公开。仅经 HTTPS 访问。
 6. 使用根目录 `render.yaml` 的构建和启动命令；无需配置持久磁盘。使用**一个实例、一个 Uvicorn worker**，生成任务中断后需显式重新生成，不会自动重复调用模型。
+
+通用百炼接口可配置为 `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`，并使用对应地区的通用 API Key 和可用模型。Coding Plan 专用密钥与通用 API Key 不能混用；[官方说明](https://help.aliyun.com/zh/model-studio/coding-plan-faq)将 Coding Plan 限定用于编程工具，长期运行的应用后台应使用通用 API。
 
 启动时会增量创建学习计划表，并绑定内容仓库和分支。已有绑定后不能直接换仓库或分支；先做显式数据迁移。
 若数据库已有旧本地计划，其文件不会自动上传：本轮先新建一套计划验收，历史课程仍需另行迁移。
 同一数据库不要同时运行 local 与 github 模式的写入服务。
 
 ### 使用与验收
+
+2026-10-17 已完成真实规划、首课生成、GitHub 发布与浏览器阅读，见 [本次验收记录](GitHub课程链路验收.md)。
 
 1. 登录网页，进入「学习计划」，创建一套计划，使用 AI 生成规划并预览，确认采用。
 2. 准备第一课资料，生成课程，预览正文和资料后点击「保存正式课程」。
