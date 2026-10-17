@@ -143,12 +143,14 @@ def choose(candidates,prefs,seen,today):
         if prefs['mode']!='mixed' and a['category']!=prefs['mode']:continue
         eligible.setdefault(a['id'],a)
     rows=sorted(eligible.values(),key=lambda a:a.get('published_at') or '',reverse=True)
-    result=[];used=set()
+    result=[];used=set();covered=set();interests=set(prefs['topics'])
     categories=['recent']*max(0,prefs['count']-1)+['classic'] if prefs['mode']=='mixed' else [prefs['mode']]*prefs['count']
     for category in categories:
         options=[a for a in rows if a['category']==category and a['id'] not in {x['id'] for x in result}]
         if not options and prefs['mode']=='mixed':
             options=[a for a in rows if a['id'] not in {x['id'] for x in result}]
-        options.sort(key=lambda a:(a['source'] in used, a['language'] in {x['language'] for x in result}))
-        if options:result.append(options[0]);used.add(options[0]['source'])
+        options.sort(key=lambda a:(-len((interests & set(a.get('topics',[])))-covered),
+                                   a['source'] in used, a['language'] in {x['language'] for x in result}))
+        if options:
+            result.append(options[0]);used.add(options[0]['source']);covered.update(options[0].get('topics',[]))
     return result

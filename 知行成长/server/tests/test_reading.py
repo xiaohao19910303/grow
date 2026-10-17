@@ -93,6 +93,17 @@ class ReadingRecoveryTests(unittest.TestCase):
         self.assertEqual((folder/'文章信息.json').read_bytes(),saved)
 
 class SourceTests(unittest.TestCase):
+    def test_selected_topics_are_not_crowded_out_by_newer_same_topic_articles(self):
+        a={'id':'psychology-1','title':'Psychology in society','summary':'psychology',
+           'source':'A','language':'en','topics':['心理','社会学'],'category':'recent','published_at':'2026-10-17'}
+        b={**a,'id':'psychology-2','source':'B'}
+        technology={**a,'id':'technology','title':'New space science','summary':'technology',
+                    'source':'C','topics':['科技'],'published_at':'2026-10-16'}
+        p={**DEFAULT,'mode':'recent','count':2,'topics':['心理','科技','社会学']}
+        result=choose([a,b,technology],p,set(),'2026-10-17')
+        self.assertIn('technology',[row['id'] for row in result])
+        self.assertEqual(set().union(*(set(row['topics']) for row in result)),set(p['topics']))
+
     def test_atom_rss_and_unsafe_xml(self):
         src=FEEDS[0]
         raw=b'<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>Thinking</title><link href="https://aeon.co/essays/x?utm_source=a"/><published>2026-10-14T00:00:00Z</published><summary>&lt;script&gt;x&lt;/script&gt; Good evidence.</summary></entry></feed>'
