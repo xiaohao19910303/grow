@@ -193,11 +193,28 @@ class Plans:
 
     def migrate_draft_families(self):
         # Old drafts become independent roots; do not infer historical parentage.
-        for d in self.rows('learning_drafts'):
-            if not d.get('family_id'):
-                d.update(family_id=d['id'], parent_draft_id=None, operation='original')
-                self.put('learning_drafts', d['id'], d)
-                self.put('learning_draft_families', d['id'], {'id':d['id'], 'published_draft_id':d['id'] if d['state']=='published' else None})
+        with self.conn() as c:
+            drafts=[]
+            for row in c.execute('SELECT id,data FROM learning_drafts').fetchall():
+                try:d=json.loads(row[1])
+                except (ValueError,TypeError):fail('draft_migration','旧草稿格式无法识别，原文保留，请先核对。',503)
+                if not isinstance(d,dict) or d.get('id')!=row[0] or not isinstance(d.get('state'),str):
+                    fail('draft_migration','旧草稿缺少编号或状态，原文保留，请先核对。',503)
+                drafts.append(d)
+            families={row[0] for row in c.execute('SELECT id FROM learning_draft_families')}
+            for d in drafts:
+                if not d.get('family_id'):
+                    d.update(family_id=d['id'], parent_draft_id=None, operation='original')
+                    c.execute('UPDATE learning_drafts SET data=? WHERE id=?',(encoded(d),d['id']))
+            for d in drafts:
+                if d['family_id']==d['id'] and d['id'] not in families:
+                    published=[item['id'] for item in drafts if item['family_id']==d['id'] and item['state']=='published']
+                    if len(published)>1:fail('draft_migration','旧草稿族存在多个已发布版本，原记录保留，请先核对。',503)
+                    family={'id':d['id'],'published_draft_id':published[0] if published else None}
+                    c.execute('INSERT INTO learning_draft_families VALUES (?,?)',(d['id'],encoded(family)))
+                    families.add(d['id'])
+            if any(d['family_id'] not in families for d in drafts):
+                fail('draft_migration','旧草稿族缺少原始根草稿，原关系保留，请先核对。',503)
 
     def get(self, table, key):
         with self.conn() as c:

@@ -4,6 +4,7 @@ import copy
 import json
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor
@@ -33,6 +34,40 @@ class ProgressTests(unittest.TestCase):
         a['raw']='正文\n<!-- COPILOT_SOURCES -->\n资料';self.assertEqual(preview(a)['sources'],'资料')
 
 class DraftTests(CloudFixture):
+    def test_unrecognized_or_orphaned_legacy_drafts_are_preserved(self):
+        for raw in ('not-json',encoded({'id':'broken','state':None}),encoded({'id':'broken','state':'ready','family_id':'missing-root'})):
+            with self.subTest(raw=raw):
+                with self.s.conn() as c:c.execute('INSERT INTO learning_drafts VALUES (?,?)',('broken',raw))
+                with self.assertRaises(Problem) as error:self.s.initialize()
+                self.assertEqual(error.exception.code,'draft_migration')
+                with self.s.conn() as c:
+                    self.assertEqual(c.execute("SELECT data FROM learning_drafts WHERE id='broken'").fetchone()[0],raw)
+                    c.execute("DELETE FROM learning_drafts WHERE id='broken'")
+
+    def test_repairs_an_earlier_partial_family_migration_without_republishing(self):
+        root=self.draft();child=self.child(root,'published child');result=self.s.adopt(child['id'],'adopt-child')
+        with self.s.conn() as c:c.execute('DELETE FROM learning_draft_families')
+        head=self.repo.head;self.s.initialize()
+        self.assertEqual(self.s.read_draft(root['id'])['family_published'],child['id'])
+        self.assertEqual(self.s.plan(result['plan_id'])['version'],1);self.assertEqual(self.repo.head,head)
+
+    def test_legacy_family_migration_is_atomic_and_retryable(self):
+        draft=self.draft();old=self.s.get('learning_drafts',draft['id']);old.pop('family_id');self.s.put('learning_drafts',draft['id'],old)
+        with self.s.conn() as c:c.execute('DELETE FROM learning_draft_families')
+        original=self.s.conn
+        class Interrupted:
+            def __init__(self,c):self.c=c
+            def execute(self,sql,params=None):
+                if sql.startswith('INSERT INTO learning_draft_families'):raise RuntimeError('interrupted migration')
+                return self.c.execute(sql,params)
+            def __getattr__(self,name):return getattr(self.c,name)
+        @contextmanager
+        def conn():
+            with original() as c:yield Interrupted(c)
+        with patch.object(self.s,'conn',conn),self.assertRaises(RuntimeError):self.s.initialize()
+        self.assertNotIn('family_id',self.s.get('learning_drafts',draft['id']))
+        self.s.initialize();self.assertEqual(self.s.read_draft(draft['id'])['family_id'],draft['id'])
+
     def draft(self):return self.s.draft({'brief':B,'document':D})
     def child(self,d,topic):
         doc=copy.deepcopy(d['document']);doc['lessons'][0]['topic']=topic

@@ -75,9 +75,9 @@ class GitHubPlans(Plans):
         self.content.validate()
         # Schema installation is additive; never invokes SQLite backup or touches disk.
         with self.conn() as c: c.executescript(TABLES)
-        self.migrate_draft_families()
         binding = {'repository': self.content.repository, 'branch': self.content.branch}
         with self.database_lock('learning-plan-publications'):
+            self.migrate_draft_families()
             stored = [x for x in self.rows('learning_settings') if x['id'] == 'content-storage']
             if stored and stored[0]['binding'] != binding:
                 fail('github_config', '内容仓库或分支与已登记数据不一致，请先完成迁移。', 503)
