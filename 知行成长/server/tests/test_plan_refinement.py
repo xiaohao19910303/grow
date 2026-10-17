@@ -35,7 +35,7 @@ class ProgressTests(unittest.TestCase):
 
 class DraftTests(CloudFixture):
     def test_unrecognized_or_orphaned_legacy_drafts_are_preserved(self):
-        for raw in ('not-json',encoded({'id':'broken','state':None}),encoded({'id':'broken','state':'ready','family_id':'missing-root'})):
+        for raw in ('not-json',encoded({'id':'broken','state':None}),encoded({'id':'broken','state':'ready','family_id':'missing-root'}),encoded({'id':'broken','state':'ready','family_id':{}}),encoded({'id':'broken','state':'ready','parent_draft_id':'preserve-parent'})):
             with self.subTest(raw=raw):
                 with self.s.conn() as c:c.execute('INSERT INTO learning_drafts VALUES (?,?)',('broken',raw))
                 with self.assertRaises(Problem) as error:self.s.initialize()

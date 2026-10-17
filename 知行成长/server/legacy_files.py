@@ -85,6 +85,7 @@ def apply(documents,root,token,modules=ROOTS):
             base='认知阅读/文章资料/'+aid+'/'
             data['hashes']={**data.get('hashes',{}),**{p:digest(t) for p,t in files.items() if p.startswith(base)}}
             if base+'中文导读.md' in files:data['guide']=files[base+'中文导读.md']
+            if not data.get('full_content') and base+'原文.md' in files:data['full_content']=files[base+'原文.md']
             for field in ('read','read_later','bookmarked','archived'):data.setdefault(field,False)
             data.setdefault('author','未知');data.setdefault('language','zh');data.setdefault('summary','')
             sql.append(('INSERT INTO reading_records VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',[aid,encoded(data)]))

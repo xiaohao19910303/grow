@@ -22,8 +22,10 @@ class ReadingMigrationTests(CloudFixture):
 
     def test_missing_index_recovers_full_text_notes_states_and_deduplication(self):
         aid=self.article['id']
+        self.assertEqual(self.store.article(aid)['full_content'],'Preserved article content')
         with self.store.conn() as c:c.execute('DELETE FROM reading_records WHERE id=?',(aid,))
-        self.store.restore_article_index();recovered=self.store.article(aid)
+        head=self.repo.head;self.store.initialize();recovered=self.store.article(aid)
+        self.assertEqual(self.repo.head,head)
         self.assertTrue(recovered['read']);self.assertTrue(recovered['bookmarked'])
         self.assertEqual(recovered['full_content'],'Preserved article content');self.assertEqual(recovered['guide'],'保留的中文导读')
         self.assertEqual(self.store.note(aid)['text'],'PRIVATE PRESERVED NOTE')

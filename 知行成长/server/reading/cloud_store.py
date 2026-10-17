@@ -36,6 +36,7 @@ class CloudReadingStore(ReadingStore):
             try:self.recover_exports()
             except Problem as exc:
                 if exc.code not in ('content_conflict','conflict','github_conflict','github_unavailable','github_access'):raise
+            self.restore_article_index(missing_only=True)
             for job in self.jobs():
                 if job['state'] in ('queued','running'):
                     job.update(state='failed',error='服务重启导致任务中断，未自动重试。',finished_at=now())
@@ -76,15 +77,19 @@ class CloudReadingStore(ReadingStore):
         sql.append(('UPDATE reading_records SET data=? WHERE id=?',[encoded(done),journal['id']]))
         return self.documents.publish(journal['id'],{'export':journal['id']},files,sql,{'id':journal['id']})
 
-    def restore_article_index(self):
+    def restore_article_index(self,missing_only=False):
         with self.lock():
-            # Used explicitly by the file migration, never a disk scan in cloud mode.
+            # Rebuild only from registered database documents and immutable GitHub
+            # versions. Startup never scans local directories or edits live records.
             records=[]
+            with self.conn() as c:existing={r[0]:json.loads(r[1]) for r in c.execute('SELECT id,data FROM reading_records')}
             for path in self.documents.names('认知阅读/文章资料/'):
                 if not path.endswith('/文章信息.json'):continue
-                data=json.loads(self.documents.read(path));aid=path.split('/')[2]
-                old=self.optional(aid)
+                aid=path.split('/')[2];old=existing.get(aid)
                 if old and old.get('type')!='article':fail('migration_conflict','文章编号与已有记录冲突。')
+                if old and missing_only:continue
+                try:data=json.loads(self.documents.read(path))
+                except (ValueError,TypeError):fail('migration_invalid','文章信息不是有效 JSON，来源原文保留。')
                 if old:
                     # Existing personal state and drafts always win over file mirrors.
                     data={**data,**old}
@@ -98,6 +103,7 @@ class CloudReadingStore(ReadingStore):
                 for field in ('read','read_later','bookmarked','archived'):data.setdefault(field,False)
                 data.setdefault('language','zh');data.setdefault('author','未知');data.setdefault('summary','')
                 records.append(data)
+            if not records:return 0
             with self.conn() as c:
                 for item in records:c.execute('INSERT INTO reading_records VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',(item['id'],encoded(item)))
             return len(records)

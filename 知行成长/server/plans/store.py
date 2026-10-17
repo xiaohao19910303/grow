@@ -200,11 +200,15 @@ class Plans:
                 except (ValueError,TypeError):fail('draft_migration','旧草稿格式无法识别，原文保留，请先核对。',503)
                 if not isinstance(d,dict) or d.get('id')!=row[0] or not isinstance(d.get('state'),str):
                     fail('draft_migration','旧草稿缺少编号或状态，原文保留，请先核对。',503)
+                if d.get('family_id') is not None and not isinstance(d['family_id'],str):
+                    fail('draft_migration','旧草稿族编号无效，原文保留，请先核对。',503)
+                if not d.get('family_id') and d.get('parent_draft_id'):
+                    fail('draft_migration','旧草稿已有父子关系但缺少族编号，原关系保留，请先核对。',503)
                 drafts.append(d)
             families={row[0] for row in c.execute('SELECT id FROM learning_draft_families')}
             for d in drafts:
                 if not d.get('family_id'):
-                    d.update(family_id=d['id'], parent_draft_id=None, operation='original')
+                    d['family_id']=d['id'];d.setdefault('parent_draft_id',None);d.setdefault('operation','original')
                     c.execute('UPDATE learning_drafts SET data=? WHERE id=?',(encoded(d),d['id']))
             for d in drafts:
                 if d['family_id']==d['id'] and d['id'] not in families:
