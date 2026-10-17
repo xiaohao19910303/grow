@@ -208,7 +208,7 @@
         if(!active&&j.kind==='guide'&&j.state==='ready')button(content,'阅读中文导读',()=>read(j.article_id,'guide'),true);
         if(!active&&j.kind==='fetch_full'&&j.state==='ready')button(content,'阅读文章正文',()=>read(j.article_id),true);
         if(!active&&j.kind==='collect'&&j.state==='ready'){
-          const selected=[];for(const a of j.candidates){const box=card(a,content);if(!j.saved_ids){const preview=node('details');preview.append(node('summary','本站预览正文'));if(a.full_content)markdown(preview,a.full_content);else preview.append(node('p','本次未取得正文。保存后可在本站尝试重新加载；当前仅有来源摘要。','desc'));box.append(preview);const el=field(box,'保存这篇文章','','checkbox');el.checked=true;selected.push([a.id,el]);}else button(box,'本站阅读',()=>read(a.id),true);}
+          const selected=[];for(const a of j.candidates){const box=card(a,content);if(!j.saved_ids){const preview=node('details');preview.append(node('summary','本站预览正文'));if(a.full_content?.length>=100&&(!/\.pdf(?:$|[?#])/i.test(a.url)||a.content_version===2))markdown(preview,a.full_content);else preview.append(node('p','本次未取得正文。保存后可在本站尝试重新加载；当前仅有来源摘要。','desc'));box.append(preview);const el=field(box,'保存这篇文章','','checkbox');el.checked=true;selected.push([a.id,el]);}else button(box,'本站阅读',()=>read(a.id),true);}
           if(j.saved_ids)content.append(node('p','已保存至：'+j.path,'desc'));
           else button(content,'保存选中的文章与资料',async()=>{await api('/jobs/'+id+'/save',{ids:selected.filter(([,e])=>e.checked).map(([aid])=>aid)});await watch(id);},true);
         }

@@ -60,14 +60,17 @@ class ReadingSiteBrowser(CloudHTTPFixture):
             calls.append(url);await asyncio.sleep(1.2);return BODY
         self.reader.save_preferences({**DEFAULT,'auto_guide':True})
         candidate={**self.reader.article(self.aid),'full_content':BODY}
-        self.reader.put('reading_records','job-preview',{'id':'job-preview','type':'job','kind':'collect','state':'ready','created_at':'2026-10-17T12:00:00+08:00','date':'2026-10-17','daily':False,'candidates':[candidate],'sources':[],'warnings':[]})
+        self.reader.put('reading_records','job-preview',{'id':'job-preview','type':'job','kind':'collect','state':'ready','created_at':'2026-10-17T12:00:00+08:00','date':'2026-10-17','daily':False,'candidates':[candidate,{**candidate,'id':'legacy-pdf','title':'Legacy PDF preview','url':'https://example.org/old.pdf','full_content':'%PDF-legacy-binary '*100}],'sources':[],'warnings':[]})
         with patch('reading.service.fetch_article_content',content),self.browser() as (page,base):
             page.goto(base);page.evaluate('enterReading()')
             page.get_by_role('heading',name='已搜集文章',exact=True).wait_for()
             page.get_by_role('heading',name='待保存的搜集结果',exact=True).wait_for()
-            page.get_by_role('button',name='查看并保存 · 1 篇 · 2026-10-17T12:00:00+08:00',exact=True).click()
-            page.get_by_text('本站预览正文',exact=True).click()
+            page.get_by_role('button',name='查看并保存 · 2 篇 · 2026-10-17T12:00:00+08:00',exact=True).click()
+            page.get_by_text('本站预览正文',exact=True).first.click()
             page.get_by_text('THE FINAL PARAGRAPH.',exact=True).wait_for()
+            legacy=page.locator('.reading-card').filter(has_text='Legacy PDF preview');legacy.get_by_text('本站预览正文',exact=True).click()
+            legacy.get_by_text('本次未取得正文。保存后可在本站尝试重新加载；当前仅有来源摘要。',exact=True).wait_for()
+            self.assertNotIn('%PDF-legacy-binary',legacy.inner_text())
             page.get_by_role('button',name='返回今日阅读',exact=True).click()
             self.assertEqual(page.get_by_role('link',name='阅读原文 ↗').count(),0)
             page.get_by_role('button',name='本站阅读',exact=True).click()
