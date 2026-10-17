@@ -14,6 +14,7 @@ from plans.refinement import merge, sections, validate_scope
 from plans.generation import PlanGenerator
 from plans.backup import snapshot, restore, preview as restore_preview
 from test_plans import B, D, S, content
+from cloud_fixtures import CloudFixture,AsyncCloudFixture
 
 class ProgressTests(unittest.TestCase):
     def test_every_split_escaped_nested_reordered(self):
@@ -31,10 +32,7 @@ class ProgressTests(unittest.TestCase):
         result=projection(a,5);self.assertNotIn('preview',result);self.assertNotIn('raw',result);self.assertNotIn('context',result)
         a['raw']='正文\n<!-- COPILOT_SOURCES -->\n资料';self.assertEqual(preview(a)['sources'],'资料')
 
-class DraftTests(unittest.TestCase):
-    def setUp(self):
-        self.temp=tempfile.TemporaryDirectory();root=Path(self.temp.name);(root/'server').mkdir();self.s=Plans(root,root/'server/data.db');self.s.initialize()
-    def tearDown(self):self.temp.cleanup()
+class DraftTests(CloudFixture):
     def draft(self):return self.s.draft({'brief':B,'document':D})
     def child(self,d,topic):
         doc=copy.deepcopy(d['document']);doc['lessons'][0]['topic']=topic
@@ -60,9 +58,10 @@ class DraftTests(unittest.TestCase):
         d=self.draft();old=self.s.get('learning_drafts',d['id']);old.pop('family_id');old.pop('parent_draft_id');self.s.put('learning_drafts',d['id'],old)
         with self.s.conn() as c:c.execute('DROP TABLE learning_draft_families')
         self.s.initialize();self.assertEqual(self.s.read_draft(d['id'])['family_id'],d['id'])
-        with self.s.lock():backup=snapshot(self.s)
-        self.child(self.s.read_draft(d['id']),'A');token=restore_preview(self.s,backup['path'])['token'];restore(self.s,backup['path'],token)
-        self.assertEqual(len(self.s.draft_history(d['id'])['items']),1)
+        with self.assertRaises(Problem) as error:snapshot(self.s)
+        self.assertEqual(error.exception.code,'remote_backup')
+        fresh=self.new_plans();fresh.initialize()
+        self.assertEqual(len(fresh.draft_history(d['id'])['items']),1)
     def test_scoped_plan_merge(self):
         d=self.draft();scope=validate_scope(d,{'mode':'selected','lessons':[2],'fields':['exercise']})
         result=merge(d,scope,{'updates':[{'number':2,'changes':{'exercise':'新练习'}}]})
@@ -94,10 +93,7 @@ class DraftTests(unittest.TestCase):
             self.s.save_sources(d['context']['plan_id'],[{'title':'新资料','content':'新内容'}])
             with self.assertRaises(Problem):self.s.publish_course(child['id'],'stale-sources')
 
-class RefineGenerationTests(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
-        self.temp=tempfile.TemporaryDirectory();root=Path(self.temp.name);(root/'server').mkdir();self.s=Plans(root,root/'server/data.db');self.s.initialize()
-    async def asyncTearDown(self):self.temp.cleanup()
+class RefineGenerationTests(AsyncCloudFixture):
     async def test_stream_refinement(self):
         d=self.s.draft({'brief':B,'document':D});calls=[]
         async def fake(messages,config):

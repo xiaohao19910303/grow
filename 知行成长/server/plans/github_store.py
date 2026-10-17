@@ -75,6 +75,7 @@ class GitHubPlans(Plans):
         self.content.validate()
         # Schema installation is additive; never invokes SQLite backup or touches disk.
         with self.conn() as c: c.executescript(TABLES)
+        self.migrate_draft_families()
         binding = {'repository': self.content.repository, 'branch': self.content.branch}
         with self.database_lock('learning-plan-publications'):
             stored = [x for x in self.rows('learning_settings') if x['id'] == 'content-storage']

@@ -158,7 +158,14 @@ def _copy_database(src, dst):
         dst.commit()
         dst.execute('VACUUM')
 
+def require_offline(store):
+    with store.conn() as connection:
+        if not isinstance(connection, sqlite3.Connection):
+            fail('remote_backup', 'PostgreSQL 请使用数据库备份；此入口仅支持离线 SQLite 快照。', 409)
+
+
 def snapshot(store):
+    require_offline(store)
     # Caller holds the plan lock and has stopped uncoordinated external writers.
     with legacy_lock(store):
         report = inventory_report(store)
@@ -213,6 +220,7 @@ def validate(folder):
 
 
 def preview(store, folder):
+    require_offline(store)
     folder, m = validate(folder)
     report = inventory_report(store, m['version'])
     current = report['files']
@@ -233,6 +241,7 @@ def preview(store, folder):
 
 
 def restore(store, folder, token):
+    require_offline(store)
     with store.lock():
         journal = store.runtime / 'restore-pending.json'
         if journal.exists():

@@ -34,7 +34,8 @@ class GitHubContent:
         p = PurePosixPath(relative)
         if (not relative.startswith('学习计划/') or
                 p.is_absolute() or '..' in p.parts or '\\' in relative or
-                any(ord(c) < 32 for c in relative) or str(p) != relative):
+                any(ord(c) < 32 for c in relative) or str(p) != relative or
+                p.name == '学习记录.md'):
             fail('invalid', '路径不属于学习计划或含有无效片段。', 422)
         return quote(relative, safe='/')
 

@@ -14,6 +14,7 @@ from plans.store import Plans,brief,document,sources
 from plans.generation import PlanGenerator,messages
 from plans.api import register
 from plans.backup import snapshot,preview,restore
+from cloud_fixtures import CloudFixture,AsyncCloudFixture
 
 B={'title':'经济学','goal':'理解经济新闻','level':'零基础','weeks':2,'sessions':1,'minutes':20}
 D={'prerequisites':'无需先修','stages':[{'title':'基础','goal':'解释概念'}],
@@ -23,11 +24,7 @@ S=[{'title':'资料','content':'明确选择的教学摘要。 https://example.o
 def content(ctx):
     return f'# 第{ctx["lesson_no"]:03d}课：示范\n日期：{ctx["date"]}\n## 引导问题\n问题\n## 核心概念\n概念\n## 完整示范\n示范\n## 误区与边界\n边界\n## 练习\n练习\n\n---\n\n## 参考分析\n分析\n## 自查\n自查\n## 记忆提示\n提示\n[来源](https://example.org/lesson)'
 
-class StoreTests(unittest.TestCase):
-    def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);(self.root/'server').mkdir()
-        self.s=Plans(self.root,self.root/'server/data.db');self.s.initialize()
-    def tearDown(self):self.tmp.cleanup()
+class StoreTests(CloudFixture):
     def adopt(self):
         d=self.s.draft({'brief':B,'document':D});return self.s.adopt(d['id'],d['id'])['plan_id']
     def test_server_model_settings_are_rejected(self):
@@ -35,7 +32,7 @@ class StoreTests(unittest.TestCase):
         from copilot.generation import config
         legacy=Store(self.root,self.s.db)
         with legacy.conn() as c:
-            c.execute('CREATE TABLE copilot_settings (key TEXT PRIMARY KEY,value TEXT NOT NULL)')
+            c.execute('CREATE TABLE IF NOT EXISTS copilot_settings (key TEXT PRIMARY KEY,value TEXT NOT NULL)')
         values={'api_base_url':'https://example.org/v1/chat/completions',
                 'api_key':'test-only-key','model_name':'test-model'}
         with self.assertRaises(Problem):legacy.update_settings(values)
@@ -47,8 +44,8 @@ class StoreTests(unittest.TestCase):
         return self.s.publish_course(d['id'],d['id'])
     def test_identity_and_idempotency(self):
         d=self.s.draft({'brief':B,'document':D});a=self.s.adopt(d['id'],'key');self.assertEqual(a,self.s.adopt(d['id'],'key'))
-        self.assertNotEqual(a['plan_id'],self.adopt());self.assertTrue(list(self.s.runtime.glob('before-migration-*.db')))
-        self.assertTrue(self.s.path(self.s.base(a['plan_id'])+'/规划历史/v001.md').exists())
+        self.assertNotEqual(a['plan_id'],self.adopt());self.assertFalse(self.s.runtime.exists())
+        self.assertIn('经济学',self.public(self.s.base(a['plan_id'])+'/规划历史/v001.md'))
     def test_validation(self):
         for field,value in [('number',9),('minutes',90),('requires',[2])]:
             doc=copy.deepcopy(D);doc['lessons'][0][field]=value
@@ -61,11 +58,12 @@ class StoreTests(unittest.TestCase):
         with self.assertRaises(Problem):self.s.adopt(d['id'],'over')
         self.s.adopt(d['id'],'yes',True);self.assertEqual(self.s.budget()['over'],10)
     def test_path_protection(self):
-        with self.assertRaises(Problem):self.s.path('学习计划/../secret')
-        (self.root/'other').mkdir();(self.root/'学习计划').symlink_to(self.root/'other')
-        with self.assertRaises(Problem):self.s.path('学习计划/secret')
+        for path in ('学习计划/../secret','/etc/passwd','学习计划/a/学习记录.md'):
+            with self.assertRaises(Problem):self.content.path(path)
+        with self.assertRaises(Problem):self.s.path('学习计划/a/学习规划.md')
+
     def test_course_and_day_rules(self):
-        pid=self.adopt();r=self.course(pid);self.assertTrue(Path(r['path']).exists());self.assertEqual(self.s.lessons(pid)[0]['learning_state'],'unknown')
+        pid=self.adopt();r=self.course(pid);self.assertTrue(r['commit_sha']);self.assertFalse(self.s.runtime.exists());self.assertEqual(self.s.lessons(pid)[0]['learning_state'],'unknown')
         with self.assertRaises(Problem):self.s.course_context(pid)
         self.course(self.adopt());self.assertEqual(len(self.s.lessons(pid)),1)
     def test_answer_separator_must_precede_analysis(self):
@@ -104,38 +102,46 @@ class StoreTests(unittest.TestCase):
         d=self.s.draft({'brief':B,'document':D,'plan_id':pid,'base_version':1});self.s.adopt(d['id'],'rev')
         with self.assertRaises(Problem):self.s.publish_course(course['id'],'old')
     def test_notes_and_feedback_idempotency(self):
-        pid=self.adopt();self.course(pid);p=self.s.path(self.s.base(pid)+'/学习记录.md');p.write_text(p.read_text()+'\n个人笔记\n')
-        for _ in range(2):self.s.feedback(pid,1,{'state':'completed','comment':'有点难'},'feedback')
-        self.assertIn('个人笔记',p.read_text());self.assertEqual(p.read_text().count('有点难'),1)
+        pid=self.adopt();self.course(pid);head=self.repo.head
+        for _ in range(2):self.s.feedback(pid,1,{'state':'completed','comment':'PRIVATE FEEDBACK'},'feedback')
+        self.assertEqual(self.repo.head,head)
+        self.assertEqual(self.s.lessons(pid)[0]['learning_state'],'completed')
+        self.assertNotIn('PRIVATE FEEDBACK',str(self.repo.commits[head]['files']))
+
     def test_external_import(self):
-        pid=self.adopt();p=self.s.path(self.s.base(pid)+'/学习规划.md');p.write_text(p.read_text()+'\n手动补充\n')
+        pid=self.adopt();path=self.s.base(pid)+'/学习规划.md';old=self.public(path)
+        self.external(path,old+'\n手动补充\n')
         d=self.s.draft({'brief':B,'document':D,'plan_id':pid,'base_version':1})
         with self.assertRaises(Problem):self.s.adopt(d['id'],'conflict')
-        d=self.s.draft({'brief':B,'document':D,'plan_id':pid,'base_version':1,'external_hash':digest(p.read_bytes())});self.s.adopt(d['id'],'import')
-        self.assertIn('手动补充',self.s.path(self.s.base(pid)+'/规划历史/外部修改-v002.md').read_text())
+        d=self.s.draft({'brief':B,'document':D,'plan_id':pid,'base_version':1,'external_hash':digest(self.public(path))})
+        self.s.adopt(d['id'],'import')
+        self.assertIn('手动补充',self.public(self.s.base(pid)+'/规划历史/外部修改-v002.md'))
+
     def test_recovery_after_partial_write(self):
-        pid=self.adopt();base=self.s.base(pid);import plans.store as module
-        original=module.os.replace;calls=[]
-        def replace(src,dst):
-            calls.append(dst)
-            if len(calls)==2:raise OSError('test')
-            return original(src,dst)
-        with self.s.lock(),patch.object(module.os,'replace',replace):
-            with self.assertRaises(OSError):self.s.publish('journal',{'a':1},{base+'/a.md':'A',base+'/b.md':'B'},[],{'ok':True})
-        with self.s.lock():self.s.recover_locked()
-        self.assertEqual(self.s.path(base+'/b.md').read_text(),'B');self.assertEqual(self.s.replay('journal',{'a':1}),{'ok':True})
+        pid=self.adopt();self.s.save_sources(pid,S);ctx=self.s.course_context(pid)
+        draft=self.s.course_draft(ctx,content(ctx),'摘要 https://example.org/lesson')
+        self.repo.lose_response=True
+        with self.assertRaises(Problem):self.s.publish_course(draft['id'],'interrupted')
+        head=self.repo.head;fresh=self.new_plans();fresh.initialize()
+        self.assertIn('核心概念',fresh.read_course(pid,1)['content'])
+        self.assertEqual(self.repo.head,head)
+
     def test_recovery_stops_unknown_hash(self):
-        pid=self.adopt();rel=self.s.base(pid)+'/p.md'
-        with self.s.lock(),patch.object(self.s,'finish',side_effect=OSError('failure')):
-            with self.assertRaises(OSError):self.s.publish('pending',{}, {rel:'new'},[],{})
-        self.s.path(rel).write_text('user changed')
-        with self.s.lock(),self.assertRaises(Problem):self.s.recover_locked()
-        self.assertEqual(self.s.path(rel).read_text(),'user changed')
+        pid=self.adopt();self.s.save_sources(pid,S);ctx=self.s.course_context(pid)
+        d=self.s.course_draft(ctx,content(ctx),'摘要 https://example.org/lesson');self.repo.fail_update=True
+        with self.assertRaises(Problem):self.s.publish_course(d['id'],'pending')
+        self.repo.fail_update=False;path=self.s.base(pid)+'/学习规划.md'
+        self.external(path,'external personal content')
+        with self.assertRaises(Problem):
+            with self.s.lock():self.s.recover_locked()
+        self.assertEqual(self.public(path),'external personal content')
+
     def test_backup_restore(self):
-        pid=self.adopt();self.course(pid)
-        with self.s.lock():b=snapshot(self.s)
-        self.s.feedback(pid,1,{'state':'completed','comment':'反馈'},'f');pv=preview(self.s,b['path']);r=restore(self.s,b['path'],pv['token'])
-        self.assertTrue(Path(r['before']['path']).exists());self.assertEqual(self.s.lessons(pid)[0]['learning_state'],'unknown')
+        pid=self.adopt();self.course(pid);head=self.repo.head
+        with self.assertRaises(Problem) as error:snapshot(self.s)
+        self.assertEqual(error.exception.code,'remote_backup')
+        self.assertEqual(self.repo.head,head);self.assertFalse(self.s.runtime.exists())
+
     def test_legacy_sync_keeps_plans(self):
         import app
         pid=self.adopt()
@@ -155,7 +161,7 @@ class StoreTests(unittest.TestCase):
             with self.assertRaises(Problem):s.course_context(pid)
 
     def test_missing_tracked_file_blocks_writes(self):
-        pid=self.adopt();self.s.path(self.s.base(pid)+'/课程目录.md').unlink()
+        pid=self.adopt();self.external(self.s.base(pid)+'/课程目录.md',None)
         with self.assertRaises(Problem):self.s.save_sources(pid,S)
 
     def test_concurrent_plan_ids(self):
@@ -165,27 +171,18 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(len(set(ids)),3)
 
     def test_backup_redacts_database_api_key(self):
-        import sqlite3
-        from contextlib import closing
         self.adopt()
-        with self.s.conn() as c:
-            c.execute('CREATE TABLE copilot_settings (key TEXT PRIMARY KEY,value TEXT)')
-            c.execute('INSERT INTO copilot_settings VALUES (?,?)',('api_key',encoded('NEVER_EXPORT_THIS_KEY')))
-        with self.s.lock():b=snapshot(self.s)
-        db=Path(b['path'])/'data.db'
-        self.assertNotIn(b'NEVER_EXPORT_THIS_KEY',db.read_bytes())
-        self.assertEqual(self.s.get_setting('api_key'),'NEVER_EXPORT_THIS_KEY')
-        with closing(sqlite3.connect(db)) as c:
-            self.assertIsNone(c.execute("SELECT value FROM copilot_settings WHERE key='api_key'").fetchone())
+        with self.s.conn() as c:c.execute('INSERT INTO copilot_settings VALUES (?,?)',('api_key',encoded('NEVER_EXPORT_THIS_KEY')))
+        with self.assertRaises(Problem) as error:snapshot(self.s)
+        self.assertEqual(error.exception.code,'remote_backup')
+        self.assertNotIn('NEVER_EXPORT_THIS_KEY',str(self.repo.commits))
 
     def test_stale_backup_preview_and_offline_block(self):
-        pid=self.adopt()
-        with self.s.lock():b=snapshot(self.s)
-        token=preview(self.s,b['path'])['token']
-        self.s.path(self.s.base(pid)+'/学习记录.md').write_text('new note')
-        with self.assertRaises(Problem):restore(self.s,b['path'],token)
-        (self.s.runtime/'restore-pending.json').write_text('{}')
-        with self.assertRaises(Problem):self.s.initialize()
+        self.adopt()
+        for action in (lambda:preview(self.s,self.root/'missing'),lambda:restore(self.s,self.root/'missing','bad')):
+            with self.assertRaises(Problem) as error:action()
+            self.assertEqual(error.exception.code,'remote_backup')
+        self.s.initialize();self.assertFalse(self.s.runtime.exists())
 
     def test_full_api_lifecycle_with_simulated_model(self):
         import time
@@ -224,10 +221,7 @@ class StoreTests(unittest.TestCase):
             result=c.get('/api/plans').json()['plans'][0]
             self.assertEqual(result['lessons'][0]['learning_state'],'completed')
 
-class GenerationTests(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
-        self.tmp=tempfile.TemporaryDirectory();root=Path(self.tmp.name);(root/'server').mkdir();self.s=Plans(root,root/'server/data.db');self.s.initialize()
-    async def asyncTearDown(self):self.tmp.cleanup()
+class GenerationTests(AsyncCloudFixture):
     async def test_generation_only_once(self):
         calls=[]
         async def stream(messages,config):calls.append(messages);yield {'text':json.dumps(D)};yield {'done':True}
@@ -241,7 +235,8 @@ class GenerationTests(unittest.IsolatedAsyncioTestCase):
         g=PlanGenerator(self.s,hanging);g.begin({'key':'c','kind':'plan','brief':B});await asyncio.sleep(.01);g.cancel('c');await g.shutdown();self.assertEqual(self.s.get('learning_ai_attempts','c')['state'],'cancelled')
     async def test_no_private_notes_and_restarts(self):
         d=self.s.draft({'brief':B,'document':D});pid=self.s.adopt(d['id'],'a')['plan_id'];self.s.save_sources(pid,S)
-        self.s.path(self.s.base(pid)+'/学习记录.md').write_text('SECRET PERSONAL NOTE');payload=encoded(messages('course',self.s.course_context(pid)))
+        with self.s.conn() as c:c.execute('INSERT INTO learning_feedback VALUES (?,?,?)',(pid,1,encoded({'comment':'SECRET PERSONAL NOTE'})))
+        payload=encoded(messages('course',self.s.course_context(pid)))
         self.assertNotIn('SECRET PERSONAL NOTE',payload);self.assertIn(S[0]['content'],payload)
         self.s.put('learning_ai_attempts','old',{'state':'generating','raw':'partial'});self.s.initialize();self.assertEqual(self.s.get('learning_ai_attempts','old')['state'],'failed')
 

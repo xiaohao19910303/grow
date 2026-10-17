@@ -27,6 +27,8 @@ def inventory(store):
 
 def snapshot(store, label='manual'):
     """Caller holds the shared writer lock and has coordinated external writers."""
+    from plans.backup import require_offline
+    require_offline(store)
     files = inventory(store)
     folder = store.runtime / 'backups' / f'{label}-{uuid.uuid4().hex}'
     folder.mkdir(parents=True)
@@ -69,6 +71,8 @@ def validated_backup(folder):
 
 
 def restore_preview(store, folder):
+    from plans.backup import require_offline
+    require_offline(store)
     folder, manifest = validated_backup(folder)
     current = inventory(store)
     target = manifest['files']
@@ -82,6 +86,8 @@ def restore_preview(store, folder):
 
 
 def restore(store, folder, token):
+    from plans.backup import require_offline
+    require_offline(store)
     with store.lock():
         preview = restore_preview(store, folder)
         if preview['preview_token'] != token:

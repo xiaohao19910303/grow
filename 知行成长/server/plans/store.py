@@ -189,12 +189,15 @@ class Plans:
                         a.update(state='failed', error='服务已重启，生成中断；不会自动重试。')
                         c.execute('UPDATE learning_ai_attempts SET data=? WHERE id=?', (encoded(a), row['id']))
             self.recover_locked()
-            # Old drafts become independent roots; do not infer historical parentage.
-            for d in self.rows('learning_drafts'):
-                if not d.get('family_id'):
-                    d.update(family_id=d['id'], parent_draft_id=None, operation='original')
-                    self.put('learning_drafts', d['id'], d)
-                    self.put('learning_draft_families', d['id'], {'id':d['id'], 'published_draft_id':d['id'] if d['state']=='published' else None})
+            self.migrate_draft_families()
+
+    def migrate_draft_families(self):
+        # Old drafts become independent roots; do not infer historical parentage.
+        for d in self.rows('learning_drafts'):
+            if not d.get('family_id'):
+                d.update(family_id=d['id'], parent_draft_id=None, operation='original')
+                self.put('learning_drafts', d['id'], d)
+                self.put('learning_draft_families', d['id'], {'id':d['id'], 'published_draft_id':d['id'] if d['state']=='published' else None})
 
     def get(self, table, key):
         with self.conn() as c:
@@ -403,9 +406,10 @@ class Plans:
                 pid = prefix + f'{max(numbers, default=0)+1:03d}'
                 if self.exists(self.base(pid)): fail('conflict', '计划目录已存在，请检查未登记内容。')
                 p = {'id': pid, 'version': 1, 'status': 'active', 'created_at': now(), 'hashes': {}}
-                files[f'{self.base(pid)}/学习记录.md'] = '# 学习记录\n\n## 个人笔记\n\n请在此保留自己的练习、疑问和记录。\n'
+                if not getattr(self,'remote',False):
+                    files[f'{self.base(pid)}/学习记录.md'] = '# 学习记录\n\n## 个人笔记\n\n请在此保留自己的练习、疑问和记录。\n'
                 files[f'{self.base(pid)}/课程目录.md'] = '# 已发布课程\n\n| 课次 | 日期 | 课程 | 资料 |\n|---|---|---|---|\n'
-                files[f'{self.base(pid)}/README.md'] = '# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md) · [学习记录](学习记录.md)\n'
+                files[f'{self.base(pid)}/README.md'] = ('# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md)\n' if getattr(self,'remote',False) else '# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md) · [学习记录](学习记录.md)\n')
             p.update(brief=b, name=b['title'])
             base = self.base(pid)
             files[base+'/学习规划.md'] = plan_markdown(b, doc)

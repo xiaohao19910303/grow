@@ -10,6 +10,7 @@ from reading.sources import parse_feed,canonical,identify,choose,FEEDS,CLASSICS
 from reading.store import ReadingStore,DEFAULT,TABLE
 from reading.service import Reader
 from plans.backup import snapshot
+from cloud_fixtures import AsyncCloudFixture
 
 class SourceTests(unittest.TestCase):
     def test_atom_rss_and_unsafe_xml(self):
@@ -27,24 +28,25 @@ class SourceTests(unittest.TestCase):
         self.assertEqual(choose([a],DEFAULT,{'a'},'2026-10-14'),[])
         self.assertEqual(choose([a],{**DEFAULT,'languages':['zh']},set(),'2026-10-14'),[])
 
-class ReadingTests(unittest.IsolatedAsyncioTestCase):
+class ReadingTests(AsyncCloudFixture):
     async def asyncSetUp(self):
-        self.tmp=tempfile.TemporaryDirectory();root=Path(self.tmp.name);(root/'server').mkdir();self.s=ReadingStore(root,root/'server/data.db');self.s.initialize()
-    async def asyncTearDown(self):self.tmp.cleanup()
+        self.s=self.new_reading();self.s.initialize()
     async def collect(self):
         r=Reader(self.s);j=r.begin({'key':'test','preferences':{**DEFAULT,'mode':'classic'}});await asyncio.gather(*list(r.tasks.values()));return self.s.record(j['id'])
     async def test_local_save_note_and_idempotency(self):
         j=await self.collect();self.assertEqual(j['state'],'ready');ids=[a['id'] for a in j['candidates']]
-        saved=self.s.save_selection(j['id'],ids);self.assertEqual(saved,self.s.save_selection(j['id'],ids));self.assertTrue(Path(saved['path']).exists())
+        saved=self.s.save_selection(j['id'],ids);self.assertEqual(saved,self.s.save_selection(j['id'],ids));self.assertFalse(self.runtime.exists())
         aid=ids[0];self.assertFalse(self.s.article(aid)['read']);self.s.update_personal(aid,{'note':'个人笔记','note_hash':None,'bookmarked':True})
         with self.assertRaises(Problem):self.s.update_personal(aid,{'note':'冲突','note_hash':None})
         self.assertEqual(self.s.note(aid)['text'],'个人笔记');self.assertTrue(self.s.article(aid)['bookmarked']);self.assertFalse(self.s.article(aid)['read'])
-        with self.s.lock():backup=snapshot(self.s)
-        self.assertTrue((Path(backup['path'])/'files/认知阅读/阅读笔记'/f'{aid}.md').exists())
+        with self.assertRaises(Problem) as error:snapshot(self.s)
+        self.assertEqual(error.exception.code,'remote_backup')
+        self.assertFalse(any('/阅读笔记/' in p for p in self.repo.commits[self.repo.head]['files']))
     async def test_external_guide_not_overwritten(self):
-        j=await self.collect();aid=j['candidates'][0]['id'];self.s.save_selection(j['id'],[aid]);a=self.s.article(aid);rel=f'认知阅读/文章资料/{aid}/中文导读.md';self.s.path(rel).write_text('外部修改')
+        j=await self.collect();aid=j['candidates'][0]['id'];self.s.save_selection(j['id'],[aid]);a=self.s.article(aid);rel=f'认知阅读/文章资料/{aid}/中文导读.md';self.external(rel,'外部修改')
         with self.assertRaises(Problem):self.s.save_guide(aid,'新导读',a['hashes'][rel])
-        self.assertEqual(self.s.path(rel).read_text(),'外部修改')
+        self.assertEqual(self.module_content.read_text(rel,self.repo.head),'外部修改')
+        self.assertEqual(self.s.path(rel).read_text(),a['guide'])
     async def test_daily_once_pause_restart(self):
         r=Reader(self.s);self.s.save_preferences({**DEFAULT,'mode':'classic'})
         dt=datetime.fromisoformat(now()).replace(hour=23);j=r.daily_tick(dt);self.assertIsNotNone(j);await asyncio.gather(*list(r.tasks.values()))
@@ -59,13 +61,14 @@ class ReadingTests(unittest.IsolatedAsyncioTestCase):
         async def truncated(messages,config):calls.append(messages);yield {'text':'没有结束信号'}
         r=Reader(self.s,transport=truncated);a=r.begin({'key':'guide','kind':'guide','article_id':aid});await asyncio.gather(*list(r.tasks.values()));self.assertEqual(self.s.record(a['id'])['state'],'failed');self.assertEqual(self.s.article(aid)['guide'],old);self.assertNotIn('SECRET NOTE',str(calls))
         async def complete(messages,config):yield {'text':'核心观点：先审视证据。边界：只读过摘要。思考：还有什么解释？'};yield {'done':True}
-        r=Reader(self.s,transport=complete);a=r.begin({'key':'good','kind':'guide','article_id':aid});await asyncio.gather(*list(r.tasks.values()));self.assertEqual(self.s.record(a['id'])['state'],'ready');self.assertIn('AI中文导读',self.s.article(aid)['guide']);self.assertFalse(self.s.article(aid)['read'])
+        r=Reader(self.s,transport=complete);a=r.begin({'key':'good','kind':'guide','article_id':aid});await asyncio.gather(*list(r.tasks.values()));self.assertEqual(self.s.record(a['id'])['state'],'ready');self.assertIn('核心观点：先审视证据',self.s.article(aid)['guide']);self.assertFalse(self.s.article(aid)['read'])
 
     async def test_export_recovery_and_no_overwrite(self):
         j=await self.collect();ids=[j['candidates'][0]['id']]
-        with patch('reading.store.os.replace',side_effect=OSError('disk unavailable')):
-            with self.assertRaises(OSError):self.s.save_selection(j['id'],ids)
+        self.repo.fail_update=True
+        with self.assertRaises(Problem):self.s.save_selection(j['id'],ids)
         self.assertIsNone(self.s.optional(ids[0]))
+        self.repo.fail_update=False
         self.s.initialize();self.assertIsNotNone(self.s.optional(ids[0]));self.assertEqual(self.s.record(j['id'])['saved_ids'],ids)
 
     async def test_api_authorization_and_personal_lifecycle(self):
