@@ -19,7 +19,7 @@
   window.loadReading=async()=>{
     const status=shell('今日阅读');const turn=revision;button(root,'帮我找文章',()=>collectForm(),true);button(root,'添加文章',()=>importForm());button(root,'阅读偏好与来源',()=>settings());
     const data=await api();if(turn!==revision)return;const p=data.preferences;
-    status.textContent=`${p.enabled?'每天':'已暂停每日搜集'} 北京时间 ${String(p.hour).padStart(2,'0')}:${String(p.minute).padStart(2,'0')} · ${p.count}篇 · ${category[p.mode]}。服务需保持运行；每日搜集不调用付费模型。`;
+    status.textContent=`${p.enabled?'每天':'已暂停每日搜集'} 北京时间 ${String(p.hour).padStart(2,'0')}:${String(p.minute).padStart(2,'0')} · ${p.count}篇 · ${category[p.mode]}。${data.storage_backend==='cloud'?'云端自动搜集，关闭浏览器后仍会运行':'本地服务需保持运行'}；每日搜集不调用付费模型。`;
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const daily=data.jobs.find(j=>j.daily&&j.date===today);const banner=node('section',undefined,'reading-banner');root.append(banner);banner.append(node('h3','今日精选'));
     if(daily){banner.append(node('p',state[daily.state]+(daily.error?' · '+daily.error:'')));button(banner,'查看今日结果',()=>watch(daily.id));}
@@ -51,17 +51,17 @@
     for(const [key,label] of [['all','全部资料'],['bookmark','我的收藏'],['later','稍后阅读'],['read','本人读完'],['archived','已归档']])button(filters,label,()=>{currentFilter=key;refreshList();});refreshList();
     const history=node('details');history.append(node('summary','最近搜集与导读记录'));root.append(history);for(const j of data.jobs)button(history,`${j.created_at} · ${j.kind==='guide'?'中文导读':'文章搜集'} · ${state[j.state]}`,()=>watch(j.id));
   };
-  function preferenceFields(parent,p,includeSchedule){
+  function preferenceFields(parent,p,includeSchedule,availableTopics){
     const box=node('div',undefined,'plan-grid');parent.append(box);const count=field(box,'推荐数量（1—8篇）',p.count,'number');count.min=1;count.max=8;
     const mode=select(box,'文章类型',[['mixed','近期＋经典'],['recent','近期精选（30天内）'],['classic','经典重读']],p.mode);
     const topics=[],languages=[];const topicBox=node('fieldset');topicBox.append(node('legend','感兴趣的主题'));parent.append(topicBox);
-    for(const value of ['认知','经济学','社会学','心理','成长']){const el=field(topicBox,value,'','checkbox');el.checked=p.topics.includes(value);topics.push([value,el]);}
+    for(const value of availableTopics){const el=field(topicBox,value,'','checkbox');el.checked=p.topics.includes(value);topics.push([value,el]);}
     const languageBox=node('fieldset');languageBox.append(node('legend','文章语言'));parent.append(languageBox);for(const [value,label] of [['zh','中文'],['en','英文（可生成中文导读）']]){const el=field(languageBox,label,'','checkbox');el.checked=p.languages.includes(value);languages.push([value,el]);}
     let enabled,hour,minute;if(includeSchedule){enabled=field(parent,'启用每日搜集','','checkbox');enabled.checked=p.enabled;const time=node('div',undefined,'plan-grid');parent.append(time);hour=field(time,'北京时间：小时',p.hour,'number');minute=field(time,'分钟',p.minute,'number');}
     return ()=>({...p,count:Number(count.value),mode:mode.value,topics:topics.filter(([,x])=>x.checked).map(([v])=>v),languages:languages.filter(([,x])=>x.checked).map(([v])=>v),...(includeSchedule?{enabled:enabled.checked,hour:Number(hour.value),minute:Number(minute.value)}:{})});
   }
-  async function settings(){const status=shell('阅读偏好与来源');const turn=revision;button(root,'返回今日阅读',window.loadReading);const data=await api();if(turn!==revision)return;const get=preferenceFields(root,data.preferences,true);
-    root.append(node('p','服务停止期间不会搜集。重启后仅补当日；来源失败或数量不足会明确记录。已保存文章不会重复推荐。','desc'));
+  async function settings(){const status=shell('阅读偏好与来源');const turn=revision;button(root,'返回今日阅读',window.loadReading);const data=await api();if(turn!==revision)return;const get=preferenceFields(root,data.preferences,true,data.topics);
+    root.append(node('p',(data.storage_backend==='cloud'?'云端每日自动搜集，电脑和浏览器无需保持开启。':'服务停止期间不会搜集。重启后仅补当日。')+'来源失败或数量不足会明确记录。已保存文章不会重复推荐。','desc'));
     button(root,'保存偏好',async()=>{await api('/preferences',get());toast('阅读偏好已保存');await window.loadReading();},true);
 
     // 自定义来源管理
@@ -133,7 +133,7 @@
     status.textContent='AI导读模型：'+AIConfig.read().model_name+'；只有明确点击生成导读才调用，可能产生费用。';
   }
   async function collectForm(){shell('帮我找文章');const turn=revision;button(root,'返回今日阅读',window.loadReading);const data=await api();if(turn!==revision)return;
-    const query=field(root,'主题或关键词（可留空，例如：心理、社会、decision）');root.append(node('p','在已配置来源的标题与摘要中筛选，中文主题会扩展为英文关键词。复杂问题建议提取核心关键词。','desc'));const get=preferenceFields(root,data.preferences,false);
+    const query=field(root,'主题或关键词（可留空，例如：科技、心理、社会、decision）');root.append(node('p','在已配置来源的标题与摘要中筛选，中文主题会扩展为英文关键词。复杂问题建议提取核心关键词。','desc'));const get=preferenceFields(root,data.preferences,false,data.topics);
     button(root,'开始搜集并预览',()=>start({...get(),query:query.value}),true);
   }
   async function importForm(){

@@ -9,6 +9,7 @@ import uuid
 from unittest.mock import patch
 
 import db
+from copilot.core import Problem
 import httpx
 import psycopg2
 from fastapi.testclient import TestClient
@@ -51,8 +52,9 @@ class CloudApplication(unittest.TestCase):
                     self.assertEqual(health.status_code,200)
                     self.assertEqual(health.json(),{'ok':True,'revision':'test-deploy-revision',
                                                    'plan_storage':'github','learning_plans_ready':True})
-                    self.assertEqual(client.get('/').status_code,401)
-                    client.auth=('owner',os.environ['APP_PASSWORD'])
+                    self.assertEqual(client.get('/',follow_redirects=False).status_code,303)
+                    logged_in=client.post('/api/auth/login',json={'username':'owner','password':os.environ['APP_PASSWORD']},headers={'X-Copilot-Request':'1'})
+                    self.assertEqual(logged_in.status_code,200,logged_in.text)
                     for endpoint in ('/api/data', '/api/reflections', '/api/behavior/stats', '/api/errors/stats', '/api/stocks'):
                         response = client.get(endpoint)
                         self.assertEqual(response.status_code, 200, (endpoint, response.text))
@@ -60,7 +62,7 @@ class CloudApplication(unittest.TestCase):
                     stale = json.loads(json.dumps(state))
                     state['reviews'] = [{'date':'2026-10-17','thought':'PRIVATE REVIEW'}]
                     state['customRecords'] = [{'_client_id':'new-record','value':'private custom'}]
-                    headers = {'X-Legacy-State-Protocol':'1'}
+                    headers = {'X-Legacy-State-Protocol':'1','X-Copilot-Request':'1'}
                     saved = client.put('/api/data', json=state, headers=headers)
                     self.assertEqual(saved.status_code,200,saved.text)
                     saved_state = saved.json()['state']
@@ -82,7 +84,11 @@ class CloudApplication(unittest.TestCase):
                         calls.append(cfg['key'])
                         yield {'text':json.dumps({'sections':[{'kind':'event','text':'建议整理','basis':'statement'}]})}
                         yield {'done':True}
-                    dashboard.reflections_assistant.transport = reflection_model
+                    from tenancy import current_user
+                    owner=dashboard.accounts.session(client.cookies.get('zhixing_session'))
+                    identity=current_user.set(owner)
+                    try:dashboard.reflections_assistant.transport = reflection_model
+                    finally:current_user.reset(identity)
                     ai = {'api_base_url':'https://user-model.example/v1','api_key':'REQUEST_ONLY_SECRET','model_name':'user-model'}
                     r = client.post('/api/reflections/'+entry_id+'/assist',json={'kind':'organize','snapshot':{'text':'PRIVATE EDITED REFLECTION'},'key':'assist-reflection','ai_config':ai},headers=h)
                     self.assertEqual(r.status_code,200,r.text)
@@ -101,7 +107,7 @@ class CloudApplication(unittest.TestCase):
                     self.assertEqual(len(fresh.versions(entry_id)),2)
                     self.assertFalse(Path(tmp+'/materials').exists())
                     self.assertFalse(fresh.mirror_status(entry_id)['conflict'])
-                    created = client.post('/api/behavior/applications',json={'date':'2026-10-17','module_id':'renzhi','concept':'复核证据'})
+                    created = client.post('/api/behavior/applications',json={'date':'2026-10-17','module_id':'renzhi','concept':'复核证据'},headers=h)
                     self.assertEqual(created.status_code,201,created.text)
                     self.assertIsInstance(created.json()['id'],int)
                     storage = client.get('/api/storage-status').json()
@@ -133,6 +139,9 @@ class CloudApplication(unittest.TestCase):
                     except psycopg2.Error as exc:
                         dashboard.behavior_store.startup_error = exc
                     self.assertIsNotNone(dashboard.behavior_store.startup_error)
+                    identity=current_user.set(owner)
+                    try:dashboard.behavior_store.startup_error=Problem('storage_unavailable','旧行为表不可用',503)
+                    finally:current_user.reset(identity)
                     self.assertEqual(client.get('/api/behavior/applications').status_code,503)
                     with dashboard.get_conn() as preserved:
                         self.assertEqual(preserved.execute('SELECT data FROM behavior_applications').fetchone()[0],'PRIVATE LEGACY RECORD')

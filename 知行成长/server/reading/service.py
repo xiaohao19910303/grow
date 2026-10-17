@@ -3,8 +3,9 @@ import asyncio
 import copy
 import fcntl
 import re
+import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from copilot.core import encoded,digest,fail,now,Problem
 from copilot.generation import config,availability
@@ -67,6 +68,15 @@ class Reader:
         cfg = cfg or config()
         fetch_tasks=[]
         j=self.store.record(jid);j.update(state='running',phase='正在读取来源' if j['kind']=='collect' else '正在准备中文导读');self.store.put(TABLE,jid,j)
+        last_progress_write=None
+        async def progress(phase):
+            nonlocal last_progress_write
+            j['phase']=phase
+            current=time.monotonic()
+            if last_progress_write is None or current-last_progress_write>=1:
+                self.store.put(TABLE,jid,j)
+                last_progress_write=time.monotonic()
+            await asyncio.sleep(0)
         try:
             if j['kind']=='collect':
                 candidates=[];p=j['preferences']
@@ -110,7 +120,7 @@ class Reader:
                         if len(j['raw'])>15000:fail('invalid','总结超出长度限制。')
                         if packet.get('usage'):j['usage']=packet['usage']
                         if packet.get('done'):done=True
-                        j['phase']='正在生成详细总结';self.store.put(TABLE,jid,j)
+                        await progress('正在生成详细总结')
                 if not done or not j['raw'].strip():fail('incomplete','总结未完整返回。')
                 self.store.save_summary(ctx['article_id'],j['raw']);j.update(state='ready',phase='详细总结已保存',article_id=ctx['article_id'])
             elif j['kind']=='english':
@@ -127,7 +137,7 @@ class Reader:
                         if len(j['raw'])>15000:fail('invalid','英语学习材料超出长度限制。')
                         if packet.get('usage'):j['usage']=packet['usage']
                         if packet.get('done'):done=True
-                        j['phase']='正在生成英语学习材料';self.store.put(TABLE,jid,j)
+                        await progress('正在生成英语学习材料')
                 if not done or not j['raw'].strip():fail('incomplete','英语学习材料未完整返回。')
                 self.store.save_english_learning(ctx['article_id'],j['raw']);j.update(state='ready',phase='英语学习材料已保存',article_id=ctx['article_id'])
             elif j['kind']=='fetch_full':
@@ -157,7 +167,7 @@ class Reader:
                         if len(j['raw'])>15000:fail('invalid','导读超出长度限制。')
                         if packet.get('usage'):j['usage']=packet['usage']
                         if packet.get('done'):done=True
-                        j['phase']='正在生成详细导读';self.store.put(TABLE,jid,j)
+                        await progress('正在生成详细导读')
                 if not done or not j['raw'].strip():fail('incomplete','导读未完整返回，原资料保留。')
                 if '<script' in j['raw'].lower() or re.search(r'https?://',j['raw']):fail('invalid','导读含未经核验的链接或脚本，原资料保留。')
                 # Format as comprehensive guide
@@ -189,7 +199,20 @@ class Reader:
         p=self.store.prefs();dt=current or datetime.now(ZoneInfo('Asia/Shanghai'))
         if not p['enabled'] or (dt.hour,dt.minute)<(p['hour'],p['minute']):return None
         key='daily-'+dt.date().isoformat()
-        if self.store.optional('job-'+key):return None
+        # Keep failed runs for diagnosis. Allow two bounded retries after a
+        # cooldown; successful and active runs retain their daily idempotency.
+        for attempt in range(3):
+            candidate=key if attempt==0 else key+'-retry-'+str(attempt)
+            previous=self.store.optional('job-'+candidate)
+            if previous is None:
+                key=candidate
+                break
+            if previous['state']!='failed':return None
+            finished=datetime.fromisoformat(previous.get('finished_at') or previous['created_at'])
+            if finished.tzinfo is None:finished=finished.replace(tzinfo=ZoneInfo('Asia/Shanghai'))
+            if dt.tzinfo is None:dt=dt.replace(tzinfo=ZoneInfo('Asia/Shanghai'))
+            if dt-finished<timedelta(minutes=15):return None
+        else:return None
         if any(j['state'] in ('queued','running') for j in self.store.jobs()):return None
         return self.begin({'key':key,'preferences':p},daily=True)
     async def schedule(self):

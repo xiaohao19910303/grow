@@ -25,5 +25,7 @@ services:
         value: owner
       - key: APP_PASSWORD
         sync: false
+      - key: ACCOUNT_ENCRYPTION_KEY
+        sync: false
     healthCheckPath: /api/health
     autoDeploy: true

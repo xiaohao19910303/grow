@@ -243,13 +243,21 @@ class CompatConnection:
         return getattr(self._conn, name)
 
 
-def connect(database=None, **kwargs):
+def connect(database=None, *, tenant=True, **kwargs):
     """创建数据库连接，返回兼容 sqlite3 接口的连接对象。"""
     url = database or DATABASE_URL
     if not url:
         raise OperationalError('请在服务端配置 DATABASE_URL。')
     conn = psycopg2.connect(url)
     conn.autocommit = False
+    if tenant:
+        from tenancy import current_user
+        user = current_user.get()
+        if user:
+            # No public fallback: a missing tenant table must never expose old data.
+            from psycopg2 import sql
+            with conn.cursor() as cursor:
+                cursor.execute(sql.SQL('SET search_path TO {}').format(sql.Identifier(user['schema_name'])))
     return CompatConnection(conn)
 
 

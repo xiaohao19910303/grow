@@ -1,4 +1,5 @@
 """Local-only routes; model requests are always explicit."""
+from tenancy import scoped, learning_root, runtime_root
 import asyncio
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -16,7 +17,7 @@ def public_job(j):
     return {k:v for k,v in j.items() if k not in ('context','request')}
 
 def register(app,root,db):
-    store=make_store(root,db);reader=Reader(store);router=APIRouter(prefix='/api/reading')
+    store=scoped(app, lambda: make_store(learning_root(root),runtime_root(db)), initialize=True);reader=scoped(app, lambda: Reader(store));router=APIRouter(prefix='/api/reading')
     @app.middleware('http')
     async def protect(request:Request,call_next):
         if request.url.path.startswith('/api/reading'):
@@ -32,6 +33,7 @@ def register(app,root,db):
         all_sources = store.all_sources()
         articles = store.search_articles(search, include_archived) if search else store.articles(include_archived=include_archived)
         return {'preferences':store.prefs(),
+                'storage_backend':'cloud' if getattr(store,'remote',False) else 'local',
                 'sources':[{k:v for k,v in s.items() if k!='domains'} for s in all_sources],
                 'default_sources':[{k:v for k,v in s.items() if k!='domains'} for s in DEFAULT_FEEDS],
                 'custom_sources':[{k:v for k,v in s.items() if k!='domains'} for s in store.custom_sources()],
@@ -162,4 +164,6 @@ def register(app,root,db):
     def archive_vocab(vid:str,body:Payload):return store.archive_vocabulary(vid,body.data.get('archived',True))
     @router.delete('/vocabulary/{vid}')
     def delete_vocab(vid:str):return store.delete_vocabulary(vid)
+    from .scheduled import register as register_scheduled
+    register_scheduled(router,store,reader)
     app.include_router(router);return store,reader

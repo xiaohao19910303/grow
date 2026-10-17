@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 
 def guard(request):
     if request.url.path == '/api/health': return None
+    from reading.scheduled import authorized
+    if authorized(request): return None
     password = os.getenv('APP_PASSWORD', '')
     if len(password) < 24:
         return JSONResponse({'message': '请在服务端配置至少 24 位的 APP_PASSWORD。'}, status_code=503)

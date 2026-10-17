@@ -1,4 +1,5 @@
 """Additive API routes; construction does not open the database or start a service."""
+from tenancy import scoped, learning_root, runtime_root
 import json
 import secrets
 import os
@@ -7,6 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
 
 from .core import Problem, Store, fail
 from .cloud_store import make_store
@@ -74,8 +76,8 @@ class WriterConfirmation(Input):
 def register(app: FastAPI, root, db):
     from .ai_api import register as register_ai
     register_ai(app)
-    store = make_store(root, db)
-    generator = Generator(store)
+    store = scoped(app, lambda: make_store(learning_root(root), runtime_root(db)), initialize=True)
+    generator = scoped(app, lambda: Generator(store))
     router = APIRouter(prefix='/api/copilot')
 
     @app.middleware('http')
@@ -84,9 +86,9 @@ def register(app: FastAPI, root, db):
         lan_token = os.getenv('COPILOT_ACCESS_TOKEN', '')
         lan = os.getenv('COPILOT_LAN', '') == '1'
         cloud_pilot = os.getenv('CLOUD_DEPLOY', '') == '1' and os.getenv('PLAN_CONTENT_BACKEND', '') == 'github'
-        if cloud_pilot:
+        if cloud_pilot and not getattr(app.state, 'multiuser', False):
             from cloud_auth import guard
-            rejected = guard(request)
+            rejected = await run_in_threadpool(guard,request)
             if rejected is not None:return rejected
         # 云端部署时允许所有主机（通过环境变量控制）
         if os.getenv('CLOUD_DEPLOY', '') == '1':
@@ -100,7 +102,7 @@ def register(app: FastAPI, root, db):
                 return JSONResponse({'message': '此访问地址未获允许。'}, status_code=403)
         if request.url.path.startswith('/api/'):
             peer = request.client.host if request.client else ''
-            if not cloud_pilot and peer not in ('127.0.0.1', '::1', 'testclient'):
+            if not getattr(app.state, 'multiuser', False) and not cloud_pilot and peer not in ('127.0.0.1', '::1', 'testclient'):
                 supplied = request.headers.get('x-copilot-token', '')
                 if not lan or len(lan_token) < 24 or not secrets.compare_digest(supplied, lan_token):
                     return JSONResponse({'message': '局域网访问需要有效凭证。'}, status_code=403)

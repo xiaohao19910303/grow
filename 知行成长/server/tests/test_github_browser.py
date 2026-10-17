@@ -54,6 +54,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                 <div id="notices" role="status"></div>SETTINGS_FORM<div id="view-copilot" hidden></div>
                 <div id="view-plans"></div><div id="dailyReader" hidden></div>
                 <script>
+                window.Account={user:{id:'browser-owner',username:'owner',is_owner:true}};
                 window.toast=t=>document.getElementById('notices').textContent=t;
                 window.goTab=name=>{document.getElementById('view-plans').style.display=name==='plans'?'block':'none';if(name==='plans')window.enterPlans();};
                 window.rememberLearningOrigin=()=>{};window.returnFromLesson=()=>goTab('plans');

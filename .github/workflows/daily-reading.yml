@@ -1,0 +1,30 @@
+name: Daily reading collection
+
+on:
+  schedule:
+    # 10:00 Asia/Shanghai; later triggers recover transient failures.
+    - cron: '0,20,40 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/daily-reading.yml'
+      - 'scripts/collect_daily_reading.py'
+      - '知行成长/server/reading/scheduled.py'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: daily-reading-collection
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect and verify today's articles
+        run: python3 scripts/collect_daily_reading.py
