@@ -9,6 +9,30 @@ from reading.sources import choose
 from reading.store import DEFAULT
 from reading.service import Reader
 from test_legacy_cloud_content import CloudFixture, DATE
+from test_legacy_cloud_api import CloudHTTPFixture
+from fastapi.testclient import TestClient
+
+
+class ReadingFeedbackAPITests(CloudHTTPFixture):
+    def test_feedback_http_validation_conflict_and_search(self):
+        with TestClient(self.app,base_url='http://localhost') as client:
+            path='/api/reading/articles/'+self.aid+'/feedback'
+            body={'data':{'version':0,'takeaway':'PRIVATE 查找应用机会','tags':['判断'],'mark_read':True}}
+            self.assertEqual(client.post(path,json=body).status_code,403)
+            headers={'X-Copilot-Request':'1'}
+            result=client.post(path,json=body,headers=headers)
+            self.assertEqual(result.status_code,200,result.text)
+            self.assertTrue(result.json()['read'])
+            self.assertEqual(client.post(path,json=body,headers=headers).status_code,409)
+            found=client.get('/api/reading',params={'search':'查找应用机会'}).json()['articles']
+            self.assertEqual([a['id'] for a in found],[self.aid])
+            self.assertEqual(found[0]['feedback']['version'],1)
+            body['data'].update(version=1,tags=['x'*33])
+            self.assertEqual(client.post(path,json=body,headers=headers).status_code,422)
+            result=client.get('/api/reading/articles/'+self.aid).json()
+            self.assertEqual(result['article']['feedback']['takeaway'],'PRIVATE 查找应用机会')
+            self.assertEqual(result['note']['text'],'PRIVATE READING NOTE')
+            self.assertNotIn('PRIVATE',json.dumps(self.repository.commits[self.repository.head]['files']))
 
 
 class ReadingGrowthTests(CloudFixture):

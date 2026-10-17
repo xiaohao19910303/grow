@@ -1,6 +1,6 @@
 #view-reading>.btn{margin:4px 8px 12px 0}.reading-card{padding:20px 0;border-bottom:1px solid var(--border);line-height:1.75}.reading-card h3{margin:10px 0;font-size:18px}.reading-card .btn{margin:4px 8px 4px 0}.reading-tag{font-size:12px;color:var(--muted)}.reading-banner{padding:16px;background:var(--bg,#f5f6fb);border-radius:12px;margin:16px 0}.reading-actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.reading-warning{padding:12px;border-left:3px solid #b57918;background:#fff8e9;color:#66440b}.reading-stream{white-space:pre-wrap;max-height:40vh;overflow:auto;line-height:1.8}#view-reading fieldset{border:1px solid var(--border);border-radius:10px;margin:12px 0;padding:12px}#view-reading .plan-field:has(input[type=checkbox]){flex-direction:row;align-items:center}#view-reading input[type=checkbox]{width:auto;order:-1}#view-reading .cp-reader{max-width:840px}#view-reading .desc{overflow-wrap:anywhere}#view-reading select{padding:8px;max-width:100%}#view-reading .btn:disabled{opacity:.6}#view-reading :focus-visible{outline:2px solid #4f5ee8;outline-offset:3px}#view-reading details{padding:12px 0}#view-reading textarea{width:100%}
 
-/* Five-view tabs */
+/* Reading views */
 .reading-tabs{display:flex;gap:4px;margin:16px 0;border-bottom:2px solid var(--border);padding-bottom:0}
 .reading-tabs .btn{margin:0;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;padding:8px 16px;font-weight:500}
 .reading-tabs .btn.primary{border-bottom-color:var(--primary,#4f6ef7);background:var(--primary-soft,#eef1ff)}
@@ -51,3 +51,5 @@
 .source-row button{margin-left:8px}
 #view-reading h4{margin:20px 0 12px 0;font-size:16px;font-weight:600;color:var(--text,#1a1a1a)}
 
+
+.reading-tabs{flex-wrap:wrap}.reading-tabs .btn{padding:8px 12px}.reading-feedback-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.reading-feedback-label{color:var(--primary,#4f6ef7);font-size:13px}.article-guide-box .plan-field{margin:12px 0}.article-guide-box details .plan-field{display:flex;flex-direction:column;gap:8px}@media(max-width:520px){.reading-feedback-grid{grid-template-columns:1fr}.reading-tabs .btn{padding:8px 10px}.article-guide-box{padding:14px}}
