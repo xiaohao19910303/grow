@@ -96,7 +96,9 @@ class CloudStore(Store):
 
     def _resume(self,op_id):
         row=self.operation(op_id)
-        if row['status']=='done':return {'operation_id':op_id,'status':'done'}
+        if row['status']=='done':
+            journal=self.documents.get('cloud_publications',op_id)
+            return journal['result'] if journal else {'operation_id':op_id,'status':'done'}
         data=json.loads(row['data'])
         files={MODULE+'/'+item['path']:item['content'] for item in data.get('files',[])}
         expected={MODULE+'/'+item['path']:item['old_hash'] for item in data.get('files',[])}
