@@ -55,6 +55,16 @@ class CloudFixture(PostgreSQLFixture):
 
 
 class LegacyCloudContentTests(CloudFixture):
+    def test_course_index_without_legacy_defaults_keeps_other_rounds(self):
+        with self.course.conn() as c:
+            c.execute('ALTER TABLE copilot_lessons ALTER COLUMN module_id DROP DEFAULT')
+            c.execute('ALTER TABLE copilot_lessons ALTER COLUMN round_id DROP DEFAULT')
+            c.execute("INSERT INTO copilot_lessons VALUES ('renzhi',2,1,?)",('{"preserved":"second round"}',))
+        self.migrate_files()
+        self.assertEqual(len(self.course.scan()['lessons']),2)
+        with self.course.conn() as c:
+            self.assertEqual(c.execute("SELECT data FROM copilot_lessons WHERE round_id=2").fetchone()[0],'{"preserved":"second round"}')
+
     def test_document_snapshot_refreshes_after_commit_within_same_lock(self):
         path=MODULE+'/学习记录.md'
         with self.course.documents.lock():

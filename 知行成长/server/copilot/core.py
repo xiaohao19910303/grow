@@ -284,9 +284,9 @@ class Store:
         while prefix + 1 in complete:
             prefix += 1
         with self.conn() as c:
-            c.execute('DELETE FROM copilot_lessons')
-            c.executemany('INSERT INTO copilot_lessons(lesson_no,data) VALUES (?,?)',
-                          [(x['lesson_no'], encoded(x)) for x in courses])
+            c.execute('DELETE FROM copilot_lessons WHERE module_id=? AND round_id=?',('renzhi',1))
+            c.executemany('INSERT INTO copilot_lessons(module_id,round_id,lesson_no,data) VALUES (?,?,?,?)',
+                          [('renzhi',1,x['lesson_no'],encoded(x)) for x in courses])
             pending = c.execute("SELECT id FROM copilot_operations WHERE status!='done'").fetchall()
         blockers.extend({'code': 'save_pending_recovery', 'message': '保存操作需要恢复', 'operation_id': r[0]}
                         for r in pending)
