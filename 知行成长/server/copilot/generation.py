@@ -149,6 +149,7 @@ class Generator:
             else:
                 transport = self.transport
             finished = False
+            last_progress_write = None
             async for packet in transport(messages(d), cfg):
                 if packet.get('usage') is not None:
                     metrics['usage'] = packet['usage']
@@ -164,8 +165,13 @@ class Generator:
                         fail('generation_failed', '生成内容超出限制。')
                     pieces = d['raw'].split(SEPARATOR, 1)
                     d['content'], d['sources'] = pieces[0], pieces[1] if len(pieces) > 1 else ''
-                    self.persist(draft_id, d, 'generating', metrics)
+                    current = time.monotonic()
+                    if last_progress_write is None or current - last_progress_write >= 1:
+                        self.persist(draft_id, d, 'generating', metrics)
+                        last_progress_write = time.monotonic()
                     yield event('delta', {'text': chunk})
+                # Buffered provider packets may never suspend on their own.
+                await asyncio.sleep(0)
             if not finished:
                 fail('generation_failed', '上游未返回完整结束信号。')
             d['stream_completed'] = True
