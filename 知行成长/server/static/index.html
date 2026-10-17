@@ -554,7 +554,7 @@ async function testApiConnection(){
   if(!body.api_base_url||!body.api_key||!body.model_name){el.textContent='请完整填写 Base URL、API Key 和模型名称。';return;}
   el.textContent='正在测试连接…';
   try{
-    const r=await fetch('/api/copilot/settings/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
+    const r=await fetch('/api/ai/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
     const d=await r.json();
     el.textContent=d.message||'连接测试失败，请检查配置。';
   }catch(e){el.textContent='测试失败，请检查网络与配置。';}
