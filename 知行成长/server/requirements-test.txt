@@ -1,0 +1,2 @@
+# Install alongside the repository-root requirements.txt.
+playwright==1.64.0

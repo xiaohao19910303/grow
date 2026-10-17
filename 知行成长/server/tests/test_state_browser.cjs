@@ -8,22 +8,23 @@ const {chromium} = require('playwright');
 const server = path.resolve(__dirname, '..');
 const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'grow-state-browser-')));
 const fixture = String.raw`
-import json,os,socket,sqlite3,sys
+import json,os,socket,sys,signal
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse,JSONResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+sys.path.insert(0,str(Path.cwd()/'tests'))
+from run_isolated_checks import setup_isolation
+stats,runtime,server=setup_isolation()
+from cloud_fixtures import CloudFixture
+fixture=CloudFixture();fixture.setUp()
 import app as dashboard
 from copilot.core import Problem
 from reflections.api import register
 server=Path.cwd();root=Path(os.environ['P0_TEST_ROOT']).resolve()
 assert root.name.startswith('grow-state-browser-') and not root.is_relative_to(server.parent.parent)
-def guard(event,args):
- if event=='sqlite3.connect' and str(server.parent.parent) in str(args[0]):
-  raise RuntimeError('Real workspace database access blocked')
-sys.addaudithook(guard)
-dashboard.DB_PATH=root/'data.db';dashboard.init_db()
+dashboard.init_db()
 s=dashboard.load_state();s['modules']=dashboard.DEFAULT_MODULES
 s['reviews']=[{'date':'2026-10-16','thought':'old review','actual':'','gap':'','action':''}]
 dashboard.save_state(s,require_revision=True)
@@ -31,18 +32,26 @@ api=FastAPI()
 @api.exception_handler(Problem)
 async def problem(request,error):return JSONResponse({'error':error.code,'message':error.message},status_code=error.status)
 api.get('/api/data')(dashboard.get_data);api.put('/api/data')(dashboard.put_data)
-store,_=register(api,root,dashboard.DB_PATH);store.initialize()
+store,_=register(api,root,root/'runtime');store.initialize()
 entry=store.create({'record_date':'2026-10-16','raw_text':'original reflection','tags':['keep'],'guided_answers':{}},'browser-create-key')
 api.mount('/static',StaticFiles(directory=server/'static'),name='static')
 @api.get('/')
 def index():return FileResponse(server/'static/index.html')
+@api.get('/api/auth/me')
+def identity():return {'user':{'id':'state-browser-owner','username':'owner','is_owner':True}}
 @api.get('/api/{rest:path}')
 def empty(rest:str):return {'modules':[],'lessons':[],'plans':[],'records':[],'items':[],'reports':[],'daily':[],'stats':{},'total':0,'trend':[],'top_concepts':[],'module_distribution':[],'types':[]}
 sock=socket.socket();sock.bind(('127.0.0.1',0))
 print(json.dumps({'port':sock.getsockname()[1],'id':entry['id'],'mirror':str(root/store.entry(entry['id'])['path'])}),flush=True)
-uvicorn.Server(uvicorn.Config(api,log_level='error')).run(sockets=[sock])
+service=uvicorn.Server(uvicorn.Config(api,log_level='error'))
+def stop(*args):service.should_exit=True
+signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
+try:service.run(sockets=[sock])
+finally:
+ fixture.doCleanups();runtime.cleanup()
+ assert not any(stats[k] for k in ('blocked_workspace_writes','blocked_real_database_access','blocked_network_access')),stats
 `;
-const child = spawn(path.resolve(server, '../.venv/bin/python'), ['-c',fixture], {
+const child = spawn(process.env.TEST_PYTHON||'python3', ['-c',fixture], {
   cwd:server, env:{...process.env,P0_TEST_ROOT:temp,PYTHONDONTWRITEBYTECODE:'1'},stdio:['ignore','pipe','pipe'],
 });
 let stderr='';child.stderr.on('data',x=>stderr+=x);
@@ -59,7 +68,7 @@ async function response(page,status){
   let ready=false;
   for(let i=0;i<100;i++){try{if((await fetch(base+'/api/data')).ok){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,50))}
   assert.ok(ready,'fixture not ready');
-  const browser=await chromium.launch({headless:true});
+  const browser=await chromium.launch({headless:true,...(process.env.CHROME_EXECUTABLE?{executablePath:process.env.CHROME_EXECUTABLE}:{})});
   try{
     const context=await browser.newContext({acceptDownloads:true});
     await context.route('**/*',r=>new URL(r.request().url()).origin===base?r.continue():r.abort());
@@ -88,27 +97,25 @@ async function response(page,status){
     const copy=await download;await copy.saveAs(path.join(temp,'unsaved-state.json'));
     assert.equal(JSON.parse(fs.readFileSync(path.join(temp,'unsaved-state.json'),'utf8')).reviews[0].thought,'second page unsaved');
     await second.waitForFunction(()=>state.reviews[0].thought==='first page saved');
-    // Change only the synthetic mirror, then save through the real editor.
-    assert.ok(meta.mirror.startsWith(temp+path.sep));
+    // A concurrent remote edit must not erase the draft in the first editor.
     const external='external personal text\n<script>throw Error("must stay text")</script>';
-    fs.writeFileSync(meta.mirror,external);
     await first.locator('#reflectionList').getByRole('button',{name:'编辑',exact:true}).click();
+    const updated=await fetch(base+'/api/reflections/'+meta.id,{method:'PUT',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify({record_date:'2026-10-16',raw_text:external,base_version:1,tags:['keep'],guided_answers:{},key:'second-editor-key'})});
+    assert.equal(updated.status,200);
     await first.locator('#refRaw').fill('unsaved reflection draft');
     const refConflict=first.waitForResponse(r=>r.url().includes('/api/reflections/'+meta.id) && r.request().method()==='PUT' && r.status()===409);
     await first.locator('#refSaveBtn').click();await refConflict;
-    await first.locator('#refConflict textarea').first().waitFor();
     assert.equal(await first.locator('#refRaw').inputValue(),'unsaved reflection draft');
-    assert.equal(await first.locator('#refConflict textarea').nth(1).inputValue(),external);
-    assert.equal(fs.readFileSync(meta.mirror,'utf8'),external);
-    assert.equal((await (await fetch(base+'/api/reflections/'+meta.id)).json()).entry.raw_text,'original reflection');
+    assert.equal((await (await fetch(base+'/api/reflections/'+meta.id)).json()).entry.raw_text,external);
+    assert.equal(fs.existsSync(meta.mirror),false);
     download=first.waitForEvent('download');await first.getByRole('button',{name:'下载当前草稿并重新读取'}).click();
     const draft=await download;await draft.saveAs(path.join(temp,'reflection-draft.txt'));
     assert.equal(fs.readFileSync(path.join(temp,'reflection-draft.txt'),'utf8'),'unsaved reflection draft');
-    await first.waitForFunction(()=>document.getElementById('refRaw').value==='original reflection');
+    await first.waitForFunction(value=>document.getElementById('refRaw').value===value,external);
     assert.deepEqual(errors,[],'unexpected browser errors');
-    console.log('Browser checks passed: actual UI/API stable ID, two-page conflict, unsaved copy, external-file protection, escaped diff and draft reload.');
+    console.log('Browser checks passed: actual UI/API stable ID, two-page conflict, unsaved copy, remote-record version protection, escaped text and draft reload.');
   }finally{await browser.close()}
 })().catch(e=>{console.error(e,stderr);process.exitCode=1}).finally(async()=>{
-  if(child.exitCode===null && child.signalCode===null){const stopped=new Promise(r=>child.once('exit',r));child.kill('SIGTERM');await stopped}
+  if(child.exitCode===null && child.signalCode===null){const stopped=new Promise(r=>child.once('exit',r));child.kill('SIGTERM');await stopped;assert.equal(child.exitCode,0,'fixture cleanup failed: '+stderr)}
   fs.rmSync(temp,{recursive:true,force:true});
 });

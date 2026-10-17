@@ -17,7 +17,8 @@ from copilot.core import Problem
 from plans.api import register as register_plans
 from plans.generation import PlanGenerator
 from plans.github import GitHubContent
-from test_github_plans import Repository, SQLitePlans, B, D
+from test_github_plans import B, D
+from cloud_fixtures import AsyncCloudFixture
 
 OWN = {'api_base_url': 'https://user-model.example/v1', 'api_key': 'USER_SECRET_TEST_ONLY', 'model_name': 'user-model'}
 
@@ -91,12 +92,10 @@ class BrowserConfigTests(unittest.TestCase):
                 self.assertNotIn(OWN['api_key'], r.text)
 
 
-class GenerationCredentials(unittest.IsolatedAsyncioTestCase):
+class GenerationCredentials(AsyncCloudFixture):
     async def test_model_receives_only_request_config_and_journal_has_no_secret(self):
         with tempfile.TemporaryDirectory() as tmp:
-            content = GitHubContent('owner/courses','main','TEST_ONLY_TOKEN', transport=httpx.MockTransport(Repository()))
-            store = SQLitePlans('/missing','/missing',content)
-            store.db_file = Path(tmp)/'test.db'; store.initialize()
+            store = self.s
             calls = []
             async def model(messages, cfg):
                 calls.append(dict(cfg))

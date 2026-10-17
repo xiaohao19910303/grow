@@ -10,10 +10,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--pattern', default='test_*.py')
-    args = parser.parse_args()
+def setup_isolation():
     server = Path(__file__).resolve().parents[1]
     workspace = server.parent.parent
     sys.path.insert(0, str(server))
@@ -89,11 +86,36 @@ def main():
             raise RuntimeError('隔离检查只允许连接 localhost PostgreSQL。')
         return connect(dsn, *args, **kwargs)
     psycopg2.connect = isolated_connect
-    suite = unittest.defaultTestLoader.discover(str(server / 'tests'), pattern=args.pattern)
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
-    runtime.cleanup()
+    return stats,runtime,server
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--pattern', default='test_*.py')
+    parser.add_argument('--full',action='store_true',help='Run every Python and JavaScript check, including Chromium; skips fail the run.')
+    args = parser.parse_args()
+    if args.full:
+        if args.pattern!='test_*.py':parser.error('--full cannot restrict test patterns')
+        if not (os.getenv('TEST_POSTGRES_DSN') or os.getenv('TEST_LEGACY_PG_DSN') or os.getenv('TEST_GITHUB_PG_DSN')):
+            parser.error('--full requires TEST_POSTGRES_DSN pointing to disposable localhost PostgreSQL')
+        for key in ('RUN_GITHUB_BROWSER','RUN_LEGACY_BROWSER','RUN_ACCOUNTS_BROWSER'):os.environ[key]='1'
+    stats,runtime,server=setup_isolation()
+    try:
+        suite = unittest.defaultTestLoader.discover(str(server / 'tests'), pattern=args.pattern)
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+        javascript_ok=True
+        javascript=[]
+        if args.full and result.wasSuccessful():
+            import subprocess
+            for script in sorted((server/'tests').glob('test_*.cjs')):
+                completed=subprocess.run([os.getenv('TEST_NODE','node'),str(script)],cwd=server,
+                                         env={**os.environ,'TEST_PYTHON':sys.executable})
+                javascript.append({'file':script.name,'returncode':completed.returncode})
+                javascript_ok=javascript_ok and completed.returncode==0
+    finally:runtime.cleanup()
     print('ISOLATION_AUDIT ' + json.dumps(stats, sort_keys=True))
-    return 0 if result.wasSuccessful() and not any(
+    print('REGRESSION_RESULT '+json.dumps({'python_tests':result.testsRun,'skipped':len(result.skipped),'failures':len(result.failures),'errors':len(result.errors),'javascript':javascript}))
+    return 0 if result.testsRun>0 and result.wasSuccessful() and javascript_ok and not (args.full and result.skipped) and not any(
         stats[k] for k in ('blocked_real_database_access', 'blocked_workspace_writes','blocked_network_access')) else 1
 
 

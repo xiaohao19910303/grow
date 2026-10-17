@@ -10,18 +10,12 @@ import httpx
 
 from plans.generation import PlanGenerator
 from plans.github import GitHubContent
-from test_github_plans import B, D, Repository, SQLitePlans
+from test_github_plans import B, D
+from cloud_fixtures import AsyncCloudFixture
 
 
-class GenerationResponsivenessTests(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        content = GitHubContent('owner/courses', 'main', 'TEST_ONLY_TOKEN',
-                                transport=httpx.MockTransport(Repository()))
-        self.store = SQLitePlans('/missing', '/missing', content)
-        self.store.db_file = Path(self.tmp.name) / 'test.db'
-        self.store.initialize()
+class GenerationResponsivenessTests(AsyncCloudFixture):
+    async def asyncSetUp(self):self.store=self.s
 
     async def test_buffered_stream_yields_and_limits_progress_writes(self):
         observed = []

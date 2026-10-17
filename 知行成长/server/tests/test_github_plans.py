@@ -21,6 +21,7 @@ from plans.api import register
 from plans.github import GitHubContent
 from plans.github_store import GitHubPlans
 from plans.store import Plans, TABLES
+from test_legacy_cloud_schema import PostgreSQLFixture
 B = {'title':'经济学','goal':'理解经济新闻','level':'零基础','weeks':2,'sessions':1,'minutes':20}
 D = {'prerequisites':'无需先修','stages':[{'title':'基础','goal':'解释概念'}],
      'lessons':[{'number':n,'topic':'主题'+str(n),'goal':'解释概念','exercise':'举例','assessment':'说明边界','stage':1,
@@ -116,55 +117,31 @@ class Repository:
         assert data['force'] is False, 'Never force-push content'
 
 
-class SQLitePlans(GitHubPlans):
-    """Only the DB boundary differs; publication and GitHub code are real."""
-    mutex = threading.RLock()
-
-    @contextmanager
-    def conn(self):
-        c = sqlite3.connect(self.db_file, timeout=5)
-        c.row_factory = sqlite3.Row
-        try:
-            with c: yield c
-        finally: c.close()
-
-    @contextmanager
-    def database_lock(self, name, blocking=True):
-        with self.mutex: yield
-
-
-class LocalStorageCompatibility(unittest.TestCase):
-    def test_local_publication_and_reading_still_use_local_files(self):
-        class LocalPlans(Plans):
-            conn = SQLitePlans.conn
+class ArchivedLocalStorageCompatibility(unittest.TestCase):
+    def test_legacy_archive_content_remains_readable(self):
+        from offline_archive_fixture import OfflineArchivePlans
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            store = LocalPlans(root,root/'runtime');store.db_file=root/'test.db'
-            with store.conn() as c:c.executescript(TABLES)
-            draft=store.draft({'brief':B,'document':D})
-            pid=store.adopt(draft['id'],'adopt')['plan_id']
+            root=Path(tmp);store=OfflineArchivePlans(root,root/'archive.db');store.initialize()
+            draft=store.draft({'brief':B,'document':D});pid=store.adopt(draft['id'],'adopt')['plan_id']
             store.save_sources(pid,S);ctx=store.course_context(pid)
-            draft=store.course_draft(ctx,content(ctx),'摘要 [来源](https://example.org/lesson)')
-            result=store.publish_course(draft['id'],'course')
-            self.assertTrue(Path(result['path']).is_file())
+            course=store.course_draft(ctx,content(ctx),'摘要 https://example.org/lesson')
+            store.publish_course(course['id'],'publish')
             self.assertIn('核心概念',store.read_course(pid,1)['content'])
 
 
-class GitHubPlanTests(unittest.TestCase):
+class GitHubPlanTests(PostgreSQLFixture):
     def setUp(self):
+        super().setUp()
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.repo = Repository()
         self.content = GitHubContent('owner/courses', 'main', 'TEST_ONLY_TOKEN',
             transport=httpx.MockTransport(self.repo))
-        self.db_file = Path(self.tmp.name)/'test.db'
         self.s = self.new_store()
         self.s.initialize()
 
     def new_store(self):
-        s = SQLitePlans('/nonexistent-learning-root', '/nonexistent-runtime', self.content)
-        s.db_file = self.db_file
-        return s
+        return GitHubPlans('/nonexistent-learning-root','/nonexistent-runtime',self.content)
 
     def adopt(self):
         d = self.s.draft({'brief': B, 'document': D})
@@ -349,31 +326,6 @@ class GitHubPlanTests(unittest.TestCase):
             self.assertIn('核心概念', r.json()['content'])
             self.assertIn('github_url', r.json())
             post('/'+pid+'/lessons/1/feedback', {'key': 'f', 'state': 'completed', 'comment': '已练习'})
-
-
-@unittest.skipUnless(os.getenv('TEST_GITHUB_PG_DSN'), 'Set TEST_GITHUB_PG_DSN to an isolated local PostgreSQL')
-class PostgreSQLPlanTests(GitHubPlanTests):
-    def setUp(self):
-        import db
-        import psycopg2
-        import uuid
-        self.dsn = os.environ['TEST_GITHUB_PG_DSN']
-        if not ('host=127.0.0.1' in self.dsn or 'host=localhost' in self.dsn):
-            raise RuntimeError('PostgreSQL tests require an explicit localhost DSN')
-        self.schema = 'github_test_'+uuid.uuid4().hex
-        c = psycopg2.connect(self.dsn); c.autocommit = True
-        c.cursor().execute('CREATE SCHEMA '+self.schema); c.close()
-        def cleanup():
-            c = psycopg2.connect(self.dsn); c.autocommit = True
-            c.cursor().execute('DROP SCHEMA '+self.schema+' CASCADE'); c.close()
-        self.addCleanup(cleanup)
-        original = db.connect
-        patcher = patch('db.connect', lambda *args, **kwargs: original(self.dsn+' options=-csearch_path='+self.schema))
-        patcher.start(); self.addCleanup(patcher.stop)
-        super().setUp()
-
-    def new_store(self):
-        return GitHubPlans('/nonexistent-learning-root', '/nonexistent-runtime', self.content)
 
 
 if __name__ == '__main__': unittest.main()
