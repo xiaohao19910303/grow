@@ -2,6 +2,7 @@
 import asyncio
 import fcntl
 import json
+import time
 import uuid
 from contextlib import ExitStack
 from datetime import datetime, timedelta
@@ -126,6 +127,7 @@ class PlanGenerator:
             a.update(state='generating',phase='waiting',started_at=now());self.persist(a)
             from copilot.transport import qwen_stream
             done=False
+            last_progress_write = None
             prompt=refinement_messages(a['context']) if a['operation']=='refine' else messages(a['kind'],a['context'])
             async for packet in (self.transport or qwen_stream)(prompt,c):
                 if packet.get('usage') is not None:a['usage']=packet['usage']
@@ -136,7 +138,14 @@ class PlanGenerator:
                     a.update(last_content_at=now(),phase='receiving')
                     a['raw']+=delta
                 if len(a['raw'])>180000:fail('invalid','输出超出限制，请缩短规划。')
-                self.persist(a)
+                # A buffered SSE stream can yield without suspending. Persist the
+                # first content promptly, then checkpoint at most once a second
+                # so remote PostgreSQL connections do not dominate each token.
+                current = time.monotonic()
+                if last_progress_write is None or current - last_progress_write >= 1:
+                    self.persist(a)
+                    last_progress_write = time.monotonic()
+                await asyncio.sleep(0)
             if not done:fail('incomplete','响应未完整结束。')
             a['complete']=True
             a['phase']='validating';self.persist(a)
