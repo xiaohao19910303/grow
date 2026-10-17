@@ -65,11 +65,14 @@ def extract_content(raw, media_type, url):
     else:
         return None
     text = text.strip()
-    if not 100 <= len(text) <= MAX_CHARS:
-        return None
-    if any(x in text[:300].lower() for x in ('just a moment', 'access denied', 'verify you are human', 'checking your browser')):
-        return None
-    return text
+    return text if is_readable_text(text) else None
+
+
+def is_readable_text(text):
+    if not isinstance(text,str) or not 100 <= len(text.strip()) <= MAX_CHARS or '\x00' in text:
+        return False
+    prefix=text.lstrip()[:300].lower()
+    return not any(x in prefix for x in ('%pdf-', 'just a moment', 'access denied', 'verify you are human', 'checking your browser'))
 
 
 async def fetch_article_content(url):

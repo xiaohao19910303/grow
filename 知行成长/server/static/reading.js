@@ -20,7 +20,7 @@
   window.loadReading=async()=>{
     const status=shell('今日阅读');const turn=revision;button(root,'帮我找文章',()=>collectForm(),true);button(root,'添加文章',()=>importForm());button(root,'阅读偏好与来源',()=>settings());
     const data=await api();if(turn!==revision)return;const p=data.preferences;
-    status.textContent=`${p.enabled?'每天':'已暂停每日搜集'} 北京时间 ${String(p.hour).padStart(2,'0')}:${String(p.minute).padStart(2,'0')} · ${p.count}篇 · ${category[p.mode]}。${data.storage_backend==='cloud'?'云端自动搜集，关闭浏览器后仍会运行':'本地服务需保持运行'}；每日搜集不调用付费模型。`;
+    status.textContent=`${p.enabled?'每天':'已暂停每日搜集'} 北京时间 ${String(p.hour).padStart(2,'0')}:${String(p.minute).padStart(2,'0')} · ${p.count}篇 · ${category[p.mode]}。${data.storage_backend==='cloud'?'云端自动搜集，关闭浏览器后仍会运行':'本地服务需保持运行'}；每日搜集不调用付费模型。仅推荐已取得可读正文的文章，获取失败会自动换篇，正文随文章保存。`;
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const daily=data.jobs.find(j=>j.daily&&j.date===today);const banner=node('section',undefined,'reading-banner');root.append(banner);banner.append(node('h3','今日精选'));
     if(daily){banner.append(node('p',state[daily.state]+(daily.error?' · '+daily.error:'')));button(banner,'查看今日结果',()=>watch(daily.id));}
@@ -208,6 +208,7 @@
         if(!active&&j.kind==='guide'&&j.state==='ready')button(content,'阅读中文导读',()=>read(j.article_id,'guide'),true);
         if(!active&&j.kind==='fetch_full'&&j.state==='ready')button(content,'阅读文章正文',()=>read(j.article_id),true);
         if(!active&&j.kind==='collect'&&j.state==='ready'){
+          if(j.readable_only)content.append(node('p',`这 ${j.candidates.length} 篇文章均已取得可读正文。保存时会把正文一起保存，之后可直接在本站阅读。`,'desc'));
           const selected=[];for(const a of j.candidates){const box=card(a,content);if(!j.saved_ids){const preview=node('details');preview.append(node('summary','本站预览正文'));if(a.full_content?.length>=100&&(!/\.pdf(?:$|[?#])/i.test(a.url)||a.content_version===2))markdown(preview,a.full_content);else preview.append(node('p','本次未取得正文。保存后可在本站尝试重新加载；当前仅有来源摘要。','desc'));box.append(preview);const el=field(box,'保存这篇文章','','checkbox');el.checked=true;selected.push([a.id,el]);}else button(box,'本站阅读',()=>read(a.id),true);}
           if(j.saved_ids)content.append(node('p','已保存至：'+j.path,'desc'));
           else button(content,'保存选中的文章与资料',async()=>{await api('/jobs/'+id+'/save',{ids:selected.filter(([,e])=>e.checked).map(([aid])=>aid)});await watch(id);},true);

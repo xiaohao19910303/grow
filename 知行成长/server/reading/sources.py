@@ -120,7 +120,7 @@ def matches(article,prefs):
 # Keep the existing import contract for collection, URL import and readers.
 from .content import fetch_article_content
 
-def choose(candidates,prefs,seen,today,seed=None,history=()):
+def choose(candidates,prefs,seen,today,seed=None,history=(),selected=()):
     cutoff=(datetime.fromisoformat(today)-timedelta(days=30)).date().isoformat()
     eligible={}
     for a in candidates:
@@ -138,8 +138,11 @@ def choose(candidates,prefs,seen,today,seed=None,history=()):
         if value is None:continue
         for t in set(a.get('topics',[])) & signals.keys():signals[t].append(value)
     weights={t:sum(v)/(len(v)+3) for t,v in signals.items()}
-    result=[];used=set();covered=set();interests=set(prefs['topics'])
+    result=list(selected);used={a['source'] for a in result};covered=set().union(*(set(a.get('topics',[])) for a in result));interests=set(prefs['topics'])
     categories=['recent']*max(0,prefs['count']-1)+['classic'] if prefs['mode']=='mixed' else [prefs['mode']]*prefs['count']
+    for a in result:
+        if a['category'] in categories:categories.remove(a['category'])
+        elif categories:categories.pop()
     for category in categories:
         options=[a for a in rows if a['category']==category and a['id'] not in {x['id'] for x in result}]
         if not options and prefs['mode']=='mixed':

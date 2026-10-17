@@ -13,6 +13,11 @@ from copilot.ai_config import generation_config
 from .store import TABLE,preferences,basic_guide
 from .sources import CLASSICS,fetch_feed,identify,choose,fetch_article_content
 from .guides import source_context, validate_guide, INSTRUCTION
+from .content import is_readable_text, CONTENT_VERSION
+
+COLLECTION_BODY_SECONDS=120
+COLLECTION_BODY_ATTEMPTS=24
+COLLECTION_BODY_CONCURRENCY=3
 
 class Reader:
     def __init__(self,store,fetcher=None,transport=None):
@@ -107,15 +112,32 @@ class Reader:
                         a=copy.deepcopy(classic);a.update(id=identify(a['url']),category='classic');candidates.append(a)
                     j['sources'].append({'name':'已核验经典目录','url':None,'count':len(CLASSICS),'error':None})
                 history=await asyncio.to_thread(self.store.articles,include_archived=True)
-                j['candidates']=choose(candidates,p,{a['id'] for a in history},j['date'],seed=jid,history=history)
-                # Fetch full article content for each candidate
-                for a in j['candidates']:
-                    j['phase']=f'正在获取原文：{a["title"][:30]}';await asyncio.to_thread(self.store.put,TABLE,jid,j)
-                    content=await fetch_article_content(a['url'])
-                    if content:a.update(full_content=content,content_version=2,content_saved_at=now())
-                for a in j['candidates']:a.update(checked_at=now(),heat='热度未核实',reason='符合所选主题；'+('长期阅读价值，经典目录推荐' if a['category']=='classic' else '来自已配置来源、最近30天发表；建议先核对摘要'))
-                if len(j['candidates'])<p['count']:j['warnings'].append(f'本次找到{len(j["candidates"])}篇符合条件且未保存的文章，少于目标{p["count"]}篇；没有用旧闻或重复文章凑数。')
-                if not j['candidates']:fail('empty','没有符合条件的新文章。可调整主题、语言、类型或稍后重新搜集。')
+                seen={a['id'] for a in history};attempted=set()
+                j.update(candidates=[],readable_only=True,body_checks=0,body_failures=0)
+                deadline=time.monotonic()+COLLECTION_BODY_SECONDS
+                async def body(a):
+                    try:
+                        text=await asyncio.wait_for(fetch_article_content(a['url']),timeout=max(.001,min(45,deadline-time.monotonic())))
+                        return text if is_readable_text(text) else None
+                    except Exception:return None
+                while len(j['candidates'])<p['count'] and len(attempted)<COLLECTION_BODY_ATTEMPTS and time.monotonic()<deadline:
+                    ranked=choose(candidates,p,seen|attempted,j['date'],seed=jid,history=history,selected=j['candidates'])
+                    batch=ranked[len(j['candidates']):][:min(COLLECTION_BODY_CONCURRENCY,COLLECTION_BODY_ATTEMPTS-len(attempted))]
+                    if not batch:break
+                    attempted.update(a['id'] for a in batch)
+                    await progress(f'正在核验本站正文：已确认 {len(j["candidates"])} / {p["count"]} 篇，正在检查 {len(batch)} 篇')
+                    tasks=[asyncio.create_task(body(a)) for a in batch];fetch_tasks.extend(tasks)
+                    texts=await asyncio.gather(*tasks)
+                    for a,text in zip(batch,texts):
+                        j['body_checks']+=1
+                        if text:
+                            a=copy.deepcopy(a);a.update(full_content=text,content_version=CONTENT_VERSION,content_saved_at=now())
+                            j['candidates'].append(a)
+                        else:j['body_failures']+=1
+                for a in j['candidates']:a.update(checked_at=now(),heat='热度未核实',reason='符合所选主题；正文已获取，可直接在本站阅读；'+('长期阅读价值，经典目录推荐' if a['category']=='classic' else '来自已配置来源、最近30天发表'))
+                if j['body_failures']:j['warnings'].append(f'已跳过 {j["body_failures"]} 篇未能取得可读正文的文章，并继续补选其他文章。')
+                if len(j['candidates'])<p['count']:j['warnings'].append(f'本次仅找到 {len(j["candidates"])} 篇已取得可读正文的文章，少于目标 {p["count"]} 篇；不会用仅有摘要的文章凑数。')
+                if not j['candidates']:fail('empty','本次未能取得符合条件的可读正文，未推荐或保存仅有摘要的文章。请调整来源或稍后重新搜集。')
                 j.update(state='ready',phase='搜集完成');await asyncio.to_thread(self.store.put,TABLE,jid,j)
                 if j['daily']:j=await asyncio.to_thread(self.store.save_selection,jid,[a['id'] for a in j['candidates']])
             elif j['kind']=='summary':

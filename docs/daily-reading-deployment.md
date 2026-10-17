@@ -30,3 +30,12 @@ Render 免费实例会休眠，因此 `.github/workflows/daily-reading.yml` 在�
 验证：`test_reading_content.py`、`test_reading_site_browser.py`、`test_reading_growth_browser.py`、`test_legacy_cloud_browser.py`；浏览器验收需设置 `RUN_LEGACY_BROWSER=1`，数据库使用隔离的测试 PostgreSQL。
 
 正文任务的创建、数据库读写与 GitHub 发布在工作线程执行，避免远端保存阻塞 ASGI 健康检查。`test_reading_responsiveness.py` 在模拟慢发布时验证健康检查与任务查询仍可响应。
+
+
+### 只推荐已取得正文的文章
+
+手动搜集和每日自动搜集使用同一规则：先按主题、语言、日期和去重规则筛选，再获取可读正文；抓取失败、来源受限、只有短摘要或无法解析的文章会跳过，并继续补选。补选保留近期/经典比例和主题覆盖，已保存文章不重复推荐。
+
+每次最多并行核验 3 篇正文，最多尝试 24 篇，正文抓取使用 120 秒预算。数量不足时只返回已经取得正文的文章，并说明实际数量；全部失败时不生成推荐。搜集结果的正文先随任务保存在账号数据库，选中保存后与文章一起发布到当前 GitHub 仓库；每日搜集会自动完成保存。保存入口再次校验，禁止将缺少有效正文的新文章发布为推荐，已有账号和阅读记录保留。
+
+回归：`test_readable_collection.py` 验证失败补选、无正文不推荐、不足不凑数、保存/重启、保存前校验和时间/并发限制；`test_readable_collection_browser.py` 验证搜集、预览、保存、站内阅读与刷新复用正文。
