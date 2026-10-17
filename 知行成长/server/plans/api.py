@@ -156,7 +156,7 @@ def register(app, root, db):
             p=store.plan(pid);store.check_files(p)
             if 'name' in data:p['name']=text(data['name'],'显示名',200)
             if 'status' in data:
-                if data['status'] not in ('active','paused'):fail('invalid','状态无效。',422)
+                if data['status'] not in ('active','paused','archived'):fail('invalid','状态无效。',422)
                 p['status']=data['status']
             rel=store.base(pid)+'/计划信息.json'; mirror={k:v for k,v in p.items() if k!='hashes'}|{'schema_version':1}
             content=encoded(mirror);p['hashes'][rel]=digest(content)
@@ -177,6 +177,130 @@ def register(app, root, db):
 
     @router.post('/{pid}/lessons/{number}/feedback')
     def feedback(pid:str,number:int,body:Payload):return store.feedback(pid,number,body.data,key(body.data))
+
+    @router.post('/{pid}/pause')
+    def pause_plan(pid: str, body: Payload):
+        """暂停学习计划"""
+        from datetime import datetime
+        data = body.data
+        reason = data.get('reason', '')
+
+        with store.lock():
+            p = store.plan(pid)
+            current_status = p.get('status', 'active')
+
+            if current_status == 'paused':
+                fail('invalid', '计划已处于暂停状态。', 422)
+            if current_status == 'archived':
+                fail('invalid', '已归档的计划不能暂停。', 422)
+
+            # 更新状态
+            p['status'] = 'paused'
+            p['paused_at'] = datetime.now().isoformat()
+
+            # 记录状态历史
+            with store.conn() as c:
+                c.execute(
+                    """INSERT INTO plan_status_history (plan_id, from_status, to_status, changed_at, reason)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (pid, current_status, 'paused', p['paused_at'], reason)
+                )
+
+            # 保存计划
+            rel = store.base(pid) + '/计划信息.json'
+            mirror = {k: v for k, v in p.items() if k != 'hashes'} | {'schema_version': 1}
+            content = encoded(mirror)
+            p['hashes'][rel] = digest(content)
+            k = key(data)
+            return store.publish(k, {'op': 'pause', 'pid': pid}, {rel: content},
+                               [('UPDATE learning_plans SET data=? WHERE id=?', [encoded(p), pid])], mirror)
+
+    @router.post('/{pid}/resume')
+    def resume_plan(pid: str, body: Payload):
+        """恢复学习计划"""
+        from datetime import datetime
+        data = body.data
+        reason = data.get('reason', '')
+
+        with store.lock():
+            p = store.plan(pid)
+            current_status = p.get('status', 'active')
+
+            if current_status != 'paused':
+                fail('invalid', '只能恢复已暂停的计划。', 422)
+
+            # 更新状态
+            p['status'] = 'active'
+            p['resumed_at'] = datetime.now().isoformat()
+
+            # 记录状态历史
+            with store.conn() as c:
+                c.execute(
+                    """INSERT INTO plan_status_history (plan_id, from_status, to_status, changed_at, reason)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (pid, current_status, 'active', p['resumed_at'], reason)
+                )
+
+            # 保存计划
+            rel = store.base(pid) + '/计划信息.json'
+            mirror = {k: v for k, v in p.items() if k != 'hashes'} | {'schema_version': 1}
+            content = encoded(mirror)
+            p['hashes'][rel] = digest(content)
+            k = key(data)
+            return store.publish(k, {'op': 'resume', 'pid': pid}, {rel: content},
+                               [('UPDATE learning_plans SET data=? WHERE id=?', [encoded(p), pid])], mirror)
+
+    @router.post('/{pid}/archive')
+    def archive_plan(pid: str, body: Payload):
+        """归档学习计划"""
+        from datetime import datetime
+        data = body.data
+        reason = data.get('reason', '')
+
+        with store.lock():
+            p = store.plan(pid)
+            current_status = p.get('status', 'active')
+
+            if current_status == 'archived':
+                fail('invalid', '计划已处于归档状态。', 422)
+
+            # 更新状态
+            p['status'] = 'archived'
+            p['archived_at'] = datetime.now().isoformat()
+
+            # 记录状态历史
+            with store.conn() as c:
+                c.execute(
+                    """INSERT INTO plan_status_history (plan_id, from_status, to_status, changed_at, reason)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (pid, current_status, 'archived', p['archived_at'], reason)
+                )
+
+            # 保存计划
+            rel = store.base(pid) + '/计划信息.json'
+            mirror = {k: v for k, v in p.items() if k != 'hashes'} | {'schema_version': 1}
+            content = encoded(mirror)
+            p['hashes'][rel] = digest(content)
+            k = key(data)
+            return store.publish(k, {'op': 'archive', 'pid': pid}, {rel: content},
+                               [('UPDATE learning_plans SET data=? WHERE id=?', [encoded(p), pid])], mirror)
+
+    @router.get('/{pid}/status-history')
+    def get_status_history(pid: str):
+        """获取计划状态变更历史"""
+        store.plan(pid)  # 验证计划存在
+        with store.conn() as c:
+            rows = c.execute(
+                """SELECT from_status, to_status, changed_at, reason
+                   FROM plan_status_history
+                   WHERE plan_id = ?
+                   ORDER BY changed_at DESC""",
+                (pid,)
+            ).fetchall()
+            return {
+                'plan_id': pid,
+                'history': [dict(r) for r in rows]
+            }
 
     app.include_router(router)
     return store,generator

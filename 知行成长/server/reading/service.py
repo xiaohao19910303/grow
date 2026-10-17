@@ -13,6 +13,11 @@ from copilot.ai_config import generation_config
 from .store import TABLE,preferences,basic_guide
 from .sources import CLASSICS,fetch_feed,identify,choose,fetch_article_content
 from .guides import source_context, validate_guide, INSTRUCTION
+from .content import is_readable_text, CONTENT_VERSION
+
+COLLECTION_BODY_SECONDS=120
+COLLECTION_BODY_ATTEMPTS=24
+COLLECTION_BODY_CONCURRENCY=3
 
 class Reader:
     def __init__(self,store,fetcher=None,transport=None):
@@ -26,7 +31,7 @@ class Reader:
                 try:fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB)
                 except BlockingIOError:fail('busy','其他AI任务正在进行，请稍后再试。')
                 yield
-    def begin(self,data,daily=False):
+    def begin(self,data,daily=False,*,defer=False):
         data = dict(data)
         credentials = data.pop('ai_config', None)
         kind = data.get('kind', 'collect')
@@ -36,13 +41,21 @@ class Reader:
         kind=data.get('kind','collect')
         if kind not in ('collect','guide','summary','english','fetch_full'):fail('invalid','任务类型无效。',422)
         request=digest(encoded(data));jid='job-'+key
+        def new_job(p,context=None):
+            return {'id':jid,'type':'job','kind':kind,'request':request,'state':'queued','created_at':now(),'date':now()[:10],
+                    'daily':daily,'preferences':p,'sources':[],'warnings':[],'candidates':[],'error':None,'context':context,'raw':'','usage':None,'cost':None}
+        enqueue=getattr(self.store,'enqueue_collection',None)
+        if kind=='collect' and 'preferences' in data and enqueue:
+            job,created=enqueue(new_job(preferences(data['preferences'])))
+            if created and not defer:self.launch(jid,cfg)
+            return (job,created) if defer else job
         with self.store.lock():
             old=self.store.optional(jid)
             if old:
                 if old['request']!=request:fail('conflict','请求编号已用于其他内容。')
-                return old
+                return (old,False) if defer else old
             if any(j['state'] in ('queued','running') for j in self.store.jobs()):fail('busy','已有阅读任务进行中，请等待或取消。')
-            p=preferences(data.get('preferences',self.store.prefs()))
+            p=preferences(data['preferences'] if 'preferences' in data else self.store.prefs())
             context=None
             if kind=='guide':
                 if self.transport is None and availability(self.store):fail('unavailable',availability(self.store),503)
@@ -63,21 +76,30 @@ class Reader:
             elif kind=='fetch_full':
                 a=self.store.article(data.get('article_id'))
                 context={'article_id':a['id']}
-            job={'id':jid,'type':'job','kind':kind,'request':request,'state':'queued','created_at':now(),'date':now()[:10],
-                 'daily':daily,'preferences':p,'sources':[],'warnings':[],'candidates':[],'error':None,'context':context,'raw':'','usage':None,'cost':None}
+            job=new_job(p,context)
             self.store.put(TABLE,jid,job)
-        task=asyncio.create_task(self.run(jid, cfg));self.tasks[jid]=task;task.add_done_callback(lambda _:self.tasks.pop(jid,None));return job
+        if not defer:self.launch(jid,cfg)
+        return (job,True) if defer else job
+
+    def launch(self,jid,cfg=None):
+        if jid in self.tasks:return
+        task=asyncio.create_task(self.run(jid,cfg));self.tasks[jid]=task
+        task.add_done_callback(lambda _:self.tasks.pop(jid,None))
     async def run(self,jid,cfg=None):
         cfg = cfg or config()
         fetch_tasks=[]
-        j=self.store.record(jid);j.update(state='running',phase='正在读取来源' if j['kind']=='collect' else '正在准备中文导读');self.store.put(TABLE,jid,j)
+        # Yield while opening the remote store, so starting this worker cannot
+        # hold up delivery of the collection acknowledgement to the browser.
+        j=await asyncio.to_thread(self.store.record,jid)
+        if j['state']!='queued':return
+        j.update(state='running',phase='正在读取来源' if j['kind']=='collect' else '正在准备中文导读');await asyncio.to_thread(self.store.put,TABLE,jid,j)
         last_progress_write=None
         async def progress(phase):
             nonlocal last_progress_write
             j['phase']=phase
             current=time.monotonic()
             if last_progress_write is None or current-last_progress_write>=1:
-                self.store.put(TABLE,jid,j)
+                await asyncio.to_thread(self.store.put,TABLE,jid,j)
                 last_progress_write=time.monotonic()
             await asyncio.sleep(0)
         try:
@@ -93,23 +115,40 @@ class Reader:
                     for pending in asyncio.as_completed(fetch_tasks):
                         source,items,error=await pending;candidates.extend(items)
                         j['sources'].append({'name':source['name'],'url':source['url'],'count':len(items),'error':error})
-                        j['phase']=f'已读取{len(j["sources"])}个来源';self.store.put(TABLE,jid,j)
+                        j['phase']=f'已读取{len(j["sources"])}个来源';await asyncio.to_thread(self.store.put,TABLE,jid,j)
                 if p['mode']!='recent':
                     for classic in CLASSICS:
                         a=copy.deepcopy(classic);a.update(id=identify(a['url']),category='classic');candidates.append(a)
                     j['sources'].append({'name':'已核验经典目录','url':None,'count':len(CLASSICS),'error':None})
-                history=self.store.articles(include_archived=True)
-                j['candidates']=choose(candidates,p,{a['id'] for a in history},j['date'],seed=jid,history=history)
-                # Fetch full article content for each candidate
-                for a in j['candidates']:
-                    j['phase']=f'正在获取原文：{a["title"][:30]}';self.store.put(TABLE,jid,j)
-                    content=await fetch_article_content(a['url'])
-                    if content:a['full_content']=content
-                for a in j['candidates']:a.update(checked_at=now(),heat='热度未核实',reason='符合所选主题；'+('长期阅读价值，经典目录推荐' if a['category']=='classic' else '来自已配置来源、最近30天发表；建议先核对摘要'))
-                if len(j['candidates'])<p['count']:j['warnings'].append(f'本次找到{len(j["candidates"])}篇符合条件且未保存的文章，少于目标{p["count"]}篇；没有用旧闻或重复文章凑数。')
-                if not j['candidates']:fail('empty','没有符合条件的新文章。可调整主题、语言、类型或稍后重新搜集。')
-                j.update(state='ready',phase='搜集完成');self.store.put(TABLE,jid,j)
-                if j['daily']:j=self.store.save_selection(jid,[a['id'] for a in j['candidates']])
+                history=await asyncio.to_thread(self.store.articles,include_archived=True)
+                seen={a['id'] for a in history};attempted=set()
+                j.update(candidates=[],readable_only=True,body_checks=0,body_failures=0)
+                deadline=time.monotonic()+COLLECTION_BODY_SECONDS
+                async def body(a):
+                    try:
+                        text=await asyncio.wait_for(fetch_article_content(a['url']),timeout=max(.001,min(45,deadline-time.monotonic())))
+                        return text if is_readable_text(text) else None
+                    except Exception:return None
+                while len(j['candidates'])<p['count'] and len(attempted)<COLLECTION_BODY_ATTEMPTS and time.monotonic()<deadline:
+                    ranked=choose(candidates,p,seen|attempted,j['date'],seed=jid,history=history,selected=j['candidates'])
+                    batch=ranked[len(j['candidates']):][:min(COLLECTION_BODY_CONCURRENCY,COLLECTION_BODY_ATTEMPTS-len(attempted))]
+                    if not batch:break
+                    attempted.update(a['id'] for a in batch)
+                    await progress(f'正在核验本站正文：已确认 {len(j["candidates"])} / {p["count"]} 篇，正在检查 {len(batch)} 篇')
+                    tasks=[asyncio.create_task(body(a)) for a in batch];fetch_tasks.extend(tasks)
+                    texts=await asyncio.gather(*tasks)
+                    for a,text in zip(batch,texts):
+                        j['body_checks']+=1
+                        if text:
+                            a=copy.deepcopy(a);a.update(full_content=text,content_version=CONTENT_VERSION,content_saved_at=now())
+                            j['candidates'].append(a)
+                        else:j['body_failures']+=1
+                for a in j['candidates']:a.update(checked_at=now(),heat='热度未核实',reason='符合所选主题；正文已获取，可直接在本站阅读；'+('长期阅读价值，经典目录推荐' if a['category']=='classic' else '来自已配置来源、最近30天发表'))
+                if j['body_failures']:j['warnings'].append(f'已跳过 {j["body_failures"]} 篇未能取得可读正文的文章，并继续补选其他文章。')
+                if len(j['candidates'])<p['count']:j['warnings'].append(f'本次仅找到 {len(j["candidates"])} 篇已取得可读正文的文章，少于目标 {p["count"]} 篇；不会用仅有摘要的文章凑数。')
+                if not j['candidates']:fail('empty','本次未能取得符合条件的可读正文，未推荐或保存仅有摘要的文章。请调整来源或稍后重新搜集。')
+                j.update(state='ready',phase='搜集完成');await asyncio.to_thread(self.store.put,TABLE,jid,j)
+                if j['daily']:j=await asyncio.to_thread(self.store.save_selection,jid,[a['id'] for a in j['candidates']])
             elif j['kind']=='summary':
                 # Generate comprehensive summary based on full article content
                 from copilot.transport import qwen_stream
@@ -126,7 +165,7 @@ class Reader:
                         if packet.get('done'):done=True
                         await progress('正在生成详细总结')
                 if not done or not j['raw'].strip():fail('incomplete','总结未完整返回。')
-                self.store.save_summary(ctx['article_id'],j['raw']);j.update(state='ready',phase='详细总结已保存',article_id=ctx['article_id'])
+                await asyncio.to_thread(self.store.save_summary,ctx['article_id'],j['raw']);j.update(state='ready',phase='详细总结已保存',article_id=ctx['article_id'])
             elif j['kind']=='english':
                 # Generate English learning material (grammar + vocabulary)
                 from copilot.transport import qwen_stream
@@ -143,17 +182,17 @@ class Reader:
                         if packet.get('done'):done=True
                         await progress('正在生成英语学习材料')
                 if not done or not j['raw'].strip():fail('incomplete','英语学习材料未完整返回。')
-                self.store.save_english_learning(ctx['article_id'],j['raw']);j.update(state='ready',phase='英语学习材料已保存',article_id=ctx['article_id'])
+                await asyncio.to_thread(self.store.save_english_learning,ctx['article_id'],j['raw']);j.update(state='ready',phase='英语学习材料已保存',article_id=ctx['article_id'])
             elif j['kind']=='fetch_full':
                 # Fetch and save full article content
-                a=self.store.article(j['context']['article_id'])
+                a=await asyncio.to_thread(self.store.article,j['context']['article_id'])
                 ctx=j['context']
-                j['phase']='正在获取文章原文';self.store.put(TABLE,jid,j)
+                j['phase']='正在获取文章原文';await asyncio.to_thread(self.store.put,TABLE,jid,j)
                 content=await fetch_article_content(a['url'])
                 if not content or len(content)<100:
-                    fail('incomplete','文章内容获取失败或内容过短。')
+                    fail('incomplete','未能取得可阅读的正文，来源可能限制访问或暂时不可用。已保存的摘要、正文和笔记均保留，可在本站重试。')
                 # Save to local file
-                self.store.save_full_text(ctx['article_id'],content)
+                await asyncio.to_thread(self.store.save_full_text,ctx['article_id'],content)
                 j.update(state='ready',phase='文章已保存',article_id=ctx['article_id'])
             else:
                 from copilot.transport import qwen_stream
@@ -187,7 +226,7 @@ class Reader:
                     guide=j['raw']+f'\n\n---\n\n阅读范围：{scope}。\n\n[来源原文]({a["url"]})\n'
                     details={'zh_title':title,'guide_version':'reading-v2','guide_basis':ctx['source_basis'],
                              'guide_source_hash':ctx['source_hash'],'guide_generated_at':now()}
-                self.store.save_guide(ctx['id'],guide,ctx['guide_hash'],details=details);j.update(state='ready',phase='中文导读与核心观点已保存',article_id=ctx['id'])
+                await asyncio.to_thread(self.store.save_guide,ctx['id'],guide,ctx['guide_hash'],details=details);j.update(state='ready',phase='中文导读与核心观点已保存',article_id=ctx['id'])
         except asyncio.CancelledError:j.update(state='cancelled',error='任务已取消，已有资料和笔记保留。')
         except Exception as e:j.update(state='failed',error=e.message if isinstance(e,Problem) else '搜集或生成未完成，请检查网络后重试；已有资料保留。')
         finally:
@@ -201,7 +240,7 @@ class Reader:
                         rates=[float(c['input_price']),float(c['output_price'])]
                         if min(rates)>=0:j['cost']=(j['usage']['prompt_tokens']*rates[0]+j['usage']['completion_tokens']*rates[1])/1000000
                 except (KeyError,ValueError,TypeError):pass
-            j['finished_at']=now();self.store.put(TABLE,jid,j)
+            j['finished_at']=now();await asyncio.to_thread(self.store.put,TABLE,jid,j)
     def cancel(self,jid):
         j=self.store.record(jid)
         if j.get('type')!='job':fail('not_found','阅读任务不存在。',404)

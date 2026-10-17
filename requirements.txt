@@ -9,6 +9,9 @@ psycopg2-binary>=2.9.10
 
 # HTTP 客户端（阅读模块需要）
 httpx>=0.27.0
+trafilatura==2.1.0
+pypdf>=6.21.1,<7
+fonttools>=4.60
 
 # 其他依赖
 python-multipart>=0.0.12

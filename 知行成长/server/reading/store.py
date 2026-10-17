@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from copilot.core import digest, encoded, fail, now
 from plans.store import Plans, integer
 from .sources import TOPICS, DEFAULT_FEEDS, identify
+from .content import is_readable_text, CONTENT_VERSION
 
 DEFAULT={'enabled':True,'hour':10,'minute':0,'count':3,'mode':'mixed','topics':list(TOPICS),'languages':['zh','en'],'query':'','auto_guide':False}
 TABLE='reading_records'
@@ -290,6 +291,10 @@ class ReadingStore(Plans):
             if job.get('saved_ids'):
                 if set(ids)!=set(job['saved_ids']):fail('conflict','本次结果已保存，请重新搜集。')
                 return job
+            for aid in ids:
+                a=self.optional(aid) or lookup[aid]
+                if a.get('content_version')!=CONTENT_VERSION or not is_readable_text(a.get('full_content')):
+                    fail('unreadable','文章尚无已核验的可读正文，请重新搜集；已有文章和学习记录保留。',409)
             records=[];files={};expected={};date=job['date']
             for aid in ids:
                 if self.optional(aid):continue
@@ -354,6 +359,8 @@ class ReadingStore(Plans):
             a['hashes'][rel]=digest(full_content)
             # Also save to full_content field in article record
             a['full_content']=content
+            a['content_version']=2
+            a['content_saved_at']=now()
             self.export({rel:full_content},[a],expected);return a
     def archive_article(self,aid):
         """归档文章（不删除，可恢复）。"""

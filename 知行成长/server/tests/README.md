@@ -30,6 +30,10 @@ pg_ctl -D "$GROW_TEST_PGDATA" stop -m fast
 
 单模块定位可运行 `--pattern test_copilot.py` 等；这些诊断运行不替代 `--full` 验收。
 
+查找启动优化可用 `--pattern test_reading_startup.py` 验证：带条件的云端搜集仅使用一次数据库连接创建任务，仍检查并发与幂等；任务持久化并返回响应后再启动抓取，首次慢数据库读取不阻塞事件循环。`test_reading_startup_browser.cjs` 会挂起启动响应，验证点击后即刻进入进度页、失败后使用同一请求编号重试，以及离开页面后不重复提交或被旧响应拉回。
+
+条件表单在首页列表和 `/api/reading/setup` 都未返回时即可操作；迟到的偏好不能覆盖输入，偏好失败也可继续查找。`test_reading_startup_browser.cjs` 同时验证这些情形以及阅读请求失败后的重试入口。`test_reading_reader_latency.py` 验证轻量设置接口不读文章和任务历史，云端阅读详情合并元数据读取，并保留私有笔记与最新正文任务。
+
 ## 夹具边界
 
 | 范围 | 数据库 / 内容 |

@@ -117,24 +117,10 @@ def matches(article,prefs):
         if not groups or not any(any(w in hay for w in group) for group in groups):return False
     return True
 
-async def fetch_article_content(url):
-    """Fetch full article content from URL and extract main text."""
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(30,connect=10),follow_redirects=True) as client:
-            response=await client.get(url,headers={'User-Agent':'ZhixingReading/1.0 (personal article reader)'})
-            response.raise_for_status()
-            html_content=response.text
-        # Extract main content (simplified - remove scripts, styles, nav)
-        parser=Plain();parser.feed(html_content)
-        text=''.join(parser.parts)
-        # Clean up whitespace
-        text=re.sub(r'\s+',' ',text).strip()
-        # Limit to reasonable size for AI processing
-        return text[:15000] if len(text)>15000 else text
-    except Exception:
-        return None
+# Keep the existing import contract for collection, URL import and readers.
+from .content import fetch_article_content
 
-def choose(candidates,prefs,seen,today,seed=None,history=()):
+def choose(candidates,prefs,seen,today,seed=None,history=(),selected=()):
     cutoff=(datetime.fromisoformat(today)-timedelta(days=30)).date().isoformat()
     eligible={}
     for a in candidates:
@@ -152,8 +138,11 @@ def choose(candidates,prefs,seen,today,seed=None,history=()):
         if value is None:continue
         for t in set(a.get('topics',[])) & signals.keys():signals[t].append(value)
     weights={t:sum(v)/(len(v)+3) for t,v in signals.items()}
-    result=[];used=set();covered=set();interests=set(prefs['topics'])
+    result=list(selected);used={a['source'] for a in result};covered=set().union(*(set(a.get('topics',[])) for a in result));interests=set(prefs['topics'])
     categories=['recent']*max(0,prefs['count']-1)+['classic'] if prefs['mode']=='mixed' else [prefs['mode']]*prefs['count']
+    for a in result:
+        if a['category'] in categories:categories.remove(a['category'])
+        elif categories:categories.pop()
     for category in categories:
         options=[a for a in rows if a['category']==category and a['id'] not in {x['id'] for x in result}]
         if not options and prefs['mode']=='mixed':

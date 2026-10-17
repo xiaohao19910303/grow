@@ -138,11 +138,13 @@
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
 <link rel="stylesheet" href="/static/growth.css?v=20261014-design2">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
-<link rel="stylesheet" href="/static/reading.css?v=20261017-growth1">
+<link rel="stylesheet" href="/static/reading.css?v=20261017-typography1">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
 <link rel="stylesheet" href="/static/stocks.css?v=1">
 <link rel="stylesheet" href="/static/learning-history.css?v=1">
 <link rel="stylesheet" href="/static/account.css">
+<link rel="stylesheet" href="/static/search.css?v=1">
+<link rel="stylesheet" href="/static/timeline.css?v=1">
 </head>
 <body>
 
@@ -156,6 +158,10 @@
     </div>
   </div>
   <div class="toolbar">
+    <div class="search-box">
+      <input type="search" id="globalSearch" placeholder="搜索…" autocomplete="off" aria-label="全局搜索">
+      <kbd class="search-shortcut">⌘K</kbd>
+    </div>
     <span id="accountName" class="badge" aria-label="当前账号"></span>
     <button class="btn" onclick="Account.logout()">退出登录</button>
     <span class="badge" id="storageStatus" role="status">连接中…</span>
@@ -177,7 +183,7 @@
   </nav>
   <nav id="subnav" class="subnav" aria-label="栏目导航">
     <button class="btn primary" aria-current="page" onclick="goTab('personal')">今日</button>
-    <button class="btn" onclick="goTab('reading')">今日阅读</button>
+    <button class="btn" onclick="goTab('reading')">阅读</button>
   </nav>
   <div id="view-settings" style="display:none" class="section">
     <h2>设置与数据</h2><p class="desc">记录会自动保存。需要时可手动重试保存或导出备份。</p>
@@ -439,6 +445,70 @@
       <div style="height:14px"></div>
       <div id="aiReportList"></div>
     </div>
+  </div>
+
+  <div id="view-search" style="display:none" class="section">
+    <h2>搜索结果</h2>
+    <p class="desc" id="searchMeta"></p>
+
+    <!-- 筛选栏 -->
+    <div class="search-filters">
+      <div class="field-row">
+        <label>模块类型
+          <select id="searchTypeFilter" multiple size="1">
+            <option value="">全部模块</option>
+            <option value="learning">学习记录</option>
+            <option value="reflection">反思日志</option>
+            <option value="decision">决策记录</option>
+            <option value="prediction">预测记录</option>
+            <option value="knowledge">知识图谱</option>
+          </select>
+        </label>
+        <label>开始日期<input type="date" id="searchStartDate"></label>
+        <label>结束日期<input type="date" id="searchEndDate"></label>
+      </div>
+    </div>
+
+    <!-- 搜索结果列表 -->
+    <div id="searchResults"></div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="searchPagination"></div>
+  </div>
+
+  <div id="view-timeline" style="display:none" class="section">
+    <h2>时间线</h2>
+    <p class="desc">跨模块的学习活动记录，按时间顺序展示</p>
+
+    <!-- 统计卡片 -->
+    <div class="cards" id="timelineStats"></div>
+
+    <!-- 筛选栏 -->
+    <div class="timeline-filters">
+      <div class="field-row">
+        <label>开始日期<input type="date" id="timelineStartDate"></label>
+        <label>结束日期<input type="date" id="timelineEndDate"></label>
+        <label>模块类型
+          <select id="timelineTypeFilter" multiple size="1">
+            <option value="">全部模块</option>
+            <option value="learning">学习记录</option>
+            <option value="reflection">反思日志</option>
+            <option value="decision">决策记录</option>
+            <option value="prediction">预测记录</option>
+            <option value="review">复盘记录</option>
+            <option value="insight">灵感记录</option>
+            <option value="knowledge">知识图谱</option>
+          </select>
+        </label>
+        <button class="btn" onclick="Timeline.load()">刷新</button>
+      </div>
+    </div>
+
+    <!-- 时间线列表 -->
+    <div id="timelineList"></div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="timelinePagination"></div>
   </div>
 </div>
 
@@ -1908,10 +1978,10 @@ function exportReportMarkdown(){
 
 /* ================= Tab ================= */
 const navGroups={
-  personal:[['personal','今日'],['reading','今日阅读']],
+  personal:[['personal','今日'],['reading','阅读']],
   learning:[['library','我的课程'],['plans','学习计划'],['progress','学习打卡'],['copilot','课程管理']],
   records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['stocks','投资复盘'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
-  growth:[['overview','成长总览'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告']]
+  growth:[['overview','成长总览'],['timeline','时间线'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告'],['search','搜索']]
 };
 const lastGroupTab={};
 let lessonOrigin=null;
@@ -1938,7 +2008,7 @@ function goTab(name, options={}){
   const subnav=document.getElementById('subnav');
   subnav.hidden=!group || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
-  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='personal' && !options.restore){ renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
@@ -1952,6 +2022,7 @@ function goTab(name, options={}){
   if(name==='predictions') renderPredictionAnalysis();
   if(name==='ai-report') renderAIReports();
   if(name==='knowledge') renderKnowledgeGraph();
+  if(name==='timeline') window.Timeline?.load();
   if(name==='overview'){ renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
   if(name==='settings') { loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
   if(name==='learning-history') window.loadLearningHistory?.();
@@ -2102,9 +2173,12 @@ init();
 <script src="/static/study-generation.js?v=20261017-next1"></script>
 <script src="/static/daily-learning.js?v=20261017-next1"></script>
 <script src="/static/reading-growth.js?v=20261017-growth1"></script>
-<script src="/static/reading.js?v=20261017-growth1"></script>
+<script src="/static/reading-body.js?v=20261017-typography1"></script>
+<script src="/static/reading.js?v=20261017-acceptance4-readable1"></script>
 <script src="/static/reflections.js?v=20261017-local-ai"></script>
 <script src="/static/learning-history.js?v=20261017-records"></script>
 <script src="/static/stocks.js?v=1"></script>
+<script src="/static/search.js?v=1"></script>
+<script src="/static/timeline.js?v=1"></script>
 </body>
 </html>

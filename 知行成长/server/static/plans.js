@@ -129,15 +129,93 @@
     root.querySelector('h2').textContent=data.plan.name;status.textContent=pid+' · 当前版本 v'+data.plan.version;
     button(root,'返回列表',window.loadPlans);button(root,'调整后续规划',()=>create(data));
     button(root,'修改显示名称',async()=>{const name=prompt('新的显示名称',data.plan.name);if(name){await api('/'+pid+'/metadata',{name,key:uuid()});await detail(pid);refresh();}});
-    button(root,data.plan.status==='active'?'暂停计划':'恢复计划',async()=>{await api('/'+pid+'/metadata',{status:data.plan.status==='active'?'paused':'active',key:uuid()});await detail(pid);});
+
+    // 状态管理按钮组
+    const statusActions=node('div',undefined,'plan-status-actions');
+    root.append(statusActions);
+
+    const currentStatus=data.plan.status||'active';
+    if(currentStatus==='active'){
+      button(statusActions,'暂停计划',async()=>{
+        if(!confirm('确定要暂停此学习计划？'))return;
+        await api('/'+pid+'/metadata',{status:'paused',key:uuid()});
+        toast('计划已暂停');
+        await detail(pid);
+      },false,'pause');
+      button(statusActions,'归档计划',async()=>{
+        if(!confirm('确定要归档此学习计划？归档后将不再显示在活跃列表中。'))return;
+        await api('/'+pid+'/metadata',{status:'archived',key:uuid()});
+        toast('计划已归档');
+        await detail(pid);
+      },false,'archive');
+    }else if(currentStatus==='paused'){
+      button(statusActions,'恢复计划',async()=>{
+        await api('/'+pid+'/metadata',{status:'active',key:uuid()});
+        toast('计划已恢复');
+        await detail(pid);
+      },true,'resume');
+      button(statusActions,'归档计划',async()=>{
+        if(!confirm('确定要归档此学习计划？'))return;
+        await api('/'+pid+'/metadata',{status:'archived',key:uuid()});
+        toast('计划已归档');
+        await detail(pid);
+      },false,'archive');
+    }else if(currentStatus==='archived'){
+      button(statusActions,'恢复计划',async()=>{
+        await api('/'+pid+'/metadata',{status:'active',key:uuid()});
+        toast('计划已恢复');
+        await detail(pid);
+      },true,'resume');
+    }
+
+    // 加载状态历史
+    loadStatusHistory(pid);
+
     const plan=node('details');plan.append(node('summary','查看当前规划'));root.append(plan);markdown(plan,data.external.content);
     githubLink(plan,'在 GitHub 打开规划',data.github_url);
-    if(data.external.changed)root.append(node('p','规划文件已被外部修改。请在“调整后续规划 → 手动编写规划”核对并导入。'));
+    if(data.external.changed)root.append(node('p','规划文件已被外部修改。请在”调整后续规划 → 手动编写规划”核对并导入。'));
     const versions=node('details');versions.append(node('summary','规划历史版本'));root.append(versions);for(const v of data.versions)versions.append(node('p',`v${v.version} · ${v.created_at} · ${v.brief.title} · ${v.document.lessons.length}课`));
     const next=data.lessons.length+1;root.append(node('h3',`下一课：第${next}课`));
     button(root,'准备本课资料',()=>sourceEditor(pid),true);
     button(root,'生成下一课草稿',async()=>{await generateAndWatch({kind:'course',plan_id:pid,key:uuid()});},true);
     for(const l of data.lessons){const row=node('div',undefined,'todo-row');row.append(node('span',`第${l.lesson_no}课 ${l.topic} · ${l.learning_label}`));button(row,'阅读',()=>window.openPlanCourse(pid,l.lesson_no));root.append(row);}
+  }
+
+  // 加载并展示状态历史
+  async function loadStatusHistory(planId){
+    try{
+      const response=await fetch(`/api/plans/${planId}/status-history`);
+      if(!response.ok)throw new Error('加载状态历史失败');
+      const data=await response.json();
+      renderStatusHistory(data.history||[]);
+    }catch(error){
+      console.error('Status history error:',error);
+    }
+  }
+
+  function renderStatusHistory(history){
+    if(!history||history.length===0)return;
+    const historyBox=node('div',undefined,'plan-status-history');
+    historyBox.append(node('h4','状态变更历史'));
+    const timeline=node('div',undefined,'plan-status-timeline');
+    historyBox.append(timeline);
+
+    const statusLabels={active:'学习中',paused:'已暂停',archived:'已归档'};
+
+    history.forEach(event=>{
+      const eventEl=node('div',undefined,'plan-status-event');
+      const dateStr=event.changed_at?event.changed_at.replace('T',' ').substring(0,16):'';
+      eventEl.append(node('div',dateStr,'plan-status-event-date'));
+      const fromLabel=statusLabels[event.from_status]||event.from_status||'初始';
+      const toLabel=statusLabels[event.to_status]||event.to_status;
+      eventEl.append(node('div',`${fromLabel} → ${toLabel}`,'plan-status-event-label'));
+      if(event.reason){
+        eventEl.append(node('div',event.reason,'plan-status-event-note'));
+      }
+      timeline.append(eventEl);
+    });
+
+    root.append(historyBox);
   }
   async function sourceEditor(pid){
     const data=await api('/'+pid+'/sources');shell(`第${data.lesson_no}课：准备参考资料`);button(root,'返回计划',()=>detail(pid));

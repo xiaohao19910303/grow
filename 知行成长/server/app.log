@@ -1,0 +1,54 @@
+INFO:     Started server process [87284]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8756 (Press CTRL+C to quit)
+学习计划暂不可用，请检查内容存储、数据库配置或恢复记录。
+认知阅读暂不可用，请检查磁盘或恢复日志。
+日常记录暂不可用，请检查磁盘或恢复日志。
+INFO:     127.0.0.1:63291 - "GET /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64027 - "GET /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64030 - "GET /static/login.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64027 - "GET /static/account.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64044 - "GET /favicon.ico HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:64044 - "GET /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64044 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64044 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64044 - "GET /static/copilot.css?v=20261014-design2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64352 - "GET /static/growth.css?v=20261014-design2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64353 - "GET /static/plans.css?v=20261014-2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64354 - "GET /static/reading.css?v=20261017-startup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64355 - "GET /static/reflections.css?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64356 - "GET /static/stocks.css?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64352 - "GET /static/learning-history.css?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64044 - "GET /static/ai-config.js?v=20261017 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64354 - "GET /static/copilot.js?v=20261017-cloud-legacy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64353 - "GET /static/account.js?v=20261017 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64355 - "GET /static/plans.js?v=20261017-local-ai HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64356 - "GET /static/study-generation.js?v=20261017-next1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64353 - "GET /static/reflections.js?v=20261017-local-ai HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64354 - "GET /static/reading-growth.js?v=20261017-growth1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64044 - "GET /static/reading.js?v=20261017-startup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64356 - "GET /static/stocks.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64352 - "GET /static/daily-learning.js?v=20261017-next1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64355 - "GET /static/learning-history.js?v=20261017-records HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64353 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64044 - "GET /?test=startup-performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64044 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64367 - "GET /api/plans HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64352 - "GET /api/plans HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64354 - "GET /api/reflections HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64367 - "GET /api/reading HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64352 - "GET /api/reading HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64356 - "GET /api/stocks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64354 - "GET /api/data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64353 - "GET /api/study-materials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64367 - "GET /api/behavior-report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64354 - "GET /api/behavior/stats?period=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64356 - "GET /api/errors/stats?period=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64356 - "GET /api/errors/repeated HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64352 - "GET /api/predictions/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64044 - "GET /api/copilot/today-task HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [87284]

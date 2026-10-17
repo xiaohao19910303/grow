@@ -1,7 +1,7 @@
 """Local-only routes; model requests are always explicit."""
 from tenancy import scoped, learning_root, runtime_root
 import asyncio
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from plans.api import Payload
 from copilot.generation import availability
@@ -41,6 +41,8 @@ def register(app,root,db):
                 'articles':sorted(articles,key=lambda a:a['saved_at'],reverse=True),
                 'jobs':[public_job(j) for j in sorted(store.jobs(),key=lambda x:x['created_at'],reverse=True)[:30]],
                 'requires_own_config':True,'unavailable':availability(store)}
+    @router.get('/setup')
+    def setup():return {'preferences':store.prefs(),'topics':list(TOPICS)}
     @router.post('/preferences')
     def prefs(body:Payload):return store.save_preferences(body.data)
     @router.post('/sources')
@@ -48,15 +50,48 @@ def register(app,root,db):
     @router.delete('/sources/{sid}')
     def remove_source(sid:str):return store.remove_custom_source(sid)
     @router.post('/collect')
-    async def collect(body:Payload):return public_job(reader.begin({**body.data,'kind':'collect'}))
+    async def collect(body:Payload,background:BackgroundTasks):
+        job,created=await asyncio.to_thread(reader.begin,{**body.data,'kind':'collect'},defer=True)
+        if created:
+            async def launch():reader.launch(job['id'])
+            background.add_task(launch)
+        return public_job(job)
     @router.get('/jobs/{jid}')
     def job(jid:str):return public_job(store.record(jid))
     @router.post('/jobs/{jid}/cancel')
     async def cancel(jid:str):return public_job(reader.cancel(jid))
     @router.post('/jobs/{jid}/save')
-    def save(jid:str,body:Payload):return public_job(store.save_selection(jid,body.data.get('ids')))
+    async def save(jid:str,body:Payload,background:BackgroundTasks):
+        job=public_job(store.save_selection(jid,body.data.get('ids')))
+        # Auto-generate summary and translation for English articles
+        saved_ids=body.data.get('ids') or []
+        for aid in saved_ids:
+            a=store.optional(aid)
+            if a and a.get('language')=='en':
+                # Check if summary already exists
+                summary_file=store.path(f'认知阅读/文章资料/{aid}/详细总结.md')
+                english_file=store.path(f'认知阅读/文章资料/{aid}/英语学习.md')
+                if not summary_file.exists() or not english_file.exists():
+                    # Auto-create summary task
+                    try:
+                        summary_job,created=reader.begin({'key':aid+'-summary','article_id':aid,'kind':'summary'},defer=True)
+                        if created:
+                            async def launch_summary(jid=summary_job['id']):reader.launch(jid)
+                            background.add_task(launch_summary)
+                    except Exception:
+                        pass
+                    # Auto-create English learning task
+                    try:
+                        english_job,created=reader.begin({'key':aid+'-english','article_id':aid,'kind':'english'},defer=True)
+                        if created:
+                            async def launch_english(jid=english_job['id']):reader.launch(jid)
+                            background.add_task(launch_english)
+                    except Exception:
+                        pass
+        return job
     @router.get('/articles/{aid}')
     def article(aid:str):
+        if getattr(store,'remote',False):return store.article_detail(aid)
         a=store.article(aid);rel=f'认知阅读/文章资料/{aid}/中文导读.md';file=store.path(rel)
         summary_file=store.path(f'认知阅读/文章资料/{aid}/详细总结.md')
         english_file=store.path(f'认知阅读/文章资料/{aid}/英语学习.md')
@@ -71,7 +106,10 @@ def register(app,root,db):
                 'guide':file.read_text() if file.exists() else None,
                 'summary':summary_file.read_text() if summary_file.exists() else None,
                 'english_learning':english_file.read_text() if english_file.exists() else None,
-                'full_text':full_text_file.read_text() if full_text_file.exists() else None,
+                'full_text':a.get('full_content') if a.get('content_version')==2 else (full_text_file.read_text() if full_text_file.exists() else a.get('full_content')),
+                'content_needs_refresh':a.get('content_version') != 2 and a.get('import_method') not in ('paste','url'),
+                'content_job':next((public_job(j) for j in sorted(store.jobs(),key=lambda j:j['created_at'],reverse=True)
+                                    if j.get('kind')=='fetch_full' and (j.get('context') or {}).get('article_id')==aid),None),
                 'path':str(file)}
     @router.post('/articles/{aid}/personal')
     def personal(aid:str,body:Payload):return store.update_personal(aid,body.data)
@@ -90,7 +128,12 @@ def register(app,root,db):
         require_config(body.data.get('ai_config'))
         return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'english','ai_config':body.data.get('ai_config')}))
     @router.post('/articles/{aid}/fetch_full')
-    async def fetch_full(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'fetch_full'}))
+    async def fetch_full(aid:str,body:Payload,background:BackgroundTasks):
+        job,created=await asyncio.to_thread(reader.begin,{'key':body.data.get('key'),'article_id':aid,'kind':'fetch_full'},defer=True)
+        if created:
+            async def launch():reader.launch(job['id'])
+            background.add_task(launch)
+        return public_job(job)
     @router.post('/import-url')
     async def import_url(body:Payload):
         url=body.data.get('url','').strip()

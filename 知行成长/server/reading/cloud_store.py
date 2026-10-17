@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from cloud_content import Documents, ContentPath, enabled
 from copilot.core import digest, encoded, fail, now, Problem
 from legacy_schema import migrate
-from .store import ReadingStore, TABLE, DEFAULT
+from .store import ReadingStore, TABLE, DEFAULT, preferences
 from .sources import identify
 
 
@@ -48,7 +48,69 @@ class CloudReadingStore(ReadingStore):
     def lock(self):
         with self.documents.lock():yield
 
+    def enqueue_collection(self,job):
+        """Admit a collection in one transaction, without downloading job history."""
+        with self.conn() as c:
+            schema=c.execute('SELECT current_schema()').fetchone()[0]
+            # Match Documents.lock so admission still coordinates with other workers.
+            for identity in sorted({int(digest(name)[:15],16) for name in ('learning-plan-publications',schema+':learning-plan-publications')}):
+                c.execute('SELECT pg_advisory_xact_lock(?)',(identity,))
+            # Legacy PDF strings can contain escaped NULs. Normalize only the
+            # filter input; the original records are returned and stored intact.
+            rows=c.execute("""SELECT id,data FROM reading_records WHERE id=? OR
+                (replace(data,?,?)::jsonb->>'type'='job' AND
+                 replace(data,?,?)::jsonb->>'state' IN ('queued','running'))""",
+                (job['id'],r'\u0000',r'\ufffd',r'\u0000',r'\ufffd')).fetchall()
+            existing={row[0]:json.loads(row[1]) for row in rows}
+            old=existing.get(job['id'])
+            if old:
+                if old.get('request')!=job['request']:fail('conflict','请求编号已用于其他内容。')
+                return old,False
+            if existing:fail('busy','已有阅读任务进行中，请等待或取消。')
+            c.execute('INSERT INTO reading_records VALUES (?,?)',(job['id'],encoded(job)))
+        return job,True
+
     def generation_gate(self):return self.documents.generation_gate()
+
+    def article_detail(self,aid):
+        """Read one article without repeated metadata connections or job history."""
+        a=self.article(aid)
+        base=f'认知阅读/文章资料/{aid}'
+        guide=base+'/中文导读.md';body=base+'/原文.md';note=f'认知阅读/阅读笔记/{aid}.md'
+        paths=[guide,body,note,base+'/详细总结.md',base+'/英语学习.md']
+        with self.conn() as c:
+            row=c.execute("SELECT data FROM reading_records WHERE id='preferences'").fetchone()
+            settings=json.loads(row[0])['value'] if row else DEFAULT
+            documents={r[0]:json.loads(r[1]) for r in c.execute(
+                'SELECT path,data FROM cloud_documents WHERE path IN (?,?,?,?,?)',paths)}
+            jobs=c.execute("""SELECT data FROM reading_records
+                WHERE replace(data,?,?)::jsonb->>'type'='job'
+                  AND replace(data,?,?)::jsonb->>'kind'='fetch_full'
+                  AND replace(data,?,?)::jsonb->'context'->>'article_id'=?
+                ORDER BY replace(data,?,?)::jsonb->>'created_at' DESC LIMIT 1""",
+                (r'\u0000',r'\ufffd',r'\u0000',r'\ufffd',r'\u0000',r'\ufffd',aid,r'\u0000',r'\ufffd')).fetchall()
+        def read_document(path,cached=None):
+            item=documents.get(path)
+            if item is None:return None
+            if cached is not None and digest(cached)==item['hash']:return cached
+            text=self.documents.content.read_text(path,item['commit_sha']) if item['storage']=='github' else item['text']
+            if digest(text)!=item['hash']:fail('content_hash','内容校验失败，已停止读写。',409)
+            return text
+        full_text=a.get('full_content')
+        if not full_text:full_text=read_document(body)
+        latest=json.loads(jobs[0][0]) if jobs else None
+        if latest:latest={k:v for k,v in latest.items() if k not in ('context','request')}
+        metadata=documents.get(guide)
+        return {'article':a,'reading_preferences':preferences(settings),
+                'storage':'github' if metadata and metadata['storage']=='github' else 'local',
+                'github_url':self.documents.content.url(guide,metadata['commit_sha']) if metadata and metadata['storage']=='github' else None,
+                'commit_sha':metadata.get('commit_sha') if metadata else None,
+                'note':{'text':read_document(note) or '', 'hash':documents[note]['hash'] if note in documents else None},
+                'guide':read_document(guide,a.get('guide')),
+                'summary':read_document(base+'/详细总结.md'),'english_learning':read_document(base+'/英语学习.md'),
+                'full_text':full_text,
+                'content_needs_refresh':a.get('content_version')!=2 and a.get('import_method') not in ('paste','url'),
+                'content_job':latest,'path':guide}
 
     def path(self,relative):
         if not isinstance(relative,str) or not relative.startswith('认知阅读/') or '..' in relative.split('/'):

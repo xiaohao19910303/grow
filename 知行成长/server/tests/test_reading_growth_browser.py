@@ -58,7 +58,7 @@ class ReadingGrowthBrowser(CloudHTTPFixture):
             window.goTab=()=>enterReading();
             window.renderArticleTranslation=(parent,a,text,markdown)=>markdown(parent,text);
             </script><script src="/static/ai-config.js"></script><script src="/static/copilot.js"></script>
-            <script src="/static/reading-growth.js"></script><script src="/static/reading.js"></script></body></html>''')
+            <script src="/static/reading-growth.js"></script><script src="/static/reading-body.js"></script><script src="/static/reading.js"></script></body></html>''')
         sock=socket.socket();sock.bind(('127.0.0.1',0));base='http://127.0.0.1:'+str(sock.getsockname()[1])
         server=uvicorn.Server(uvicorn.Config(self.app,log_level='error'))
         thread=threading.Thread(target=lambda:server.run(sockets=[sock]),daemon=True);thread.start()
@@ -76,7 +76,9 @@ class ReadingGrowthBrowser(CloudHTTPFixture):
                     page.on('response',lambda r:failures.append((r.status,r.url)) if r.status>=400 else None)
                     page.route('**/*',lambda route:route.continue_() if route.request.url.startswith(base+'/') else route.abort())
                     page.goto(base);page.evaluate('(config)=>AIConfig.save(config)',OWN);page.evaluate('enterReading()')
-                    page.get_by_role('button',name='阅读导读与笔记',exact=True).click()
+                    page.get_by_role('button',name='本站阅读',exact=True).click()
+                    self.assertEqual(len(calls),0)
+                    page.get_by_role('button',name='中文导读',exact=True).click()
                     page.get_by_text('中文导读已保存，下次打开可直接阅读。',exact=True).wait_for()
                     page.get_by_role('heading',name='核心观点',exact=True).wait_for()
                     self.assertEqual(len(calls),1);self.assertNotIn('PRIVATE',str(calls))
@@ -102,7 +104,7 @@ class ReadingGrowthBrowser(CloudHTTPFixture):
                     page.get_by_placeholder('搜索文章、导读、标签或我的收获…').fill('未保存的新收获')
                     page.get_by_role('button',name='查看反馈',exact=True).click()
                     self.assertEqual(page.get_by_label('一句话收获').input_value(),'PRIVATE 未保存的新收获')
-                    page.reload();page.get_by_role('heading',name='核心观点',exact=True).wait_for()
+                    page.reload();page.get_by_role('button',name='中文导读',exact=True).click();page.get_by_role('heading',name='核心观点',exact=True).wait_for()
                     self.assertEqual(len(calls),1)
                     page.screenshot(path='/tmp/grow-reading-growth-desktop.png',full_page=True)
                     page.set_viewport_size({'width':390,'height':844})

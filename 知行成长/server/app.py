@@ -33,6 +33,8 @@ from knowledge.api import register as register_knowledge
 from reflections.api import register as register_reflections
 from stocks.api import register as register_stocks
 from study_materials import register as register_materials, initialize as initialize_materials
+from search_api import register as register_search
+from timeline_api import register as register_timeline
 import asyncio
 from legacy_state import load_state as read_legacy_state, save_state as write_legacy_state
 
@@ -548,6 +550,8 @@ stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
 from migration_api import register as register_migrations
 register_migrations(app, copilot_store, LEARN_ROOT)
 materials = register_materials(app, LEARN_ROOT)
+search_service = register_search(app, DB_PATH)
+timeline_service = register_timeline(app, DB_PATH)
 
 
 @app.get('/api/storage-status')
