@@ -5,7 +5,7 @@
   const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
   const state={queued:'等待开始',running:'进行中',ready:'已完成',failed:'未完成',cancelled:'已取消'};
   const category={recent:'近期精选',classic:'经典重读',mixed:'近期＋经典'};
-  async function api(path='',data){const r=await fetch('/api/reading'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});const j=await r.json();if(!r.ok)throw new Error(j.message||'读取失败，请稍后重试。');return j;}
+  async function api(path='',data){if(data!==undefined && /^\/articles\/[^/]+\/(guide|summary|english)$/.test(path))data={...data,ai_config:AIConfig.require()};const r=await fetch('/api/reading'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});const j=await r.json();if(!r.ok)throw new Error(j.message||'读取失败，请稍后重试。');return j;}
   function button(parent,label,action,primary=false){const b=node('button',label,'btn'+(primary?' primary':''));b.type='button';b.onclick=async()=>{b.disabled=true;try{await action();}catch(e){toast(e.message);root.querySelector('[role=status]').textContent=e.message;}finally{b.disabled=false;}};parent.append(b);return b;}
   function field(parent,label,value='',type='text'){const wrap=node('label',label,'plan-field');const input=node(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value;wrap.append(input);parent.append(wrap);return input;}
   function select(parent,label,values,value){const wrap=node('label',label,'plan-field'),input=node('select');for(const [v,t] of values){const o=node('option',t);o.value=v;input.append(o);}input.value=value;wrap.append(input);parent.append(wrap);return input;}
@@ -130,7 +130,7 @@
       name.value='';url.value='';
     },true);
 
-    status.textContent='AI导读模型：'+data.model+'；只有明确点击生成导读才调用，可能产生费用。';
+    status.textContent='AI导读模型：'+AIConfig.read().model_name+'；只有明确点击生成导读才调用，可能产生费用。';
   }
   async function collectForm(){shell('帮我找文章');const turn=revision;button(root,'返回今日阅读',window.loadReading);const data=await api();if(turn!==revision)return;
     const query=field(root,'主题或关键词（可留空，例如：心理、社会、decision）');root.append(node('p','在已配置来源的标题与摘要中筛选，中文主题会扩展为英文关键词。复杂问题建议提取核心关键词。','desc'));const get=preferenceFields(root,data.preferences,false);

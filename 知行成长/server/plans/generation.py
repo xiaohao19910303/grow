@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from copilot.core import encoded, digest, fail, now, Problem
 from copilot.generation import config, availability, SEPARATOR
+from copilot.ai_config import generation_config
 from .store import brief, document, text
 from .refinement import validate_scope, merge, content_hash, payload, sections
 
@@ -57,6 +58,8 @@ class PlanGenerator:
         self.store=store; self.transport=transport; self.tasks={}
 
     def begin(self, body):
+        body = dict(body)
+        cfg = generation_config(body.pop('ai_config', None), self.transport)
         kind=body.get('kind'); key=body['key']
         if kind not in ('plan','course'):fail('invalid','未知生成类型。',422)
         request=digest(encoded(body))
@@ -100,7 +103,7 @@ class PlanGenerator:
                          'previous_plan':old,'frozen_lessons':frozen,'selected_feedback':selected}
             else:context=self.store.course_context(body['plan_id'])
             a={'id':key,'request':request,'kind':kind,'state':'queued','raw':'','draft_id':None,
-               'model':config(self.store)['model'],'usage':None,'cost':None,'price_version':config(self.store)['price_version'] or None,
+               'model':cfg['model'],'usage':None,'cost':None,'price_version':cfg['price_version'] or None,
                'created_at':now(),'context':context,'error':None,'operation':body.get('operation','generate'),
                'phase':'queued','revision':0,'first_content_at':None,'last_content_at':None}
             try:deadline=float(self.store.get_setting('generation_total_timeout_seconds',300))
@@ -108,14 +111,14 @@ class PlanGenerator:
             if not 0<deadline<=86400:deadline=300
             a['deadline_at']=(datetime.fromisoformat(a['created_at'])+timedelta(seconds=deadline)).isoformat()
             self.store.put('learning_ai_attempts',key,a)
-        self.tasks[key]=asyncio.create_task(self.run(key))
+        self.tasks[key]=asyncio.create_task(self.run(key, cfg))
         self.tasks[key].add_done_callback(lambda task: self.tasks.pop(key, None))
         return a
 
-    async def run(self, key):
+    async def run(self, key, cfg=None):
         a=self.store.get('learning_ai_attempts',key)
         gate=ExitStack()
-        c=config(self.store)
+        c=cfg or config()
         a.update(model=c['model'], price_version=c['price_version'] or None)
         try:
             if getattr(self.store,'remote',False):

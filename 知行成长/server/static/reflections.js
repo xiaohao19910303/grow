@@ -44,7 +44,7 @@
       if (!r.ok) return false;
       const d = await r.json();
       entries = d.entries || [];
-      generationUnavailable = d.generation_unavailable || '';
+      generationUnavailable = d.generation_unavailable || AIConfig.status();
       entryMap = {};
       entries.forEach(e => { entryMap[e.id] = e; });
       return true;
@@ -306,6 +306,8 @@
     ta.addEventListener('input', () => { st.snapshot.text = ta.value; });
   }
 
+  window.addEventListener('ai-config-changed', () => { generationUnavailable = AIConfig.status(); });
+
   async function assistSend(id) {
     const st = assistState[id];
     const box = document.getElementById('refAssistBox');
@@ -313,7 +315,7 @@
     try {
       const r = await fetch('/api/reflections/' + id + '/assist', {
         method: 'POST', headers: h(),
-        body: JSON.stringify({ kind: st.kind, snapshot: st.snapshot, key: st.key }),
+        body: JSON.stringify({ kind: st.kind, snapshot: st.snapshot, key: st.key, ai_config: AIConfig.require() }),
       });
       const d = await r.json();
       if (!r.ok) {
@@ -324,7 +326,7 @@
       // 轮询等待完成
       await pollAttempt(id, d.id || st.key, st.kind, box);
     } catch (e) {
-      box.innerHTML = '<div class="ref-err">生成失败 · 服务未连接。</div>';
+      box.innerHTML = '<div class="ref-err">' + esc(e.message || '生成失败，请检查网络。') + '</div>';
     }
   }
 

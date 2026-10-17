@@ -4,12 +4,13 @@
 每次调用都有唯一请求键，输入快照与哈希持久化；失败不自动重试。
 """
 import asyncio
-import fcntl
 import json
 import re
+from contextlib import ExitStack
 
 from copilot.core import digest, encoded, fail, now
 from copilot.generation import availability, config
+from copilot.ai_config import generation_config
 from .store import MAX_TEXT
 
 SYSTEM = ('你是知行成长的复盘助手。只依据用户发送的这段复盘文本处理，'
@@ -100,7 +101,8 @@ class ReflectionAssistant:
         rows = self.store.rows(TABLE)
         return [a for a in rows if a.get('entry_id') == entry_id]
 
-    def begin(self, entry_id, kind, snapshot, key):
+    def begin(self, entry_id, kind, snapshot, key, ai_config=None):
+        cfg = generation_config(ai_config, self.transport)
         if kind not in ('clarify', 'organize'):
             fail('invalid', 'AI 操作类型无效。', 422)
         entry = self.store.entry(entry_id)
@@ -135,26 +137,22 @@ class ReflectionAssistant:
             }
             with self.store.conn() as c:
                 c.execute('INSERT INTO reflection_ai_attempts VALUES (?,?)', (key, encoded(attempt)))
-        task = asyncio.create_task(self._run(key))
+        task = asyncio.create_task(self._run(key, cfg))
         self.tasks[key] = task
         task.add_done_callback(lambda _: self.tasks.pop(key, None))
         return attempt
 
-    async def _run(self, key):
+    async def _run(self, key, cfg=None):
+        cfg = cfg or config()
         from copilot.transport import qwen_stream
         a = self.attempt(key)
         if a['status'] not in ('queued', 'generating'):
             return a
         a.update(status='generating')
         self.store._put(TABLE, key, a)
-        gate = None
+        gate = ExitStack()
         try:
-            gate = (self.store.db.parent / '.ai-generation.lock').open('a')
-            try:
-                fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                fail('generation_busy', '另一个 AI 任务正在运行。')
-            cfg = config(self.store)
+            gate.enter_context(self.store.generation_gate())
             a['model'] = cfg['model']
             done = False
             async for packet in (self.transport or qwen_stream)(_assist_messages(a['kind'], a['snapshot']), cfg):
@@ -186,6 +184,13 @@ class ReflectionAssistant:
             if gate:
                 gate.close()
         return a
+
+    async def shutdown(self):
+        tasks = list(self.tasks.values())
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     def cancel(self, key):
         a = self.attempt(key)

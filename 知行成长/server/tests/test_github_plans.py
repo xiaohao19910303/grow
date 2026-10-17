@@ -332,7 +332,7 @@ class GitHubPlanTests(unittest.TestCase):
                 return r.json()
             def generate(body):
                 import time
-                a = post('/generate', body)
+                a = post('/generate', {**body, 'ai_config': {'api_base_url':'https://model.example/v1','api_key':'BROWSER_TEST_KEY','model_name':'browser-model'}})
                 for _ in range(200):
                     r = client.get('/api/plans/attempts/'+a['id']).json()
                     if r['state'] not in ('queued', 'generating'): break

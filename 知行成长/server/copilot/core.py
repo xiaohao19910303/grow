@@ -114,6 +114,8 @@ class Store:
                 fcntl.flock(lock, fcntl.LOCK_UN)
 
     def initialize(self):
+        if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
+            fail('legacy_content_migration', '旧认知课程的文件发布尚未迁移到 GitHub，请使用新学习计划；历史资料保留。', 503)
         self.workspace()
         if (self.runtime / 'restore-pending.json').exists():
             fail('save_pending_recovery', '存在未完成的离线恢复，请先处理恢复日志。', 503)
@@ -318,6 +320,9 @@ class Store:
         return json.loads(row[0]) if row else default
 
     def update_settings(self, updates):
+        from .ai_config import SERVER_AI_KEYS
+        if set(updates) & set(SERVER_AI_KEYS):
+            fail('browser_config_only', 'AI 配置仅保存在浏览器。', 410)
         with self.conn() as c:
             for key, value in updates.items():
                 c.execute('INSERT INTO copilot_settings VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
@@ -830,6 +835,8 @@ class Store:
             return self.draft(draft_id)
 
     def publish(self, draft_id, version, key):
+        if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
+            fail('legacy_content_migration', '旧课程尚未接入 GitHub 发布，请使用新学习计划。', 503)
         request = {'draft_id': draft_id, 'version': version}
         with self.lock():
             replay = self.replay(key, request)

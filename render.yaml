@@ -25,11 +25,5 @@ services:
         value: owner
       - key: APP_PASSWORD
         sync: false
-      - key: QWEN_BASE_URL
-        sync: false
-      - key: QWEN_API_KEY
-        sync: false
-      - key: QWEN_MODEL
-        value: qwen-plus
     healthCheckPath: /api/health
     autoDeploy: true

@@ -477,9 +477,10 @@
       blockers.replaceChildren();
       const reasons = [...currentTask.blockers.map(x => x.message)];
       if (currentTask.generation_unavailable) reasons.push(currentTask.generation_unavailable);
+      if (window.AIConfig?.status()) reasons.push(AIConfig.status());
       if (!currentTask.writer_coordinated) reasons.push('正式保存或学习反馈前，请确认其他程序已暂停写入。阅读不受影响。');
       reasons.forEach(s => blockers.append(el('li', s)));
-      generateButton.disabled = !currentTask.can_generate || !!aborter;
+      generateButton.disabled = !currentTask.can_generate || !!aborter || !!window.AIConfig?.status();
       generateButton.textContent = currentTask.next_generation_lesson ? `生成第${currentTask.next_generation_lesson}课草稿` : '第一轮已生成完毕';
       history.replaceChildren();
       currentTask.lessons.forEach(item => {
@@ -527,7 +528,7 @@
     try {
       const response = await fetch('/api/copilot/generations', {method: 'POST', signal: aborter.signal,
         headers: {'Content-Type': 'application/json', 'X-Copilot-Request': '1'},
-        body: JSON.stringify({lesson_no: n, key})});
+        body: JSON.stringify({lesson_no: n, key, ai_config: AIConfig.require()})});
       if (!response.ok) {
         const error = await response.json(); sessionStorage.removeItem(keyName);
         throw new Error(error.message || '无法开始生成。');

@@ -86,7 +86,7 @@ git push
 `PLAN_CONTENT_BACKEND=github` 时，新学习计划直接通过 GitHub API 发布和读取 Markdown。
 Render 不克隆内容仓库，不把正式课程、锁文件或发布恢复日志保存在本机磁盘。
 生成输出、草稿、发布日志和个人反馈存入 PostgreSQL；正式规划、备课资料、课程正文和参考资料进入 GitHub。
-本试点不迁移旧认知、英文、阅读收藏或日常记录模块；这些旧模块仍沿用各自的存储方式。
+日常记录在 GitHub 模式下仅保存到 PostgreSQL，不写临时文件或公开仓库。旧认知课程与阅读收藏的文件发布尚未迁移，云端明确暂停这些入口；英文、表达的既有打包资料仍为历史只读资料。
 
 ### 首次配置
 
@@ -94,12 +94,14 @@ Render 不克隆内容仓库，不把正式课程、锁文件或发布恢复日�
 
 1. 使用已确定的内容仓库。空仓库会在首次正式发布时通过 Contents API 创建 README，再提交规划；生成草稿与阅读请求不会初始化仓库。若目标分支与空仓库的默认分支不同，须先在 GitHub 建立目标分支。需要私密课程时，先将仓库设置为私有。
 2. 创建仅授权该内容仓库的 fine-grained Token，授予 **Contents: Read and write**。目标分支应允许该凭证直接提交；要求 PR 的保护规则会阻止直接发布。不要授予 Workflows 权限。
-3. 在 Render 的 Environment 中配置仓库根目录 [.env.github.example](../.env.github.example) 所列变量。GitHub Token、数据库连接串、AI Key、登录密码只写入服务端密钥配置，不写入 Git 或聊天。
-4. `GITHUB_CONTENT_REPO` 使用 `账号/仓库`，`GITHUB_CONTENT_BRANCH` 默认 `main`。`DATABASE_URL` 使用 Supabase Connect → Session pooler 的完整连接串（端口 5432），以兼容 Render 的 IPv4 网络。AI 接口使用 `QWEN_BASE_URL`（完整 chat/completions 地址）、`QWEN_API_KEY` 和 `QWEN_MODEL`。
+3. 在 Render 的 Environment 中配置仓库根目录 [.env.github.example](../.env.github.example) 所列变量。GitHub Token、数据库连接串、登录密码只写入服务端密钥配置，不写入 Git 或聊天。用户 AI 配置在浏览器设置页填写。
+4. `GITHUB_CONTENT_REPO` 使用 `账号/仓库`，`GITHUB_CONTENT_BRANCH` 默认 `main`。`DATABASE_URL` 使用 Supabase Connect → Session pooler 的完整连接串（端口 5432），以兼容 Render 的 IPv4 网络。AI 配置仅保存在当前站点的浏览器 localStorage；Base URL 可填写 `/v1` 等兼容接口根地址或完整 `/chat/completions` 地址。每次生成必须携带用户自己的三项配置，不回退读取服务端 `QWEN_*` 或数据库配置。
 5. `APP_PASSWORD` 至少 24 位，`APP_USERNAME` 默认 `owner`。公网浏览器首次打开时使用浏览器登录框认证；健康检查 `/api/health` 保持公开。仅经 HTTPS 访问。
 6. 使用根目录 `render.yaml` 的构建和启动命令；无需配置持久磁盘。使用**一个实例、一个 Uvicorn worker**，生成任务中断后需显式重新生成，不会自动重复调用模型。
 
 通用百炼接口可配置为 `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`，并使用对应地区的通用 API Key 和可用模型。Coding Plan 专用密钥与通用 API Key 不能混用；[官方说明](https://help.aliyun.com/zh/model-studio/coding-plan-faq)将 Coding Plan 限定用于编程工具，长期运行的应用后台应使用通用 API。
+
+启动时会清理数据库中旧的 AI 配置字段（保留超时等运行设置），不会将旧密钥返回浏览器。用户需在「设置与数据」重新填写自己的 Base URL、API Key、模型名称；换浏览器需重新配置。连接测试不自动保存配置，清除本地配置后不能再发起生成。
 
 启动时会增量创建学习计划表，并绑定内容仓库和分支。已有绑定后不能直接换仓库或分支；先做显式数据迁移。
 若数据库已有旧本地计划，其文件不会自动上传：本轮先新建一套计划验收，历史课程仍需另行迁移。
@@ -171,3 +173,5 @@ GitHub 接口依据：[Contents](https://docs.github.com/en/rest/repos/contents)
 **部署时间**: 2026-10-16  
 **版本**: v1.0  
 **状态**: ✅ 运行中
+
+当前改动的迁移边界与隔离验收见 [浏览器 AI 配置与云端存储验收](浏览器AI配置与云端存储验收.md)。

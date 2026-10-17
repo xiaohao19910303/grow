@@ -6,7 +6,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from copilot.core import fail, Problem, encoded, digest
-from copilot.generation import availability, config
+from copilot.generation import availability
+from copilot.ai_config import require_config
 from .store import LEGACY, integer, text
 from .generation import PlanGenerator
 from .progress import projection
@@ -49,7 +50,7 @@ def register(app, root, db):
         pending=[{'id':r['id'],'state':json.loads(r['data'])['state']} for r in publication_rows() if json.loads(r['data'])['state']!='done']
         return {'plans':plans,'legacy':[dict(x,kind='legacy') for x in LEGACY], 'budget':store.budget(),
                 'storage':'github' if getattr(store,'remote',False) else 'local', 'pending_publications':pending,
-                'generation_unavailable':availability(store),'model':config(store)['model'], 'attempts':attempts[-20:],
+                'generation_unavailable':availability(store),'requires_own_config':True, 'attempts':attempts[-20:],
                 'drafts':[{'id':d['id'],'kind':d['kind'],'state':d['state'],'created_at':d.get('created_at','')}
                           for d in store.rows('learning_drafts') if d['state']!='published'][-30:]}
 
@@ -94,6 +95,7 @@ def register(app, root, db):
     @router.post('/drafts/{did}/refine')
     async def refine(did:str,body:Payload):
         key(body.data)
+        require_config(body.data.get('ai_config'))
         d=store.get('learning_drafts',did)
         return generator.begin({**body.data,'operation':'refine','parent_draft_id':did,'kind':d['kind']})
 
@@ -103,6 +105,7 @@ def register(app, root, db):
     @router.post('/generate')
     async def generate(body:Payload):
         key(body.data)
+        require_config(body.data.get('ai_config'))
         return generator.begin(body.data)
 
     @router.get('/attempts/{aid}/progress')

@@ -3,7 +3,7 @@ import argparse
 import json
 import os
 import shutil
-import db
+import sqlite3
 import tempfile
 import uuid
 from pathlib import Path
@@ -142,15 +142,21 @@ def legacy_lock(store):
 
 
 def database_snapshot(store, target):
-    with store.conn() as src, closing(db.connect()) as dst:
-        src.backup(dst)
-        # Redact the known credential field only; personal contents remain private.
-        if dst.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_settings'").fetchone():
-            dst.execute('PRAGMA secure_delete=ON')
-            dst.execute("DELETE FROM copilot_settings WHERE key='api_key'")
-            dst.commit()
-            dst.execute('VACUUM')
+    with store.conn() as src:
+        if not isinstance(src, sqlite3.Connection):
+            fail('remote_backup', 'PostgreSQL 请使用数据库备份；此入口仅支持离线 SQLite 快照。', 409)
+        with closing(sqlite3.connect(target)) as dst:
+            _copy_database(src, dst)
 
+
+def _copy_database(src, dst):
+    src.backup(dst)
+    # Redact the known credential field only; personal contents remain private.
+    if dst.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_settings'").fetchone():
+        dst.execute('PRAGMA secure_delete=ON')
+        dst.execute("DELETE FROM copilot_settings WHERE key='api_key'")
+        dst.commit()
+        dst.execute('VACUUM')
 
 def snapshot(store):
     # Caller holds the plan lock and has stopped uncoordinated external writers.
@@ -195,13 +201,13 @@ def validate(folder):
         for rel, h in m['files'].items():
             if digest(safe(folder / 'files', rel, m['version']).read_bytes()) != h:
                 fail('conflict', '备份文件损坏。')
-        db = folder / 'data.db'
-        if db.is_symlink() or digest(db.read_bytes()) != m.get('database_hash'):
+        db_file = folder / 'data.db'
+        if db_file.is_symlink() or digest(db_file.read_bytes()) != m.get('database_hash'):
             fail('conflict', '备份数据库损坏。')
-        with closing(db.connect() + '?mode=ro', uri=True)) as c:
+        with closing(sqlite3.connect(db_file.as_uri() + '?mode=ro', uri=True)) as c:
             if c.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                 fail('conflict', '数据库完整性检查失败。')
-    except (OSError, ValueError, db.Error) as exc:
+    except (OSError, ValueError, sqlite3.Error) as exc:
         fail('conflict', '备份不完整或无法读取：' + type(exc).__name__)
     return folder, m
 
@@ -211,9 +217,11 @@ def preview(store, folder):
     report = inventory_report(store, m['version'])
     current = report['files']
     with store.conn() as c:
+        if not isinstance(c, sqlite3.Connection):
+            fail('remote_backup', 'PostgreSQL 请使用数据库备份；此入口仅支持离线 SQLite 快照。', 409)
         db_hash = digest('\n'.join(c.iterdump()))
         current_tables = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    with closing(db.connect().as_uri() + '?mode=ro', uri=True)) as c:
+    with closing(sqlite3.connect((folder / 'data.db').as_uri() + '?mode=ro', uri=True)) as c:
         target_tables = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     return {'token': digest(encoded({'current': current, 'db': db_hash, 'target': m})),
             'version': m['version'], 'excluded': report['excluded'],
@@ -253,7 +261,7 @@ def restore(store, folder, token):
                 finally:
                     if os.path.exists(tmp):
                         os.unlink(tmp)
-            with closing(db.connect()) as src, store.conn() as dst:
+            with closing(sqlite3.connect((folder / 'data.db').as_uri() + '?mode=ro', uri=True)) as src, store.conn() as dst:
                 src.backup(dst)
         journal.unlink()
         return {'restored': str(folder), 'before': before}

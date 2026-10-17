@@ -36,6 +36,8 @@ class BrowserLifecycle(unittest.TestCase):
             with patch('plans.api.make_store', return_value=store):
                 _, generator = register(app, '/missing', '/missing')
             async def model(messages, config):
+                self.assertEqual(config['key'], 'BROWSER_TEST_KEY_ONLY')
+                self.assertEqual(config['model'], 'browser-test-model')
                 ctx = json.loads(messages[1]['content'])
                 yield {'text':json.dumps(D) if 'schema' in ctx else content(ctx)+'\n<!-- COPILOT_SOURCES -->\n摘要 [来源](https://example.org/lesson)'}
                 yield {'done':True}
@@ -43,15 +45,18 @@ class BrowserLifecycle(unittest.TestCase):
             app.mount('/static', StaticFiles(directory=Path(__file__).resolve().parents[1]/'static'))
             @app.get('/')
             def index():
-                return HTMLResponse('''<!doctype html><html lang="zh"><meta charset="utf-8"><body>
-                <div id="notices" role="status"></div><div id="view-copilot" hidden></div>
+                source = (Path(__file__).resolve().parents[1]/'static/index.html').read_text()
+                settings = source[source.index('  <div id="view-settings"'):source.index('  <div id="view-library"')]
+                settings_script = source[source.index('function apiSettingsValue()'):source.index('/* ================= 个人日程')]
+                return HTMLResponse(('''<!doctype html><html lang="zh"><meta charset="utf-8"><body>
+                <div id="notices" role="status"></div>SETTINGS_FORM<div id="view-copilot" hidden></div>
                 <div id="view-plans"></div><div id="dailyReader" hidden></div>
                 <script>
                 window.toast=t=>document.getElementById('notices').textContent=t;
                 window.goTab=name=>{document.getElementById('view-plans').style.display=name==='plans'?'block':'none';if(name==='plans')window.enterPlans();};
                 window.rememberLearningOrigin=()=>{};window.returnFromLesson=()=>goTab('plans');
-                </script><script src="/static/copilot.js"></script><script src="/static/plans.js"></script>
-                <script>window.addEventListener('load',()=>window.loadPlans());</script></body></html>''')
+                </script><script src="/static/ai-config.js"></script><script>SETTINGS_SCRIPT</script><script src="/static/copilot.js"></script><script src="/static/plans.js"></script>
+                <script>window.addEventListener('load',()=>window.loadPlans());</script></body></html>''').replace('SETTINGS_FORM',settings).replace('SETTINGS_SCRIPT',settings_script))
             sock = socket.socket(); sock.bind(('127.0.0.1', 0))
             base = 'http://127.0.0.1:'+str(sock.getsockname()[1])
             server = uvicorn.Server(uvicorn.Config(app, log_level='error'))
@@ -68,6 +73,31 @@ class BrowserLifecycle(unittest.TestCase):
                         page.on('pageerror', lambda e: errors.append(str(e)))
                         page.route('**/*', lambda route: route.continue_() if route.request.url.startswith(base+'/') else route.abort())
                         page.goto(base)
+                        settings_form = page.locator('#view-settings')
+                        settings_form.evaluate("el => el.style.display='block'")
+                        page.get_by_role('button', name='读取本地配置', exact=True).click()
+                        self.assertEqual(page.get_by_label('API Key', exact=True).input_value(), '')
+                        page.get_by_label('API Base URL', exact=True).fill('https://browser-model.example/v1')
+                        page.get_by_label('API Key', exact=True).fill('BROWSER_TEST_KEY_ONLY')
+                        page.get_by_label('模型名称', exact=True).fill('browser-test-model')
+                        page.get_by_role('button', name='保存配置', exact=True).click()
+                        page.reload()
+                        settings_form.evaluate("el => el.style.display='block'")
+                        page.get_by_role('button', name='读取本地配置', exact=True).click()
+                        self.assertEqual(page.get_by_label('API Key', exact=True).input_value(), 'BROWSER_TEST_KEY_ONLY')
+                        second = browser.new_context()
+                        other = second.new_page(); other.goto(base)
+                        other.locator('#view-settings').evaluate("el => el.style.display='block'")
+                        other.get_by_role('button', name='读取本地配置', exact=True).click()
+                        self.assertEqual(other.get_by_label('API Key', exact=True).input_value(), '')
+                        second.close()
+                        page.get_by_role('button', name='清除本地配置', exact=True).click()
+                        self.assertEqual(page.get_by_label('API Key', exact=True).input_value(), '')
+                        page.get_by_label('API Base URL', exact=True).fill('https://browser-model.example/v1')
+                        page.get_by_label('API Key', exact=True).fill('BROWSER_TEST_KEY_ONLY')
+                        page.get_by_label('模型名称', exact=True).fill('browser-test-model')
+                        page.get_by_role('button', name='保存配置', exact=True).click()
+                        page.screenshot(path='/tmp/grow-browser-ai-settings.png')
                         page.get_by_role('button', name='创建学习计划', exact=True).click()
                         for name, value in [('学习方向','经济学'),('希望学会什么','理解经济新闻'),('周期（周）','2'),('每周学习次数','1'),('每次分钟数','20')]:
                             page.get_by_label(name, exact=True).fill(value)

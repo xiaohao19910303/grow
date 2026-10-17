@@ -83,6 +83,7 @@ class ReflectionsStore:
         self.db = Path(db)
         self.runtime = self.db / '.plans'
         self.startup_error = None
+        self.remote = os.getenv('PLAN_CONTENT_BACKEND') == 'github'
 
     @contextmanager
     def conn(self):
@@ -92,6 +93,11 @@ class ReflectionsStore:
 
     @contextmanager
     def lock(self):
+        if self.remote:
+            with self.conn() as c:
+                c.execute('SELECT pg_advisory_xact_lock(?)', (int(digest('reflection-writes')[:15], 16),))
+                yield
+            return
         if not self.root.is_dir():
             fail('unavailable', '学习磁盘不可用。', 503)
         self.runtime.mkdir(parents=True, exist_ok=True)
@@ -101,6 +107,22 @@ class ReflectionsStore:
                 yield
             finally:
                 fcntl.flock(stream, fcntl.LOCK_UN)
+
+    @contextmanager
+    def generation_gate(self):
+        if self.remote:
+            with self.conn() as c:
+                acquired = c.execute('SELECT pg_try_advisory_xact_lock(?)', (int(digest('learning-plan-generation')[:15], 16),)).fetchone()[0]
+                if not acquired:
+                    fail('generation_busy', '另一个 AI 任务正在运行。')
+                yield
+        else:
+            with (self.db.parent / '.ai-generation.lock').open('a') as gate:
+                try:
+                    fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    fail('generation_busy', '另一个 AI 任务正在运行。')
+                yield
 
     def path(self, relative):
         prefix = f'{REFLECTION_DIR}/{DAILY_DIR}/'
@@ -126,6 +148,8 @@ class ReflectionsStore:
         # Legacy records are trusted only if the existing mirror exactly matches
         # the stored entry rendered today. Never adopt an arbitrary disk hash.
         expected = entry.get('mirror_hash') or digest(render_markdown(entry))
+        if self.remote:
+            return expected
         try:
             actual = self.hash(entry['path'])
         except OSError:
@@ -136,6 +160,9 @@ class ReflectionsStore:
 
     def mirror_status(self, entry_id):
         entry = self.entry(entry_id)
+        if self.remote:
+            return {'id': entry_id, 'path': None, 'storage': 'database', 'conflict': False,
+                    'saved_markdown': render_markdown(entry), 'file_markdown': None}
         p = self.path(entry['path'])
         content = None
         try:
@@ -166,11 +193,11 @@ class ReflectionsStore:
             return [json.loads(r[0]) for r in c.execute(f'SELECT data FROM {table}')]
 
     def initialize(self):
-        if (self.runtime / 'restore-pending.json').exists():
+        if not self.remote and (self.runtime / 'restore-pending.json').exists():
             fail('restore_pending', '存在未完成的恢复，请先处理恢复日志。', 503)
         with self.lock():
             with self.conn() as c:
-                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='reflection_entries'").fetchone()
+                installed = True if self.remote else c.execute("SELECT 1 FROM sqlite_master WHERE name='reflection_entries'").fetchone()
             if not installed:
                 from plans.backup import database_snapshot
                 database_snapshot(self, self.runtime / f'before-reflection-{uuid.uuid4().hex}.db')
@@ -183,7 +210,8 @@ class ReflectionsStore:
                         a.update(status='failed', error='服务重启导致生成中断；不会自动重试。', finished_at=now())
                         c.execute('UPDATE reflection_ai_attempts SET data=? WHERE id=?', (encoded(a), row['id']))
             self.recover_locked()
-            self._ensure_readme()
+            if not self.remote:
+                self._ensure_readme()
 
     def get_setting(self, key, default=''):
         """共享 copilot 的模型配置，复用其 settings 表。"""
@@ -215,7 +243,18 @@ class ReflectionsStore:
         return op['result']
 
     def publish(self, key, request, files, records, result):
-        """Caller holds the shared writer lock. 两阶段：先原子写文件，再落 SQLite 记录。"""
+        """Caller holds the writer lock; cloud records and journal commit together."""
+        if self.remote:
+            previous = self.replay(key, request)
+            if previous is not None:
+                return previous
+            op = {'id': key, 'state': 'done', 'request_hash': digest(encoded(request)),
+                  'files': {}, 'result': result, 'created_at': now()}
+            with self.conn() as c:
+                for record in records:
+                    c.execute(record['sql'], record['params'])
+                c.execute('INSERT INTO reflection_operations VALUES (?,?)', (key, encoded(op)))
+            return result
         with self.conn() as c:
             existing = c.execute('SELECT data FROM reflection_operations WHERE id=?', (key,)).fetchone()
         if existing:
@@ -252,7 +291,9 @@ class ReflectionsStore:
 
     def recover_locked(self):
         with self.conn() as c:
-            keys = [r[0] for r in c.execute("SELECT id FROM reflection_operations WHERE json_extract(data,'$.state')='pending'")]
+            keys = [r[0] for r in c.execute('SELECT id,data FROM reflection_operations') if json.loads(r[1]).get('state') == 'pending']
+        if self.remote and keys:
+            fail('migration_pending', '存在旧文件写入任务，请先完成迁移核对。', 503)
         for key in keys:
             self._resume(key)
 

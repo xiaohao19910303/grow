@@ -50,10 +50,9 @@ def _translate_sql(sql):
 
 def _translate_schema(sql):
     """转换 CREATE TABLE 语句中的 SQLite 特有语法。"""
-    # AUTOINCREMENT → 移除（SERIAL 会自动处理）
-    sql = re.sub(r'\bAUTOINCREMENT\b', '', sql, flags=re.IGNORECASE)
-    # INTEGER PRIMARY KEY (without AUTOINCREMENT) → 保持不变
-    # 但需要确保 IDENTITY 或 SERIAL 的行为正确
+    # Preserve auto-generated IDs for schemas still written in SQLite syntax.
+    sql = re.sub(r'\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b', 'SERIAL PRIMARY KEY', sql, flags=re.IGNORECASE)
+    sql = re.sub(r"datetime\('now',\s*'localtime'\)", "to_char(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS')", sql, flags=re.IGNORECASE)
     return sql
 
 
@@ -64,7 +63,7 @@ class CompatCursor:
         self._cursor = cursor
 
     def execute(self, sql, params=None):
-        translated = _translate_sql(sql)
+        translated = _translate_sql(_translate_schema(sql)) if re.match(r'\s*CREATE\s', sql, re.I) else _translate_sql(sql)
         if params is not None:
             # psycopg2 需要 tuple 或 list
             if isinstance(params, dict):
@@ -121,7 +120,7 @@ class CompatCursor:
         try:
             self._cursor.execute("SELECT lastval()")
             row = self._cursor.fetchone()
-            return row[0] if row else None
+            return next(iter(row.values())) if isinstance(row, dict) else (row[0] if row else None)
         except Exception:
             return None
 
@@ -205,6 +204,11 @@ class CompatConnection:
     def executescript(self, sql):
         cursor = self.cursor()
         cursor.executescript(sql)
+        return cursor
+
+    def executemany(self, sql, params_list):
+        cursor = self.cursor()
+        cursor.executemany(sql, params_list)
         return cursor
 
     def commit(self):

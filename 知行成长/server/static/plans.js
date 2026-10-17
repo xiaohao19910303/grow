@@ -7,6 +7,7 @@
   const uuid = () => crypto.randomUUID();
   const canonical = x => JSON.stringify(x, (_, value) => value && !Array.isArray(value) && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k=>[k,value[k]])) : value);
   async function api(path, data) {
+    if(data!==undefined && (path==='/generate'||/^\/drafts\/[^/]+\/refine$/.test(path))) data={...data,ai_config:AIConfig.require()};
     const r=await fetch('/api/plans'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});
     const d=await r.json();if(!r.ok)throw new Error(typeof d.message==='string'?d.message:'请求未完成，请检查输入或重新读取。');return d;
   }
@@ -52,7 +53,7 @@
         root.append(node('p','正式课程保存在 GitHub；学习反馈保存在云端数据库。','desc'));
       }
       if(data.pending_publications?.length)root.append(node('p',`有 ${data.pending_publications.length} 项保存尚未完成。请点击“检查未完成保存”重试；草稿仍然保留。`,'desc'));
-      status.textContent=data.generation_unavailable||('AI 模型：'+data.model+'；点击生成才会调用，可能产生费用。');
+      status.textContent=data.generation_unavailable||AIConfig.status()||('AI 模型：'+AIConfig.read().model_name+'；点击生成才会调用，可能产生费用。');
       const budget=node('details');budget.append(node('summary','每周总时间预算'));root.append(budget);
       budget.append(node('p',`已登记投入 ${data.budget.known_minutes} 分钟/周${data.budget.legacy_unknown?'；旧模块投入尚未登记':''}。新增计划默认不启用定时任务。`));
       const limit=field(budget,'总预算（分钟/周，留空为未知）',data.budget.weekly,'number');

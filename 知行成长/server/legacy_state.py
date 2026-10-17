@@ -1,6 +1,7 @@
 """Legacy dashboard state: stable row identities and transactional snapshot checks."""
 import json
 import db
+import sqlite3
 from contextlib import closing
 
 from copilot.core import digest, encoded, fail
@@ -25,13 +26,13 @@ def read_state(conn):
         state['checkins'].setdefault(r['date'], {})[r['module_id']] = r['level']
     for r in conn.execute('SELECT date,minutes,note FROM habits ORDER BY date'):
         state['habits'][r['date']] = {'minutes': r['minutes'], 'note': r['note'] or ''}
-    state['customFields'] = [dict(r) for r in conn.execute('SELECT key,label,type FROM custom_fields ORDER BY rowid')]
+    state['customFields'] = [dict(r) for r in conn.execute('SELECT key,label,type FROM custom_fields ORDER BY key')]
     for r in conn.execute('SELECT id,data FROM custom_records ORDER BY id'):
         data = json.loads(r['data'])
         if any(k in data for k in ('_record_id', '_client_id')):
             fail('state_conflict', '旧自定义记录含身份保留字段，请先核对，系统未覆盖原文。')
         state['customRecords'].append({**data, '_record_id': r['id']})
-    state['todos'] = [dict(r) for r in conn.execute('SELECT id,date,title,done FROM todos ORDER BY rowid')]
+    state['todos'] = [dict(r) for r in conn.execute('SELECT id,date,title,done FROM todos ORDER BY date,id')]
     for table in ROW_FIELDS:
         state[table] = [dict(r) for r in conn.execute(f'SELECT * FROM {table} ORDER BY id')]
     state['_revision'] = digest(encoded(state))
@@ -40,7 +41,7 @@ def read_state(conn):
 
 def load_state(connect):
     with closing(connect()) as conn, conn:
-        conn.execute('BEGIN')
+        conn.execute('BEGIN' if isinstance(conn, sqlite3.Connection) else 'BEGIN ISOLATION LEVEL REPEATABLE READ')
         return read_state(conn)
 
 
@@ -96,7 +97,11 @@ def save_state(connect, state, *, require_revision=False):
             fail('invalid', '按日记录格式无效，未保存。', 422)
     try:
         with closing(connect()) as conn, conn:
-            conn.execute('BEGIN IMMEDIATE')
+            if isinstance(conn, sqlite3.Connection):
+                conn.execute('BEGIN IMMEDIATE')
+            else:
+                # Serialize whole-state writers before checking the snapshot revision.
+                conn.execute('LOCK TABLE modules,checkins,habits,custom_fields,custom_records,todos,decisions,predictions,reviews,insights IN EXCLUSIVE MODE')
             current = read_state(conn)
             if '_revision' in state and state['_revision'] != current['_revision']:
                 fail('state_conflict', '其他页面或同步已更新记录；本地修改已保留，请核对后载入最新记录。')
@@ -126,5 +131,5 @@ def save_state(connect, state, *, require_revision=False):
                 assigned[table] = replace_rows(conn, table, state.get(table, []), fields, require_revision)
             assigned['customRecords'] = replace_rows(conn, 'custom_records', state.get('customRecords', []), ('data',), require_revision)
             return {'ok': True, 'state': read_state(conn), 'assigned_ids': assigned}
-    except (KeyError, TypeError, ValueError, db.IntegrityError, db.ProgrammingError, db.DataError) as exc:
+    except (KeyError, TypeError, ValueError, db.IntegrityError, db.ProgrammingError, db.DataError, db.psycopg2.IntegrityError, db.psycopg2.ProgrammingError, db.psycopg2.DataError) as exc:
         fail('invalid', '记录快照字段无效，未保存：' + type(exc).__name__, 422)

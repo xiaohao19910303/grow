@@ -6,9 +6,11 @@ from typing import Literal
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ConfigDict, Field
 
-from .core import Problem, Store
+from .core import Problem, Store, fail
+from .ai_config import require_config
 from .generation import Generator, availability
 from .backup import snapshot
 
@@ -24,6 +26,7 @@ class Key(Input):
 
 class Generation(Key):
     lesson_no: int = Field(ge=1, le=168)
+    ai_config: dict | None = Field(default=None, repr=False)
 
 
 class Edit(Input):
@@ -68,21 +71,11 @@ class WriterConfirmation(Input):
     confirmed: Literal[True]
 
 
-class SettingsUpdate(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    api_base_url: str = ''
-    api_key: str = ''
-    model_name: str = 'qwen-plus'
-    price_version: str = ''
-    input_price: str = ''
-    output_price: str = ''
-
-
 class ConnectionTest(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    api_base_url: str = Field(min_length=1)
-    api_key: str = Field(min_length=1)
-    model_name: str = Field(min_length=1, max_length=100)
+    api_base_url: str
+    api_key: str = Field(repr=False)
+    model_name: str
 
 
 def register(app: FastAPI, root, db):
@@ -93,6 +86,11 @@ def register(app: FastAPI, root, db):
     @app.exception_handler(Problem)
     async def problem_handler(request, error):
         return JSONResponse({'error': error.code, 'message': error.message}, status_code=error.status)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request, error):
+        # Pydantic's default errors echo input values, including credential bodies.
+        return JSONResponse({'message': '请求字段格式无效，请检查填写内容。'}, status_code=422)
 
     @app.middleware('http')
     async def local_access(request: Request, call_next):
@@ -131,7 +129,7 @@ def register(app: FastAPI, root, db):
                     return JSONResponse({'message': '写操作需要同源请求标识。'}, status_code=403)
             if (store.runtime / 'restore-pending.json').exists():
                 return JSONResponse({'message': '存在未完成的离线恢复，请先按备份说明处理。'}, status_code=503)
-        if request.url.path.startswith('/api/copilot') and getattr(store, 'startup_error', None):
+        if request.url.path.startswith('/api/copilot') and not request.url.path.startswith('/api/copilot/settings') and getattr(store, 'startup_error', None):
             error = store.startup_error
             return JSONResponse({'error': error.code, 'message': error.message + ' 处理后请重新启动本地服务。'}, status_code=503)
         response = await call_next(request)
@@ -220,8 +218,9 @@ def register(app: FastAPI, root, db):
 
     @router.post('/generations')
     def generate(body: Generation):
-        draft_id, fresh = generator.begin(body.lesson_no, body.key)
-        return StreamingResponse(generator.stream(draft_id, fresh), media_type='text/event-stream',
+        cfg = require_config(body.ai_config)
+        draft_id, fresh = generator.begin(body.lesson_no, body.key, body.ai_config)
+        return StreamingResponse(generator.stream(draft_id, fresh, cfg), media_type='text/event-stream',
                                  headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
     @router.post('/generations/{draft_id}/cancel')
@@ -273,29 +272,18 @@ def register(app: FastAPI, root, db):
 
     @router.get('/settings')
     def get_settings():
-        keys = ('api_base_url', 'api_key', 'model_name', 'price_version', 'input_price', 'output_price')
-        result = {}
-        for k in keys:
-            v = store.get_setting(k)
-            if k == 'api_key' and v:
-                result[k] = v[:4] + '****' + v[-4:] if len(v) > 8 else '****'
-            else:
-                result[k] = v
-        return {**result, 'generation_available': not availability(store)}
+        return {'storage': 'browser', 'requires_own_config': True}
 
     @router.put('/settings')
-    def update_settings(body: SettingsUpdate):
-        with store.lock():
-            store.require_writer()
-            store.update_settings({k: v for k, v in body.model_dump().items() if v})
-        return {'ok': True, 'generation_available': not availability(store)}
+    def update_settings():
+        fail('browser_config_only', 'AI 配置仅保存在浏览器，请刷新页面后在设置中保存。', 410)
 
     @router.post('/settings/test')
     async def test_connection(body: ConnectionTest):
         from .transport import qwen_stream
         import asyncio
         test_messages = [{'role': 'user', 'content': '请回复"连接成功"四个字'}]
-        test_config = {'url': body.api_base_url, 'key': body.api_key, 'model': body.model_name}
+        test_config = require_config(body.model_dump())
         try:
             collected = ''
             async for packet in qwen_stream(test_messages, test_config):
@@ -306,10 +294,10 @@ def register(app: FastAPI, root, db):
                     if len(collected) > 100:
                         break
             if collected:
-                return {'ok': True, 'message': f'连接成功，模型 {body.model_name} 正常响应'}
+                return {'ok': True, 'message': '连接成功，模型正常响应'}
             return {'ok': False, 'message': '连接失败：未收到有效响应'}
-        except Exception as e:
-            return {'ok': False, 'message': f'连接失败：{str(e)[:100]}'}
+        except Exception:
+            return {'ok': False, 'message': '连接失败：请核对地址、密钥、模型和服务商状态。'}
 
     app.include_router(router)
     return store

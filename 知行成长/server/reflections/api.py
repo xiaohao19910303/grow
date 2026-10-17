@@ -5,7 +5,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from copilot.core import fail, now
-from copilot.generation import availability, config
+from copilot.generation import availability
+from copilot.ai_config import require_config
 from .store import ReflectionsStore
 from .assist import ReflectionAssistant
 
@@ -37,6 +38,7 @@ class UpdatePayload(BaseModel):
 
 
 class AssistPayload(BaseModel):
+    ai_config: dict | None = Field(default=None, repr=False)
     model_config = ConfigDict(extra='forbid')
     kind: str
     snapshot: dict
@@ -73,7 +75,7 @@ def register(app, root, db):
     def listing(include_archived: bool = False):
         entries = store.list_entries(include_archived)
         return {'entries': entries, 'generation_unavailable': availability(store),
-                'model': config(store)['model']}
+                'requires_own_config': True}
 
     @router.get('/export')
     def export(include_archived: bool = False):
@@ -112,7 +114,8 @@ def register(app, root, db):
 
     @router.post('/{entry_id}/assist')
     async def assist(entry_id: str, body: AssistPayload):
-        return assistant.begin(entry_id, body.kind, body.snapshot, body.key)
+        require_config(body.ai_config)
+        return assistant.begin(entry_id, body.kind, body.snapshot, body.key, body.ai_config)
 
     @router.get('/attempts/{attempt_key}')
     def attempt(attempt_key: str):

@@ -3,7 +3,8 @@ import asyncio
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from plans.api import Payload
-from copilot.generation import availability,config
+from copilot.generation import availability
+from copilot.ai_config import require_config
 from copilot.core import fail
 from .sources import DEFAULT_FEEDS,TOPICS,fetch_article_content
 from .store import ReadingStore
@@ -18,7 +19,7 @@ def register(app,root,db):
     @app.middleware('http')
     async def protect(request:Request,call_next):
         if request.url.path.startswith('/api/reading'):
-            if store.startup_error:return JSONResponse({'message':'认知阅读暂不可用，请核对磁盘与恢复记录。'},status_code=503)
+            if store.startup_error:return JSONResponse({'message':'认知阅读暂不可用：文件与笔记尚未完成云端迁移。' if getattr(store.startup_error,'code','') == 'legacy_content_migration' else '认知阅读暂不可用，请核对磁盘与恢复记录。'},status_code=503)
             if request.method not in ('GET','HEAD','OPTIONS'):
                 if request.headers.get('x-copilot-request')!='1':return JSONResponse({'message':'缺少同源写入标识。'},status_code=403)
                 if int(request.headers.get('content-length','0'))>100000:return JSONResponse({'message':'内容过长。'},status_code=413)
@@ -36,7 +37,7 @@ def register(app,root,db):
                 'topics':list(TOPICS),
                 'articles':sorted(articles,key=lambda a:a['saved_at'],reverse=True),
                 'jobs':[public_job(j) for j in sorted(store.jobs(),key=lambda x:x['created_at'],reverse=True)[:30]],
-                'model':config(store)['model'],'unavailable':availability(store)}
+                'requires_own_config':True,'unavailable':availability(store)}
     @router.post('/preferences')
     def prefs(body:Payload):return store.save_preferences(body.data)
     @router.post('/sources')
@@ -67,11 +68,17 @@ def register(app,root,db):
     @router.post('/articles/{aid}/personal')
     def personal(aid:str,body:Payload):return store.update_personal(aid,body.data)
     @router.post('/articles/{aid}/guide')
-    async def guide(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'guide'}))
+    async def guide(aid:str,body:Payload):
+        require_config(body.data.get('ai_config'))
+        return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'guide','ai_config':body.data.get('ai_config')}))
     @router.post('/articles/{aid}/summary')
-    async def summary(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'summary'}))
+    async def summary(aid:str,body:Payload):
+        require_config(body.data.get('ai_config'))
+        return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'summary','ai_config':body.data.get('ai_config')}))
     @router.post('/articles/{aid}/english')
-    async def english(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'english'}))
+    async def english(aid:str,body:Payload):
+        require_config(body.data.get('ai_config'))
+        return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'english','ai_config':body.data.get('ai_config')}))
     @router.post('/articles/{aid}/fetch_full')
     async def fetch_full(aid:str,body:Payload):return public_job(reader.begin({'key':body.data.get('key'),'article_id':aid,'kind':'fetch_full'}))
     @router.post('/import-url')

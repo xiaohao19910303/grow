@@ -3,12 +3,12 @@ import asyncio
 import fcntl
 import importlib.util
 import json
-import os
 import re
 import time
 import uuid
 
 from .core import digest, encoded, fail, now
+from .ai_config import config, generation_config
 
 SEPARATOR = '\n<!-- COPILOT_SOURCES -->\n'
 
@@ -17,26 +17,7 @@ def event(name, data):
     return f'event: {name}\ndata: {encoded(data)}\n\n'
 
 
-def config(store=None):
-    db = {}
-    if store:
-        for key in ('api_base_url', 'api_key', 'model_name', 'price_version',
-                     'input_price', 'output_price'):
-            v = store.get_setting(key)
-            if v:
-                db[key] = v
-    return {'model': db.get('model_name') or os.getenv('QWEN_MODEL', 'qwen-plus'),
-            'url': db.get('api_base_url') or os.getenv('QWEN_BASE_URL', ''),
-            'key': db.get('api_key') or os.getenv('QWEN_API_KEY', ''),
-            'price_version': db.get('price_version') or os.getenv('QWEN_PRICE_VERSION', ''),
-            'input_price': db.get('input_price') or os.getenv('QWEN_INPUT_PRICE_PER_MILLION', ''),
-            'output_price': db.get('output_price') or os.getenv('QWEN_OUTPUT_PRICE_PER_MILLION', '')}
-
-
 def availability(store=None):
-    c = config(store)
-    if not c['key'] or not c['url']:
-        return '未配置Qwen密钥和完整接口地址；本地阅读仍可用。'
     if importlib.util.find_spec('httpx') is None or importlib.util.find_spec('copilot.transport') is None:
         return '生成适配器所需httpx尚未安装，请按使用说明配置。'
     return None
@@ -80,7 +61,8 @@ class Generator:
         self.transport = transport
         self.active = {}
 
-    def begin(self, number, key):
+    def begin(self, number, key, ai_config=None):
+        cfg = generation_config(ai_config, self.transport)
         request_hash = digest(encoded({'lesson_no': number}))
         with self.store.lock():
             with self.store.conn() as c:
@@ -108,7 +90,7 @@ class Generator:
                 c.execute('INSERT INTO copilot_drafts VALUES (?,?,1,?,?,?)',
                           (draft_id, number, 'generating', encoded(data), now()))
                 c.execute('INSERT INTO copilot_generation_attempts VALUES (?,?,?,?,?,?)',
-                          (draft_id, key, request_hash, draft_id, 'generating', encoded({'model': config(self.store)['model'], 'started_at': now()})))
+                          (draft_id, key, request_hash, draft_id, 'generating', encoded({'model': cfg['model'], 'started_at': now()})))
         return draft_id, True
 
     def cancel(self, draft_id):
@@ -128,7 +110,8 @@ class Generator:
             c.execute('UPDATE copilot_generation_attempts SET status=?,data=? WHERE id=?',
                       (status, encoded(metrics), draft_id))
 
-    async def stream(self, draft_id, fresh):
+    async def stream(self, draft_id, fresh, cfg=None):
+        cfg = cfg or config()
         if not fresh:
             d = self.store.draft(draft_id)
             yield event('started', {'id': draft_id, 'existing': True, 'status': d['status']})
@@ -143,8 +126,8 @@ class Generator:
             yield event('cancelled', {'id': draft_id})
             return
         started = time.monotonic()
-        metrics = {'model': config(self.store)['model'], 'usage': None, 'cost': None,
-                   'price_version': config(self.store)['price_version'] or None, 'first_token_seconds': None,
+        metrics = {'model': cfg['model'], 'usage': None, 'cost': None,
+                   'price_version': cfg['price_version'] or None, 'first_token_seconds': None,
                    'total_seconds': None, 'error': None, 'started_at': now()}
         self.active[draft_id] = asyncio.current_task()
         status = 'failed'
@@ -162,7 +145,7 @@ class Generator:
             else:
                 transport = self.transport
             finished = False
-            async for packet in transport(messages(d), config(self.store)):
+            async for packet in transport(messages(d), cfg):
                 if packet.get('usage') is not None:
                     metrics['usage'] = packet['usage']
                 if packet.get('done'):
@@ -185,7 +168,7 @@ class Generator:
             d['errors'] = self.store.validate_draft(d)
             status = 'ready' if not d['errors'] else 'failed'
             metrics['total_seconds'] = round(time.monotonic() - started, 3)
-            self._cost(metrics)
+            self._cost(metrics, cfg)
             self.persist(draft_id, d, status, metrics)
             yield event('completed' if status == 'ready' else 'failed',
                         self.store.draft(draft_id) if status == 'ready' else
@@ -199,14 +182,13 @@ class Generator:
             yield event('failed', {'id': draft_id, 'message': '生成失败或响应不完整；草稿已保留。可检查配置后显式重新生成。'})
         finally:
             metrics['total_seconds'] = round(time.monotonic() - started, 3)
-            self._cost(metrics)
+            self._cost(metrics, cfg)
             self.persist(draft_id, d, status, metrics)
             self.active.pop(draft_id, None)
             if gate:
                 gate.close()
 
-    def _cost(self, metrics):
-        c = config(self.store)
+    def _cost(self, metrics, c):
         usage = metrics.get('usage')
         if usage and c['price_version'] and c['input_price'] and c['output_price']:
             try:

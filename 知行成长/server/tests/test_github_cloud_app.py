@@ -1,5 +1,7 @@
 """Boot the real application with isolated PostgreSQL and an HTTP GitHub simulator."""
 import importlib
+import json
+from pathlib import Path
 import os
 import tempfile
 import unittest
@@ -35,13 +37,73 @@ class CloudApplication(unittest.TestCase):
                     GitHubContent('owner/courses','main','TEST_ONLY_TOKEN',transport=httpx.MockTransport(repository)))):
                 dashboard = importlib.import_module('app')
                 dashboard.PENDING_SYNC_FILE = dashboard.DB_PATH/'no-pending-sync.json'
+                with dashboard.get_conn() as old:
+                    old.execute('CREATE TABLE copilot_settings (key TEXT PRIMARY KEY,value TEXT)')
+                    old.execute("INSERT INTO copilot_settings VALUES ('api_key','OLD_TEST_SECRET')")
                 with TestClient(dashboard.app, base_url='https://cloud.example', client=('198.51.100.1',1234)) as client:
+                    with dashboard.get_conn() as old:
+                        self.assertEqual(old.execute("SELECT count(*) FROM copilot_settings WHERE key='api_key'").fetchone()[0],0)
                     health=client.get('/api/health')
                     self.assertEqual(health.status_code,200)
                     self.assertEqual(health.json(),{'ok':True,'revision':'test-deploy-revision',
                                                    'plan_storage':'github','learning_plans_ready':True})
                     self.assertEqual(client.get('/').status_code,401)
                     client.auth=('owner',os.environ['APP_PASSWORD'])
+                    for endpoint in ('/api/data', '/api/reflections', '/api/behavior/stats', '/api/errors/stats', '/api/stocks'):
+                        response = client.get(endpoint)
+                        self.assertEqual(response.status_code, 200, (endpoint, response.text))
+                    state = client.get('/api/data').json()
+                    stale = json.loads(json.dumps(state))
+                    state['reviews'] = [{'date':'2026-10-17','thought':'PRIVATE REVIEW'}]
+                    state['customRecords'] = [{'_client_id':'new-record','value':'private custom'}]
+                    headers = {'X-Legacy-State-Protocol':'1'}
+                    saved = client.put('/api/data', json=state, headers=headers)
+                    self.assertEqual(saved.status_code,200,saved.text)
+                    saved_state = saved.json()['state']
+                    self.assertIsInstance(saved_state['reviews'][0]['id'],int)
+                    self.assertIsInstance(saved.json()['assigned_ids']['customRecords']['new-record'],int)
+                    self.assertEqual(client.put('/api/data',json=stale,headers=headers).status_code,409)
+                    review_id = saved_state['reviews'][0]['id']
+                    saved_state['reviews'][0]['thought'] = 'PRIVATE EDIT'
+                    self.assertEqual(client.put('/api/data',json=saved_state,headers=headers).status_code,200)
+                    self.assertEqual(client.get('/api/data').json()['reviews'][0]['id'], review_id)
+                    h = {'X-Copilot-Request':'1'}
+                    r = client.post('/api/reflections', json={'record_date':'2026-10-17','raw_text':'PRIVATE REFLECTION','key':'create-reflection'},headers=h)
+                    self.assertEqual(r.status_code,200,r.text)
+                    entry_id = r.json()['id']
+                    r = client.put('/api/reflections/'+entry_id, json={'base_version':1,'record_date':'2026-10-17','raw_text':'PRIVATE EDITED REFLECTION','key':'update-reflection'},headers=h)
+                    self.assertEqual(r.status_code,200,r.text)
+                    calls = []
+                    async def reflection_model(messages, cfg):
+                        calls.append(cfg['key'])
+                        yield {'text':json.dumps({'sections':[{'kind':'event','text':'建议整理','basis':'statement'}]})}
+                        yield {'done':True}
+                    dashboard.reflections_assistant.transport = reflection_model
+                    ai = {'api_base_url':'https://user-model.example/v1','api_key':'REQUEST_ONLY_SECRET','model_name':'user-model'}
+                    r = client.post('/api/reflections/'+entry_id+'/assist',json={'kind':'organize','snapshot':{'text':'PRIVATE EDITED REFLECTION'},'key':'assist-reflection','ai_config':ai},headers=h)
+                    self.assertEqual(r.status_code,200,r.text)
+                    import time
+                    for _ in range(100):
+                        attempt = client.get('/api/reflections/attempts/assist-reflection').json()
+                        if attempt['status'] not in ('queued','generating'):break
+                        time.sleep(.01)
+                    self.assertEqual(attempt['status'],'ready',attempt)
+                    self.assertEqual(calls,['REQUEST_ONLY_SECRET'])
+                    self.assertNotIn('REQUEST_ONLY_SECRET',json.dumps(attempt))
+                    from reflections.store import ReflectionsStore
+                    fresh = ReflectionsStore(tmp+'/another-missing-directory',tmp+'/another-runtime')
+                    fresh.initialize()
+                    self.assertEqual(fresh.entry(entry_id)['raw_text'],'PRIVATE EDITED REFLECTION')
+                    self.assertEqual(len(fresh.versions(entry_id)),2)
+                    self.assertFalse(Path(tmp+'/materials').exists())
+                    self.assertFalse(fresh.mirror_status(entry_id)['conflict'])
+                    created = client.post('/api/behavior/applications',json={'date':'2026-10-17','module_id':'renzhi','concept':'复核证据'})
+                    self.assertEqual(created.status_code,201,created.text)
+                    self.assertIsInstance(created.json()['id'],int)
+                    storage = client.get('/api/storage-status').json()
+                    self.assertTrue(storage['modules']['reflections']['ready'])
+                    self.assertFalse(storage['modules']['reading']['ready'])
+                    self.assertEqual(storage['modules']['reading']['reason'],'legacy_content_migration')
                     listing=client.get('/api/plans')
                     self.assertEqual(listing.status_code,200,listing.text)
                     def post(path, data):
@@ -56,6 +118,19 @@ class CloudApplication(unittest.TestCase):
                     r=client.get('/api/plans/'+pid+'/lessons/1')
                     self.assertEqual(r.status_code,200,r.text)
                     self.assertIn('核心概念',r.json()['content'])
+                    # Reproduce the earlier create_tables.py layout in this disposable schema.
+                    with dashboard.get_conn() as incompatible:
+                        incompatible.execute('DROP TABLE behavior_applications')
+                        incompatible.execute('CREATE TABLE behavior_applications (id TEXT PRIMARY KEY,data TEXT NOT NULL)')
+                        incompatible.execute("INSERT INTO behavior_applications VALUES ('legacy-id','PRIVATE LEGACY RECORD')")
+                    try:
+                        dashboard.behavior_store.initialize()
+                    except psycopg2.Error as exc:
+                        dashboard.behavior_store.startup_error = exc
+                    self.assertIsNotNone(dashboard.behavior_store.startup_error)
+                    self.assertEqual(client.get('/api/behavior/applications').status_code,503)
+                    with dashboard.get_conn() as preserved:
+                        self.assertEqual(preserved.execute('SELECT data FROM behavior_applications').fetchone()[0],'PRIVATE LEGACY RECORD')
         finally:
             c=psycopg2.connect(dsn);c.autocommit=True
             c.cursor().execute('DROP SCHEMA '+schema+' CASCADE');c.close()

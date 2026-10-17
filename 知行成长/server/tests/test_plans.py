@@ -30,7 +30,7 @@ class StoreTests(unittest.TestCase):
     def tearDown(self):self.tmp.cleanup()
     def adopt(self):
         d=self.s.draft({'brief':B,'document':D});return self.s.adopt(d['id'],d['id'])['plan_id']
-    def test_shared_model_settings_round_trip(self):
+    def test_server_model_settings_are_rejected(self):
         from copilot.core import Store
         from copilot.generation import config
         legacy=Store(self.root,self.s.db)
@@ -38,10 +38,9 @@ class StoreTests(unittest.TestCase):
             c.execute('CREATE TABLE copilot_settings (key TEXT PRIMARY KEY,value TEXT NOT NULL)')
         values={'api_base_url':'https://example.org/v1/chat/completions',
                 'api_key':'test-only-key','model_name':'test-model'}
-        legacy.update_settings(values)
-        self.assertEqual(config(self.s),config(legacy))
-        self.assertEqual(config(self.s)['model'],'test-model')
-        self.assertEqual(config(self.s)['key'],'test-only-key')
+        with self.assertRaises(Problem):legacy.update_settings(values)
+        self.assertEqual(config(self.s)['key'],'')
+        self.assertEqual(config(legacy)['model'],'')
     def course(self,pid):
         self.s.save_sources(pid,S);ctx=self.s.course_context(pid)
         d=self.s.course_draft(ctx,content(ctx),'摘要 [来源](https://example.org/lesson)')
@@ -205,7 +204,7 @@ class StoreTests(unittest.TestCase):
                 r=c.post('/api/plans'+path,json={'data':data},headers=headers)
                 self.assertEqual(r.status_code,200,r.text);return r.json()
             def generate(data):
-                a=post('/generate',data)
+                a=post('/generate',{**data,'ai_config':{'api_base_url':'https://model.example/v1','api_key':'TEST_ONLY_KEY','model_name':'test-model'}})
                 for _ in range(100):
                     result=c.get('/api/plans/attempts/'+a['id']).json()
                     if result['state'] not in ('queued','generating'):break

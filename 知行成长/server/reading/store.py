@@ -36,6 +36,8 @@ class ReadingStore(Plans):
         if not p.resolve().is_relative_to(self.root.resolve()):fail('invalid','阅读路径越界。',422)
         return p
     def initialize(self):
+        if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
+            fail('legacy_content_migration', '旧认知阅读的文件与笔记尚未完成云端迁移，暂不写入临时磁盘。', 503)
         with self.lock():
             with self.conn() as c:installed=c.execute("SELECT 1 FROM sqlite_master WHERE name='reading_records'").fetchone()
             if not installed:

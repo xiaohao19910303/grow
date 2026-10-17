@@ -7,6 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from copilot.core import encoded,digest,fail,now,Problem
 from copilot.generation import config,availability
+from copilot.ai_config import generation_config
 from .store import TABLE,preferences,basic_guide
 from .sources import CLASSICS,fetch_feed,identify,choose,fetch_article_content
 
@@ -14,6 +15,10 @@ class Reader:
     def __init__(self,store,fetcher=None,transport=None):
         self.store=store;self.fetcher=fetcher or fetch_feed;self.transport=transport;self.tasks={};self.scheduler=None
     def begin(self,data,daily=False):
+        data = dict(data)
+        credentials = data.pop('ai_config', None)
+        kind = data.get('kind', 'collect')
+        cfg = generation_config(credentials, self.transport) if kind in ('guide', 'summary', 'english') else config()
         key=data.get('key')
         if not isinstance(key,str) or not re.fullmatch(r'[a-zA-Z0-9-]{1,100}',key):fail('invalid','请求编号无效。',422)
         kind=data.get('kind','collect')
@@ -47,8 +52,9 @@ class Reader:
             job={'id':jid,'type':'job','kind':kind,'request':request,'state':'queued','created_at':now(),'date':now()[:10],
                  'daily':daily,'preferences':p,'sources':[],'warnings':[],'candidates':[],'error':None,'context':context,'raw':'','usage':None,'cost':None}
             self.store.put(TABLE,jid,job)
-        task=asyncio.create_task(self.run(jid));self.tasks[jid]=task;task.add_done_callback(lambda _:self.tasks.pop(jid,None));return job
-    async def run(self,jid):
+        task=asyncio.create_task(self.run(jid, cfg));self.tasks[jid]=task;task.add_done_callback(lambda _:self.tasks.pop(jid,None));return job
+    async def run(self,jid,cfg=None):
+        cfg = cfg or config()
         fetch_tasks=[]
         j=self.store.record(jid);j.update(state='running',phase='正在读取来源' if j['kind']=='collect' else '正在准备中文导读');self.store.put(TABLE,jid,j)
         try:
@@ -83,7 +89,7 @@ class Reader:
             elif j['kind']=='summary':
                 # Generate comprehensive summary based on full article content
                 from copilot.transport import qwen_stream
-                c=config(self.store);j['model']=c['model'];ctx=j['context'];done=False
+                c=cfg;j['model']=c['model'];ctx=j['context'];done=False
                 a=self.store.article(ctx['article_id'])
                 content=a.get('full_content') or a.get('summary','')
                 prompt=[{'role':'system','content':'你是一个深度阅读助手。基于文章全文生成一份详细的中文总结报告。'},
@@ -102,7 +108,7 @@ class Reader:
             elif j['kind']=='english':
                 # Generate English learning material (grammar + vocabulary)
                 from copilot.transport import qwen_stream
-                c=config(self.store);j['model']=c['model'];ctx=j['context'];done=False
+                c=cfg;j['model']=c['model'];ctx=j['context'];done=False
                 a=self.store.article(ctx['article_id'])
                 content=a.get('full_content') or a.get('summary','')
                 prompt=[{'role':'system','content':'你是一位英语教师。基于这篇英文文章，提取对英语学习者有价值的语法和词汇内容。'},
@@ -120,7 +126,8 @@ class Reader:
                 self.store.save_english_learning(ctx['article_id'],j['raw']);j.update(state='ready',phase='英语学习材料已保存',article_id=ctx['article_id'])
             elif j['kind']=='fetch_full':
                 # Fetch and save full article content
-                a=self.store.article(ctx['article_id'])
+                a=self.store.article(j['context']['article_id'])
+                ctx=j['context']
                 j['phase']='正在获取文章原文';self.store.put(TABLE,jid,j)
                 content=await fetch_article_content(a['url'])
                 if not content or len(content)<100:
@@ -130,7 +137,7 @@ class Reader:
                 j.update(state='ready',phase='文章已保存到本地',article_id=ctx['article_id'])
             else:
                 from copilot.transport import qwen_stream
-                c=config(self.store);j['model']=c['model'];ctx=j['context'];done=False
+                c=cfg;j['model']=c['model'];ctx=j['context'];done=False
                 a=self.store.article(ctx['article_id'])
                 # Use full content if available, otherwise fall back to summary
                 content=a.get('full_content') or a.get('summary','')
@@ -160,7 +167,7 @@ class Reader:
             if fetch_tasks:await asyncio.gather(*fetch_tasks,return_exceptions=True)
             if j.get('usage') and j['kind']=='guide':
                 try:
-                    c=config(self.store)
+                    c=cfg
                     if c['price_version'] and c['input_price'] and c['output_price']:
                         rates=[float(c['input_price']),float(c['output_price'])]
                         if min(rates)>=0:j['cost']=(j['usage']['prompt_tokens']*rates[0]+j['usage']['completion_tokens']*rates[1])/1000000

@@ -179,19 +179,19 @@
     <details><summary>重置记录</summary><p>清空成长记录前，请先导出备份。</p><button class="btn danger" onclick="resetData()">重置</button></details>
     <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
     <h2 style="font-size:18px;margin:0 0 8px">课程生成配置</h2>
-    <p class="desc">配置兼容 OpenAI 协议的 LLM 接口，用于自动生成课程草稿。</p>
+    <p class="desc">配置仅保存在当前浏览器，换浏览器或清除站点数据后需重新填写。生成和测试时经后端临时调用，不保存到远端数据库。已有内容无需配置即可阅读。</p>
     <div id="apiSettingsForm" class="cp-settings-form">
       <div class="field-row" style="flex-direction:column">
-        <label>API Base URL<input type="text" id="apiBaseUrl" placeholder="https://ark.cn-beijing.volces.com/api/plan/v3/chat/completions"></label>
+        <label>API Base URL<input type="text" id="apiBaseUrl" placeholder="https://api.example.com/v1"></label>
       </div>
       <div class="field-row" style="flex-direction:column">
         <label>API Key<input type="password" id="apiKey" placeholder="sk-..."></label>
       </div>
       <div class="field-row" style="flex-direction:column">
-        <label>模型名称<input type="text" id="modelName" placeholder="kimi-k3"></label>
+        <label>模型名称<input type="text" id="modelName" placeholder="填写服务商提供的模型名称"></label>
       </div>
       <div id="apiStatus" style="font-size:13px;color:var(--muted)"></div>
-      <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="testApiConnection()">测试连接</button><button class="btn" onclick="loadApiSettings()">恢复保存的配置</button></div>
+      <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="testApiConnection()">测试连接</button><button class="btn" onclick="loadApiSettings()">读取本地配置</button><button class="btn" onclick="clearApiSettings()">清除本地配置</button></div>
     </div>
   </div>
   <div id="view-library" style="display:none" class="section">
@@ -411,6 +411,7 @@
 <div class="overlay" id="overlay"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="/static/ai-config.js?v=20261017"></script>
 <script>
 /* 局域网模式的凭证只保留在当前标签页。 */
 const nativeFetch = window.fetch.bind(window);
@@ -535,50 +536,36 @@ function doReset(){
   persist(); render(); closeModal(); toast('已重置');
 }
 
-async function loadApiSettings(){
-  try{
-    const r=await fetch('/api/copilot/settings',{headers:{'X-Copilot-Request':'1'}});
-    const d=await r.json();
-    document.getElementById('apiBaseUrl').value=d.api_base_url||'';
-    document.getElementById('modelName').value=d.model_name||'';
-    document.getElementById('apiKey').value=d.api_key&&d.api_key.includes('****')?'':d.api_key;
-    document.getElementById('apiKey').placeholder=d.api_key&&d.api_key.includes('****')?'已保存，留空则保留原值':'sk-...';
-    const el=document.getElementById('apiStatus');
-    el.textContent=d.generation_available?'✅ 生成可用：配置已保存':'⚠️ 生成不可用：请填写 Base URL 和 API Key';
-    el.style.color=d.generation_available?'var(--green)':'var(--muted)';
-  }catch(e){document.getElementById('apiStatus').textContent='读取配置失败';}
+function apiSettingsValue(){
+  return {api_base_url:document.getElementById('apiBaseUrl').value.trim(),
+    api_key:document.getElementById('apiKey').value.trim(),
+    model_name:document.getElementById('modelName').value.trim()};
+}
+function loadApiSettings(){
+  const d=AIConfig.read();
+  document.getElementById('apiBaseUrl').value=d.api_base_url;
+  document.getElementById('modelName').value=d.model_name;
+  document.getElementById('apiKey').value=d.api_key;
+  document.getElementById('apiStatus').textContent=AIConfig.status()||'已读取本浏览器配置，生成时使用自己的密钥。';
 }
 async function testApiConnection(){
-  const body={api_base_url:document.getElementById('apiBaseUrl').value.trim(),
-    api_key:document.getElementById('apiKey').value.trim(),
-    model_name:document.getElementById('modelName').value.trim()||'qwen-plus'};
-  if(!body.api_base_url){toast('请填写 API Base URL');return;}
-  if(!body.api_key){toast('请填写 API Key');return;}
+  const body=apiSettingsValue();
   const el=document.getElementById('apiStatus');
-  el.textContent='⏳ 正在测试连接...';
-  el.style.color='var(--muted)';
+  if(!body.api_base_url||!body.api_key||!body.model_name){el.textContent='请完整填写 Base URL、API Key 和模型名称。';return;}
+  el.textContent='正在测试连接…';
   try{
     const r=await fetch('/api/copilot/settings/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
     const d=await r.json();
-    if(d.ok){el.textContent='✅ '+d.message;el.style.color='var(--green)';}
-    else{el.textContent='❌ '+d.message;el.style.color='var(--red)';}
-  }catch(e){el.textContent='❌ 测试失败：'+e.message;el.style.color='var(--red)';}
+    el.textContent=d.message||'连接测试失败，请检查配置。';
+  }catch(e){el.textContent='测试失败，请检查网络与配置。';}
 }
-async function saveApiSettings(){
-  const body={api_base_url:document.getElementById('apiBaseUrl').value.trim(),
-    api_key:document.getElementById('apiKey').value.trim(),
-    model_name:document.getElementById('modelName').value.trim()||'qwen-plus'};
-  if(!body.api_base_url){toast('请填写 API Base URL');return;}
-  try{
-    let r=await fetch('/api/copilot/settings',{method:'PUT',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
-    if(r.status===503){
-      await fetch('/api/copilot/writer-session',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify({confirmed:true})});
-      r=await fetch('/api/copilot/settings',{method:'PUT',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
-    }
-    const d=await r.json();
-    if(d.ok){toast('配置已保存');loadApiSettings();}
-    else{toast('保存失败：'+(d.message||'未知错误'));}
-  }catch(e){toast('保存失败：'+e.message);}
+function saveApiSettings(){
+  try{AIConfig.save(apiSettingsValue());loadApiSettings();toast('配置已保存到本浏览器');}
+  catch(e){toast(e.message);}
+}
+function clearApiSettings(){
+  try{AIConfig.clear();loadApiSettings();toast('本地 AI 配置已清除');}
+  catch(e){toast('无法清除，请检查浏览器存储权限。');}
 }
 
 /* ================= 个人日程 ================= */
@@ -2086,11 +2073,11 @@ function init(){
 }
 init();
 </script>
-<script src="/static/copilot.js?v=20261014-design2"></script>
-<script src="/static/plans.js?v=20261014-2"></script>
+<script src="/static/copilot.js?v=20261017-local-ai"></script>
+<script src="/static/plans.js?v=20261017-local-ai"></script>
 <script src="/static/daily-learning.js?v=20261014-design2"></script>
-<script src="/static/reading.js?v=1"></script>
-<script src="/static/reflections.js?v=20261016-protection"></script>
+<script src="/static/reading.js?v=20261017-local-ai"></script>
+<script src="/static/reflections.js?v=20261017-local-ai"></script>
 <script src="/static/learning-history.js?v=1"></script>
 <script src="/static/stocks.js?v=1"></script>
 </body>

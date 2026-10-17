@@ -430,6 +430,9 @@ async def lifespan(app: FastAPI):
     if not getattr(plans_store,'remote',False) and (plans_store.runtime / 'restore-pending.json').exists():
         raise RuntimeError('存在未完成的学习计划恢复，请先核对恢复日志。')
     init_db()
+    from copilot.ai_config import remove_server_config
+    with get_conn() as connection:
+        remove_server_config(connection)
     migrate_if_empty()
     # 导入 pending_sync.json（每日复盘同步脚本生成的）
     import_pending_sync()
@@ -499,10 +502,21 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         await plans_generator.shutdown()
+        await reflections_assistant.shutdown()
         await reading_service.shutdown()
 
 
 app = FastAPI(title="知行成长", lifespan=lifespan)
+
+@app.middleware('http')
+async def legacy_module_readiness(request: Request, call_next):
+    for prefix, store in (('/api/behavior', behavior_store), ('/api/errors', error_store),
+                          ('/api/behavior-report', behavior_report_store)):
+        if (request.url.path == prefix or request.url.path.startswith(prefix+'/')) and store.startup_error:
+            return JSONResponse({'error':'legacy_schema_migration',
+                                 'message':'该旧模块的数据表尚未完成迁移，原数据保留，请先核对表结构。'},status_code=503)
+    return await call_next(request)
+
 
 # 添加 CORS 中间件（允许跨域访问）
 app.add_middleware(
@@ -523,6 +537,19 @@ prediction_stats = register_predictions(app, LEARN_ROOT, DB_PATH)
 behavior_report_store = register_behavior_report(app, LEARN_ROOT, DB_PATH)
 knowledge_graph_store = register_knowledge(app, LEARN_ROOT, DB_PATH)
 stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
+
+
+@app.get('/api/storage-status')
+def storage_status():
+    return {'records': 'postgresql', 'formal_markdown': os.getenv('PLAN_CONTENT_BACKEND', 'local'),
+            'ai_config': 'browser', 'requires_own_ai_config': True,
+            'modules': {name: {'ready': not getattr(store, 'startup_error', None),
+                               'reason': (getattr(store.startup_error, 'code', 'legacy_schema_or_storage') if getattr(store, 'startup_error', None) else None)}
+                        for name, store in (('plans', plans_store), ('copilot', copilot_store),
+                                            ('reading', reading_store), ('reflections', reflections_store),
+                                            ('stocks', stocks_store), ('behavior', behavior_store),
+                                            ('errors', error_store), ('behavior_report', behavior_report_store),
+                                            ('knowledge', knowledge_graph_store))}}
 
 
 @app.get("/api/health")
