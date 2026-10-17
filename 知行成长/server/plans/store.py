@@ -189,12 +189,36 @@ class Plans:
                         a.update(state='failed', error='服务已重启，生成中断；不会自动重试。')
                         c.execute('UPDATE learning_ai_attempts SET data=? WHERE id=?', (encoded(a), row['id']))
             self.recover_locked()
-            # Old drafts become independent roots; do not infer historical parentage.
-            for d in self.rows('learning_drafts'):
+            self.migrate_draft_families()
+
+    def migrate_draft_families(self):
+        # Old drafts become independent roots; do not infer historical parentage.
+        with self.conn() as c:
+            drafts=[]
+            for row in c.execute('SELECT id,data FROM learning_drafts').fetchall():
+                try:d=json.loads(row[1])
+                except (ValueError,TypeError):fail('draft_migration','旧草稿格式无法识别，原文保留，请先核对。',503)
+                if not isinstance(d,dict) or d.get('id')!=row[0] or not isinstance(d.get('state'),str):
+                    fail('draft_migration','旧草稿缺少编号或状态，原文保留，请先核对。',503)
+                if d.get('family_id') is not None and not isinstance(d['family_id'],str):
+                    fail('draft_migration','旧草稿族编号无效，原文保留，请先核对。',503)
+                if not d.get('family_id') and d.get('parent_draft_id'):
+                    fail('draft_migration','旧草稿已有父子关系但缺少族编号，原关系保留，请先核对。',503)
+                drafts.append(d)
+            families={row[0] for row in c.execute('SELECT id FROM learning_draft_families')}
+            for d in drafts:
                 if not d.get('family_id'):
-                    d.update(family_id=d['id'], parent_draft_id=None, operation='original')
-                    self.put('learning_drafts', d['id'], d)
-                    self.put('learning_draft_families', d['id'], {'id':d['id'], 'published_draft_id':d['id'] if d['state']=='published' else None})
+                    d['family_id']=d['id'];d.setdefault('parent_draft_id',None);d.setdefault('operation','original')
+                    c.execute('UPDATE learning_drafts SET data=? WHERE id=?',(encoded(d),d['id']))
+            for d in drafts:
+                if d['family_id']==d['id'] and d['id'] not in families:
+                    published=[item['id'] for item in drafts if item['family_id']==d['id'] and item['state']=='published']
+                    if len(published)>1:fail('draft_migration','旧草稿族存在多个已发布版本，原记录保留，请先核对。',503)
+                    family={'id':d['id'],'published_draft_id':published[0] if published else None}
+                    c.execute('INSERT INTO learning_draft_families VALUES (?,?)',(d['id'],encoded(family)))
+                    families.add(d['id'])
+            if any(d['family_id'] not in families for d in drafts):
+                fail('draft_migration','旧草稿族缺少原始根草稿，原关系保留，请先核对。',503)
 
     def get(self, table, key):
         with self.conn() as c:
@@ -403,9 +427,10 @@ class Plans:
                 pid = prefix + f'{max(numbers, default=0)+1:03d}'
                 if self.exists(self.base(pid)): fail('conflict', '计划目录已存在，请检查未登记内容。')
                 p = {'id': pid, 'version': 1, 'status': 'active', 'created_at': now(), 'hashes': {}}
-                files[f'{self.base(pid)}/学习记录.md'] = '# 学习记录\n\n## 个人笔记\n\n请在此保留自己的练习、疑问和记录。\n'
+                if not getattr(self,'remote',False):
+                    files[f'{self.base(pid)}/学习记录.md'] = '# 学习记录\n\n## 个人笔记\n\n请在此保留自己的练习、疑问和记录。\n'
                 files[f'{self.base(pid)}/课程目录.md'] = '# 已发布课程\n\n| 课次 | 日期 | 课程 | 资料 |\n|---|---|---|---|\n'
-                files[f'{self.base(pid)}/README.md'] = '# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md) · [学习记录](学习记录.md)\n'
+                files[f'{self.base(pid)}/README.md'] = ('# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md)\n' if getattr(self,'remote',False) else '# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md) · [学习记录](学习记录.md)\n')
             p.update(brief=b, name=b['title'])
             base = self.base(pid)
             files[base+'/学习规划.md'] = plan_markdown(b, doc)

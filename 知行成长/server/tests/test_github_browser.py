@@ -18,18 +18,20 @@ from fastapi.staticfiles import StaticFiles
 from copilot.core import Problem
 from plans.api import register
 from plans.github import GitHubContent
-from test_github_plans import Repository, SQLitePlans, D, content
+from test_github_plans import Repository, D, content
+from plans.github_store import GitHubPlans
+from test_legacy_cloud_schema import PostgreSQLFixture
 
 
 @unittest.skipUnless(os.getenv('RUN_GITHUB_BROWSER') == '1', 'Opt in with RUN_GITHUB_BROWSER=1 and install playwright')
-class BrowserLifecycle(unittest.TestCase):
+class BrowserLifecycle(PostgreSQLFixture):
     def test_generate_publish_read_and_reload(self):
         from playwright.sync_api import sync_playwright
         with tempfile.TemporaryDirectory() as tmp:
             repository = Repository()
             storage = GitHubContent('owner/courses', 'main', 'TEST_ONLY_TOKEN', transport=httpx.MockTransport(repository))
-            store = SQLitePlans('/no-content-directory', '/no-runtime-directory', storage)
-            store.db_file = Path(tmp)/'test.db'; store.initialize()
+            store = GitHubPlans('/no-content-directory', '/no-runtime-directory', storage)
+            store.initialize()
             app = FastAPI()
             @app.exception_handler(Problem)
             async def problem(request, exc):return JSONResponse({'message':exc.message}, status_code=exc.status)

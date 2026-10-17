@@ -9,23 +9,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 import app as dashboard
+from cloud_fixtures import CloudFixture
 from copilot.core import Problem
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 
-class LegacyStateTests(unittest.TestCase):
+class LegacyStateTests(CloudFixture):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix='grow-t04-')
-        self.root = Path(self.tmp.name)
-        self.patch = patch.object(dashboard, 'DB_PATH', self.root / 'data.db')
-        self.patch.start()
+        super().setUp()
         dashboard.init_db()
         dashboard.save_state({'modules': dashboard.DEFAULT_MODULES})
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tmp.cleanup()
 
     def save(self, state):
         return dashboard.save_state(state, require_revision=True)

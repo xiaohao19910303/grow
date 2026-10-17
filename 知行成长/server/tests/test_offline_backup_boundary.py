@@ -12,6 +12,20 @@ from plans.backup import database_snapshot, validate
 
 
 class OfflineBackupBoundary(unittest.TestCase):
+    def test_archive_redacts_all_ai_settings_in_both_legacy_layouts(self):
+        for identity,value in (('key','value'),('id','data')):
+            with self.subTest(layout=identity),tempfile.TemporaryDirectory() as tmp:
+                source=Path(tmp)/'source.db'
+                @contextmanager
+                def conn():
+                    with sqlite3.connect(source) as c:yield c
+                with conn() as c:
+                    c.execute(f'CREATE TABLE copilot_settings ({identity} TEXT PRIMARY KEY,{value} TEXT)')
+                    c.executemany('INSERT INTO copilot_settings VALUES (?,?)',[('api_key','OLD_KEY'),('api_base_url','OLD_URL'),('model_name','OLD_MODEL'),('generation_total_timeout_seconds','300')])
+                target=Path(tmp)/'archive.db';database_snapshot(SimpleNamespace(conn=conn),target)
+                with sqlite3.connect(target) as c:self.assertEqual(c.execute('SELECT * FROM copilot_settings').fetchall(),[('generation_total_timeout_seconds','300')])
+                with conn() as c:self.assertEqual(c.execute('SELECT COUNT(*) FROM copilot_settings').fetchone()[0],4)
+
     def test_snapshot_targets_archive_and_validation_reads_it(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp); source = folder/'source.db'

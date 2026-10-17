@@ -38,7 +38,9 @@ class CloudApplication(unittest.TestCase):
                 patch('cloud_content.configured_content', side_effect=lambda: ModuleContent('owner/courses','main','TEST_ONLY_TOKEN',transport=httpx.MockTransport(repository))), \
                 patch('plans.api.make_store', side_effect=lambda root, runtime: GitHubPlans(root,runtime,
                     GitHubContent('owner/courses','main','TEST_ONLY_TOKEN',transport=httpx.MockTransport(repository)))):
-                dashboard = importlib.reload(importlib.import_module('app'))
+                spec=importlib.util.spec_from_file_location('isolated_cloud_app',Path(__file__).resolve().parents[1]/'app.py')
+                dashboard=importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(dashboard)
                 dashboard.PENDING_SYNC_FILE = dashboard.DB_PATH/'no-pending-sync.json'
                 with dashboard.get_conn() as old:
                     old.execute('CREATE TABLE copilot_settings (key TEXT PRIMARY KEY,value TEXT)')
