@@ -2,11 +2,24 @@
 import json
 import uuid
 from contextlib import contextmanager
+from urllib.parse import urlsplit
 
 from cloud_content import Documents, ContentPath, enabled
 from copilot.core import digest, encoded, fail, now, Problem
 from legacy_schema import migrate
 from .store import ReadingStore, TABLE, DEFAULT
+from .sources import identify
+
+
+def validate_article_source(data,aid):
+    if not isinstance(data,dict) or data.get('id')!=aid or data.get('type')!='article':fail('migration_invalid','文章信息与目录编号不一致。')
+    for field in ('title','url','source','saved_at'):
+        if not isinstance(data.get(field),str) or not data[field]:fail('migration_invalid','文章信息缺少必填字段。')
+    try:
+        url=urlsplit(data['url'])
+        if url.scheme not in ('http','https') or not url.hostname or url.username or url.password or identify(data['url'])!=aid:raise ValueError()
+        url.port
+    except ValueError:fail('migration_invalid','文章网址或稳定编号无效，来源原文保留。')
 
 
 class CloudReadingStore(ReadingStore):
@@ -64,29 +77,30 @@ class CloudReadingStore(ReadingStore):
         return self.documents.publish(journal['id'],{'export':journal['id']},files,sql,{'id':journal['id']})
 
     def restore_article_index(self):
-        # Used explicitly by the file migration, never a disk scan in cloud mode.
-        records=[]
-        for path in self.documents.names('认知阅读/文章资料/'):
-            if not path.endswith('/文章信息.json'):continue
-            data=json.loads(self.documents.read(path));aid=path.split('/')[2]
-            old=self.optional(aid)
-            if old and old.get('type')!='article':fail('migration_conflict','文章编号与已有记录冲突。')
-            if old:
-                # Existing personal state and drafts always win over file mirrors.
-                data={**data,**old}
-            if data.get('id')!=aid or data.get('type')!='article':fail('migration_invalid','文章信息与目录编号不一致。')
-            for field in ('title','url','source','saved_at'):
-                if not isinstance(data.get(field),str) or not data[field]:fail('migration_invalid','文章信息缺少必填字段。')
-            hashes={p:self.documents.hash(p) for p in self.documents.names('认知阅读/文章资料/'+aid+'/')}
-            data['hashes']={**data.get('hashes',{}),**hashes}
-            guide='认知阅读/文章资料/'+aid+'/中文导读.md'
-            if self.documents.metadata(guide):data['guide']=self.documents.read(guide)
-            for field in ('read','read_later','bookmarked','archived'):data.setdefault(field,False)
-            data.setdefault('language','zh');data.setdefault('author','未知');data.setdefault('summary','')
-            records.append(data)
-        with self.conn() as c:
-            for item in records:c.execute('INSERT INTO reading_records VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',(item['id'],encoded(item)))
-        return len(records)
+        with self.lock():
+            # Used explicitly by the file migration, never a disk scan in cloud mode.
+            records=[]
+            for path in self.documents.names('认知阅读/文章资料/'):
+                if not path.endswith('/文章信息.json'):continue
+                data=json.loads(self.documents.read(path));aid=path.split('/')[2]
+                old=self.optional(aid)
+                if old and old.get('type')!='article':fail('migration_conflict','文章编号与已有记录冲突。')
+                if old:
+                    # Existing personal state and drafts always win over file mirrors.
+                    data={**data,**old}
+                validate_article_source(data,aid)
+                hashes={p:self.documents.hash(p) for p in self.documents.names('认知阅读/文章资料/'+aid+'/')}
+                data['hashes']={**data.get('hashes',{}),**hashes}
+                guide='认知阅读/文章资料/'+aid+'/中文导读.md'
+                if self.documents.metadata(guide):data['guide']=self.documents.read(guide)
+                full='认知阅读/文章资料/'+aid+'/原文.md'
+                if not data.get('full_content') and self.documents.metadata(full):data['full_content']=self.documents.read(full)
+                for field in ('read','read_later','bookmarked','archived'):data.setdefault(field,False)
+                data.setdefault('language','zh');data.setdefault('author','未知');data.setdefault('summary','')
+                records.append(data)
+            with self.conn() as c:
+                for item in records:c.execute('INSERT INTO reading_records VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',(item['id'],encoded(item)))
+            return len(records)
 
 
 def make_store(root,db):
