@@ -200,6 +200,7 @@
         status.textContent = '保存未完成，笔记仍保留：' + error.message;
       } finally { draft.saving = false; save.disabled = false; }
     });
+    save.classList.add('primary');
     input.oninput = () => { next.disabled = hasStudyDraft(); };
     reader.append(form);
   }
