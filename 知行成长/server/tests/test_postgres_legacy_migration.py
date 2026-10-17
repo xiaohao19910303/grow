@@ -61,7 +61,7 @@ class LegacyMigration(unittest.TestCase):
         errors=ErrorStore(Path('/unused'));errors.initialize();errors.initialize()
         with self.scoped() as c:
             row=c.execute("SELECT id,description FROM error_types WHERE name='判断偏差'").fetchone()
-            self.assertEqual(tuple(row),(1,'keep existing description'))
+            self.assertEqual((row[0],row[1]),(1,'keep existing description'))
             self.assertEqual(c.execute('SELECT count(*) FROM error_types').fetchone()[0],8)
     def test_ambiguous_nonempty_old_table_is_preserved(self):
         from legacy_migrations import migrate
