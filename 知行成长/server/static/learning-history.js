@@ -35,15 +35,37 @@
     return el;
   }
 
+  async function sources(paths) {
+    const results = await Promise.allSettled(paths.map(async path => {
+      const response = await fetch(path, {cache: 'no-store'});
+      if (!response.ok) throw new Error('加载失败');
+      return response.json();
+    }));
+    let warning = root.querySelector('.history-load-warning');
+    if (results.some(result => result.status === 'rejected')) {
+      if (!warning) { warning = node('p', '', 'history-load-warning'); warning.setAttribute('role', 'status'); root.append(warning); }
+      warning.textContent = '部分学习记录暂时无法读取，请稍后重新进入页面重试。';
+    } else warning?.remove();
+    return results.map(result => result.status === 'fulfilled' ? result.value : null);
+  }
+
   async function loadMonthData(year, month) {
     // Load learning counts for the entire month
     const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const endDate = `${year}-${String(month + 1).padStart(2, '0')}-31`;
+    const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()}`;
+    const following = new Date(year, month + 1, 1);
+    const exclusiveEnd = `${following.getFullYear()}-${String(following.getMonth() + 1).padStart(2, '0')}-01`;
 
     try {
-      const response = await fetch(`/api/copilot/learning-history/months?start=${startDate}&end=${endDate}`);
-      if (!response.ok) throw new Error('加载失败');
-      monthData = await response.json();
+      const [cognitive, materials] = await sources([
+        `/api/copilot/learning-history/months?start=${startDate}&end=${exclusiveEnd}`,
+        `/api/study-materials/learning-history?start=${startDate}&end=${endDate}`
+      ]);
+      monthData = cognitive || {};
+      for (const record of materials?.items || []) {
+        const stamp = record.completed_at.slice(0, 10);
+        monthData[stamp] = (monthData[stamp] || 0) + 1;
+      }
       renderCalendarGrid();
     } catch (e) {
       console.error('Failed to load month data:', e);
@@ -54,9 +76,13 @@
 
   async function loadHistory(date) {
     try {
-      const response = await fetch(`/api/copilot/learning-history/by-date?date=${date}`);
-      if (!response.ok) throw new Error('加载失败');
-      return response.json();
+      const [cognitive, materials] = await sources([
+        `/api/copilot/learning-history/by-date?date=${date}`,
+        `/api/study-materials/learning-history?start=${date}&end=${date}`
+      ]);
+      const items = [...(cognitive?.items || []), ...(materials?.items || [])]
+        .sort((a, b) => b.completed_at.localeCompare(a.completed_at));
+      return {date, total: items.length, items};
     } catch (e) {
       console.error('Failed to load history:', e);
       return { date, total: 0, items: [] };
@@ -187,7 +213,7 @@
 
       // Header: lesson title and time
       const header = node('div', undefined, 'history-card-header');
-      header.append(node('h4', `第${String(record.lesson_no).padStart(3, '0')}课`));
+      header.append(node('h4', `${record.module_name || '认知与通识'} · 第${String(record.lesson_no).padStart(3, '0')}课${record.topic ? ' · ' + record.topic : ''}`));
       header.append(node('span', `${formatTime(record.completed_at)} · ${Math.round((record.time_spent_seconds || 0) / 60)}分钟`, 'desc'));
       card.append(header);
 

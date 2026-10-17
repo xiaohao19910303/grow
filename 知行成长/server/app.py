@@ -32,6 +32,7 @@ from behavior_report.api import register as register_behavior_report
 from knowledge.api import register as register_knowledge
 from reflections.api import register as register_reflections
 from stocks.api import register as register_stocks
+from study_materials import register as register_materials, initialize as initialize_materials
 import asyncio
 from legacy_state import load_state as read_legacy_state, save_state as write_legacy_state
 
@@ -115,6 +116,7 @@ def init_db():
     conn.close()
     from legacy_schema import migrate
     migrate()
+    initialize_materials()
 
 
 def save_state(state: dict, *, require_revision=False):
@@ -545,6 +547,7 @@ knowledge_graph_store = register_knowledge(app, LEARN_ROOT, DB_PATH)
 stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
 from migration_api import register as register_migrations
 register_migrations(app, copilot_store, LEARN_ROOT)
+materials = register_materials(app, LEARN_ROOT)
 
 
 @app.get('/api/storage-status')
@@ -585,64 +588,6 @@ async def put_data(request: Request):
         return JSONResponse({'code': exc.code, 'message': exc.message}, status_code=exc.status)
     except (ValueError, db.IntegrityError):
         return JSONResponse({'code': 'invalid', 'message': '记录格式或编号无效，未保存。'}, status_code=422)
-
-
-# Only expose lesson folders, never arbitrary workspace files.
-STUDY_MODULES = {
-    "yingyu": ("英文阅读", "每日文章", "35 分钟"),
-    "biaoda": ("结构化表达", "每日练习", "15 分钟"),
-}
-
-
-def study_files(module):
-    if module not in STUDY_MODULES:
-        raise HTTPException(404, "未找到学习模块")
-    name, folder, _ = STUDY_MODULES[module]
-    directory = (learning_root(LEARN_ROOT) / name / folder).resolve()
-    return [p for p in sorted(directory.glob("*.md"))
-            if p.is_file() and p.resolve().is_relative_to(directory)
-            and p.resolve().is_relative_to(learning_root(LEARN_ROOT).resolve())]
-
-
-@app.get("/api/study-materials")
-def study_materials():
-    modules = []
-    for module, (name, _, duration) in STUDY_MODULES.items():
-        record = learning_root(LEARN_ROOT) / name / "学习记录.md"
-        record_text = record.read_text(encoding="utf-8") if record.exists() else ""
-        lessons = []
-        for path in study_files(module):
-            body = path.read_text(encoding="utf-8")
-            title = re.search(r"^#\s+(.+)", body, re.M)
-            day = re.search(r"Day\s*(\d+)", path.stem, re.I)
-            stamp = re.match(r"(\d{4}-\d{2}-\d{2})", path.name)
-            if not stamp:
-                stamp = re.search(r"日期[：:]\s*(\d{4}-\d{2}-\d{2})", body.replace("**", ""))
-            # English has an explicit completion column. Expression has no
-            # lesson-level completion contract, so never infer it from a check-in.
-            status = "待本人反馈"
-            if module == "yingyu" and day:
-                rows = []
-                for line in record_text.splitlines():
-                    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-                    if len(cells) >= 3 and re.fullmatch(r"Day\s*0*" + str(int(day[1])), cells[1], re.I):
-                        rows.append(cells)
-                if len(rows) == 1:
-                    status = rows[0][2] or status
-            completed = status.startswith(("已完成", "已学习")) or status in ("完成", "✅", "[x]", "[X]")
-            lessons.append({"filename": path.name, "topic": title[1] if title else path.stem,
-                            "date": stamp[1] if stamp else "", "learning_label": status,
-                            "learning_state": "completed" if completed else "unknown"})
-        modules.append({"id": module, "name": name, "duration": duration, "lessons": lessons})
-    return {"modules": modules}
-
-
-@app.get("/api/study-materials/{module}/{filename}")
-def study_material(module: str, filename: str):
-    path = next((p for p in study_files(module) if p.name == filename), None)
-    if path is None:
-        raise HTTPException(404, "未找到课程")
-    return {"content": path.read_text(encoding="utf-8")}
 
 
 @app.get("/api/knowledge")

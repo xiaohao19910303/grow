@@ -1,9 +1,22 @@
-/* Home learning list reads existing lessons; it never changes completion records. */
+/* Reading never completes a course; only the explicit save action records completion. */
 (() => {
   'use strict';
   let modules = [], errors = [], loaded = false, generation = 0, reading = 0;
   const root = document.getElementById('dailyLearning');
   const reader = document.getElementById('dailyReader');
+  let studyDraft = null;
+  const hasStudyDraft = () => studyDraft && studyDraft.input.value !== studyDraft.saved;
+  window.beforeStudyLeave = () => {
+    if (studyDraft?.saving) { toast('正在保存学习记录，请稍候。'); return false; }
+    if (hasStudyDraft() && !confirm('学习笔记尚未保存，确定离开？')) return false;
+    studyDraft = null;
+    ++reading;
+    stopLearningTimer();
+    return true;
+  };
+  window.addEventListener('beforeunload', event => {
+    if (hasStudyDraft() || studyDraft?.saving) { event.preventDefault(); event.returnValue = ''; }
+  });
 
   // 自动学习时长追踪
   let learningStartTime = null;
@@ -76,6 +89,7 @@
   function button(parent, label, action) {
     const control = node('button', label, 'btn');
     control.type = 'button'; control.onclick = action; parent.append(control);
+    return control;
   }
   function toast(message) {
     const toastEl = document.createElement('div');
@@ -88,13 +102,13 @@
       setTimeout(() => toastEl.remove(), 300);
     }, 2000);
   }
-  async function read(module, lesson) {
+  async function read(module, lesson, continuing = false) {
     if(module.kind==='plan'){ await window.openPlanCourse(module.id, lesson.lesson_no); return; }
-    rememberLearningOrigin();
+    if (!continuing) rememberLearningOrigin();
     if (module.id === 'renzhi') {
       await window.openCopilotLesson(lesson.lesson_no);
       // 开始自动追踪学习时间
-      startLearningTimer(lesson.lesson_no);
+      startLearningTimer(module.id + ':' + lesson.lesson_no);
       return;
     }
     const request = ++reading;
@@ -116,13 +130,14 @@
       reader.append(timerContainer);
 
       // 开始自动追踪学习时间
-      startLearningTimer(lesson.lesson_no);
+      startLearningTimer(module.id + ':' + lesson.lesson_no);
 
-      button(reader, '返回学习列表', () => { ++reading; stopLearningTimer(); returnFromLesson(); });
+      button(reader, '返回学习列表', () => returnFromLesson());
       reader.append(node('h2', lesson.topic));
-      reader.append(node('p', '阅读不会自动标记学完；本模块的完成情况以本地学习记录中的本人反馈为准。', 'desc'));
+      reader.append(node('p', '阅读不会自动标记学完。完成后可在下方保存自己的学习笔记和完成记录。', 'desc'));
       const content = node('div'); reader.append(content);
       window.renderLearningMarkdown(content, data.content);
+      if (['yingyu', 'biaoda'].includes(module.id)) renderStudyRecord(module, lesson, data);
       reader.scrollIntoView({behavior: 'smooth', block: 'start'});
     } catch (error) {
       if (request !== reading) return;
@@ -131,6 +146,62 @@
       button(reader, '返回学习列表', () => { ++reading; returnFromLesson(); });
       button(reader, '重试', () => read(module, lesson));
     }
+  }
+  function renderStudyRecord(module, lesson, data) {
+    let record = data.record, pendingSave = null;
+    const form = node('section', undefined, 'section study-record-form');
+    form.append(node('h3', '我的学习记录'));
+    const status = node('p', record ? `已学完 · ${new Date(record.completed_at).toLocaleString('zh-CN')} · 学习 ${Math.round(record.time_spent_seconds / 60)} 分钟` : '笔记可选，点击保存后才会标记学完。', 'desc');
+    status.setAttribute('role', 'status');
+    form.append(status);
+    const label = node('label', '学习笔记（可选）');
+    const input = node('textarea');
+    input.rows = 5; input.maxLength = 10000; input.value = record?.summary_text || '';
+    input.placeholder = '记录本课收获、练习答案或想继续思考的问题。';
+    input.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin:8px 0 12px;';
+    label.append(input); form.append(label);
+    const draft = {input, saved: input.value, saving: false};
+    studyDraft = draft;
+    const actions = node('div', undefined, 'day-actions'); form.append(actions);
+    const next = button(actions, '继续下一课', async () => {
+      if (hasStudyDraft()) { status.textContent = '请先保存当前笔记。'; return; }
+      const current = modules.find(item => item.id === module.id);
+      const following = current?.lessons.filter(item => item.learning_state !== 'completed').sort((a, b) => a.lesson_no - b.lesson_no)[0];
+      if (following) { studyDraft = null; stopLearningTimer(); await read(current, following, true); }
+    });
+    next.hidden = true;
+    const save = button(actions, record || lesson.learning_state === 'completed' ? '保存学习记录' : '标记学完并保存', async () => {
+      if (draft.saving) return;
+      draft.saving = true; save.disabled = true; next.disabled = true;
+      // Retain uncertain submissions so a lost response can be retried without duplicate records.
+      pendingSave ||= {summary_text: input.value, time_spent_seconds: getElapsedTime(),
+        version: data.lesson.version, revision: record?.revision || 0, key: crypto.randomUUID()};
+      const sent = pendingSave;
+      status.textContent = '正在保存学习记录…';
+      try {
+        const response = await fetch('/api/study-materials/' + module.id + '/' + encodeURIComponent(lesson.filename) + '/learning-record', {
+          method: 'POST', headers: {'Content-Type': 'application/json', 'X-Copilot-Request': '1'}, body: JSON.stringify(sent)
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          if (response.status < 500) pendingSave = null;
+          throw new Error(result.message || result.detail || '保存失败，请重试。');
+        }
+        record = result; pendingSave = null; draft.saved = sent.summary_text;
+        save.textContent = '保存学习记录';
+        await window.loadDailyLearning();
+        const current = modules.find(item => item.id === module.id);
+        const hasNext = current?.lessons.some(item => item.learning_state !== 'completed');
+        next.hidden = !hasNext;
+        next.disabled = hasStudyDraft();
+        status.textContent = hasStudyDraft() ? '上次提交已保存，当前修改尚未保存。' :
+          '已学完，学习记录已保存。' + (hasNext ? '可以继续下一课。' : '本模块已保存课程已全部学完。');
+      } catch (error) {
+        status.textContent = '保存未完成，笔记仍保留：' + error.message;
+      } finally { draft.saving = false; save.disabled = false; }
+    });
+    input.oninput = () => { next.disabled = hasStudyDraft(); };
+    reader.append(form);
   }
   function lessonRow(parent, module, lesson) {
     const row = node('div', undefined, 'todo-row lesson-row' + (lesson.learning_state === 'completed' ? ' completed' : ''));
@@ -141,6 +212,9 @@
     button(row, lesson.learning_state==='completed'?'再次阅读':'开始学习', () => read(module, lesson));
     if (module.id === 'renzhi' && lesson.learning_state === 'completed') {
       if (!lesson.completed_at) button(row, '标记完成', () => quickComplete(module, lesson));
+      button(row, '查看记录', () => viewLearningRecord(module, lesson));
+    }
+    if (['yingyu', 'biaoda'].includes(module.id) && lesson.learning_state === 'completed') {
       button(row, '查看记录', () => viewLearningRecord(module, lesson));
     }
     parent.append(row);
@@ -202,12 +276,14 @@
 
   async function viewLearningRecord(module, lesson) {
     try {
-      const response = await fetch('/api/copilot/lessons/' + lesson.lesson_no + '/learning-record');
+      const path = module.id === 'renzhi' ? '/api/copilot/lessons/' + lesson.lesson_no + '/learning-record' :
+        '/api/study-materials/' + module.id + '/' + encodeURIComponent(lesson.filename) + '/learning-record';
+      const response = await fetch(path, {cache: 'no-store'});
       if (!response.ok) throw new Error('加载失败');
       const record = await response.json();
 
       if (!record || !record.lesson_no) {
-        alert('该课程暂无学习记录。');
+        alert('该课程暂无网页学习记录，可以打开课程补充笔记。');
         return;
       }
 
@@ -218,7 +294,7 @@
       const content = document.createElement('div');
       content.className = 'learning-record-content';
 
-      content.append(node('h3', `第${String(lesson.lesson_no).padStart(3, '0')}课学习记录`));
+      content.append(node('h3', `${module.name} · 第${String(lesson.lesson_no).padStart(3, '0')}课学习记录`));
 
       if (record.completed_at) {
         content.append(node('p', `完成时间：${new Date(record.completed_at).toLocaleString('zh-CN')}`, 'desc'));
@@ -252,6 +328,7 @@
       closeBtn.textContent = '关闭';
       closeBtn.className = 'btn';
       closeBtn.onclick = () => dialog.close();
+      dialog.addEventListener('close', () => dialog.remove(), {once: true});
       content.append(closeBtn);
 
       dialog.append(content);

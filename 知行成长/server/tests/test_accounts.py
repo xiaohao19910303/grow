@@ -100,6 +100,37 @@ class AccountIntegrationTests(unittest.TestCase):
     def login(self, username, password='user-password-123'):
         return self.client.post('/api/auth/login', json={'username':username,'password':password}, headers=self.headers)
 
+    def test_bundled_course_content_is_shared_but_progress_and_notes_are_private(self):
+        root = Path(os.environ['LEARN_ROOT'])
+        for name, folder in [('英文阅读', '每日文章'), ('结构化表达', '每日练习')]:
+            directory = root / name / folder
+            directory.mkdir(parents=True)
+            (directory / 'Day 001.md').write_text('# Shared lesson\n\nBundled public teaching content.')
+        (root / '英文阅读/学习记录.md').write_text('| Date | Day | Status |\n| 2026-10-12 | Day001 | 已完成 |')
+        self.assertEqual(self.client.get('/api/study-materials').status_code, 401)
+        self.login('owner', os.environ['APP_PASSWORD'])
+        path = '/api/study-materials/biaoda/Day%20001.md'
+        version = self.client.get(path).json()['lesson']['version']
+        body = dict(version=version, revision=0, key='owner-completion', summary_text='OWNER PRIVATE NOTE', time_spent_seconds=60)
+        owner = self.post(path + '/learning-record', body)
+        alice = self.register('alice')
+        material = self.client.get(path).json()
+        self.assertEqual(material['content'], '# Shared lesson\n\nBundled public teaching content.')
+        self.assertIsNone(material['record'])
+        english = self.client.get('/api/study-materials').json()['modules'][0]['lessons'][0]
+        self.assertEqual(english['learning_state'], 'unknown', 'New users must not inherit owner Markdown progress')
+        self.assertEqual(self.client.post(path + '/learning-record', json={**body, 'revision': owner['revision']}, headers=self.headers).status_code, 409)
+        self.post(path + '/learning-record', {**body, 'key': 'alice-completion', 'summary_text': 'ALICE PRIVATE NOTE'})
+        self.register('bob')
+        self.assertIsNone(self.client.get(path + '/learning-record').json())
+        self.assertEqual(self.client.get('/api/study-materials').json()['modules'][1]['lessons'][0]['learning_state'], 'unknown')
+        self.login('alice')
+        self.assertEqual(self.client.get(path + '/learning-record').json()['summary_text'], 'ALICE PRIVATE NOTE')
+        self.login('owner', os.environ['APP_PASSWORD'])
+        self.assertEqual(self.client.get(path + '/learning-record').json()['summary_text'], 'OWNER PRIVATE NOTE')
+        self.assertEqual(self.client.get('/api/study-materials').json()['modules'][0]['lessons'][0]['learning_state'], 'completed')
+        self.assertNotIn('PRIVATE NOTE', json.dumps({k: v.commits for k, v in self.repositories.items()}))
+
     def test_registration_requires_an_invitation_and_anonymous_cannot_invite(self):
         response = self.client.post('/api/auth/register',json={'username':'outsider','password':'user-password-123'},headers=self.headers)
         self.assertEqual(response.status_code,403,response.text)
