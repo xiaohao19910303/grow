@@ -55,6 +55,15 @@ class CloudFixture(PostgreSQLFixture):
 
 
 class LegacyCloudContentTests(CloudFixture):
+    def test_document_snapshot_refreshes_after_commit_within_same_lock(self):
+        path=MODULE+'/学习记录.md'
+        with self.course.documents.lock():
+            before=self.course.documents.hash(path)
+            self.course.documents.publish('snapshot-update',{'update':True},{path:'PRIVATE UPDATED RECORD'},expected={path:before})
+            self.assertNotEqual(self.course.documents.hash(path),before)
+            self.assertEqual(self.course.documents.read(path),'PRIVATE UPDATED RECORD')
+        self.assertEqual(self.course.documents.read(path),'PRIVATE UPDATED RECORD')
+
     def test_import_retains_originals_and_never_publishes_private_state(self):
         aid=self.source_article()
         (self.root/'认知阅读/文章资料'/aid/'我的笔记.md').write_text('PRIVATE INLINE NOTE')
