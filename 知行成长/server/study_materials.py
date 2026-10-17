@@ -18,7 +18,11 @@ MODULES = {
 
 
 def initialize():
+    from cloud_content import TABLES
     with db.connect() as c:
+        c.executescript(TABLES)
+        c.executescript('''CREATE TABLE IF NOT EXISTS study_generated_courses (id TEXT PRIMARY KEY,data TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS study_generation_jobs (id TEXT PRIMARY KEY,data TEXT NOT NULL);''')
         c.executescript('''CREATE TABLE IF NOT EXISTS study_learning_records (
             module_id TEXT NOT NULL CHECK(module_id IN ('yingyu','biaoda')),
             filename TEXT NOT NULL, lesson_no INTEGER NOT NULL CHECK(lesson_no>0),
@@ -50,6 +54,9 @@ class Materials:
     def __init__(self, root):
         self.root = Path(root).resolve()
 
+    def conn(self):
+        return db.connect()
+
     def files(self, module):
         if module not in MODULES:
             raise HTTPException(404, '未找到学习模块。')
@@ -73,6 +80,8 @@ class Materials:
         with db.connect() as c:
             records = {r['filename']: public_record(r) for r in c.execute(
                 'SELECT * FROM study_learning_records WHERE module_id=?', (module,)).fetchall()}
+            generated = [json.loads(r[0]) for r in c.execute(
+                "SELECT data FROM study_generated_courses WHERE data::jsonb->>'module_id'=?", (module,)).fetchall()]
         result = []
         for index, path in enumerate(self.files(module), 1):
             body = path.read_text(encoding='utf-8')
@@ -95,6 +104,12 @@ class Materials:
                            'version': hashlib.sha256(body.encode()).hexdigest(),
                            'record_revision': record['revision'] if record else 0,
                            'completed_at': record['completed_at'] if record else None})
+        for course in generated:
+            record = records.get(course['filename'])
+            result.append({**course, 'date': '', 'learning_state': 'completed' if record else 'unknown',
+                           'learning_label': '本人确认完成' if record else '待本人反馈',
+                           'record_revision': record['revision'] if record else 0,
+                           'completed_at': record['completed_at'] if record else None})
         return sorted(result, key=lambda x: x['lesson_no'])
 
     def lesson(self, module, filename):
@@ -103,7 +118,14 @@ class Materials:
         lesson = next((x for x in self.lessons(module) if x['filename'] == filename), None)
         if lesson is None:
             raise HTTPException(404, '未找到课程。')
-        body = (self.root / MODULES[module][0] / MODULES[module][1] / filename).read_text(encoding='utf-8')
+        if lesson.get('content_path'):
+            from cloud_content import Documents
+            documents = Documents(self)
+            body = documents.read(lesson['content_path'])
+            metadata = documents.metadata(lesson['content_path'])
+            lesson['github_url'] = documents.content.url(lesson['content_path'], metadata['commit_sha'])
+        else:
+            body = (self.root / MODULES[module][0] / MODULES[module][1] / filename).read_text(encoding='utf-8')
         lesson['version'] = hashlib.sha256(body.encode()).hexdigest()
         return {'content': body, 'lesson': lesson, 'record': self.record(module, filename)}
 
@@ -139,15 +161,25 @@ class Materials:
 
 def register(app, root):
     materials = Materials(root)
+    from study_generation import MaterialGenerator, install_routes
+    from tenancy import scoped
+    materials.generator = scoped(app, lambda: MaterialGenerator(materials))
 
-    def private(response: Response):
+    def private(response: Response, request: Request):
         response.headers['Cache-Control'] = 'no-store'
+        origin = f'{request.url.scheme}://{request.url.netloc}'
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and (
+                request.headers.get('X-Copilot-Request') != '1'
+                or request.headers.get('Origin', origin) != origin
+                or request.headers.get('Sec-Fetch-Site') == 'cross-site'):
+            raise HTTPException(403, '保存和生成课程需要同源请求。')
 
     router = APIRouter(prefix='/api/study-materials', dependencies=[Depends(private)])
 
     @router.get('')
     def modules():
-        return {'modules': [{'id': module, 'name': name, 'duration': duration, 'lessons': materials.lessons(module)}
+        return {'modules': [{'id': module, 'name': name, 'duration': duration, 'lessons': materials.lessons(module),
+                             'generation': materials.generator.latest(module)}
                             for module, (name, _, duration) in MODULES.items()]}
 
     @router.get('/learning-history')
@@ -159,6 +191,8 @@ def register(app, root):
                 ORDER BY completed_at DESC,module_id,lesson_no''',
                 (start.isoformat(), (end + timedelta(days=1)).isoformat())).fetchall()
         return {'total': len(rows), 'items': [public_record(r) for r in rows]}
+
+    install_routes(router, materials.generator)
 
     @router.get('/{module}/{filename}')
     def lesson(module: str, filename: str):

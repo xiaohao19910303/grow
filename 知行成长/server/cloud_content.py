@@ -2,6 +2,7 @@
 import json
 import os
 import posixpath
+import re
 import threading
 from contextlib import contextmanager
 from pathlib import PurePosixPath
@@ -11,6 +12,7 @@ from copilot.core import digest, encoded, fail, now, Problem
 from plans.github import GitHubContent
 
 ROOTS = ('每日认知与通识学习','认知阅读')
+GENERATED_ROOTS = ('英文阅读','结构化表达')
 TABLES = '''
 CREATE TABLE IF NOT EXISTS cloud_documents (path TEXT PRIMARY KEY,data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS cloud_publications (id TEXT PRIMARY KEY,data TEXT NOT NULL);
@@ -22,7 +24,7 @@ CREATE TABLE IF NOT EXISTS cloud_file_imports (id TEXT PRIMARY KEY,data TEXT NOT
 def valid_path(path):
     if (not isinstance(path,str) or PurePosixPath(path).is_absolute() or
         '..' in PurePosixPath(path).parts or '\\' in path or any(ord(c)<32 for c in path) or
-        str(PurePosixPath(path))!=path or path.split('/')[0] not in ROOTS):
+        str(PurePosixPath(path))!=path or path.split('/')[0] not in ROOTS + GENERATED_ROOTS):
         fail('invalid','资料路径无效。',422)
     return path
 
@@ -33,6 +35,8 @@ def is_formal(path):
     if not path.endswith('.md'):return False
     if parts[0]=='每日认知与通识学习':
         return parts[1] in ('每日课程','参考资料','备课资料') or '/'.join(parts[1:]) in ('学习规划.md','课程主题规划.md','课程目录.md')
+    if parts[0] in ('英文阅读','结构化表达'):
+        return len(parts)==3 and parts[1]=='网页课程' and bool(re.fullmatch(r'第\d{3,}课\.md',parts[2]))
     return len(parts)==4 and parts[1]=='文章资料' and parts[3] in ('原文.md','中文导读.md','详细总结.md','英语学习.md')
 
 

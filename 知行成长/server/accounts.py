@@ -268,7 +268,7 @@ class Accounts:
                 lock_id = int(digest(user['schema_name'] + ':' + name)[:15], 16)
                 if not c.execute('SELECT pg_try_advisory_xact_lock(?)', (lock_id,)).fetchone()[0]:
                     fail('busy', '生成或发布进行中，请完成后再修改存储配置。')
-            for table, column in (('learning_ai_attempts', 'state'), ('reflection_ai_attempts', 'status')):
+            for table, column in (('learning_ai_attempts', 'state'), ('reflection_ai_attempts', 'status'), ('study_generation_jobs', 'state')):
                 if c.execute('SELECT to_regclass(?)', (table,)).fetchone()[0]:
                     active = c.execute(f"SELECT COUNT(*) FROM {table} WHERE data::jsonb->>'{column}' IN ('queued','generating')").fetchone()[0]
                     if active: fail('busy', '生成进行中，请完成或取消后再修改存储配置。')
