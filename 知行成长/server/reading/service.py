@@ -104,7 +104,7 @@ class Reader:
                 for a in j['candidates']:
                     j['phase']=f'正在获取原文：{a["title"][:30]}';self.store.put(TABLE,jid,j)
                     content=await fetch_article_content(a['url'])
-                    if content:a['full_content']=content
+                    if content:a.update(full_content=content,content_version=2,content_saved_at=now())
                 for a in j['candidates']:a.update(checked_at=now(),heat='热度未核实',reason='符合所选主题；'+('长期阅读价值，经典目录推荐' if a['category']=='classic' else '来自已配置来源、最近30天发表；建议先核对摘要'))
                 if len(j['candidates'])<p['count']:j['warnings'].append(f'本次找到{len(j["candidates"])}篇符合条件且未保存的文章，少于目标{p["count"]}篇；没有用旧闻或重复文章凑数。')
                 if not j['candidates']:fail('empty','没有符合条件的新文章。可调整主题、语言、类型或稍后重新搜集。')
@@ -151,7 +151,7 @@ class Reader:
                 j['phase']='正在获取文章原文';self.store.put(TABLE,jid,j)
                 content=await fetch_article_content(a['url'])
                 if not content or len(content)<100:
-                    fail('incomplete','文章内容获取失败或内容过短。')
+                    fail('incomplete','未能取得可阅读的正文，来源可能限制访问或暂时不可用。已保存的摘要、正文和笔记均保留，可在本站重试。')
                 # Save to local file
                 self.store.save_full_text(ctx['article_id'],content)
                 j.update(state='ready',phase='文章已保存',article_id=ctx['article_id'])

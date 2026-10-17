@@ -21,6 +21,9 @@
 .article-content-box h3,.article-summary-box h3,.article-english-box h3,.article-guide-box h3{margin:0 0 16px 0;font-size:18px;color:var(--text,#1a1a1a)}
 .article-full-content{line-height:1.8;font-size:15px;max-width:100%;overflow-wrap:break-word}
 .article-full-content p{margin:12px 0}
+.reading-source-link{display:inline-block;margin:8px 12px 8px 0;color:var(--muted);font-size:13px}
+.article-full-content .cp-reader{max-width:72ch;margin:auto;line-height:1.95;font-size:16px}
+@media(max-width:520px){.article-content-box{padding:14px}.article-full-content .cp-reader{font-size:16px}}
 .article-full-content h1,.article-full-content h2,.article-full-content h3,.article-full-content h4{margin:20px 0 12px 0;font-weight:600}
 .article-full-content h1{font-size:24px}
 .article-full-content h2{font-size:20px}

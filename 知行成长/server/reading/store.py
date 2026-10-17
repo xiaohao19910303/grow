@@ -354,6 +354,8 @@ class ReadingStore(Plans):
             a['hashes'][rel]=digest(full_content)
             # Also save to full_content field in article record
             a['full_content']=content
+            a['content_version']=2
+            a['content_saved_at']=now()
             self.export({rel:full_content},[a],expected);return a
     def archive_article(self,aid):
         """归档文章（不删除，可恢复）。"""

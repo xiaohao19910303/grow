@@ -71,7 +71,10 @@ def register(app,root,db):
                 'guide':file.read_text() if file.exists() else None,
                 'summary':summary_file.read_text() if summary_file.exists() else None,
                 'english_learning':english_file.read_text() if english_file.exists() else None,
-                'full_text':full_text_file.read_text() if full_text_file.exists() else None,
+                'full_text':a.get('full_content') or (full_text_file.read_text() if full_text_file.exists() else None),
+                'content_needs_refresh':a.get('content_version') != 2 and a.get('import_method') not in ('paste','url'),
+                'content_job':next((public_job(j) for j in sorted(store.jobs(),key=lambda j:j['created_at'],reverse=True)
+                                    if j.get('kind')=='fetch_full' and (j.get('context') or {}).get('article_id')==aid),None),
                 'path':str(file)}
     @router.post('/articles/{aid}/personal')
     def personal(aid:str,body:Payload):return store.update_personal(aid,body.data)
