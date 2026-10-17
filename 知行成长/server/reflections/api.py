@@ -1,4 +1,5 @@
 """日常复盘路由：低门槛记录、独立保存、按需 AI 辅助。"""
+from tenancy import scoped, learning_root, runtime_root
 import json
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -52,8 +53,8 @@ class AdoptPayload(BaseModel):
 
 
 def register(app, root, db):
-    store = ReflectionsStore(root, db)
-    assistant = ReflectionAssistant(store)
+    store = scoped(app, lambda: ReflectionsStore(learning_root(root), runtime_root(db)), initialize=True)
+    assistant = scoped(app, lambda: ReflectionAssistant(store))
     router = APIRouter(prefix='/api/reflections')
 
     @app.middleware('http')

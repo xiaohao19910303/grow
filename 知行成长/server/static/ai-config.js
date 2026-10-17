@@ -1,10 +1,20 @@
 /* AI credentials belong to this browser origin, never the application database. */
 (() => {
-  const storageKey = 'zhixing-ai-config-v1';
+  const legacyKey = 'zhixing-ai-config-v1';
+  function storageKey() {
+    const user = window.Account?.user;
+    if (!user) return null;
+    const key = legacyKey + ':' + user.id;
+    if (user.is_owner && !localStorage.getItem(key) && localStorage.getItem(legacyKey)) {
+      localStorage.setItem(key, localStorage.getItem(legacyKey));
+      localStorage.removeItem(legacyKey);
+    }
+    return key;
+  }
   const missing = '请先在「设置与数据」中保存自己的 Base URL、API Key 和模型名称。';
   function read() {
     try {
-      const value = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      const value = JSON.parse((storageKey() && localStorage.getItem(storageKey())) || '{}');
       return Object.fromEntries(['api_base_url', 'api_key', 'model_name'].map(k => [k, typeof value?.[k] === 'string' ? value[k] : '']));
     } catch (_) { return {api_base_url: '', api_key: '', model_name: ''}; }
   }
@@ -22,12 +32,14 @@
     save: value => {
       const clean = Object.fromEntries(['api_base_url', 'api_key', 'model_name'].map(k => [k, String(value[k] || '').trim()]));
       validate(clean);
-      try { localStorage.setItem(storageKey, JSON.stringify(clean)); }
+      try { const key = storageKey();
+        if (!key) throw new Error('请先登录。');
+        localStorage.setItem(key, JSON.stringify(clean)); }
       catch (_) { throw new Error('浏览器不允许保存配置，请检查站点存储权限。'); }
       window.dispatchEvent(new Event('ai-config-changed'));
     },
     clear: () => {
-      localStorage.removeItem(storageKey);
+      if (storageKey()) localStorage.removeItem(storageKey());
       window.dispatchEvent(new Event('ai-config-changed'));
     },
   };

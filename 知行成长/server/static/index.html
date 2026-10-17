@@ -142,6 +142,7 @@
 <link rel="stylesheet" href="/static/reflections.css?v=1">
 <link rel="stylesheet" href="/static/stocks.css?v=1">
 <link rel="stylesheet" href="/static/learning-history.css?v=1">
+<link rel="stylesheet" href="/static/account.css">
 </head>
 <body>
 
@@ -155,6 +156,8 @@
     </div>
   </div>
   <div class="toolbar">
+    <span id="accountName" class="badge" aria-label="当前账号"></span>
+    <button class="btn" onclick="Account.logout()">退出登录</button>
     <span class="badge" id="storageStatus" role="status">连接中…</span>
     <button class="btn" onclick="goTab('settings')">设置</button>
   </div>
@@ -178,11 +181,23 @@
   </nav>
   <div id="view-settings" style="display:none" class="section">
     <h2>设置与数据</h2><p class="desc">记录会自动保存。需要时可手动重试保存或导出备份。</p>
+    <section class="account-settings" aria-labelledby="invitationsTitle">
+      <h2 id="invitationsTitle">邀请其他人</h2>
+      <p class="desc">只有获得邀请才能注册。每个链接限一人使用，7 天内有效；对方注册后也可以邀请其他人。</p>
+      <button class="btn primary" id="invitationCreate">生成邀请链接</button>
+      <div id="invitationResult" class="github-fields" hidden>
+        <label for="invitationLink">邀请链接<input id="invitationLink" type="text" readonly autocomplete="off"></label>
+        <div><button class="btn" id="invitationCopy">复制邀请链接</button></div>
+        <p class="desc">链接仅在生成时显示，请复制后发给受邀人。</p>
+      </div>
+      <p id="invitationStatus" class="github-status" role="status" aria-live="polite"></p>
+      <div id="invitationList" class="invitation-list"></div>
+    </section>
     <div class="cp-actions"><button class="btn" onclick="saveToServer()">立即保存</button><button class="btn" onclick="exportJson()">导出 JSON</button></div>
     <details><summary>重置记录</summary><p>清空成长记录前，请先导出备份。</p><button class="btn danger" onclick="resetData()">重置</button></details>
     <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
     <h2 style="font-size:18px;margin:0 0 8px">课程生成配置</h2>
-    <p class="desc">配置仅保存在当前浏览器，换浏览器或清除站点数据后需重新填写。生成和测试时经后端临时调用，不保存到远端数据库。已有内容无需配置即可阅读。</p>
+    <p class="desc">配置按账号保存在当前浏览器，换浏览器或清除站点数据后需重新填写。生成和测试时经后端临时调用，不保存到远端数据库。已有内容无需配置即可阅读。</p>
     <div id="apiSettingsForm" class="cp-settings-form">
       <div class="field-row" style="flex-direction:column">
         <label>API Base URL<input type="text" id="apiBaseUrl" placeholder="https://api.example.com/v1"></label>
@@ -196,6 +211,22 @@
       <div id="apiStatus" style="font-size:13px;color:var(--muted)"></div>
       <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="testApiConnection()">测试连接</button><button class="btn" onclick="loadApiSettings()">读取本地配置</button><button class="btn" onclick="clearApiSettings()">清除本地配置</button></div>
     </div>
+    <section class="account-settings" aria-labelledby="githubTitle">
+      <h2 id="githubTitle">GitHub 内容存储</h2>
+      <p class="desc">生成的学习规划、正式课程和参考资料存入 GitHub，个人记录与反馈保存在账号数据库中。默认沿用平台当前仓库，也可连接自己的仓库。</p>
+      <div class="github-fields">
+        <label for="githubMode">存储位置<select id="githubMode"><option value="default">使用平台默认配置</option><option value="custom">使用我的 GitHub 仓库</option></select></label>
+        <div id="githubCustomFields" hidden>
+          <label for="githubRepository">仓库<input id="githubRepository" placeholder="用户名/仓库名" autocomplete="off" maxlength="160"></label>
+          <label for="githubBranch">分支<input id="githubBranch" value="main" autocomplete="off" maxlength="160"></label>
+          <label for="githubToken">GitHub Token<input id="githubToken" type="password" autocomplete="off" maxlength="1000" placeholder="填写仅授权该仓库的 Token"></label>
+          <p class="desc">使用 fine-grained Token，仅授予该仓库 Contents 读写权限。Token 加密保存到服务端，不会回传浏览器。</p>
+        </div>
+      </div>
+      <p class="desc">公开仓库中的课程可被他人访问，需要私密课程时请使用私有仓库。已有正式计划后，更换仓库或分支需要先迁移内容；仍可更新 Token。</p>
+      <p id="githubStatus" class="github-status" role="status" aria-live="polite">进入设置后读取存储配置。</p>
+      <div class="cp-actions"><button class="btn primary" id="githubSave">保存存储配置</button><button class="btn" id="githubTest">测试连接</button></div>
+    </section>
   </div>
   <div id="view-library" style="display:none" class="section">
     <div class="section-heading"><div><h2>我的课程</h2><p class="desc">按模块继续学习，学习状态以本人反馈为准。</p></div><button class="btn" onclick="window.loadDailyLearning()">刷新课程</button></div>
@@ -414,23 +445,9 @@
 <div class="overlay" id="overlay"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="/static/account.js?v=20261017"></script>
 <script src="/static/ai-config.js?v=20261017"></script>
 <script>
-/* 局域网模式的凭证只保留在当前标签页。 */
-const nativeFetch = window.fetch.bind(window);
-let lanAccessToken = '';
-window.fetch = async (input, options = {}) => {
-  const url = new URL(typeof input === 'string' ? input : input.url, location.href);
-  if (url.origin !== location.origin || !url.pathname.startsWith('/api/')) return nativeFetch(input, options);
-  const headers = new Headers(options.headers || {});
-  if (lanAccessToken) headers.set('X-Copilot-Token', lanAccessToken);
-  let response = await nativeFetch(input, {...options, headers});
-  if (response.status === 403 && !['localhost','127.0.0.1','[::1]'].includes(location.hostname)) {
-    const token = prompt('局域网访问凭证（仅用于当前页面）：');
-    if (token) { lanAccessToken = token; headers.set('X-Copilot-Token', token); response = await nativeFetch(input, {...options, headers}); }
-  }
-  return response;
-};
 /* ================= 工具 ================= */
 const DAY = 86400000;
 const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
@@ -470,7 +487,7 @@ async function loadFromServer(){
     }
     state = d; dataLoaded = true; legacyConflict = false;
     document.getElementById('legacyConflict').hidden = true;
-    refreshModuleNames(); setStatus('已连接数据库','on'); render(); return true;
+    refreshModuleNames(); setStatus('已连接个人数据库','on'); render(); return true;
   }catch(e){ setStatus('读取失败，本地修改未替换','err'); return false; }
 }
 let saveTimer = null, saveInFlight = false, legacyConflict = false, editGeneration = 0;
@@ -519,12 +536,13 @@ async function saveToServer(){
       }
     }
     state._revision = d.state._revision; saved = true;
-    setStatus(editGeneration === generation ? '已保存 · 数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
+    setStatus(editGeneration === generation ? '已保存 · 个人数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
   }catch(e){ setStatus('保存失败 · 本地修改保留，请重试；若有冲突请先导出副本','err'); }
   finally{
     saveInFlight = false;
     if(saved && editGeneration !== generation) saveTimer = setTimeout(saveToServer, 0);
   }
+  return saved;
 }
 function setStatus(txt, cls){ const el=document.getElementById('storageStatus'); el.textContent=txt; el.className='badge'+(cls?(' '+cls):''); }
 function exportJson(){
@@ -1837,7 +1855,7 @@ async function scanKnowledge(){
     const r = await fetch('/api/knowledge/scan', {method:'POST'});
     const j = await r.json();
     await loadKnowledge();
-    setStatus('已保存 · 数据库','on');
+    setStatus('已保存 · 个人数据库','on');
     toast('扫描完成，共 '+j.count+' 个节点');
   }catch(e){ setStatus('扫描失败','err'); }
 }
@@ -1933,7 +1951,7 @@ function goTab(name, options={}){
   if(name==='ai-report') renderAIReports();
   if(name==='knowledge') renderKnowledgeGraph();
   if(name==='overview'){ renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
-  if(name==='settings') loadApiSettings();
+  if(name==='settings') { loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='stocks') window.initStocksModule?.();
 }
@@ -2067,7 +2085,8 @@ let toastTimer=null;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2400); }
 
 /* ================= 初始化 ================= */
-function init(){
+async function init(){
+  await Account.ready;
   document.getElementById('todayLabel').textContent=fmtDateFull(today())+' · '+WEEKCN[(new Date().getDay()+6)%7];
   const hd=document.getElementById('habitDate'); if(hd){ hd.value=today(); hd.addEventListener('change', renderHabits); }
   document.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='s'){ e.preventDefault(); saveToServer(); } });

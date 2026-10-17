@@ -1,6 +1,6 @@
 """知行成长 · 云端服务端（FastAPI + PostgreSQL）
 
-- 单用户应用，采用带快照修订的 state 同步：前端 GET /api/data 读取状态与修订，
+- 多用户应用，按账号隔离 PostgreSQL schema，采用带快照修订的 state 同步：前端 GET /api/data 读取状态与修订，
   PUT /api/data 在同一事务内校验修订并保存，保留既有记录ID。
 - 规范化表结构便于后续做 SQL 查询 / 周月报 / 知识图谱。
 - v3：扫描工作区 Markdown 生成知识图谱（knowledge 表）+ 周报/月报汇总。
@@ -14,9 +14,10 @@ import db
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
+from threading import RLock
+from tenancy import learning_root, shutdown_all
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -296,7 +297,7 @@ def parse_thinking_tools(directory: Path):
             if m:
                 name = re.sub(r"[（(].*?[）)]\s*$", "", m.group(1).strip()).strip()
                 nodes.append({"name": name, "category": "思维工具", "summary": stage_name,
-                              "source": str(f.relative_to(LEARN_ROOT)), "kind": "tool", "date": ""})
+                              "source": str(f.relative_to(learning_root(LEARN_ROOT))), "kind": "tool", "date": ""})
     return nodes
 
 
@@ -304,9 +305,9 @@ def parse_footprints():
     """解析课程/文章/练习文件名 → 学习足迹节点。"""
     nodes = []
     patterns = [
-        (LEARN_ROOT / "每日认知与通识学习" / "每日课程", "认知课程"),
-        (LEARN_ROOT / "英文阅读" / "每日文章", "英文阅读"),
-        (LEARN_ROOT / "结构化表达" / "每日练习", "结构化表达"),
+        (learning_root(LEARN_ROOT) / "每日认知与通识学习" / "每日课程", "认知课程"),
+        (learning_root(LEARN_ROOT) / "英文阅读" / "每日文章", "英文阅读"),
+        (learning_root(LEARN_ROOT) / "结构化表达" / "每日练习", "结构化表达"),
     ]
     for d, cat in patterns:
         if not d.exists():
@@ -321,16 +322,16 @@ def parse_footprints():
             if not title:
                 title = name
             nodes.append({"name": title, "category": cat, "summary": "",
-                          "source": str(f.relative_to(LEARN_ROOT)), "kind": "footprint", "date": date_s})
+                          "source": str(f.relative_to(learning_root(LEARN_ROOT))), "kind": "footprint", "date": date_s})
     return nodes
 
 
 def scan_markdown():
     nodes = []
-    idx = LEARN_ROOT / "知识索引.md"
+    idx = learning_root(LEARN_ROOT) / "知识索引.md"
     if idx.exists():
         nodes += parse_index(idx)
-    tt = LEARN_ROOT / "现代思维工具教程"
+    tt = learning_root(LEARN_ROOT) / "现代思维工具教程"
     if tt.exists():
         nodes += parse_thinking_tools(tt)
     nodes += parse_footprints()
@@ -435,6 +436,7 @@ def build_report(days: int):
 async def lifespan(app: FastAPI):
     if not getattr(plans_store,'remote',False) and (plans_store.runtime / 'restore-pending.json').exists():
         raise RuntimeError('存在未完成的学习计划恢复，请先核对恢复日志。')
+    accounts.initialize()
     init_db()
     from legacy_migrations import migrate as migrate_legacy_tables
     try:
@@ -515,12 +517,11 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        await plans_generator.shutdown()
-        await reflections_assistant.shutdown()
-        await reading_service.shutdown()
+        await shutdown_all()
 
 
 app = FastAPI(title="知行成长", lifespan=lifespan)
+app.state.multiuser = True
 
 @app.middleware('http')
 async def legacy_module_readiness(request: Request, call_next):
@@ -531,15 +532,6 @@ async def legacy_module_readiness(request: Request, call_next):
                                  'message':'该旧模块的数据表尚未完成迁移，原数据保留，请先核对表结构。'},status_code=503)
     return await call_next(request)
 
-
-# 添加 CORS 中间件（允许跨域访问）
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 copilot_store = register_copilot(app, LEARN_ROOT, DB_PATH)
 plans_store, plans_generator = register_plans(app, LEARN_ROOT, DB_PATH)
@@ -606,17 +598,17 @@ def study_files(module):
     if module not in STUDY_MODULES:
         raise HTTPException(404, "未找到学习模块")
     name, folder, _ = STUDY_MODULES[module]
-    directory = (LEARN_ROOT / name / folder).resolve()
+    directory = (learning_root(LEARN_ROOT) / name / folder).resolve()
     return [p for p in sorted(directory.glob("*.md"))
             if p.is_file() and p.resolve().is_relative_to(directory)
-            and p.resolve().is_relative_to(LEARN_ROOT.resolve())]
+            and p.resolve().is_relative_to(learning_root(LEARN_ROOT).resolve())]
 
 
 @app.get("/api/study-materials")
 def study_materials():
     modules = []
     for module, (name, _, duration) in STUDY_MODULES.items():
-        record = LEARN_ROOT / name / "学习记录.md"
+        record = learning_root(LEARN_ROOT) / name / "学习记录.md"
         record_text = record.read_text(encoding="utf-8") if record.exists() else ""
         lessons = []
         for path in study_files(module):
@@ -676,3 +668,31 @@ def index():
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+_prepared_users = set()
+_prepare_lock = RLock()
+
+
+def prepare_user(user):
+    with _prepare_lock:
+        if user['id'] not in _prepared_users and not user['is_owner']:
+            init_db()
+            # New accounts start empty and never import the owner's files or snapshots.
+            with get_conn() as conn:
+                for module in DEFAULT_MODULES:
+                    conn.execute('INSERT INTO modules VALUES (?,?,?,?) ON CONFLICT(id) DO NOTHING',
+                                 (module['id'], module['name'], module['color'], module['order']))
+            if os.getenv('PLAN_CONTENT_BACKEND', 'local') != 'github':
+                learning_root(LEARN_ROOT).mkdir(parents=True, exist_ok=True)
+        _prepared_users.add(user['id'])
+    # Initialize in the request's worker thread, before synchronous module
+    # middleware accesses these proxies on the event loop.
+    for module in (plans_store, copilot_store, reading_store, reflections_store,
+                   behavior_store, error_store, behavior_report_store,
+                   knowledge_graph_store, stocks_store):
+        module.resolve()
+
+
+from accounts import install as install_accounts
+accounts = install_accounts(app, STATIC_DIR, prepare_user)

@@ -91,11 +91,16 @@ class ReflectionsStore:
             with c:
                 yield c
 
+    def lock_id(self, name):
+        from tenancy import current_user
+        user = current_user.get()
+        return int(digest((user['schema_name'] + ':' if user else '') + name)[:15], 16)
+
     @contextmanager
     def lock(self):
         if self.remote:
             with self.conn() as c:
-                c.execute('SELECT pg_advisory_xact_lock(?)', (int(digest('reflection-writes')[:15], 16),))
+                c.execute('SELECT pg_advisory_xact_lock(?)', (self.lock_id('reflection-writes'),))
                 yield
             return
         if not self.root.is_dir():
@@ -112,7 +117,7 @@ class ReflectionsStore:
     def generation_gate(self):
         if self.remote:
             with self.conn() as c:
-                acquired = c.execute('SELECT pg_try_advisory_xact_lock(?)', (int(digest('learning-plan-generation')[:15], 16),)).fetchone()[0]
+                acquired = c.execute('SELECT pg_try_advisory_xact_lock(?)', (self.lock_id('learning-plan-generation'),)).fetchone()[0]
                 if not acquired:
                     fail('generation_busy', '另一个 AI 任务正在运行。')
                 yield

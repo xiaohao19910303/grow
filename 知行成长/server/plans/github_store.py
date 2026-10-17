@@ -23,7 +23,9 @@ class GitHubPlans(Plans):
         # A dedicated transaction holds the lock while journal writes use separate
         # short transactions. Rollback/disconnect releases it, including via poolers.
         with self.conn() as c:
-            identity = int(digest(name)[:15], 16)
+            from tenancy import current_user
+            user = current_user.get()
+            identity = int(digest((user['schema_name'] + ':' if user else '') + name)[:15], 16)
             fn = 'pg_advisory_xact_lock' if blocking else 'pg_try_advisory_xact_lock'
             result = c.execute(f'SELECT {fn}(?)', (identity,)).fetchone()
             if not blocking and not result[0]: fail('busy', '另一个生成任务正在运行。')
@@ -72,10 +74,12 @@ class GitHubPlans(Plans):
         fail('github_storage', 'GitHub 模式不使用本地课程路径。', 409)
 
     def initialize(self):
+        if getattr(self, 'configuration_error', None): raise self.configuration_error
         self.content.validate()
         # Schema installation is additive; never invokes SQLite backup or touches disk.
         with self.conn() as c: c.executescript(TABLES)
         binding = {'repository': self.content.repository, 'branch': self.content.branch}
+        if self.content.prefix: binding['prefix'] = self.content.prefix
         with self.database_lock('learning-plan-publications'):
             stored = [x for x in self.rows('learning_settings') if x['id'] == 'content-storage']
             if stored and stored[0]['binding'] != binding:
@@ -217,6 +221,17 @@ class GitHubPlans(Plans):
 
 def make_store(root, db):
     backend = os.getenv('PLAN_CONTENT_BACKEND', 'local')
-    if backend == 'github': return GitHubPlans(root, db)
+    from tenancy import current_user
+    user = current_user.get()
+    if backend == 'github' or (user and json.loads(user['github_config']).get('mode') == 'custom'):
+        from accounts import content_for
+        try:
+            return GitHubPlans(root, db, content_for(user))
+        except Problem as exc:
+            # Keep login and settings usable when an encryption key is lost;
+            # publishing remains unavailable until the user repairs credentials.
+            store = GitHubPlans(root, db, GitHubContent('', '', ''))
+            store.configuration_error = exc
+            return store
     if backend != 'local': fail('config', 'PLAN_CONTENT_BACKEND 只能为 local 或 github。', 503)
     return Plans(root, db)

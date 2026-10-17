@@ -1,4 +1,5 @@
 """Plan routes; registration has no filesystem or database side effects."""
+from tenancy import scoped, learning_root, runtime_root
 import json
 import uuid
 from fastapi import APIRouter, Request
@@ -24,7 +25,7 @@ def key(data):
 
 
 def register(app, root, db):
-    store=make_store(root,db); generator=PlanGenerator(store)
+    store=scoped(app, lambda: make_store(learning_root(root),runtime_root(db)), initialize=True); generator=scoped(app, lambda: PlanGenerator(store))
     router=APIRouter(prefix='/api/plans')
 
     @app.middleware('http')

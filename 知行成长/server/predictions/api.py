@@ -1,13 +1,14 @@
 """预测校准可视化 — API 路由。"""
 from __future__ import annotations
 
+from tenancy import scoped, learning_root, runtime_root
 from fastapi import APIRouter, FastAPI, HTTPException
 
 from .store import PredictionStats
 
 
 def register(app: FastAPI, root, db_path) -> PredictionStats:
-    stats = PredictionStats(db_path)
+    stats = scoped(app, lambda: PredictionStats(runtime_root(db_path)))
     router = APIRouter(prefix="/api/predictions")
 
     @router.get("/calibration")
