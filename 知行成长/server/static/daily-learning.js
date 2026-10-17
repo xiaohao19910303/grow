@@ -288,6 +288,12 @@
     else errors.push('英文阅读与结构化表达：' + results[1].reason.message);
     if(results[2].status==='fulfilled') modules.push(...results[2].value.plans.map(p=>({id:p.id,kind:'plan',name:p.name,duration:p.brief.minutes+' 分钟',lessons:p.lessons})));
     else errors.push('学习计划：'+results[2].reason.message);
+    modules.forEach(module => {
+      module.lessons = module.lessons.map((lesson, index) => ({
+        ...lesson,
+        lesson_no: lesson.lesson_no || Number((lesson.filename || '').match(/Day\s*(\d+)/i)?.[1]) || index + 1
+      }));
+    });
     loaded = true;
     window.renderDailyLearning();
   };
