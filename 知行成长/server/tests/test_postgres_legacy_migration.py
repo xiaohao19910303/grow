@@ -51,6 +51,18 @@ class LegacyMigration(unittest.TestCase):
             self.assertEqual(store.scan()['generated_count'],2)
             store.initialize()
             self.assertEqual(store.scan()['generated_count'],2)
+    def test_existing_error_types_without_name_constraint_keep_ids_and_gain_compatibility(self):
+        from legacy_migrations import migrate
+        from errors.store import ErrorStore
+        with self.scoped() as c:
+            c.execute('CREATE TABLE error_types (id SERIAL PRIMARY KEY,name TEXT NOT NULL,description TEXT,created_at TEXT)')
+            c.execute("INSERT INTO error_types(name,description) VALUES ('判断偏差','keep existing description')")
+            migrate(c)
+        errors=ErrorStore(Path('/unused'));errors.initialize();errors.initialize()
+        with self.scoped() as c:
+            row=c.execute("SELECT id,description FROM error_types WHERE name='判断偏差'").fetchone()
+            self.assertEqual(tuple(row),(1,'keep existing description'))
+            self.assertEqual(c.execute('SELECT count(*) FROM error_types').fetchone()[0],8)
     def test_ambiguous_nonempty_old_table_is_preserved(self):
         from legacy_migrations import migrate
         with self.scoped() as c:c.execute("INSERT INTO behavior_applications VALUES ('old-id','opaque legacy content')")

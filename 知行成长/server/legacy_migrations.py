@@ -49,4 +49,14 @@ def migrate(c):
         c.execute(f'ALTER TABLE {table} RENAME TO {archive}')
         c.executescript(ddl)
         changed.append(table)
+    if 'name' in columns(c, 'error_types'):
+        unique = c.execute("""SELECT 1 FROM pg_index i
+            JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=ANY(i.indkey)
+            WHERE i.indrelid=to_regclass('error_types') AND i.indisunique AND i.indisvalid
+            AND i.indnatts=1 AND a.attname='name'""").fetchone()
+        if not unique:
+            if c.execute('SELECT 1 FROM error_types GROUP BY name HAVING count(*)>1 LIMIT 1').fetchone():
+                fail('legacy_schema_migration', '旧错误类型存在重名记录，原数据已保留，请先核对名称。', 503)
+            c.execute('CREATE UNIQUE INDEX idx_error_types_name_pg_v1 ON error_types(name)')
+            changed.append('error_types.name')
     return changed
