@@ -3,6 +3,7 @@ import asyncio
 import copy
 import fcntl
 import re
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -70,6 +71,15 @@ class Reader:
         cfg = cfg or config()
         fetch_tasks=[]
         j=self.store.record(jid);j.update(state='running',phase='正在读取来源' if j['kind']=='collect' else '正在准备中文导读');self.store.put(TABLE,jid,j)
+        last_progress_write=None
+        async def progress(phase):
+            nonlocal last_progress_write
+            j['phase']=phase
+            current=time.monotonic()
+            if last_progress_write is None or current-last_progress_write>=1:
+                self.store.put(TABLE,jid,j)
+                last_progress_write=time.monotonic()
+            await asyncio.sleep(0)
         try:
             if j['kind']=='collect':
                 candidates=[];p=j['preferences']
@@ -114,7 +124,7 @@ class Reader:
                         if len(j['raw'])>15000:fail('invalid','总结超出长度限制。')
                         if packet.get('usage'):j['usage']=packet['usage']
                         if packet.get('done'):done=True
-                        j['phase']='正在生成详细总结';self.store.put(TABLE,jid,j)
+                        await progress('正在生成详细总结')
                 if not done or not j['raw'].strip():fail('incomplete','总结未完整返回。')
                 self.store.save_summary(ctx['article_id'],j['raw']);j.update(state='ready',phase='详细总结已保存',article_id=ctx['article_id'])
             elif j['kind']=='english':
@@ -131,7 +141,7 @@ class Reader:
                         if len(j['raw'])>15000:fail('invalid','英语学习材料超出长度限制。')
                         if packet.get('usage'):j['usage']=packet['usage']
                         if packet.get('done'):done=True
-                        j['phase']='正在生成英语学习材料';self.store.put(TABLE,jid,j)
+                        await progress('正在生成英语学习材料')
                 if not done or not j['raw'].strip():fail('incomplete','英语学习材料未完整返回。')
                 self.store.save_english_learning(ctx['article_id'],j['raw']);j.update(state='ready',phase='英语学习材料已保存',article_id=ctx['article_id'])
             elif j['kind']=='fetch_full':
@@ -165,7 +175,7 @@ class Reader:
                         if len(j['raw'])>15000:fail('invalid','导读超出长度限制。')
                         if packet.get('usage'):j['usage']=packet['usage']
                         if packet.get('done'):done=True
-                        j['phase']='正在生成详细导读';self.store.put(TABLE,jid,j)
+                        await progress('正在生成详细导读')
                 if not done or not j['raw'].strip():fail('incomplete','导读未完整返回，原资料保留。')
                 if '<script' in j['raw'].lower() or re.search(r'https?://',j['raw']):fail('invalid','导读含未经核验的链接或脚本，原资料保留。')
                 # Format as comprehensive guide

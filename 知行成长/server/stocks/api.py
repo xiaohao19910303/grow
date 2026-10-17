@@ -1,4 +1,5 @@
 """股票复盘路由：记录股票操作、追踪结果、复盘思考。"""
+from tenancy import scoped, learning_root, runtime_root
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -47,7 +48,7 @@ class OutcomePayload(BaseModel):
 
 
 def register(app, root, db):
-    store = StockStore(root, db)
+    store = scoped(app, lambda: StockStore(learning_root(root), runtime_root(db)), initialize=True)
     router = APIRouter(prefix='/api/stocks')
 
     @app.middleware('http')

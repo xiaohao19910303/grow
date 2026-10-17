@@ -133,81 +133,49 @@
     }
   }
   function lessonRow(parent, module, lesson) {
-    const row = node('div', undefined, 'todo-row lesson-row');
+    const row = node('div', undefined, 'todo-row lesson-row' + (lesson.learning_state === 'completed' ? ' completed' : ''));
     const text = node('div'); text.style.flex = '1'; text.style.minWidth = '0'; text.style.overflowWrap = 'anywhere';
     text.append(node('strong', lesson.topic, 'lesson-title'));
-    text.append(node('p', `${lesson.date || '日期未标注'} · ${lesson.learning_label}${lesson.complete === false ? ' · 资料待修复' : ''}`, 'desc'));
+    text.append(node('p', `第 ${lesson.lesson_no} 课 · ${lesson.learning_label}${lesson.complete === false ? ' · 资料待修复' : ''}`, 'desc'));
     row.append(text);
-    button(row, lesson.learning_state==='completed'?'再次阅读':'开始学习', () => read(module, lesson)); parent.append(row);
+    button(row, lesson.learning_state==='completed'?'再次阅读':'开始学习', () => read(module, lesson));
+    if (module.id === 'renzhi' && lesson.learning_state === 'completed') {
+      if (!lesson.completed_at) button(row, '标记完成', () => quickComplete(module, lesson));
+      button(row, '查看记录', () => viewLearningRecord(module, lesson));
+    }
+    parent.append(row);
   }
   window.renderDailyLearning = () => {
-    const selected = document.getElementById('personalDate').value || today();
-    const prefix = selected === today() ? '今日' : fmtDateCN(selected);
-    document.getElementById('dailyLearningTitle').textContent = prefix + '待学习';
+    document.getElementById('dailyLearningTitle').textContent = '继续学习';
     root.replaceChildren();
     if (!loaded) { root.append(node('p', '正在读取学习内容…')); return; }
     errors.forEach(error => root.append(node('p', error)));
     modules.forEach(module => {
-      const available = module.lessons.filter(lesson => !lesson.date || lesson.date <= selected);
-      const todayLessons = available.filter(lesson => lesson.date === selected);
-      const overdue = available.filter(lesson => lesson.date !== selected && lesson.date < selected && lesson.learning_state !== 'completed');
-      const pending = available.filter(lesson => lesson.date !== selected && (!lesson.date || lesson.date > selected) && lesson.learning_state !== 'completed');
-      const completed = available.filter(lesson => lesson.learning_state === 'completed').length;
-
-      // 分离今日待学习和已完成
-      const todayPending = todayLessons.filter(lesson => lesson.learning_state !== 'completed');
-      const todayCompleted = todayLessons.filter(lesson => lesson.learning_state === 'completed');
-
+      const lessons = [...module.lessons].sort((a, b) => a.lesson_no - b.lesson_no);
+      const pending = lessons.filter(lesson => lesson.learning_state !== 'completed');
+      const completed = lessons.filter(lesson => lesson.learning_state === 'completed');
       const section = node('section', undefined, 'learning-module');
       section.append(node('h3', module.name + ' · ' + module.duration));
-      const totalPending = todayPending.length + overdue.length;
-      section.append(node('p', `待学习 ${totalPending} 课 · 已完成 ${completed} 课` + (overdue.length ? ` · 逾期 ${overdue.length} 课` : ''), 'desc'));
-
-      // 逾期课程
-      if (overdue.length) {
-        const overdueSection = node('div', undefined, 'overdue-section');
-        overdueSection.append(node('h4', `⚠ 逾期课程 · ${overdue.length} 课`));
-        overdue.forEach(lesson => lessonRow(overdueSection, module, lesson));
-        section.append(overdueSection);
-      }
-
-      // 今日待学习课程
-      todayPending.forEach(lesson => lessonRow(section, module, lesson));
-
-      if (!todayLessons.length && !overdue.length) section.append(node('p', prefix + '暂无新课。', 'desc'));
-      else if (!todayPending.length && !overdue.length) section.append(node('p', prefix + '待学习课程已完成。', 'desc'));
-
-      // 今日已完成区域
-      if (todayCompleted.length) {
-        const completedSection = node('details', undefined, 'completed-today');
-        completedSection.open = true;
-        completedSection.append(node('summary', `${prefix}已完成 · ${todayCompleted.length} 课`));
-
-        todayCompleted.forEach(lesson => {
-          const row = node('div', undefined, 'todo-row lesson-row completed');
-          const text = node('div'); text.style.flex = '1'; text.style.minWidth = '0';
-          text.append(node('strong', lesson.topic, 'lesson-title'));
-          text.append(node('p', `✓ 已完成 · ${lesson.date}`, 'desc'));
-          row.append(text);
-
-          if (!lesson.completed_at) {
-            button(row, '标记完成', () => quickComplete(module, lesson));
-          }
-          button(row, '查看记录', () => viewLearningRecord(module, lesson));
-          completedSection.append(row);
-        });
-
-        section.append(completedSection);
-      }
+      section.append(node('p', `待学习 ${pending.length} 课 · 累计已完成 ${completed.length} 课`, 'desc'));
 
       if (pending.length) {
-        const details = node('details');
-        details.open = false;
-        details.append(node('summary', `继续之前的课程 · ${pending.length} 课待本人反馈`));
-        pending.forEach(lesson => lessonRow(details, module, lesson));
+        section.append(node('h4', '下一课'));
+        lessonRow(section, module, pending[0]);
+        if (pending.length > 1) {
+          const details = node('details');
+          details.append(node('summary', `后续课程 · ${pending.length - 1} 课`));
+          pending.slice(1).forEach(lesson => lessonRow(details, module, lesson));
+          section.append(details);
+        }
+      } else {
+        section.append(node('p', lessons.length ? '已保存课程已全部学完，可随时复习。' : '尚无已保存课程。', 'desc'));
+      }
+      if (completed.length) {
+        const details = node('details', undefined, 'completed-today');
+        details.append(node('summary', `已完成课程 · ${completed.length} 课`));
+        completed.forEach(lesson => lessonRow(details, module, lesson));
         section.append(details);
       }
-      if (!available.length) section.append(node('p', '该日期暂无已保存课程。', 'desc'));
       root.append(section);
     });
   };
@@ -301,7 +269,7 @@
     modules.forEach(module=>{
       const section=node('section',undefined,'learning-module');
       section.append(node('h3',module.name+' · '+module.duration));
-      module.lessons.forEach(lesson=>lessonRow(section,module,lesson));
+      [...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).forEach(lesson=>lessonRow(section,module,lesson));
       if(!module.lessons.length)section.append(node('p','尚无已保存课程。','desc'));
       library.append(section);
     });

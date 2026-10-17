@@ -1,6 +1,7 @@
 """错误追踪 — API 路由。"""
 from __future__ import annotations
 
+from tenancy import scoped, learning_root, runtime_root
 import re
 from typing import Optional
 
@@ -43,7 +44,7 @@ class ErrorTypeCreate(BaseModel):
 
 
 def register(app: FastAPI, root, db_path) -> ErrorStore:
-    store = ErrorStore(db_path)
+    store = scoped(app, lambda: ErrorStore(runtime_root(db_path)), initialize=True)
     router = APIRouter(prefix="/api/errors")
 
     def _validate_date(d: str):

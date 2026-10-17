@@ -12,6 +12,7 @@ from .core import digest, encoded, fail, now
 from .ai_config import config, generation_config
 
 SEPARATOR = '\n<!-- COPILOT_SOURCES -->\n'
+SOURCE_BOUNDARY = re.compile(r'\r?\n[\t ]*<!-- COPILOT_SOURCES -->[\t ]*\r?\n')
 
 
 def event(name, data):
@@ -47,6 +48,8 @@ def messages(d):
             '不上传或索取个人笔记，不评价掌握程度，无反馈时不提高难度。'
             '事实必须有清单内依据，教学假设必须注明。资料之外的结论明确说明局限，不虚构来源。'
             '输出Markdown正文，然后单独一行<!-- COPILOT_SOURCES -->，再输出可离线阅读的资料摘要。'
+            f'正文第一行必须是“# 第{n:03d}课：课程主题”，将课程主题替换为规划中的主题，不加粗或另写课次。'
+            '正文日期单独写成“日期：YYYY-MM-DD”，替换为给定日期，不加粗。'
             '不得使用代码围栏包裹整体输出；只引用清单内原样URL，不生成本地链接。'
             '正文包括日期、课次、引导问题、核心概念、完整示范、误区与边界、练习、参考分析、'
             '自查和记忆提示；练习和答案之间用独立---分隔。复盘课包含知识回顾，整合课有跨领域案例。'
@@ -149,6 +152,7 @@ class Generator:
             else:
                 transport = self.transport
             finished = False
+            last_progress_write = None
             async for packet in transport(messages(d), cfg):
                 if packet.get('usage') is not None:
                     metrics['usage'] = packet['usage']
@@ -162,10 +166,15 @@ class Generator:
                     d['raw'] += chunk
                     if len(d['raw']) > 100000:
                         fail('generation_failed', '生成内容超出限制。')
-                    pieces = d['raw'].split(SEPARATOR, 1)
+                    pieces = SOURCE_BOUNDARY.split(d['raw'], maxsplit=1)
                     d['content'], d['sources'] = pieces[0], pieces[1] if len(pieces) > 1 else ''
-                    self.persist(draft_id, d, 'generating', metrics)
+                    current = time.monotonic()
+                    if last_progress_write is None or current - last_progress_write >= 1:
+                        self.persist(draft_id, d, 'generating', metrics)
+                        last_progress_write = time.monotonic()
                     yield event('delta', {'text': chunk})
+                # Buffered provider packets may never suspend on their own.
+                await asyncio.sleep(0)
             if not finished:
                 fail('generation_failed', '上游未返回完整结束信号。')
             d['stream_completed'] = True

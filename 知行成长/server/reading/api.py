@@ -1,4 +1,5 @@
 """Local-only routes; model requests are always explicit."""
+from tenancy import scoped, learning_root, runtime_root
 import asyncio
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -16,7 +17,7 @@ def public_job(j):
     return {k:v for k,v in j.items() if k not in ('context','request')}
 
 def register(app,root,db):
-    store=make_store(root,db);reader=Reader(store);router=APIRouter(prefix='/api/reading')
+    store=scoped(app, lambda: make_store(learning_root(root),runtime_root(db)), initialize=True);reader=scoped(app, lambda: Reader(store));router=APIRouter(prefix='/api/reading')
     @app.middleware('http')
     async def protect(request:Request,call_next):
         if request.url.path.startswith('/api/reading'):

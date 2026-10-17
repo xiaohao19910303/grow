@@ -1,0 +1,32 @@
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:#202a3a;background:#f5f7fb;font-synthesis:none}
+*{box-sizing:border-box}
+.login-page{min-height:100vh;min-height:100dvh;display:grid;place-items:center;margin:0;padding:32px 20px;background:radial-gradient(ellipse at 20% 10%,#e8edff,transparent 55%),#f5f7fb}
+.login-card{width:100%;max-width:440px;padding:36px;background:white;border:1px solid #e1e6ee;border-radius:20px;box-shadow:0 20px 70px #2334560b}
+.account-mark{width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:#4f6ef7;color:#fff;font-weight:700;font-size:24px}
+.eyebrow{color:#68758b;font-size:13px;margin:20px 0 8px}
+.login-card h1{font-size:26px;letter-spacing:-.5px;margin:0 0 10px}
+.login-description{font-size:14px;line-height:1.7;color:#68758b;margin:0 0 24px}
+.auth-tabs{display:flex;padding:4px;background:#f3f5f9;border-radius:10px;margin-bottom:24px;gap:4px}
+.auth-tabs button{flex:1;border:0;border-radius:7px;background:transparent;color:#68758b;padding:10px;font:inherit;cursor:pointer;font-size:14px}
+.auth-tabs [aria-pressed=true]{background:white;color:#304bd1;box-shadow:0 1px 4px #20304a14;font-weight:600}
+.login-card label{display:block;font-size:13px;font-weight:600;margin:16px 0 8px}
+.login-card input{width:100%;min-height:46px;padding:11px 12px;font:inherit;border:1px solid #d5dce7;border-radius:8px;background:#fff;color:#202a3a}
+.login-card input:focus{outline:3px solid #4f6ef72b;border-color:#4f6ef7}
+.auth-message{font-size:13px;min-height:20px;line-height:1.6;color:#bd3447;margin:12px 0}
+.auth-submit{width:100%;border:0;min-height:46px;padding:12px;border-radius:9px;font:inherit;background:#4f6ef7;color:white;font-weight:600;cursor:pointer}
+.auth-submit:disabled{opacity:.65;cursor:wait}
+.login-footnote{font-size:12px;color:#748198;line-height:1.9;margin:24px 0 0;border-top:1px solid #edf0f5;padding-top:20px}
+.account-settings{margin-top:28px;border-top:1px solid var(--border,#e1e6ee);padding-top:24px}
+.account-settings h2{font-size:18px!important;margin:0 0 8px!important}
+.github-fields{display:grid;gap:14px;margin:16px 0}
+.github-fields label{display:flex;flex-direction:column;gap:7px;font-size:13px}
+.github-fields input,.github-fields select{width:100%;max-width:650px;min-height:40px;font:inherit;border:1px solid var(--border,#d5dce7);border-radius:8px;padding:9px 12px;background:var(--card,#fff);color:var(--text,#202a3a)}
+.github-status{font-size:13px;line-height:1.7;overflow-wrap:anywhere}
+.invitation-list{display:grid;gap:8px;margin:12px 0 24px}
+.invitation-row{display:flex;gap:12px;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted,#68758b);border-bottom:1px solid var(--border,#e1e6ee);padding:10px 0}
+.invitation-row span{min-width:0;overflow-wrap:anywhere}
+#invitationResult[hidden]{display:none}
+.account-switch-notice{position:fixed;inset:0;background:#f5f7fb;z-index:99999;display:grid;place-items:center;padding:24px}
+.account-switch-notice section{max-width:420px;background:white;border:1px solid #e1e6ee;border-radius:16px;padding:28px;line-height:1.8}
+.account-switch-notice a{display:inline-block;background:#4f6ef7;color:white;padding:9px 18px;border-radius:8px;text-decoration:none;margin-top:12px}
+@media(max-width:480px){.login-card{padding:28px 24px}.login-page{padding:20px 16px}.toolbar{flex-wrap:wrap}.account-settings .cp-actions{flex-wrap:wrap}}

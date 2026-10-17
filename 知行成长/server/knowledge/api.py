@@ -1,6 +1,7 @@
 """知识图谱可视化 — API 路由。"""
 from __future__ import annotations
 
+from tenancy import scoped, learning_root, runtime_root
 import time
 from typing import Optional
 
@@ -11,7 +12,7 @@ from .graph import scan_links
 
 
 def register(app: FastAPI, root, db_path) -> KnowledgeGraphStore:
-    store = KnowledgeGraphStore(db_path)
+    store = scoped(app, lambda: KnowledgeGraphStore(runtime_root(db_path)), initialize=True)
     router = APIRouter(prefix="/api/knowledge")
 
     @router.get("/graph")
