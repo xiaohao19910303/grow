@@ -100,6 +100,48 @@ class AccountIntegrationTests(unittest.TestCase):
     def login(self, username, password='user-password-123'):
         return self.client.post('/api/auth/login', json={'username':username,'password':password}, headers=self.headers)
 
+    def test_module_generation_jobs_and_published_courses_use_each_accounts_repository(self):
+        from test_study_generation import AI, output
+        directory = Path(os.environ['LEARN_ROOT']) / '结构化表达/每日练习'
+        directory.mkdir(parents=True)
+        (directory / 'Day 001.md').write_text('# 第一课\n\n公共教学内容。')
+        calls = []
+        async def model(messages, config):
+            calls.append(messages)
+            yield {'text': output(json.loads(messages[1]['content'])['module_id'])}
+            yield {'done': True}
+        with patch('copilot.transport.qwen_stream', model):
+            for username in ('alice', 'bob'):
+                user = self.register(username)
+                if username == 'bob':
+                    response = self.client.put('/api/account/github', json={'mode': 'custom', 'repository': 'owner/bob-courses',
+                        'branch': 'main', 'token': 'BOB_TEST_GITHUB_TOKEN'}, headers=self.headers)
+                    self.assertEqual(response.status_code, 200, response.text)
+                job_path = '/api/study-materials/biaoda/generations/shared-job-key'
+                self.assertEqual(self.client.get(job_path).status_code, 404)
+                path = '/api/study-materials/biaoda/Day%20001.md'
+                lesson = self.client.get(path).json()['lesson']
+                self.post(path + '/learning-record', {'version': lesson['version'], 'revision': 0,
+                    'summary_text': username + ' PRIVATE LEARNING NOTE', 'time_spent_seconds': 2, 'key': 'finished-course'})
+                job = self.post('/api/study-materials/biaoda/generations', {'key': 'shared-job-key', 'ai_config': AI})
+                for _ in range(120):
+                    job = self.client.get(job_path).json()
+                    if job['state'] not in ('queued', 'generating'): break
+                    time.sleep(.02)
+                self.assertEqual(job['state'], 'ready', job)
+                self.post(job_path + '/publish', {})
+                expected = '用户/' + user['id'] + '/结构化表达/网页课程/第002课.md'
+                repo = self.repositories['owner/bob-courses' if username == 'bob' else 'owner/courses']
+                self.assertIn(expected, repo.commits[repo.head]['files'])
+                lessons = self.client.get('/api/study-materials').json()['modules'][1]['lessons']
+                self.assertEqual(len(lessons), 2)
+                self.assertEqual(lessons[-1]['learning_state'], 'unknown')
+            self.assertEqual(len(calls), 2)
+            self.assertNotIn('PRIVATE', json.dumps(calls))
+            self.login('owner', os.environ['APP_PASSWORD'])
+            self.assertEqual(self.client.get(job_path).status_code, 404)
+            self.assertEqual(len(self.client.get('/api/study-materials').json()['modules'][1]['lessons']), 1)
+
     def test_bundled_course_content_is_shared_but_progress_and_notes_are_private(self):
         root = Path(os.environ['LEARN_ROOT'])
         for name, folder in [('英文阅读', '每日文章'), ('结构化表达', '每日练习')]:

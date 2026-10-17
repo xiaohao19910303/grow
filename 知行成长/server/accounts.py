@@ -285,7 +285,7 @@ class Accounts:
                     published = c.execute("SELECT COUNT(*) FROM cloud_documents WHERE data::jsonb->>'storage'='github'").fetchone()[0]
                     pending = c.execute("SELECT COUNT(*) FROM cloud_publications WHERE data::jsonb->>'state'!='done'").fetchone()[0]
                     if published or pending:
-                        fail('migration_required', '已有认知课程、阅读资料或待恢复发布，不能直接更换仓库或分支。请先迁移内容；仍可更新当前仓库的 Token。')
+                        fail('migration_required', '已有正式课程、阅读资料或待恢复发布，不能直接更换仓库或分支。请先迁移内容；仍可更新当前仓库的 Token。')
             installed = c.execute("SELECT to_regclass('learning_settings')").fetchone()[0]
             if installed:
                 bound = c.execute("SELECT data FROM learning_settings WHERE id='content-storage'").fetchone()
