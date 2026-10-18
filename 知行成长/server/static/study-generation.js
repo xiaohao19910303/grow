@@ -87,7 +87,7 @@
           const course = await api(module.id, '/' + job.id + '/publish', {});
           status.textContent = '课程已保存到 GitHub。';
           const visible = origin && origin.style.display !== 'none';
-          await window.loadDailyLearning();
+          await window.loadDailyLearning({force:true});
           if (visible && origin.style.display !== 'none') await window.openStudyCourse(module.id, course.filename);
         }, true);
         control(actions, '放弃草稿', async () => { draw(await api(module.id, '/' + job.id + '/cancel', {})); });

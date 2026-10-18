@@ -37,7 +37,7 @@
     return ()=>Object.fromEntries(Object.entries(fields).map(([k,e])=>[k,['weeks','sessions','minutes'].includes(k)?Number(e.value):e.value]));
   }
   async function generateAndWatch(body){const turn=navigation;const a=await api('/generate',body);if(turn===navigation&&root.style.display!=='none')await watch(a.id);else observe(a.id);}
-  function refresh(){window.loadDailyLearning?.();}
+  function refresh(){window.loadDailyLearning?.({force:true});}
   window.loadPlans=async()=>{
     const status=shell('学习计划');const turn=navigation;
     button(root,'创建学习计划',()=>create(),true);
@@ -125,7 +125,7 @@
     button(root,'保存草稿并预览',async()=>{const turn=navigation;if(ack&&!ack.checked)throw new Error('请先核对规划文件的外部修改。');const saved=await api('/drafts',{brief:getBrief(),document:getDoc(),plan_id:d.plan_id||null,base_version:d.base_version||0,external_hash:ack?existing.external.hash:null,...(d.id?{parent_draft_id:d.id,parent_hash:d.content_hash}:{})});if(turn===navigation){dirtyCheck=null;await previewDraft(saved.id);}else toast('草稿已保存，可从计划列表查看。');},true);
   }
   async function detail(pid){
-    const status=shell('计划详情');const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
+    const status=shell('计划详情');status.textContent='正在读取学习计划…';const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
     root.querySelector('h2').textContent=data.plan.name;status.textContent=pid+' · 当前版本 v'+data.plan.version;
     button(root,'返回列表',window.loadPlans);button(root,'调整后续规划',()=>create(data));
     button(root,'修改显示名称',async()=>{const name=prompt('新的显示名称',data.plan.name);if(name){await api('/'+pid+'/metadata',{name,key:uuid()});await detail(pid);refresh();}});
@@ -218,7 +218,8 @@
     root.append(historyBox);
   }
   async function sourceEditor(pid){
-    const data=await api('/'+pid+'/sources');shell(`第${data.lesson_no}课：准备参考资料`);button(root,'返回计划',()=>detail(pid));
+    const status=shell('准备参考资料');const turn=navigation;button(root,'返回计划',()=>detail(pid));const loading=window.LoadingState?.start(root,'正在读取参考资料…','正在读取已保存的备课材料。');
+    let data;try{data=await api('/'+pid+'/sources');}finally{loading?.finish();}if(turn!==navigation)return;root.querySelector('h2').textContent=`第${data.lesson_no}课：准备参考资料`;
     const help=node('details');help.open=true;help.append(node('summary','什么是备课资料？（点击展开说明）'));
     help.append(node('p','备课资料是 AI 生成课程时的参考材料。你可以指定一本书、给一个网页链接、或直接粘贴相关内容。','desc'));
     help.append(node('p','如果不想手动准备，可以直接返回点击"生成下一课草稿"，AI 会使用默认资料。','desc'));
@@ -399,12 +400,12 @@
   }
   window.addEventListener('load',async()=>{if(location.hash.startsWith('#plans/'))goTab('plans');else try{const data=await api('');for(const a of data.attempts)if(['queued','generating'].includes(a.state))observe(a.id);}catch(_){/* The plans page offers a manual retry. */}});
   window.openPlanCourse=async(pid,n)=>{
-    rememberLearningOrigin();if(goTab('reader',{reading:true})===false)return;const turn=window.studyReaderRequest;const reader=document.getElementById('dailyReader');reader.hidden=false;reader.replaceChildren(node('p','正在读取…'));
+    rememberLearningOrigin();if(goTab('reader',{reading:true})===false)return;const turn=window.studyReaderRequest;const reader=document.getElementById('dailyReader');reader.hidden=false;reader.replaceChildren();const loading=window.LoadingState?.start(reader,'正在读取学习计划课程…','正在读取课程正文与个人反馈。');
     try{const [d,detail]=await Promise.all([api('/'+pid+'/lessons/'+n),api('/'+pid)]);const version=await window.StudyNotes.contentVersion(d.content);if(turn!==window.studyReaderRequest)return;reader.replaceChildren();button(reader,'返回学习列表',returnFromLesson);githubLink(reader,'在 GitHub 打开课程',d.github_url);const content=markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);githubLink(source,'在 GitHub 打开参考资料',d.sources_github_url);markdown(source,d.sources);
       const feedback=detail.feedback.find(item=>item.lesson_no===n);
       const notes=window.StudyNotes.mount({parent:reader,content,kind:'plan',course:pid+'/'+n,version,seedNotes:feedback?.comment||''});
       const status=node('p',d.lesson.learning_state==='completed'?'本课已完成；修改笔记不会改变完成状态。':'本课尚未完成；笔记与答案可先暂存。','desc');notes.form.insertBefore(status,notes.status);
       button(notes.actions,'本人确认学完',async()=>{await notes.flush();await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:feedback?.comment||''});d.lesson.learning_state='completed';status.textContent='本课已完成，笔记与练习答案已独立暂存。';refresh();},true);
-    }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,'返回学习列表',returnFromLesson);}
+    }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,'返回学习列表',returnFromLesson);button(reader,'重试读取课程',()=>window.openPlanCourse(pid,n));}finally{loading?.finish();}
   };
 })();

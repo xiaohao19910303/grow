@@ -4,7 +4,7 @@
   let modules = [], errors = [], loaded = false, generation = 0, reading = 0;
   const root = document.getElementById('dailyLearning');
   const reader = document.getElementById('dailyReader');
-  let studyDraft = null;
+  let studyDraft = null, listRequest = null, pendingModules = [];
   const hasStudyDraft = () => studyDraft && !studyDraft.notes.safe;
   window.beforeStudyLeave = () => {
     if (studyDraft?.saving) { toast('正在保存学习记录，请稍候。'); return false; }
@@ -115,7 +115,8 @@
     if (goTab('reader', {reading:true}) === false) return;
     const turn = window.studyReaderRequest;
     reader.hidden = false;
-    reader.replaceChildren(node('p', '正在读取课程…'));
+    reader.replaceChildren();
+    const loading = window.LoadingState?.start(reader, '正在读取课程…', '正在读取课程正文和你的学习记录。');
     try {
       const data = await get('/api/study-materials/' + module.id + '/' + encodeURIComponent(lesson.filename));
       if (request !== reading || turn !== window.studyReaderRequest) return;
@@ -150,7 +151,7 @@
       reader.replaceChildren(node('p', error.message));
       button(reader, '返回学习列表', () => { ++reading; returnFromLesson(); });
       button(reader, '重试', () => read(module, lesson));
-    }
+    } finally { loading?.finish(); }
   }
   function renderStudyRecord(module, lesson, data, content) {
     let record = data.record, pendingSave = null;
@@ -193,7 +194,7 @@
         }
         record = result; pendingSave = null; draft.saved = sent.summary_text;
         save.textContent = '保存学习记录';
-        await window.loadDailyLearning();
+        await window.loadDailyLearning({force:true});
         const current = modules.find(item => item.id === module.id);
         const hasNext = current?.lessons.some(item => item.learning_state !== 'completed');
         next.hidden = !hasNext;
@@ -242,6 +243,7 @@
     root.replaceChildren();
     if (!loaded) { root.append(node('p', '正在读取学习内容…')); return; }
     errors.forEach(error => root.append(node('p', error)));
+    pendingModules.forEach(name => { const status=node('p','正在读取'+name+'…','desc reading-loading');status.setAttribute('role','status');root.append(status); });
     modules.forEach(module => {
       const lessons = [...module.lessons].sort((a, b) => a.lesson_no - b.lesson_no);
       const pending = lessons.filter(lesson => lesson.learning_state !== 'completed');
@@ -292,7 +294,7 @@
       }
       stopLearningTimer();
       toast(`课程已标记完成（学习时长：${Math.round(timeSpent / 60)} 分钟）`);
-      await window.loadDailyLearning();
+      await window.loadDailyLearning({force:true});
     } catch (e) {
       alert('标记失败：' + e.message);
     }
@@ -367,6 +369,7 @@
     library.replaceChildren();
     if(!loaded){library.append(node('p','正在读取课程…'));return;}
     errors.forEach(error=>library.append(node('p',error)));
+    pendingModules.forEach(name=>library.append(node('p','正在读取'+name+'…','desc reading-loading')));
     modules.forEach(module=>{
       const section=node('section',undefined,'learning-module');
       section.append(node('h3',module.name+' · '+module.duration));
@@ -378,26 +381,24 @@
   }
   const renderHome=window.renderDailyLearning;
   window.renderDailyLearning=()=>{renderHome();renderLibrary();};
-  window.loadDailyLearning = async () => {
-    const request = ++generation;
-    const results = await Promise.allSettled([get('/api/copilot/today-task'), get('/api/study-materials'), get('/api/plans')]);
-    if (request !== generation) return;
-    modules = []; errors = [];
-    if (results[0].status === 'fulfilled') {
-      modules.push({id: 'renzhi', name: '认知与通识', duration: '15–20 分钟', lessons: results[0].value.lessons});
-    } else errors.push('认知课程：' + results[0].reason.message);
-    if (results[1].status === 'fulfilled') modules.push(...results[1].value.modules);
-    else errors.push('英文阅读与结构化表达：' + results[1].reason.message);
-    if(results[2].status==='fulfilled') modules.push(...results[2].value.plans.map(p=>({id:p.id,kind:'plan',name:p.name,duration:p.brief.minutes+' 分钟',lessons:p.lessons})));
-    else errors.push('学习计划：'+results[2].reason.message);
-    modules.forEach(module => {
-      module.lessons = module.lessons.map((lesson, index) => ({
-        ...lesson,
-        lesson_no: lesson.lesson_no || Number((lesson.filename || '').match(/Day\s*(\d+)/i)?.[1]) || index + 1
-      }));
-    });
-    loaded = true;
-    window.renderDailyLearning();
+  window.loadDailyLearning = (options = {}) => {
+    if(listRequest && !options.force)return listRequest;
+    const request=++generation;
+    const groups=[modules.filter(m=>m.id==='renzhi'),modules.filter(m=>['yingyu','biaoda'].includes(m.id)),modules.filter(m=>m.kind==='plan')];
+    const sources=[['认知课程','/api/copilot/today-task',data=>[{id:'renzhi',name:'认知与通识',duration:'15–20 分钟',lessons:data.lessons}]],
+      ['英文阅读与结构化表达','/api/study-materials',data=>data.modules],
+      ['学习计划','/api/plans',data=>data.plans.map(p=>({id:p.id,kind:'plan',name:p.name,duration:p.brief.minutes+' 分钟',lessons:p.lessons}))]];
+    pendingModules=sources.map(s=>s[0]);errors=[];loaded=true;window.renderDailyLearning();
+    const task=Promise.all(sources.map(async([name,path,decode],index)=>{
+      try{const data=await get(path);if(request!==generation)return;groups[index]=decode(data);}
+      catch(error){if(request!==generation)return;errors.push(name+'：'+error.message);}
+      if(request!==generation)return;
+      pendingModules=pendingModules.filter(item=>item!==name);
+      modules=groups.flat().map(module=>({...module,lessons:module.lessons.map((lesson,index)=>({...lesson,
+        lesson_no:lesson.lesson_no||Number((lesson.filename||'').match(/Day\s*(\d+)/i)?.[1])||index+1}))}));
+      window.renderDailyLearning();
+    })).finally(()=>{if(listRequest===task)listRequest=null;});
+    listRequest=task;return task;
   };
   window.loadDailyLearning();
 })();

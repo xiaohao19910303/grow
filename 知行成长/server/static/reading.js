@@ -70,6 +70,7 @@
     const list=node('section',undefined,'reading-history-list');root.append(list);
     const pages=node('div',undefined,'reading-actions');root.append(pages);
     async function refresh(force=false){
+      if(turn!==revision)return;
       const serial=++request;const params=new URLSearchParams({kind,page:libraryState.page,page_size:20,filter:libraryState.filter,search:libraryState.search});
       status.textContent=kind==='jobs'?'正在读取历史搜集记录…':'正在读取历史文章…';status.classList.add('reading-loading');list.setAttribute('aria-busy','true');
       let slow=setTimeout(()=>{if(turn===revision&&serial===request)status.textContent='历史记录读取较慢，请稍候；不会重新搜集文章。';},8000);

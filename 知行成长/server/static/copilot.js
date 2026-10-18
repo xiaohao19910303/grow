@@ -167,7 +167,8 @@
     reader.hidden=false;reader.replaceChildren();
     button('返回学习列表',()=>returnFromLesson(),reader);
     readerStatus.textContent='正在读取课程…';reader.append(readerStatus);
-    const [lesson, record] = await Promise.all([request('/lessons/' + number), request('/lessons/' + number + '/learning-record')]);
+    const loading = window.LoadingState?.start(reader, '正在读取课程…', '正在读取 Markdown 正文和你的学习记录。');
+    const [lesson, record] = await Promise.all([request('/lessons/' + number), request('/lessons/' + number + '/learning-record')]).finally(() => loading?.finish());
     if(requestId!==readingRequest)return;
     root.classList.add('reading-mode');management.open=false;
     reader.hidden = false; reader.replaceChildren();
@@ -183,6 +184,7 @@
         ? await request(`/lessons/${number}/learning-state`, 'PATCH', {state: 'unknown', version: lesson.version, key: feedbackKey})
         : await request(`/lessons/${number}/complete`, 'POST', {time_spent_seconds: activeTracker?.timeSpent || 0, version: lesson.version, key: feedbackKey});
       if (result.status !== 'done') { message('学习状态待恢复，请查看保存操作。'); return; }
+      window.loadDailyLearning?.({force:true});
       await read(number); await load(false); message('学习记录已更新，个人笔记保留。');
     }, actions);
     completion.disabled = !lesson.complete;

@@ -12,6 +12,7 @@
   let currentPageSize = 20;
   let searchResults = [];
   let totalResults = 0;
+  let requestNumber = 0, activeRequest = null;
 
   const moduleLabels = {
     learning: '学习记录',
@@ -38,6 +39,7 @@
     let debounceTimer;
     searchInput.addEventListener('input', (e) => {
       clearTimeout(debounceTimer);
+      ++requestNumber; activeRequest?.abort();
       debounceTimer = setTimeout(() => {
         const query = e.target.value.trim();
         if (query.length >= 2) {
@@ -52,6 +54,7 @@
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        clearTimeout(debounceTimer);
         const query = searchInput.value.trim();
         if (query) {
           performSearch(query);
@@ -100,10 +103,15 @@
   /* ---------- 执行搜索请求 ---------- */
   async function executeSearch() {
     const container = document.getElementById('searchResults');
+    if (typeof goTab === 'function' && goTab('search') === false) return;
+    const request = ++requestNumber;
+    activeRequest?.abort(); activeRequest = new AbortController();
+    let loading;
 
     // 显示加载状态
     if (container) {
-      container.innerHTML = '<div class="loading">搜索中...</div>';
+      container.replaceChildren();
+      loading = window.LoadingState?.start(container, '正在搜索资料…', '正在查找学习记录、笔记和其他已保存内容。');
     }
 
     try {
@@ -123,13 +131,14 @@
         params.set('end_date', currentFilters.end_date);
       }
 
-      const response = await fetch(`/api/search?${params}`);
+      const response = await fetch(`/api/search?${params}`, {signal: activeRequest.signal});
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.detail || error.message || '搜索失败');
       }
 
       const data = await response.json();
+      if (request !== requestNumber) return;
       searchResults = data.results || [];
       totalResults = data.total_count || 0;
 
@@ -137,11 +146,8 @@
       renderPagination();
       renderMeta();
 
-      // 切换到搜索视图
-      if (typeof goTab === 'function') {
-        goTab('search');
-      }
     } catch (error) {
+      if (error.name === 'AbortError' || request !== requestNumber) return;
       console.error('Search error:', error);
       if (container) {
         container.innerHTML = `
@@ -154,7 +160,7 @@
       if (typeof toast === 'function') {
         toast('搜索失败: ' + error.message);
       }
-    }
+    } finally { loading?.finish(); }
   }
 
   /* ---------- 更新筛选条件 ---------- */
@@ -303,6 +309,7 @@
 
   /* ---------- 清空结果 ---------- */
   function clearResults() {
+    ++requestNumber; activeRequest?.abort();
     searchResults = [];
     totalResults = 0;
     currentQuery = '';
