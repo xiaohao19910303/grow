@@ -85,6 +85,24 @@ class StudyMaterialTests(PostgreSQLFixture):
         self.assertEqual(self.client.get('/api/study-materials/learning-history?start=bad&end=bad').status_code, 422)
         self.assertEqual(self.client.get(target).json()['summary_text'], body['summary_text'])
 
+    def test_independent_draft_restores_without_changing_pending_lesson_or_calendar(self):
+        from study_notes import register
+        register(self.client.app)
+        course = self.client.get(self.path).json()
+        draft_path = '/api/study-notes/biaoda/Day%20001.md'
+        body = dict(notes='中途笔记，下次继续', answers={'练习1': '尚未写完的答案'},
+                    version=course['lesson']['version'], revision=0, key='independent-draft')
+        saved = self.client.put(draft_path, json=body, headers=self.h)
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.assertEqual(self.client.get(draft_path).json()['answers'], body['answers'])
+        reopened = self.client.get(self.path).json()
+        self.assertIsNone(reopened['record'])
+        self.assertEqual(reopened['lesson']['learning_state'], 'unknown')
+        history = self.client.get('/api/study-materials/learning-history',
+                                  params={'start': '2026-10-01', 'end': '2026-10-31'}).json()
+        self.assertEqual(history['total'], 0)
+        self.assertEqual((self.root / '结构化表达/每日练习/Day 001.md').read_text(), course['content'])
+
     def test_simultaneous_first_completions_have_one_winner_and_preserve_each_module(self):
         from concurrent.futures import ThreadPoolExecutor
         body = self.body()
@@ -109,9 +127,11 @@ class StudyMaterialTests(PostgreSQLFixture):
         from fastapi.staticfiles import StaticFiles
         from playwright.sync_api import sync_playwright
         from study_materials import register
+        from study_notes import register as register_notes
 
         app = FastAPI()
         register(app, self.root)
+        register_notes(app)
         static = Path(__file__).resolve().parents[1] / 'static'
         app.mount('/static', StaticFiles(directory=static))
 
@@ -132,7 +152,7 @@ class StudyMaterialTests(PostgreSQLFixture):
 
         def unrelated(route):
             endpoint = route.request.url.split(base)[-1].split('?')[0]
-            if endpoint.startswith('/api/study-materials'):
+            if endpoint.startswith(('/api/study-materials', '/api/study-notes')):
                 return route.continue_()
             if endpoint == '/api/auth/me':
                 result = {'user': {'id': 'fixture', 'username': 'tester', 'is_owner': True}}
@@ -161,9 +181,11 @@ class StudyMaterialTests(PostgreSQLFixture):
                     reader = page.locator('#dailyReader')
                     note = reader.get_by_label('学习笔记（可选）')
                     note.fill('PRIVATE 浏览器笔记 <script>alert(1)</script>')
-                    page.once('dialog', lambda dialog: dialog.dismiss())
                     page.locator('[data-group="personal"]').click()
-                    self.assertTrue(reader.is_visible(), 'Cancelling navigation must keep the draft')
+                    reader.wait_for(state='hidden')
+                    expression.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()
+                    note.wait_for()
+                    self.assertIn('PRIVATE 浏览器笔记', note.input_value(), 'Leaving and returning must restore the independent draft')
                     self.assertIsNone(self.client.get(self.path + '/learning-record').json())
                     failed = [False]
 
@@ -205,7 +227,7 @@ class StudyMaterialTests(PostgreSQLFixture):
                     note.fill('PRIVATE English learning note')
                     page.set_viewport_size({'width': 390, 'height': 844})
                     self.assertFalse(page.evaluate('document.documentElement.scrollWidth > window.innerWidth'))
-                    reader.locator('.study-record-form').screenshot(path='/tmp/grow-study-record-reader.png')
+                    reader.locator('.study-notes-form').screenshot(path='/tmp/grow-study-record-reader.png')
                     reader.get_by_role('button', name='标记学完并保存', exact=True).click()
                     reader.get_by_role('status').filter(has_text='已学完，学习记录已保存').wait_for()
                     reader.get_by_role('button', name='继续下一课', exact=True).click()

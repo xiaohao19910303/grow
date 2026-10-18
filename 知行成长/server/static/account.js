@@ -2,6 +2,9 @@
 (() => {
   const originalFetch = window.fetch.bind(window);
   const account = window.Account = {user:null};
+  const identityBox = document.createElement('div');
+  document.querySelector('.topbar').after(identityBox);
+  const identityLoading = window.LoadingState?.start(identityBox, '正在验证登录信息…', '验证后会恢复你的学习内容与记录。');
   let switched = false;
   function accountChanged() {
     if (switched) return;
@@ -19,7 +22,14 @@
     account.user = (await response.json()).user;
     document.getElementById('accountName').textContent = account.user.username;
     window.dispatchEvent(new Event('ai-config-changed'));
+    identityLoading?.finish(); identityBox.remove();
     return account.user;
+  }).catch(error => {
+    identityLoading?.finish();
+    identityBox.setAttribute('role', 'alert'); identityBox.className = 'page-loading';
+    identityBox.textContent = '账号连接未完成，请检查网络后重试。';
+    const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'btn'; retry.textContent = '重新连接'; retry.onclick = () => location.reload(); identityBox.append(retry);
+    throw error;
   });
   window.fetch = async (input, options = {}) => {
     const url = new URL(typeof input === 'string' ? input : input.url, location.href);

@@ -1,6 +1,7 @@
 (() => {
   let mode = 'login';
   let invitation = '';
+  let submitting = false;
   const $ = id => document.getElementById(id);
   function choose(next) {
     if (next === 'register' && !invitation) return;
@@ -31,12 +32,19 @@
   readInvitation();
   $('authForm').addEventListener('submit', async event => {
     event.preventDefault();
+    if (submitting) return;
     if (mode === 'register' && $('password').value !== $('confirmPassword').value) {
       $('authMessage').textContent = '两次密码不一致，请重新填写。';
       $('confirmPassword').focus(); return;
     }
-    $('authSubmit').disabled = true;
-    $('authMessage').textContent = mode === 'register' ? '正在创建账号…' : '正在登录…';
+    submitting = true;
+    const controls = [$('authSubmit'), $('loginTab'), $('registerTab')];
+    controls.forEach(control => control.disabled = true);
+    $('authForm').setAttribute('aria-busy', 'true');
+    $('authMessage').replaceChildren();
+    $('authSubmit').textContent = mode === 'register' ? '正在创建…' : '正在登录…';
+    const loading = window.LoadingState?.start($('authMessage'), mode === 'register' ? '正在创建账号…' : '正在登录…', '正在确认账号信息，请勿重复提交。');
+    if (!loading) $('authMessage').textContent = mode === 'register' ? '正在创建账号…' : '正在登录…';
     try {
       const response = await fetch('/api/auth/' + mode, {
         method:'POST', headers:{'Content-Type':'application/json', 'X-Copilot-Request':'1'},
@@ -45,10 +53,14 @@
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || '暂时无法登录，请稍后再试。');
+      $('authMessage').textContent = mode === 'register' ? '账号已创建，正在打开学习首页…' : '登录成功，正在打开学习首页…';
       location.replace('/');
     } catch (error) {
       $('authMessage').textContent = error.message === 'Failed to fetch' ? '连接中断，请检查网络后重试。' : error.message;
-      $('authSubmit').disabled = false;
+      submitting = false; controls.forEach(control => control.disabled = false);
+      $('authSubmit').textContent = mode === 'register' ? '注册并开始学习' : '登录';
+    } finally {
+      loading?.finish(); $('authForm').removeAttribute('aria-busy');
     }
   });
 })();

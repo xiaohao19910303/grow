@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 from cloud_content import ContentPath, Documents, enabled
 from legacy_schema import migrate
-from .core import Store, MODULE, digest, encoded, fail, now
+from .core import Store, MODULE, digest, encoded, fail, now, completion_label
 
 
 class CloudStore(Store):
@@ -67,8 +67,8 @@ class CloudStore(Store):
             state=states.get('learning-state:'+str(lesson['lesson_no']))
             record=records.get(lesson['lesson_no'])
             if record:
-                lesson.update(learning_state='completed',**{k:v for k,v in record.items() if k!='lesson_no'})
-            if state:
+                lesson.update(learning_state='completed',learning_label=completion_label(record),**{k:v for k,v in record.items() if k!='lesson_no'})
+            elif state:
                 lesson.update(learning_state=state['state'],learning_label='本人确认完成' if state['state']=='completed' else '待本人反馈')
             lesson['version']=digest(lesson['content_hash']+lesson['source_hash']+encoded(state))
         result['today_lessons']=[x for x in result['lessons'] if x['date']==now()[:10]]

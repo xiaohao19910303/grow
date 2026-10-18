@@ -145,6 +145,8 @@
 <link rel="stylesheet" href="/static/account.css">
 <link rel="stylesheet" href="/static/search.css?v=1">
 <link rel="stylesheet" href="/static/timeline.css?v=1">
+<link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
+<link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
 </head>
 <body>
 
@@ -235,7 +237,7 @@
     </section>
   </div>
   <div id="view-library" style="display:none" class="section">
-    <div class="section-heading"><div><h2>我的课程</h2><p class="desc">按模块继续学习，学习状态以本人反馈为准。</p></div><button class="btn" onclick="window.loadDailyLearning()">刷新课程</button></div>
+    <div class="section-heading"><div><h2>我的课程</h2><p class="desc">按模块继续学习，学习状态以本人反馈为准。</p></div><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新课程</button></div>
     <div id="learningLibrary"></div>
   </div>
   <div id="view-reader" style="display:none"><section class="section cp-reader" id="dailyReader" hidden></section></div>
@@ -246,7 +248,7 @@
     </div>
     <div class="today-layout">
       <section class="section learning-panel" aria-labelledby="dailyLearningTitle">
-        <div class="section-heading"><h2 id="dailyLearningTitle">继续学习</h2><button class="btn" onclick="window.loadDailyLearning()">刷新</button></div>
+        <div class="section-heading"><h2 id="dailyLearningTitle">继续学习</h2><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新</button></div>
         <div id="dailyLearning" aria-live="polite"><p>正在读取学习内容…</p></div>
       </section>
       <div class="personal-grid" id="personalDays"></div>
@@ -515,7 +517,8 @@
 <div class="overlay" id="overlay"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="/static/account.js?v=20261017"></script>
+<script src="/static/loading-state.js?v=20261018-1"></script>
+<script src="/static/account.js?v=20261018-loading"></script>
 <script src="/static/ai-config.js?v=20261017"></script>
 <script>
 /* ================= 工具 ================= */
@@ -1883,7 +1886,7 @@ async function scanKnowledgeLinks(){
 function render(){
   renderPersonal(); renderOverview(); renderProgress(); renderHabits();
   renderDecisions(); renderPredictions(); renderReviews(); renderInsights(); renderCustom();
-  renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest();
+  if(currentTab==='overview'){renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest();}
 }
 
 /* ================= 知识图谱 ================= */
@@ -1994,9 +1997,11 @@ function returnFromLesson(){
   requestAnimationFrame(()=>{window.scrollTo({top:origin.scroll,behavior:'instant'});if(origin.focus?.isConnected)origin.focus.focus({preventScroll:true});});
 }
 function goTab(name, options={}){
-  if(currentTab==='reader' && name!=='reader' && window.beforeStudyLeave && !window.beforeStudyLeave())return;
-  if(currentTab==='reading' && window.beforeReadingLeave && !window.beforeReadingLeave(name))return;
-  if(currentTab==='plans' && window.beforePlansLeave && !window.beforePlansLeave(name))return;
+  if(currentTab==='reader' && name!=='reader' && window.beforeStudyLeave && !window.beforeStudyLeave())return false;
+  if(currentTab==='reading' && window.beforeReadingLeave && !window.beforeReadingLeave(name))return false;
+  if(currentTab==='plans' && window.beforePlansLeave && !window.beforePlansLeave(name))return false;
+  if(window.StudyNotes && !window.StudyNotes.beforeLeave())return false;
+  window.studyReaderRequest=(window.studyReaderRequest||0)+1;
   if(window.leaveCopilot && currentTab==='copilot' && name!=='copilot') window.leaveCopilot();
   currentTab=name;
   const group=name==='reader'?'learning':Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===name));
@@ -2168,17 +2173,19 @@ async function init(){
 }
 init();
 </script>
-<script src="/static/copilot.js?v=20261017-cloud-legacy"></script>
-<script src="/static/plans.js?v=20261017-local-ai"></script>
-<script src="/static/study-generation.js?v=20261017-next1"></script>
-<script src="/static/daily-learning.js?v=20261017-next1"></script>
+<script src="/static/study-note-session.js?v=20261018-1"></script>
+<script src="/static/study-notes.js?v=20261018-1"></script>
+<script src="/static/copilot.js?v=20261018-performance"></script>
+<script src="/static/plans.js?v=20261018-performance"></script>
+<script src="/static/study-generation.js?v=20261018-performance"></script>
+<script src="/static/daily-learning.js?v=20261018-performance"></script>
 <script src="/static/reading-growth.js?v=20261017-growth1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
-<script src="/static/reading.js?v=20261017-readable1"></script>
+<script src="/static/reading.js?v=20261018-performance"></script>
 <script src="/static/reflections.js?v=20261017-local-ai"></script>
 <script src="/static/learning-history.js?v=20261017-records"></script>
 <script src="/static/stocks.js?v=1"></script>
-<script src="/static/search.js?v=1"></script>
+<script src="/static/search.js?v=20261018-performance"></script>
 <script src="/static/timeline.js?v=1"></script>
 </body>
 </html>

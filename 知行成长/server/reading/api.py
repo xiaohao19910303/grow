@@ -1,7 +1,9 @@
 """Local-only routes; model requests are always explicit."""
 from tenancy import scoped, learning_root, runtime_root
 import asyncio
-from fastapi import APIRouter, Request, BackgroundTasks
+import re
+from typing import Literal
+from fastapi import APIRouter, Request, BackgroundTasks, Query
 from fastapi.responses import JSONResponse
 from plans.api import Payload
 from copilot.generation import availability
@@ -21,7 +23,11 @@ def register(app,root,db):
     @app.middleware('http')
     async def protect(request:Request,call_next):
         if request.url.path.startswith('/api/reading'):
-            if store.startup_error:return JSONResponse({'message':'认知阅读暂不可用：文件与笔记尚未完成云端迁移。' if getattr(store.startup_error,'code','') == 'legacy_content_migration' else '认知阅读暂不可用，请核对磁盘与恢复记录。'},status_code=503)
+            # Saved metadata is read-only PostgreSQL data, so history remains
+            # available even while document storage needs repair or migration.
+            history_read = request.method == 'GET' and (request.url.path == '/api/reading/library' or
+                           re.fullmatch(r'/api/reading/jobs/[a-zA-Z0-9-]+', request.url.path))
+            if store.startup_error and not history_read:return JSONResponse({'message':'认知阅读暂不可用：文件与笔记尚未完成云端迁移。' if getattr(store.startup_error,'code','') == 'legacy_content_migration' else '认知阅读暂不可用，请核对磁盘与恢复记录。'},status_code=503)
             if request.method not in ('GET','HEAD','OPTIONS'):
                 if request.headers.get('x-copilot-request')!='1':return JSONResponse({'message':'缺少同源写入标识。'},status_code=403)
                 if int(request.headers.get('content-length','0'))>100000:return JSONResponse({'message':'内容过长。'},status_code=413)
@@ -43,6 +49,12 @@ def register(app,root,db):
                 'requires_own_config':True,'unavailable':availability(store)}
     @router.get('/setup')
     def setup():return {'preferences':store.prefs(),'topics':list(TOPICS)}
+    @router.get('/library')
+    def library(search: str = Query(default='', max_length=300),
+                filter: Literal['all','bookmark','later','read','feedback','archived'] = 'all',
+                kind: Literal['articles','jobs'] = 'articles',
+                page: int = Query(default=1, ge=1, le=100000), page_size: int = Query(default=20, ge=1, le=50)):
+        return store.library(search=search, filter=filter, page=page, page_size=page_size, kind=kind)
     @router.post('/preferences')
     def prefs(body:Payload):return store.save_preferences(body.data)
     @router.post('/sources')

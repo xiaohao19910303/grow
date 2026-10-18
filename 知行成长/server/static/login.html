@@ -4,6 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>登录 · 知行成长</title>
   <link rel="stylesheet" href="/static/account.css">
+  <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
 </head>
 <body class="login-page">
   <main class="login-card">
@@ -24,11 +25,12 @@
         <label for="confirmPassword">确认密码</label>
         <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" maxlength="256">
       </div>
-      <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
+      <div class="auth-message" id="authMessage" role="status" aria-live="polite"></div>
       <button class="auth-submit" id="authSubmit" type="submit">登录</button>
     </form>
     <p class="login-footnote" id="invitationNotice">暂不开放直接注册，请向已有账号的用户获取邀请链接。<br>每个账号独立保存学习内容和记录。</p>
   </main>
-  <script src="/static/login.js"></script>
+  <script src="/static/loading-state.js?v=20261018-1"></script>
+  <script src="/static/login.js?v=20261018-loading"></script>
 </body>
 </html>

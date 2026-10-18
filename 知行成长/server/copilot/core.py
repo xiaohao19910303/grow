@@ -26,6 +26,12 @@ def now():
     return datetime.now(TZ).isoformat(timespec='seconds')
 
 
+def completion_label(record):
+    stamp = datetime.fromisoformat(record['completed_at'])
+    stamp = stamp.replace(tzinfo=TZ) if stamp.tzinfo is None else stamp.astimezone(TZ)
+    return '已完成 · ' + stamp.strftime('%Y-%m-%d %H:%M')
+
+
 def digest(value):
     return hashlib.sha256(value if isinstance(value, bytes) else value.encode()).hexdigest()
 
@@ -185,7 +191,33 @@ class Store:
                 c.execute("UPDATE copilot_drafts SET status='failed' WHERE status='generating'")
                 c.execute("UPDATE copilot_generation_attempts SET status='failed' WHERE status='generating'")
             self.set_meta('writer_session', {})
+            state = self._scan()
+            if not any(b['code'] == 'save_pending_recovery' for b in state['blockers']):
+                self.migrate_learning_records(state['lessons'])
             self._scan()
+
+    def migrate_learning_records(self, lessons):
+        """Import dated local completion evidence without replacing personal records."""
+        with self.conn() as c:
+            for lesson in lessons:
+                label = lesson['learning_label']
+                if not label.startswith(('已完成', '已学习')):
+                    continue
+                match = re.search(r'\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?', label)
+                if not match:
+                    continue  # Never substitute the course date or today's date.
+                try:
+                    stamp = datetime.fromisoformat(match[0])
+                except ValueError:
+                    continue
+                stamp = stamp.replace(tzinfo=TZ) if stamp.tzinfo is None else stamp.astimezone(TZ)
+                timestamp = stamp.isoformat()
+                kind = next((value for word, value in (('快速', 'quick'), ('复盘', 'review'), ('总结', 'summary')) if word in label), 'manual')
+                c.execute('''INSERT INTO copilot_learning_records
+                    (module_id,round_id,lesson_no,completion_type,time_spent_seconds,completed_at,idempotency_key)
+                    VALUES ('renzhi',1,?,?,0,?,?)
+                    ON CONFLICT(module_id,round_id,lesson_no) DO NOTHING''',
+                    (lesson['lesson_no'], kind, timestamp, 'markdown-completion:' + digest(str(lesson['lesson_no']) + timestamp)))
 
     def rows(self, text):
         return [(i, int(m[1]), line) for i, line in enumerate(text.splitlines(keepends=True))
@@ -200,6 +232,10 @@ class Store:
         self.workspace()
         record = self.path('学习记录.md').read_text(encoding='utf-8')
         rows = self.record_rows(record)
+        with self.conn() as c:
+            records = {r['lesson_no']: r for r in c.execute('''
+                SELECT lesson_no,completed_at,time_spent_seconds FROM copilot_learning_records
+                WHERE module_id='renzhi' AND round_id=1''').fetchall()}
         grouped, blockers, courses = {}, [], []
         for p in sorted(self.path('每日课程').glob('*.md')):
             m = NAME.fullmatch(p.name)
@@ -255,18 +291,10 @@ class Store:
                       'version': digest(text + sources + record), 'complete': not errors,
                       'learning_state': 'completed' if completed else 'unknown',
                       'learning_label': status or '待本人记录', 'errors': errors}
-            # Also check database for completion records
-            with self.conn() as c:
-                db_record = c.execute('''
-                    SELECT completed_at, time_spent_seconds FROM copilot_learning_records
-                    WHERE module_id = 'renzhi' AND round_id = 1 AND lesson_no = ?
-                ''', (n,)).fetchone()
-                if db_record:
-                    lesson['learning_state'] = 'completed'
-                    lesson['completed_at'] = db_record['completed_at']
-                    lesson['time_spent_seconds'] = db_record['time_spent_seconds']
-                    if not status:
-                        lesson['learning_label'] = '已学习'
+            db_record = records.get(n)
+            if db_record:
+                lesson.update(learning_state='completed', learning_label=completion_label(db_record),
+                              completed_at=db_record['completed_at'], time_spent_seconds=db_record['time_spent_seconds'])
             courses.append(lesson)
         counts = Counter(x['date'] for x in courses if x['date'])
         for x in courses:
@@ -454,10 +482,10 @@ class Store:
                 fail('conflict', '同一请求标识不能用于不同内容。')
             return {'operation_id': row['id'], 'status': row['status']}
 
-    def prepare(self, key, request, files, draft_id=None):
+    def prepare(self, key, request, files, draft_id=None, sql=()):
         op_id = str(uuid.uuid4())
         # Store durable target content in the journal itself; filesystem staging is recreated as needed.
-        data = {'files': files, 'draft_id': draft_id}
+        data = {'files': files, 'draft_id': draft_id, 'sql': sql}
         with self.conn() as c:
             c.execute('INSERT INTO copilot_operations VALUES (?,?,?,?,?,?)',
                       (op_id, key, digest(encoded(request)), 'prepared', encoded(data), now()))
@@ -501,11 +529,15 @@ class Store:
                         os.unlink(temp)
             self._scan()
             with self.conn() as c:
+                # Completion records and the operation's success commit together.
+                # Recovery replays the same statements after any interrupted file write.
+                for statement, parameters in data.get('sql', []):
+                    c.execute(statement, parameters)
                 if data.get('draft_id'):
                     c.execute("UPDATE copilot_drafts SET status='published' WHERE id=?", (data['draft_id'],))
                 c.execute("UPDATE copilot_operations SET status='done' WHERE id=?", (op_id,))
             return {'operation_id': op_id, 'status': 'done'}
-        except (OSError, db.Error, Problem) as e:
+        except (OSError, db.Error, db.psycopg2.Error, Problem) as e:
             data['error'] = e.message if isinstance(e, Problem) else '文件或数据库写入失败，检查磁盘与权限后恢复。'
             with self.conn() as c:
                 c.execute("UPDATE copilot_operations SET status=?,data=? WHERE id=?",
@@ -545,21 +577,15 @@ class Store:
             cells = line.rstrip('\r\n').split('|')
             cells[-2] = f' 已完成（本人确认：{ts}） ' if state == 'completed' else f' 待本人记录（本人撤销：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
-
             if state == 'completed':
-                with self.conn() as c:
-                    c.execute('''
-                        INSERT OR REPLACE INTO copilot_learning_records
+                sql = [('''INSERT INTO copilot_learning_records
                         (module_id, round_id, lesson_no, completion_type, time_spent_seconds,
                          completed_at, idempotency_key)
                         VALUES ('renzhi', 1, ?, 'manual', 0, ?, ?)
-                    ''', (number, ts, key))
-            elif state == 'unknown':
-                with self.conn() as c:
-                    c.execute('DELETE FROM copilot_learning_records WHERE module_id=? AND round_id=1 AND lesson_no=?',
-                              ('renzhi', number))
-            return result
+                        ON CONFLICT(module_id,round_id,lesson_no) DO NOTHING''', (number, ts, key))]
+            else:
+                sql = [('DELETE FROM copilot_learning_records WHERE module_id=? AND round_id=1 AND lesson_no=?', ('renzhi', number))]
+            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}], sql=sql)
 
     def submit_review(self, number, answers, time_spent, version, key):
         """Submit review answers and mark lesson as completed."""
@@ -590,16 +616,16 @@ class Store:
             ts = now()
             cells[-2] = f' 已完成（复盘提交：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
-
-            with self.conn() as c:
-                c.execute('''
+            sql = [('''
                     INSERT INTO copilot_learning_records
                     (module_id, round_id, lesson_no, completion_type, review_answers,
                      time_spent_seconds, completed_at, idempotency_key)
                     VALUES ('renzhi', 1, ?, 'review', ?, ?, ?, ?)
-                ''', (number, json.dumps(answers, ensure_ascii=False), time_spent, ts, key))
-            return result
+                    ON CONFLICT(module_id,round_id,lesson_no) DO UPDATE SET
+                        completion_type=excluded.completion_type, review_answers=excluded.review_answers,
+                        time_spent_seconds=excluded.time_spent_seconds, idempotency_key=excluded.idempotency_key
+                ''', (number, json.dumps(answers, ensure_ascii=False), time_spent, ts, key))]
+            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}], sql=sql)
 
     def submit_summary(self, number, summary, time_spent, version, key):
         """Submit learning summary and mark lesson as completed."""
@@ -630,16 +656,16 @@ class Store:
             ts = now()
             cells[-2] = f' 已完成（总结提交：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
-
-            with self.conn() as c:
-                c.execute('''
+            sql = [('''
                     INSERT INTO copilot_learning_records
                     (module_id, round_id, lesson_no, completion_type, summary_text,
                      time_spent_seconds, completed_at, idempotency_key)
                     VALUES ('renzhi', 1, ?, 'summary', ?, ?, ?, ?)
-                ''', (number, summary, time_spent, ts, key))
-            return result
+                    ON CONFLICT(module_id,round_id,lesson_no) DO UPDATE SET
+                        completion_type=excluded.completion_type, summary_text=excluded.summary_text,
+                        time_spent_seconds=excluded.time_spent_seconds, idempotency_key=excluded.idempotency_key
+                ''', (number, summary, time_spent, ts, key))]
+            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}], sql=sql)
 
     def quick_complete(self, number, time_spent, version, key):
         """Quick mark lesson as completed without review or summary."""
@@ -670,22 +696,20 @@ class Store:
             ts = now()
             cells[-2] = f' 已完成（快速完成：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
-
-            with self.conn() as c:
-                c.execute('''
+            sql = [('''
                     INSERT INTO copilot_learning_records
                     (module_id, round_id, lesson_no, completion_type, time_spent_seconds,
                      completed_at, idempotency_key)
                     VALUES ('renzhi', 1, ?, 'quick', ?, ?, ?)
-                ''', (number, time_spent, ts, key))
-            return result
+                    ON CONFLICT(module_id,round_id,lesson_no) DO NOTHING
+                ''', (number, time_spent, ts, key))]
+            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}], sql=sql)
 
     def get_learning_record(self, number):
         """Get learning record for a specific lesson."""
         with self.conn() as c:
             row = c.execute('''
-                SELECT completion_type, review_answers, summary_text,
+                SELECT lesson_no, completion_type, review_answers, summary_text,
                        time_spent_seconds, completed_at
                 FROM copilot_learning_records
                 WHERE module_id = 'renzhi' AND round_id = 1 AND lesson_no = ?
@@ -730,7 +754,7 @@ class Store:
                 SELECT lesson_no, completion_type, review_answers, summary_text,
                        time_spent_seconds, completed_at
                 FROM copilot_learning_records
-                WHERE module_id = ? AND DATE(completed_at) = ?
+                WHERE module_id = ? AND round_id = 1 AND DATE(completed_at) = ?
                 ORDER BY completed_at DESC
             ''', (module_id, date)).fetchall()
 
@@ -749,7 +773,7 @@ class Store:
             rows = c.execute('''
                 SELECT DATE(completed_at) as date, COUNT(*) as count
                 FROM copilot_learning_records
-                WHERE module_id = ? AND completed_at >= ? AND completed_at < ?
+                WHERE module_id = ? AND round_id = 1 AND completed_at >= ? AND completed_at < ?
                 GROUP BY DATE(completed_at)
                 ORDER BY date DESC
             ''', (module_id, start_date, end_date)).fetchall()

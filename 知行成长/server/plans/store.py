@@ -4,6 +4,7 @@ import fcntl
 import json
 import os
 import re
+import sqlite3
 import db
 import tempfile
 import uuid
@@ -176,8 +177,10 @@ class Plans:
             fail('restore_pending', '存在未完成的恢复，请先核对日志。', 503)
         with self.lock():
             with self.conn() as c:
-                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='learning_draft_families'").fetchone()
-            if not installed:
+                sqlite = isinstance(c, sqlite3.Connection)
+                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='learning_draft_families'" if sqlite else
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='learning_draft_families'").fetchone()
+            if not installed and sqlite:
                 target = self.runtime / f'before-migration-{uuid.uuid4().hex}.db'
                 from .backup import database_snapshot
                 database_snapshot(self, target)
@@ -229,7 +232,11 @@ class Plans:
     def get_setting(self, key, default=''):
         # Share the existing settings screen without creating a second credential store.
         with self.conn() as c:
-            if not c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_settings'").fetchone():
+            if isinstance(c, sqlite3.Connection):
+                columns = {r[1] for r in c.execute('PRAGMA table_info(copilot_settings)')}
+            else:
+                columns = {r[0] for r in c.execute("SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='copilot_settings'")}
+            if not {'key', 'value'} <= columns:
                 return default
             row = c.execute('SELECT value FROM copilot_settings WHERE key=?', (key,)).fetchone()
         return json.loads(row[0]) if row else default

@@ -167,32 +167,37 @@
     reader.hidden=false;reader.replaceChildren();
     button('返回学习列表',()=>returnFromLesson(),reader);
     readerStatus.textContent='正在读取课程…';reader.append(readerStatus);
-    const lesson = await request('/lessons/' + number);
+    const loading = window.LoadingState?.start(reader, '正在读取课程…', '正在读取 Markdown 正文和你的学习记录。');
+    const [lesson, record] = await Promise.all([request('/lessons/' + number), request('/lessons/' + number + '/learning-record')]).finally(() => loading?.finish());
     if(requestId!==readingRequest)return;
     root.classList.add('reading-mode');management.open=false;
     reader.hidden = false; reader.replaceChildren();
     button('返回学习列表', () => returnFromLesson(), reader);
     readerStatus.textContent='';reader.append(readerStatus);
     const actions = el('div', undefined, 'cp-actions');
-    button('课程正文', () => markdown(content, lesson.content), actions);
+    button('课程正文', () => { markdown(content, lesson.content); notes.bind(content); }, actions);
     button('参考资料', () => markdown(content, lesson.sources), actions);
     const feedbackKey = uid();
     const completion = button(lesson.learning_state === 'completed' ? '撤销本人完成记录' : '本人确认学完', async () => {
-      const result = await request(`/lessons/${number}/learning-state`, 'PATCH', {
-        state: lesson.learning_state === 'completed' ? 'unknown' : 'completed', version: lesson.version, key: feedbackKey
-      });
+      await notes.flush();
+      const result = lesson.learning_state === 'completed'
+        ? await request(`/lessons/${number}/learning-state`, 'PATCH', {state: 'unknown', version: lesson.version, key: feedbackKey})
+        : await request(`/lessons/${number}/complete`, 'POST', {time_spent_seconds: activeTracker?.timeSpent || 0, version: lesson.version, key: feedbackKey});
       if (result.status !== 'done') { message('学习状态待恢复，请查看保存操作。'); return; }
+      window.loadDailyLearning?.({force:true});
       await read(number); await load(false); message('学习记录已更新，个人笔记保留。');
     }, actions);
     completion.disabled = !lesson.complete;
     const content = el('div', undefined, 'cp-reader');
     reader.append(content,actions,readerStatus); markdown(content, lesson.content);
+    const notes = window.StudyNotes.mount({parent: reader, content, kind: 'renzhi', course: String(number),
+      version: lesson.version, seedNotes: record?.summary_text || ''});
     if(lesson.github_url){const link=el('a','在 GitHub 打开课程');link.href=lesson.github_url;link.target='_blank';link.rel='noopener noreferrer';actions.append(link);}
     button('保存需要帮助',()=>{management.open=true;management.scrollIntoView({block:'start'});},actions);
 
     // 添加阅读监控和复盘区（仅在未完成时）
     if (lesson.learning_state !== 'completed') {
-      const readingTracker = new ReadingTracker(number, lesson.version, feedbackKey);
+      const readingTracker = new ReadingTracker(number, lesson.version, feedbackKey, notes);
       activeTracker=readingTracker;
       reader.append(readingTracker.createProgressBar());
       reader.append(readingTracker.createReviewSection());
@@ -204,7 +209,8 @@
 
   // 阅读监控类
   class ReadingTracker {
-    constructor(lessonId, lessonVersion, feedbackKey) {
+    constructor(lessonId, lessonVersion, feedbackKey, notes) {
+      this.notes = notes;
       this.lessonId = lessonId;
       this.lessonVersion = lessonVersion;
       this.feedbackKey = feedbackKey;
@@ -248,109 +254,8 @@
     }
 
     createReviewSection() {
-      this.reviewSection = el('div', undefined, 'cp-review-section');
-      this.reviewSection.hidden = true;
-
-      this.reviewSection.append(el('h3', '💭 学习完成确认'));
-      this.reviewSection.append(el('p', '选择一种方式完成本课学习：', 'desc'));
-
-      // 选项卡
-      const tabs = el('div', undefined, 'cp-review-tabs');
-      const tabReview = button('回答复盘问题', () => this.showTab('review'), tabs, 'cp-tab active');
-      const tabSummary = button('写学习总结', () => this.showTab('summary'), tabs, 'cp-tab');
-      const tabQuick = button('快速完成', () => this.showTab('quick'), tabs, 'cp-tab');
-      this.reviewSection.append(tabs);
-
-      // 复盘问题 - will be populated dynamically
-      const reviewContent = el('div', undefined, 'cp-tab-content');
-      reviewContent.id = 'cp-tab-review';
-      reviewContent.append(el('p', '请用 1-2 句话回答以下问题：'));
-      this.questionsContainer = el('div', undefined, 'cp-questions');
-      reviewContent.append(this.questionsContainer);
-
-      this.reviewSubmitBtn = button('提交复盘，标记完成', async () => {
-        const answers = [];
-        this.questionsContainer.querySelectorAll('.cp-question').forEach((q, index) => {
-          const textarea = q.querySelector('textarea');
-          answers.push({
-            question_id: index + 1,
-            answer: textarea.value
-          });
-        });
-        await this.submitReview(answers);
-      }, reviewContent, 'btn primary');
-
-      // 学习总结
-      const summaryContent = el('div', undefined, 'cp-tab-content');
-      summaryContent.id = 'cp-tab-summary';
-      summaryContent.hidden = true;
-      const summaryInput = el('textarea');
-      summaryInput.rows = 4;
-      summaryInput.placeholder = '用 50-100 字总结：今天我学到了什么？有什么启发？';
-      summaryContent.append(summaryInput);
-      button('提交总结，标记完成', async () => {
-        await this.submitSummary(summaryInput.value);
-      }, summaryContent, 'btn primary');
-
-      // 快速完成
-      const quickContent = el('div', undefined, 'cp-tab-content');
-      quickContent.id = 'cp-tab-quick';
-      quickContent.hidden = true;
-      quickContent.append(el('p', '确认已认真学习本课内容？'));
-      button('确认完成', async () => {
-        await this.quickComplete();
-      }, quickContent, 'btn primary');
-
-      this.reviewSection.append(reviewContent, summaryContent, quickContent);
-
-      // Load questions asynchronously
-      this.loadQuestions();
-
+      this.reviewSection = this.notes.form;
       return this.reviewSection;
-    }
-
-    async loadQuestions() {
-      try {
-        const result = await request(`/lessons/${this.lessonId}/review-questions`);
-        const questions = result.questions || [
-          {question_id: 1, question_text: '本课的核心概念是什么？用自己的话解释。'},
-          {question_id: 2, question_text: '你能举一个生活中的例子吗？'}
-        ];
-
-        this.questionsContainer.replaceChildren();
-        questions.forEach((q, index) => {
-          const qDiv = el('div', undefined, 'cp-question');
-          qDiv.append(el('p', `${index + 1}. ${q.question_text}`));
-          const textarea = el('textarea');
-          textarea.rows = 2;
-          textarea.placeholder = '用 1-2 句话回答...';
-          qDiv.append(textarea);
-          this.questionsContainer.append(qDiv);
-        });
-      } catch (e) {
-        // Fallback to default questions
-        this.questionsContainer.replaceChildren();
-        const defaultQuestions = [
-          '本课的核心概念是什么？用自己的话解释。',
-          '你能举一个生活中的例子吗？'
-        ];
-        defaultQuestions.forEach((text, index) => {
-          const qDiv = el('div', undefined, 'cp-question');
-          qDiv.append(el('p', `${index + 1}. ${text}`));
-          const textarea = el('textarea');
-          textarea.rows = 2;
-          textarea.placeholder = '用 1-2 句话回答...';
-          qDiv.append(textarea);
-          this.questionsContainer.append(qDiv);
-        });
-      }
-    }
-
-    showTab(tabName) {
-      this.reviewSection.querySelectorAll('.cp-tab-content').forEach(el => el.hidden = true);
-      this.reviewSection.querySelectorAll('.cp-tab').forEach(el => el.classList.remove('active'));
-      document.getElementById('cp-tab-' + tabName).hidden = false;
-      event.target.classList.add('active');
     }
 
     bindScrollListener() {
@@ -366,7 +271,7 @@
 
     startTimer() {
       this.timer = setInterval(() => {
-        if (!this.completed && currentTab==='copilot' && root.classList.contains('reading-mode') && !document.hidden) {
+        if (currentTab==='copilot' && root.classList.contains('reading-mode') && !document.hidden) {
           this.timeSpent++;
           this.updateUI();
           this.checkCompletion();
@@ -379,15 +284,8 @@
       const timeMet = this.timeSpent >= this.threshold;
 
       if (scrollMet && timeMet && !this.completed) {
-        this.showReviewSection();
         this.completed = true;
-        this.stopTimer();
       }
-    }
-
-    showReviewSection() {
-      this.reviewSection.hidden = false;
-      this.reviewSection.scrollIntoView({behavior: 'smooth', block: 'start'});
     }
 
     updateUI() {
@@ -410,65 +308,6 @@
       }
     }
 
-    async submitReview(answers) {
-      try {
-        const result = await request(`/lessons/${this.lessonId}/review`, 'POST', {
-          answers: answers,
-          time_spent_seconds: this.timeSpent,
-          version: this.lessonVersion,
-          key: this.feedbackKey
-        });
-        message('✅ 已提交复盘，标记为学习完成！');
-        await load(false);
-        this.reviewSection.hidden = true;
-      } catch (e) {
-        message('提交失败：' + e.message);
-        this.showInlineError(e.message);
-      }
-    }
-
-    async submitSummary(summary) {
-      try {
-        const result = await request(`/lessons/${this.lessonId}/summary`, 'POST', {
-          summary: summary,
-          time_spent_seconds: this.timeSpent,
-          version: this.lessonVersion,
-          key: this.feedbackKey
-        });
-        message('✅ 已提交总结，标记为学习完成！');
-        await load(false);
-        this.reviewSection.hidden = true;
-      } catch (e) {
-        message('提交失败：' + e.message);
-        this.showInlineError(e.message);
-      }
-    }
-
-    async quickComplete() {
-      try {
-        const result = await request(`/lessons/${this.lessonId}/complete`, 'POST', {
-          time_spent_seconds: this.timeSpent,
-          version: this.lessonVersion,
-          key: this.feedbackKey
-        });
-        message('✅ 已标记为学习完成！');
-        await load(false);
-        this.reviewSection.hidden = true;
-      } catch (e) {
-        message('提交失败：' + e.message);
-        this.showInlineError(e.message);
-      }
-    }
-
-    showInlineError(text) {
-      const existing = this.reviewSection.querySelector('.cp-inline-error');
-      if (existing) existing.remove();
-      const err = el('p', '⚠️ ' + text, 'cp-inline-error');
-      err.style.cssText = 'color:#c0392b;font-weight:600;margin:8px 0 0;padding:8px 12px;background:#fdecea;border-radius:6px;';
-      this.reviewSection.prepend(err);
-      err.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-      setTimeout(() => { if (err.parentNode) err.remove(); }, 8000);
-    }
   }
   async function load(clear = true) {
     if (clear) message('正在读取课程…');
@@ -563,7 +402,7 @@
   window.leaveCopilot = () => {++readingRequest;stopReading();};
   window.showCopilotManagement = () => { ++readingRequest;stopReading();root.classList.remove('reading-mode');management.open=true; };
   window.openCopilotLesson = async number => {
-    goTab('copilot', {reading:true});
+    if (goTab('copilot', {reading:true}) === false) return;
     try { await read(number); } catch (error) { message(error.message); }
   };
 

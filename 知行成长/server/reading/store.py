@@ -112,6 +112,46 @@ class ReadingStore(Plans):
     def record(self,key):return self.get(TABLE,key)
     def prefs(self):return {**DEFAULT,**self.record('preferences')['value']}
     def jobs(self):return [r for r in self.rows(TABLE) if r.get('type')=='job']
+    def library(self, search='', filter='all', page=1, page_size=20, kind='articles'):
+        """List saved metadata in one connection, without downloading article bodies.
+
+        Original records remain untouched, including escaped NULs in old PDFs.
+        This works for both local and GitHub-backed stores: history lives in PG.
+        """
+        if kind not in ('articles', 'jobs') or filter not in ('all', 'bookmark', 'later', 'read', 'feedback', 'archived'):
+            fail('invalid', '历史筛选条件无效。', 422)
+        integer(page, 1, 100000, '页码');integer(page_size, 1, 50, '每页数量')
+        fields = ('id,title,zh_title,url,source,author,published_at,saved_at,summary,reason,access,category,'
+                  'language,tags,read,bookmarked,read_later,archived,feedback').split(',') if kind == 'articles' else (
+                  'id,kind,state,created_at,finished_at,date,daily,phase,error,saved_ids').split(',')
+        projection = ','.join(f"'{name}',doc->'{name}'" for name in fields)
+        if kind == 'jobs':
+            projection += ", 'candidate_count',CASE WHEN jsonb_typeof(doc->'candidates')='array' THEN jsonb_array_length(doc->'candidates') ELSE 0 END"
+        conditions = ["doc->>'type'=?"]
+        params = ['article' if kind == 'articles' else 'job']
+        if kind == 'articles':
+            archived = "COALESCE(doc->>'archived','false')='true'"
+            conditions.append(archived if filter == 'archived' else 'NOT (' + archived + ')')
+            key = {'bookmark': 'bookmarked', 'later': 'read_later', 'read': 'read'}.get(filter)
+            if key:conditions.append(f"doc->>'{key}'='true'")
+            if filter == 'feedback':
+                conditions.append("(COALESCE(doc->'feedback'->>'value','')<>'' OR COALESCE(doc->'feedback'->>'difficulty','')<>'' OR COALESCE(doc->'feedback'->>'takeaway','')<>'' OR COALESCE(doc->'feedback'->>'question','')<>'' OR COALESCE(doc->'feedback'->>'action','')<>'' OR CASE WHEN jsonb_typeof(doc->'feedback'->'tags')='array' THEN jsonb_array_length(doc->'feedback'->'tags')>0 ELSE false END)")
+            if search:
+                conditions.append("strpos(lower(concat_ws(' ',doc->>'title',doc->>'zh_title',doc->>'author',doc->>'source',doc->>'summary',doc->>'guide',doc->>'full_content',doc->>'tags',doc->>'feedback')),lower(?))>0")
+                params.append(search)
+        # Materialize once: inlining the JSON expression repeats parsing for
+        # every projected field. Skip large export journals before parsing.
+        prefix = "WITH records AS MATERIALIZED (SELECT replace(data,?,?)::jsonb AS doc FROM reading_records WHERE id LIKE ?), matches AS MATERIALIZED (SELECT doc FROM records"
+        where = ' WHERE ' + ' AND '.join(conditions)
+        args = [r'\u0000', r'\ufffd', 'article-%' if kind == 'articles' else 'job-%', *params]
+        order = 'saved_at' if kind == 'articles' else 'created_at'
+        with self.conn() as c:
+            row = c.execute(prefix + where + '), page_rows AS (SELECT jsonb_build_object(' + projection + ') AS item FROM matches' +
+                            f" ORDER BY doc->>'{order}' DESC,doc->>'id' DESC LIMIT ? OFFSET ?) " +
+                            "SELECT (SELECT count(*) FROM matches),COALESCE((SELECT jsonb_agg(item) FROM page_rows),'[]'::jsonb)",
+                            [*args, page_size, (page - 1) * page_size]).fetchone()
+        return {kind: row[1], 'total': row[0], 'page': page, 'page_size': page_size}
+
     def articles(self,search=None,include_archived=False):
         """获取文章列表，支持搜索和归档过滤。"""
         result=[]
