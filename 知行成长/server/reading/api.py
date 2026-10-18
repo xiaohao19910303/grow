@@ -1,7 +1,8 @@
 """Local-only routes; model requests are always explicit."""
 from tenancy import scoped, learning_root, runtime_root
 import asyncio
-from fastapi import APIRouter, Request, BackgroundTasks
+from typing import Literal
+from fastapi import APIRouter, Request, BackgroundTasks, Query
 from fastapi.responses import JSONResponse
 from plans.api import Payload
 from copilot.generation import availability
@@ -43,6 +44,12 @@ def register(app,root,db):
                 'requires_own_config':True,'unavailable':availability(store)}
     @router.get('/setup')
     def setup():return {'preferences':store.prefs(),'topics':list(TOPICS)}
+    @router.get('/library')
+    def library(search: str = Query(default='', max_length=300),
+                filter: Literal['all','bookmark','later','read','feedback','archived'] = 'all',
+                kind: Literal['articles','jobs'] = 'articles',
+                page: int = Query(default=1, ge=1, le=100000), page_size: int = Query(default=20, ge=1, le=50)):
+        return store.library(search=search, filter=filter, page=page, page_size=page_size, kind=kind)
     @router.post('/preferences')
     def prefs(body:Payload):return store.save_preferences(body.data)
     @router.post('/sources')

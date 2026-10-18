@@ -112,6 +112,44 @@ class ReadingStore(Plans):
     def record(self,key):return self.get(TABLE,key)
     def prefs(self):return {**DEFAULT,**self.record('preferences')['value']}
     def jobs(self):return [r for r in self.rows(TABLE) if r.get('type')=='job']
+    def library(self, search='', filter='all', page=1, page_size=20, kind='articles'):
+        """List saved metadata in one connection, without downloading article bodies.
+
+        Original records remain untouched, including escaped NULs in old PDFs.
+        This works for both local and GitHub-backed stores: history lives in PG.
+        """
+        if kind not in ('articles', 'jobs') or filter not in ('all', 'bookmark', 'later', 'read', 'feedback', 'archived'):
+            fail('invalid', '历史筛选条件无效。', 422)
+        integer(page, 1, 100000, '页码');integer(page_size, 1, 50, '每页数量')
+        fields = ('id,title,zh_title,url,source,author,published_at,saved_at,summary,reason,access,category,'
+                  'language,tags,read,bookmarked,read_later,archived,feedback').split(',') if kind == 'articles' else (
+                  'id,kind,state,created_at,finished_at,date,daily,phase,error,saved_ids').split(',')
+        projection = ','.join(f"'{name}',doc->'{name}'" for name in fields)
+        if kind == 'jobs':
+            projection += ", 'candidate_count',jsonb_array_length(COALESCE(doc->'candidates','[]'::jsonb))"
+        conditions = ["doc->>'type'=?"]
+        params = ['article' if kind == 'articles' else 'job']
+        if kind == 'articles':
+            archived = "COALESCE(doc->>'archived','false')='true'"
+            conditions.append(archived if filter == 'archived' else 'NOT (' + archived + ')')
+            key = {'bookmark': 'bookmarked', 'later': 'read_later', 'read': 'read'}.get(filter)
+            if key:conditions.append(f"doc->>'{key}'='true'")
+            if filter == 'feedback':
+                conditions.append("(COALESCE(doc->'feedback'->>'value','')<>'' OR COALESCE(doc->'feedback'->>'difficulty','')<>'' OR COALESCE(doc->'feedback'->>'takeaway','')<>'' OR COALESCE(doc->'feedback'->>'question','')<>'' OR COALESCE(doc->'feedback'->>'action','')<>'' OR jsonb_array_length(COALESCE(doc->'feedback'->'tags','[]'::jsonb))>0)")
+            if search:
+                conditions.append("strpos(lower(concat_ws(' ',doc->>'title',doc->>'zh_title',doc->>'author',doc->>'source',doc->>'summary',doc->>'guide',doc->>'full_content',doc->>'tags',doc->>'feedback')),lower(?))>0")
+                params.append(search)
+        prefix = "WITH records AS (SELECT replace(data,?,?)::jsonb AS doc FROM reading_records) "
+        where = ' WHERE ' + ' AND '.join(conditions)
+        args = [r'\u0000', r'\ufffd', *params]
+        order = 'saved_at' if kind == 'articles' else 'created_at'
+        with self.conn() as c:
+            total = c.execute(prefix + 'SELECT count(*) FROM records' + where, args).fetchone()[0]
+            rows = c.execute(prefix + 'SELECT jsonb_build_object(' + projection + ') FROM records' + where +
+                             f" ORDER BY doc->>'{order}' DESC,doc->>'id' DESC LIMIT ? OFFSET ?",
+                             [*args, page_size, (page - 1) * page_size]).fetchall()
+        return {kind: [row[0] for row in rows], 'total': total, 'page': page, 'page_size': page_size}
+
     def articles(self,search=None,include_archived=False):
         """获取文章列表，支持搜索和归档过滤。"""
         result=[]
