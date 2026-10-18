@@ -1,0 +1,34 @@
+.study-notes-form textarea,
+.practice-answer textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0 12px;
+  padding: 12px;
+  min-height: 100px;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.practice-answer {
+  display: block;
+  margin: 16px 0;
+  padding: 12px 0 4px 16px;
+  border-left: 3px solid var(--primary);
+  color: var(--muted);
+  font-size: 13px;
+}
+.practice-answer textarea { font-size: 14px; }
+.study-notes-form [role="status"] { overflow-wrap: anywhere; }
+.study-notes-form .day-actions { flex-wrap: wrap; }
+.study-notes-conflict pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
+.study-notes-conflict button { margin: 8px 8px 0 0; }
+.study-notes-form textarea:focus-visible,
+.practice-answer textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

@@ -399,11 +399,12 @@
   }
   window.addEventListener('load',async()=>{if(location.hash.startsWith('#plans/'))goTab('plans');else try{const data=await api('');for(const a of data.attempts)if(['queued','generating'].includes(a.state))observe(a.id);}catch(_){/* The plans page offers a manual retry. */}});
   window.openPlanCourse=async(pid,n)=>{
-    rememberLearningOrigin();goTab('reader',{reading:true});const reader=document.getElementById('dailyReader');reader.hidden=false;reader.replaceChildren(node('p','正在读取…'));
-    try{const d=await api('/'+pid+'/lessons/'+n);reader.replaceChildren();button(reader,'返回学习列表',returnFromLesson);githubLink(reader,'在 GitHub 打开课程',d.github_url);markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);githubLink(source,'在 GitHub 打开参考资料',d.sources_github_url);markdown(source,d.sources);
-      const comment=field(reader,'本课反馈（可选，填写后保存；不会自动发送给AI）','','textarea');
-      button(reader,'本人确认学完',async()=>{await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:comment.value});d.lesson.learning_state='completed';toast('已记录本人反馈');refresh();},true);
-      button(reader,'保存反馈，暂不标记完成',async()=>{await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:d.lesson.learning_state,comment:comment.value});toast('反馈已保存');});
-    }catch(e){reader.replaceChildren(node('p',e.message));button(reader,'返回学习列表',returnFromLesson);}
+    rememberLearningOrigin();if(goTab('reader',{reading:true})===false)return;const turn=window.studyReaderRequest;const reader=document.getElementById('dailyReader');reader.hidden=false;reader.replaceChildren(node('p','正在读取…'));
+    try{const [d,detail]=await Promise.all([api('/'+pid+'/lessons/'+n),api('/'+pid)]);const version=await window.StudyNotes.contentVersion(d.content);if(turn!==window.studyReaderRequest)return;reader.replaceChildren();button(reader,'返回学习列表',returnFromLesson);githubLink(reader,'在 GitHub 打开课程',d.github_url);const content=markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);githubLink(source,'在 GitHub 打开参考资料',d.sources_github_url);markdown(source,d.sources);
+      const feedback=detail.feedback.find(item=>item.lesson_no===n);
+      const notes=window.StudyNotes.mount({parent:reader,content,kind:'plan',course:pid+'/'+n,version,seedNotes:feedback?.comment||''});
+      const status=node('p',d.lesson.learning_state==='completed'?'本课已完成；修改笔记不会改变完成状态。':'本课尚未完成；笔记与答案可先暂存。','desc');notes.form.insertBefore(status,notes.status);
+      button(notes.actions,'本人确认学完',async()=>{await notes.flush();await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:feedback?.comment||''});d.lesson.learning_state='completed';status.textContent='本课已完成，笔记与练习答案已独立暂存。';refresh();},true);
+    }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,'返回学习列表',returnFromLesson);}
   };
 })();
