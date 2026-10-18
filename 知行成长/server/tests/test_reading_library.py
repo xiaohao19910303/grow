@@ -68,3 +68,21 @@ class ReadingLibraryTests(PostgreSQLFixture):
         self.assertEqual(self.store.library(search='old PDF')['total'], 1)
         with db.connect() as c:
             self.assertEqual(c.execute("SELECT data FROM reading_records WHERE id='article-000'").fetchone()[0], raw)
+
+    def test_api_history_remains_readable_during_document_storage_failure(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from copilot.core import Problem
+        from reading.api import register
+        self.store.startup_error = Problem('legacy_content_migration', 'Needs repair', 503)
+        app = FastAPI()
+        with patch('reading.api.make_store', return_value=self.store):
+            register(app, Path('/unused'), Path('/unused-runtime'))
+        with TestClient(app) as client:
+            response = client.get('/api/reading/library?page_size=5')
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(len(response.json()['articles']), 5)
+            self.assertIn('no-store', response.headers['cache-control'])
+            self.assertEqual(client.get('/api/reading/articles/article-000').status_code, 503)
+            self.assertEqual(client.get('/api/reading/library?page=0').status_code, 422)
+            self.assertEqual(client.get('/api/reading/library?filter=anything').status_code, 422)
