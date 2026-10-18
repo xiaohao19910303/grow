@@ -550,6 +550,8 @@ stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
 from migration_api import register as register_migrations
 register_migrations(app, copilot_store, LEARN_ROOT)
 materials = register_materials(app, LEARN_ROOT)
+from study_notes import register as register_study_notes
+register_study_notes(app)
 search_service = register_search(app, DB_PATH)
 timeline_service = register_timeline(app, DB_PATH)
 
