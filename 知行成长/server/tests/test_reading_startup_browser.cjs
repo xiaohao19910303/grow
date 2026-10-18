@@ -12,6 +12,10 @@ let rejectNext=false,jobReads=0,holdListing=true,rejectSetup=false;const heldLis
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
   res.setHeader('Content-Type','application/json');
+  if(url.pathname==='/api/reading/library'){
+    const listed=url.searchParams.get('kind')==='jobs'?[...jobs.values()].map(job=>({...job,candidate_count:job.candidates?.length||0})):[];
+    return res.end(JSON.stringify({jobs:listed,articles:[],total:listed.length,page:1,page_size:20}));
+  }
   if(url.pathname==='/api/reading'){
     const reply=()=>res.end(JSON.stringify({preferences,topics:['科技','认知'],default_sources:[],custom_sources:[],articles:[],jobs:[...jobs.values()]}));
     if(holdListing){heldListings.push(reply);return;}return reply();
@@ -93,7 +97,7 @@ async function main(){
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'startup page must fit mobile');
     await page.setViewportSize({width:1100,height:900});
     // Returning while admission is pending must neither duplicate nor abort it.
-    await page.getByRole('button',{name:'返回今日阅读',exact:true}).click();await form();
+    await page.getByRole('button',{name:'返回阅读',exact:true}).click();await form();
     await page.getByRole('button',{name:'开始查找',exact:true}).click();
     await page.getByRole('heading',{name:'正在启动查找',exact:true}).waitFor();
     assert.equal(requests.length,1);
@@ -103,7 +107,7 @@ async function main(){
     await page.getByRole('button',{name:'取消任务',exact:true}).click();
     await page.getByRole('button',{name:'调整条件重新搜集',exact:true}).waitFor();
     // Failure stays actionable on the progress page and retries the same key.
-    await page.getByRole('button',{name:'返回今日阅读',exact:true}).click();await form();
+    await page.getByRole('button',{name:'返回阅读',exact:true}).click();await form();
     rejectNext=true;
     await page.getByRole('button',{name:'开始查找',exact:true}).click();
     await page.getByRole('heading',{name:'启动查找遇到问题',exact:true}).waitFor();
@@ -119,12 +123,12 @@ async function main(){
     await page.getByRole('button',{name:'取消任务',exact:true}).click();
     await page.getByRole('button',{name:'调整条件重新搜集',exact:true}).waitFor();
     // Completion after navigation cannot unexpectedly pull the user back.
-    await page.getByRole('button',{name:'返回今日阅读',exact:true}).click();await form();
+    await page.getByRole('button',{name:'返回阅读',exact:true}).click();await form();
     await page.getByRole('button',{name:'开始查找',exact:true}).click();
     await page.getByRole('heading',{name:'正在启动查找',exact:true}).waitFor();
-    await page.getByRole('button',{name:'返回今日阅读',exact:true}).click();
+    await page.getByRole('button',{name:'返回阅读',exact:true}).click();
     await release();await page.waitForTimeout(200);
-    assert.equal(await page.getByRole('heading',{name:'今日阅读',exact:true}).count(),1);
+    assert.equal(await page.getByRole('heading',{name:'阅读',exact:true}).count(),1);
     assert.equal(jobs.size,3);
     await form();rejectNext='html';
     await page.getByRole('button',{name:'开始查找',exact:true}).click();
@@ -133,8 +137,9 @@ async function main(){
     assert.equal(await page.locator('.reading-loading').count(),0);
     const readyJob=[...jobs.values()].at(-1);readyJob.state='ready';readyJob.created_at='2026-10-17T12:00:00';
     readyJob.candidates=[{id:'article-fixture',title:'Technology article',category:'recent',language:'en',source:'Fixture',summary:'Public source summary.'}];
-    await page.getByRole('button',{name:'返回今日阅读',exact:true}).click();
-    await page.getByRole('button',{name:/查看并保存 · 1 篇/}).click();
+    await page.getByRole('button',{name:'返回阅读',exact:true}).click();
+    await page.getByRole('button',{name:'历史搜集记录',exact:true}).click();
+    await page.getByRole('button',{name:'查看并保存',exact:true}).click();
     await page.getByRole('button',{name:'保存选中的文章与资料',exact:true}).click();
     await page.getByText('正在保存文章与正文…',{exact:true}).waitFor();
     for(let i=0;i<100&&!pendingSaves.length;i++)await page.waitForTimeout(10);
