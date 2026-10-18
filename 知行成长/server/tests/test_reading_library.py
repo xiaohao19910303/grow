@@ -83,6 +83,11 @@ class ReadingLibraryTests(PostgreSQLFixture):
             self.assertEqual(response.status_code, 200, response.text)
             self.assertEqual(len(response.json()['articles']), 5)
             self.assertIn('no-store', response.headers['cache-control'])
+            old_result = client.get('/api/reading/jobs/job-history')
+            self.assertEqual(old_result.status_code, 200, old_result.text)
+            self.assertEqual(old_result.json()['candidates'][0]['title'], '原有搜集结果')
+            self.assertEqual(client.post('/api/reading/jobs/job-history/save', json={'data': {'ids': []}},
+                                         headers={'X-Copilot-Request': '1'}).status_code, 503)
             self.assertEqual(client.get('/api/reading/articles/article-000').status_code, 503)
             self.assertEqual(client.get('/api/reading/library?page=0').status_code, 422)
             self.assertEqual(client.get('/api/reading/library?filter=anything').status_code, 422)

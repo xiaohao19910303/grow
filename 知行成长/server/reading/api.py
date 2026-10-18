@@ -1,6 +1,7 @@
 """Local-only routes; model requests are always explicit."""
 from tenancy import scoped, learning_root, runtime_root
 import asyncio
+import re
 from typing import Literal
 from fastapi import APIRouter, Request, BackgroundTasks, Query
 from fastapi.responses import JSONResponse
@@ -24,7 +25,8 @@ def register(app,root,db):
         if request.url.path.startswith('/api/reading'):
             # Saved metadata is read-only PostgreSQL data, so history remains
             # available even while document storage needs repair or migration.
-            history_read = request.method == 'GET' and request.url.path == '/api/reading/library'
+            history_read = request.method == 'GET' and (request.url.path == '/api/reading/library' or
+                           re.fullmatch(r'/api/reading/jobs/[a-zA-Z0-9-]+', request.url.path))
             if store.startup_error and not history_read:return JSONResponse({'message':'认知阅读暂不可用：文件与笔记尚未完成云端迁移。' if getattr(store.startup_error,'code','') == 'legacy_content_migration' else '认知阅读暂不可用，请核对磁盘与恢复记录。'},status_code=503)
             if request.method not in ('GET','HEAD','OPTIONS'):
                 if request.headers.get('x-copilot-request')!='1':return JSONResponse({'message':'缺少同源写入标识。'},status_code=403)
