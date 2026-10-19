@@ -13,11 +13,11 @@
   let libraryState={account:'',kind:'articles',search:'',filter:'all',page:1};
   function invalidateLibrary(){libraryEpoch++;libraryCache.clear();}
   const accountKey=()=>window.Account?.user?.id||'';
-  async function api(path='',data){if(data!==undefined && /^\/articles\/[^/]+\/(guide|summary|english)$/.test(path))data={...data,ai_config:AIConfig.require()};const r=await fetch('/api/reading'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});let j;try{j=await r.json();}catch(error){throw new Error('服务暂时不可用，请稍后重试。');}if(!r.ok)throw new Error(j.message||'读取失败，请稍后重试。');if(data!==undefined)invalidateLibrary();return j;}
+  async function api(path='',data){if(data!==undefined && /^\/articles\/[^/]+\/(guide|summary|english)$/.test(path))data={...data,ai_config:AIConfig.require()};const r=await fetch('/api/reading'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});let j;try{j=await r.json();}catch(error){throw new Error('服务暂时不可用，请稍后重试。');}if(!r.ok)throw new Error(j.message||'读取失败，请稍后重试。');if(data!==undefined){invalidateLibrary();if(j.arrangement_sync_error)toast(j.arrangement_sync_error);if(j.completed_arrangements?.length)window.ActionPlans?.refresh().catch(()=>{});}return j;}
   function button(parent,label,action,primary=false){const b=node('button',label,'btn'+(primary?' primary':''));b.type='button';b.onclick=async()=>{const turn=revision;b.disabled=true;try{await action();}catch(e){toast(e.message);const status=root.querySelector('[role=status]');if(turn===revision&&status)status.textContent=e.message;}finally{b.disabled=false;}};parent.append(b);return b;}
   function field(parent,label,value='',type='text'){const wrap=node('label',label,'plan-field');const input=node(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value;wrap.append(input);parent.append(wrap);return input;}
   function select(parent,label,values,value){const wrap=node('label',label,'plan-field'),input=node('select');for(const [v,t] of values){const o=node('option',t);o.value=v;input.append(o);}input.value=value;wrap.append(input);parent.append(wrap);return input;}
-  function leave(){if(dirty?.()&&!confirm('笔记或阅读反馈有未保存的修改。确定放弃并离开？'))return false;dirty=null;++revision;return true;}
+  function leave(){if(dirty?.()&&!confirm('笔记或阅读反馈有未保存的修改。确定放弃并离开？'))return false;window.ReadingPosition?.close();dirty=null;++revision;return true;}
   window.beforeReadingLeave=name=>{if(!leave())return false;if(name!=='reading'&&location.hash.startsWith('#reading/'))history.replaceState(null,'',location.pathname+location.search);return true;};
   window.addEventListener('beforeunload',e=>{if(dirty?.()){e.preventDefault();e.returnValue='';}});
   function shell(title,kind,id){if(!leave())throw new Error('已保留未保存的笔记和反馈。');history.replaceState(null,'',kind?'#reading/'+kind+'/'+id:location.pathname+location.search);root.replaceChildren(node('h2',title));const status=node('p','','desc');status.setAttribute('role','status');root.append(status);return status;}
@@ -86,6 +86,7 @@
             if(j.error)box.append(node('p',j.error,'desc'));button(box,j.kind==='collect'&&j.state==='ready'&&!j.saved_ids?.length?'查看并保存':'查看结果',()=>watch(j.id),true);
           }
         }else for(const a of data.articles){const box=card(a,list);box.append(node('p',a.read?'本人确认读完':'尚未确认读完','desc'));button(box,'本站阅读',()=>read(a.id),true);button(box,ReadingGrowth.hasFeedback(a)?'查看反馈':'写阅读反馈',()=>read(a.id,'feedback'));
+          const scheduleControls=node('div');box.append(scheduleControls);window.DailyAgenda?.mount(scheduleControls,{kind:'article',course:a.id},a.zh_title||a.title);
           button(box,a.archived?'恢复':'归档',async()=>{if(!a.archived&&!confirm('归档后可在“已归档”中恢复。'))return;await api('/articles/'+a.id+(a.archived?'/restore':'/archive'),{});await refresh();});
         }
         if(!data.total)list.append(node('p',libraryState.search?'没有匹配的历史文章，可更换关键词或筛选。':kind==='jobs'?'还没有搜集记录。':'这里还没有文章，可以切换筛选，或搜集、添加文章。','desc'));
@@ -339,6 +340,8 @@
     // 收藏、稍后阅读、完成状态
     for(const [key,label] of [['bookmarked',a.bookmarked?'取消收藏':'收藏'],['read_later',a.read_later?'移出稍后阅读':'稍后阅读'],['read',a.read?'改为尚未读完':'本人确认读完']])button(actions,label,async()=>{await api('/articles/'+id+'/personal',{[key]:!a[key]});a[key]=!a[key];toast('阅读状态已保存，笔记输入保留。');const b=actions.querySelectorAll('button');const index=['bookmarked','read_later','read'].indexOf(key);b[index].textContent=key==='bookmarked'?(a[key]?'取消收藏':'收藏'):key==='read_later'?(a[key]?'移出稍后阅读':'稍后阅读'):(a[key]?'改为尚未读完':'本人确认读完');});
 
+    const scheduleControls=node('div');root.append(scheduleControls);window.DailyAgenda?.mount(scheduleControls,{kind:'article',course:id},a.zh_title||a.title);
+
     // Reading views
     const tabBox=node('div',undefined,'reading-tabs');root.append(tabBox);
     const views=['original','guide','bilingual','summary','english','notes','feedback'];
@@ -355,7 +358,7 @@
     // Original view
     const originalView=node('section',undefined,'article-content-box');root.append(originalView);viewContents.original=originalView;
     let refreshBilingual=()=>{};
-    bodyReader=ReadingBody.mount(originalView,a,d,{autoStart:currentView==='original',api,node,button,markdown,isCurrent,onSaved:fresh=>{d.full_text=fresh.full_text;d.content_needs_refresh=fresh.content_needs_refresh;a.full_content=fresh.article.full_content;a.content_version=fresh.article.content_version;a.hashes={...a.hashes,...fresh.article.hashes};refreshBilingual();},onRendered:body=>setupVocabSelection(body,id,a)});
+    bodyReader=ReadingBody.mount(originalView,a,d,{autoStart:currentView==='original',api,node,button,markdown,isCurrent,onSaved:fresh=>{d.full_text=fresh.full_text;d.content_needs_refresh=fresh.content_needs_refresh;a.full_content=fresh.article.full_content;a.content_version=fresh.article.content_version;a.hashes={...a.hashes,...fresh.article.hashes};refreshBilingual();},onRendered:body=>{setupVocabSelection(body,id,a);window.ReadingPosition?.mount(body,id,()=>isCurrent()&&currentView==='original');}});
 
     // Bilingual view
     const bilingualView=node('section',undefined,'article-content-box');root.append(bilingualView);viewContents.bilingual=bilingualView;

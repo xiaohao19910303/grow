@@ -130,6 +130,10 @@ def register(app,root,db):
             from action_plans import with_content_completion
             return with_content_completion(saved, {'kind':'article','course':aid})
         return saved
+    @router.get('/articles/{aid}/position')
+    def position(aid:str):return store.reading_position(aid)
+    @router.post('/articles/{aid}/position')
+    def save_position(aid:str,body:Payload):return store.reading_position(aid,body.data)
     @router.post('/articles/{aid}/feedback')
     def feedback(aid:str,body:Payload):
         saved = store.save_feedback(aid,body.data)
