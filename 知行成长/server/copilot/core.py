@@ -156,6 +156,27 @@ class Store:
                     completed_at TEXT NOT NULL,
                     idempotency_key TEXT UNIQUE,
                     UNIQUE(module_id, round_id, lesson_no));
+                CREATE TABLE IF NOT EXISTS copilot_feedback (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    module_id TEXT NOT NULL DEFAULT 'renzhi',
+                    round_id INTEGER NOT NULL DEFAULT 1,
+                    lesson_no INTEGER NOT NULL CHECK(lesson_no BETWEEN 1 AND 168),
+                    mastery_level TEXT NOT NULL CHECK(mastery_level IN ('fully_understood', 'basically_understood', 'partially_understood', 'not_understood')),
+                    value_rating INTEGER NOT NULL CHECK(value_rating BETWEEN 0 AND 3),
+                    feeling_tags TEXT,
+                    key_learnings TEXT,
+                    questions TEXT,
+                    next_direction TEXT,
+                    created_at TEXT NOT NULL,
+                    UNIQUE(module_id, round_id, lesson_no));
+                CREATE TABLE IF NOT EXISTS copilot_summaries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    module_id TEXT NOT NULL DEFAULT 'renzhi',
+                    round_id INTEGER NOT NULL DEFAULT 1,
+                    scope TEXT NOT NULL DEFAULT 'full_course',
+                    content TEXT NOT NULL,
+                    feedback_snapshot TEXT,
+                    created_at TEXT NOT NULL);
                 ''')
                 c.execute("INSERT INTO copilot_meta VALUES('schema_version','1') ON CONFLICT(key) DO NOTHING")
                 schema_ver = c.execute("SELECT value FROM copilot_meta WHERE key='schema_version'").fetchone()[0]
@@ -175,6 +196,13 @@ class Store:
                         idempotency_key TEXT UNIQUE,
                         UNIQUE(module_id, round_id, lesson_no))''')
                     c.execute("UPDATE copilot_meta SET value='2' WHERE key='schema_version'")
+                if schema_ver < '3':
+                    columns = {row[1] for row in c.execute("PRAGMA table_info(copilot_learning_records)").fetchall()}
+                    if 'archived' not in columns:
+                        c.execute("ALTER TABLE copilot_learning_records ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+                    if 'archived_at' not in columns:
+                        c.execute("ALTER TABLE copilot_learning_records ADD COLUMN archived_at TEXT")
+                    c.execute("UPDATE copilot_meta SET value='3' WHERE key='schema_version'")
                 # A stopped process must not leave drafts permanently 'generating'.
                 c.execute("UPDATE copilot_drafts SET status='failed' WHERE status='generating'")
                 c.execute("UPDATE copilot_generation_attempts SET status='failed' WHERE status='generating'")
@@ -746,6 +774,69 @@ class Store:
             ''', (module_id, start_date, end_date)).fetchall()
 
         return {r['date']: r['count'] for r in rows}
+
+    def _ensure_completed(self, number):
+        with self.conn() as c:
+            row = c.execute('''
+                SELECT 1 FROM copilot_learning_records
+                WHERE module_id='renzhi' AND round_id=1 AND lesson_no=?
+            ''', (number,)).fetchone()
+        if not row:
+            fail('lesson_not_completed', '课程尚未完成，请先完成学习再提交反馈。')
+
+    def save_feedback(self, number, data, key):
+        with self.lock():
+            self._ensure_completed(number)
+            with self.conn() as c:
+                c.execute('''
+                    INSERT INTO copilot_feedback
+                    (module_id, round_id, lesson_no, mastery_level, value_rating,
+                     feeling_tags, key_learnings, questions, next_direction, created_at)
+                    VALUES ('renzhi', 1, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(module_id, round_id, lesson_no) DO UPDATE SET
+                        mastery_level=excluded.mastery_level,
+                        value_rating=excluded.value_rating,
+                        feeling_tags=excluded.feeling_tags,
+                        key_learnings=excluded.key_learnings,
+                        questions=excluded.questions,
+                        next_direction=excluded.next_direction
+                ''', (number, data['mastery_level'], data['value_rating'],
+                      encoded(data.get('feeling_tags', [])),
+                      data.get('key_learnings', ''),
+                      data.get('questions', ''),
+                      data.get('next_direction', ''),
+                      now()))
+            return {'lesson_no': number, **data}
+
+    def get_feedback(self, number):
+        with self.conn() as c:
+            row = c.execute('''
+                SELECT mastery_level, value_rating, feeling_tags, key_learnings,
+                       questions, next_direction, created_at
+                FROM copilot_feedback WHERE module_id='renzhi' AND round_id=1 AND lesson_no=?
+            ''', (number,)).fetchone()
+        if not row:
+            return None
+        result = dict(row)
+        if result['feeling_tags']:
+            result['feeling_tags'] = json.loads(result['feeling_tags'])
+        return result
+
+    def list_feedback(self, module_id='renzhi', round_id=1):
+        with self.conn() as c:
+            rows = c.execute('''
+                SELECT lesson_no, mastery_level, value_rating, feeling_tags,
+                       key_learnings, questions, next_direction, created_at
+                FROM copilot_feedback WHERE module_id=? AND round_id=?
+                ORDER BY lesson_no
+            ''', (module_id, round_id)).fetchall()
+        items = []
+        for r in rows:
+            d = dict(r)
+            if d['feeling_tags']:
+                d['feeling_tags'] = json.loads(d['feeling_tags'])
+            items.append(d)
+        return items
 
     def extract_review_questions(self, number):
         """Extract review questions from lesson content."""

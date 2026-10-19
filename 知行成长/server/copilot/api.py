@@ -59,6 +59,15 @@ class QuickCompletion(Key):
     version: str = Field(min_length=64, max_length=64)
 
 
+class FeedbackSubmission(Key):
+    mastery_level: Literal['fully_understood', 'basically_understood', 'partially_understood', 'not_understood']
+    value_rating: int = Field(ge=0, le=3)
+    feeling_tags: list[str] = Field(default=[], max_length=10)
+    key_learnings: str = Field(default='', max_length=2000)
+    questions: str = Field(default='', max_length=2000)
+    next_direction: str = Field(default='', max_length=1000)
+
+
 class PlanConfirmation(Input):
     hash: str = Field(min_length=64, max_length=64)
     lessons: list[int] = Field(min_length=1, max_length=168)
@@ -178,6 +187,17 @@ def register(app: FastAPI, root, db):
         if not questions:
             return {'questions': []}
         return {'questions': questions}
+
+    @router.post('/lessons/{number}/feedback')
+    def submit_feedback(number: int, body: FeedbackSubmission):
+        return store.save_feedback(number, body.model_dump(), body.key)
+
+    @router.get('/lessons/{number}/feedback')
+    def get_feedback(number: int, module: Literal['renzhi'] = 'renzhi'):
+        result = store.get_feedback(number)
+        if not result:
+            return JSONResponse({'error': 'not_found', 'message': '未找到反馈记录。'}, status_code=404)
+        return result
 
     @router.get('/learning-history/by-date')
     def learning_history_by_date(date: str, module: Literal['renzhi'] = 'renzhi'):
