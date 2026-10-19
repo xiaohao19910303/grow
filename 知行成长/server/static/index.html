@@ -349,6 +349,14 @@
     <!-- Learning history will be rendered here by learning-history.js -->
   </div>
 
+  <div id="view-archive" style="display:none">
+    <div class="section">
+      <h2>课程归档</h2>
+      <p class="desc">已完成并归档的课程。可随时取消归档重新学习。</p>
+      <div id="archiveRoot"></div>
+    </div>
+  </div>
+
   <div id="view-knowledge" style="display:none">
     <div class="section">
       <h2>知识图谱可视化</h2>
@@ -1848,7 +1856,7 @@ function exportReportMarkdown(){
 /* ================= Tab ================= */
 const navGroups={
   personal:[['personal','今日'],['reading','今日阅读']],
-  learning:[['library','我的课程'],['plans','学习计划'],['progress','学习打卡'],['copilot','课程管理']],
+  learning:[['library','我的课程'],['plans','学习计划'],['progress','学习打卡'],['copilot','课程管理'],['archive','课程归档']],
   records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['stocks','投资复盘'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
   growth:[['overview','成长总览'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告']]
 };
@@ -2035,6 +2043,7 @@ init();
 </script>
 <script src="/static/copilot.js?v=20261014-design2"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
+<script src="/static/course-archive.js?v=20261019-1"></script>
 <script src="/static/plans.js?v=20261014-2"></script>
 <script src="/static/daily-learning.js?v=20261014-design2"></script>
 <script src="/static/reading.js?v=1"></script>
