@@ -69,6 +69,8 @@ def snapshot(c):
     result={}
     for name,table in [('plans','action_plans'),('records','action_executions'),('reviews','action_reviews'),('reports','action_reports')]:
         result[name]=[json.loads(r[0]) for r in c.execute(f'SELECT data FROM {table} ORDER BY id')]
+    if any(p.get('completion_mode','time')!='time' for p in result['plans']):
+        fail(422,'当前客户端联动首版支持计时计划；你的数据包含按内容或勾选完成的日程，暂不接管，原计划和记录均保留。')
     result['operations']=[dict(key=r['key'],hash=r['hash'],result=json.loads(r['result'])) for r in c.execute('SELECT * FROM action_operations ORDER BY key')]
     result['claims']=[dict(key=r['key'],claimed_at=r['claimed_at']) for r in c.execute('SELECT * FROM action_reminder_claims ORDER BY key')]
     if len(encoded(result).encode())>4*1024*1024:
