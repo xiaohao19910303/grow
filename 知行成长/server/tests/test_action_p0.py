@@ -168,6 +168,7 @@ class ActionP0Tests(PostgreSQLFixture):
         import json
         plan=self.create()
         with actions.connection() as c:
+            request_key=c.execute('SELECT key FROM action_operations ORDER BY key LIMIT 1').fetchone()[0]
             c.execute('INSERT INTO action_link_state VALUES (1,?,NULL)',(json.dumps({'phase':'active'}),))
         token=current_user.set({'id':'synthetic-user'})
         try:
@@ -179,6 +180,10 @@ class ActionP0Tests(PostgreSQLFixture):
                 receipt=self.client.get('/api/action-plans/requests/unknown-key')
                 self.assertEqual(receipt.status_code,200,receipt.text)
                 self.assertFalse(receipt.json()['found'])
+                found=self.client.get('/api/action-plans/requests/'+request_key)
+                self.assertTrue(found.json()['found'])
+                with actions.connection() as c:c.execute('UPDATE action_link_state SET data=? WHERE id=1',(json.dumps({'phase':'pending'}),))
+                self.assertTrue(self.client.get('/api/action-plans/requests/'+request_key).json()['found'])
         finally:current_user.reset(token)
 
     def test_S08_no_phantom_calendar_or_reminder(self):
@@ -204,3 +209,16 @@ class ActionP0Tests(PostgreSQLFixture):
         self.assertEqual((saved['progress']['minutes'],saved['progress']['completed']),(20,1))
         fact=self.client.get('/api/action-plans/records').json()['records'][0]
         self.assertEqual((fact['business_date'],fact['date_basis']),('2026-10-17','legacy_planned'))
+
+    def test_R06_p0_pairing_does_not_freeze_or_export_without_contract(self):
+        from tenancy import current_user
+        self.create()
+        token=current_user.set({'id':'p0-synthetic'})
+        try:
+            with patch('action_link.call') as bridge:
+                response=self.client.post('/api/action-link/preview',headers=self.headers,json={'code':'a'*36})
+                self.assertEqual(response.status_code,409,response.text)
+                bridge.assert_not_called()
+            with actions.connection() as c:
+                self.assertEqual(c.execute('SELECT count(*) FROM action_link_state').fetchone()[0],0)
+        finally:current_user.reset(token)

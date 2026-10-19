@@ -53,3 +53,14 @@ class CourseReceiptTests(CloudFixture):
         with actions.connection() as c:
             self.assertEqual(c.execute('SELECT count(*) FROM action_content_events').fetchone()[0],0)
         self.assertEqual(self.client.get('/api/action-plans').json()['plans'][0]['status'],'active')
+
+    def test_C10_receipt_and_source_sql_roll_back_together(self):
+        import action_content
+        real=action_content.event_sql
+        def failing(event):return real(event)+[('SELECT 1/0',[])]
+        with patch('action_content.event_sql',side_effect=failing):
+            import psycopg2
+            with self.assertRaises(psycopg2.errors.DivisionByZero):self.confirm()
+        with actions.connection() as c:
+            self.assertEqual(c.execute('SELECT count(*) FROM action_content_events').fetchone()[0],0)
+        self.assertEqual(self.s.lessons(self.pid)[0]['learning_state'],'unknown')

@@ -1,0 +1,75 @@
+{
+  "results": [
+    {
+      "suite": "test_action_p0",
+      "exit_code": 0,
+      "tests": 15,
+      "skipped": 0
+    },
+    {
+      "suite": "test_action_p0_sources",
+      "exit_code": 0,
+      "tests": 3,
+      "skipped": 0
+    },
+    {
+      "suite": "test_action_plans",
+      "exit_code": 0,
+      "tests": 7,
+      "skipped": 0
+    },
+    {
+      "suite": "test_action_reviews",
+      "exit_code": 0,
+      "tests": 13,
+      "skipped": 0
+    },
+    {
+      "suite": "test_daily_arrangements",
+      "exit_code": 0,
+      "tests": 6,
+      "skipped": 0
+    },
+    {
+      "suite": "test_arrangement_sources",
+      "exit_code": 0,
+      "tests": 5,
+      "skipped": 0
+    },
+    {
+      "suite": "test_github_plans",
+      "exit_code": 0,
+      "tests": 15,
+      "skipped": 0
+    },
+    {
+      "suite": "test_study_notes",
+      "exit_code": 0,
+      "tests": 11,
+      "skipped": 0
+    },
+    {
+      "suite": "test_study_materials",
+      "exit_code": 0,
+      "tests": 5,
+      "skipped": 1
+    },
+    {
+      "suite": "test_legacy_cloud_api",
+      "exit_code": 1,
+      "tests": 2,
+      "skipped": 0
+    },
+    {
+      "suite": "test_plan_read_errors",
+      "exit_code": 0,
+      "tests": 2,
+      "skipped": 0
+    }
+  ],
+  "tests": 84,
+  "skipped": 1,
+  "failed_suites": [
+    "test_legacy_cloud_api"
+  ]
+}
