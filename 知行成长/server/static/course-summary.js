@@ -71,37 +71,48 @@
     root.append(header);
 
     // Load stats
+    let completedCount = 0;
+    let feedbackCount = 0;
+    let summaryCount = 0;
     try {
-      const [lessons, feedback, summaries] = await Promise.all([
+      const [lessons, summaries] = await Promise.all([
         request('/api/copilot/lessons?state=completed', 'GET'),
-        request('/api/copilot/lessons/1/feedback', 'GET').catch(() => null),
         request('/api/copilot/summaries', 'GET')
       ]);
-      const completedCount = (lessons.items || []).length;
-      // Count feedback across all lessons
-      let feedbackCount = 0;
-      for (const lesson of (lessons.items || [])) {
-        try {
-          const fb = await request(`/api/copilot/lessons/${lesson.lesson_no}/feedback`, 'GET');
-          if (fb && fb.mastery_level) feedbackCount++;
-        } catch (e) { /* no feedback */ }
+      const items = lessons.items || [];
+      completedCount = items.length;
+      summaryCount = (summaries.items || []).length;
+
+      // Check feedback for each lesson - only show count if there are lessons
+      if (items.length > 0) {
+        const feedbackChecks = await Promise.all(
+          items.map(l => request(`/api/copilot/lessons/${l.lesson_no}/feedback`, 'GET').catch(() => null))
+        );
+        feedbackCount = feedbackChecks.filter(fb => fb && fb.mastery_level).length;
       }
+
       const statsEl = header.querySelector('#summaryStats');
       statsEl.innerHTML = `
         <div class="stat-card"><span class="stat-value">${completedCount}</span><span class="stat-label">已完成课程</span></div>
         <div class="stat-card"><span class="stat-value">${feedbackCount}</span><span class="stat-label">已提交反馈</span></div>
-        <div class="stat-card"><span class="stat-value">${(summaries.items || []).length}</span><span class="stat-label">已有总结</span></div>
+        <div class="stat-card"><span class="stat-value">${summaryCount}</span><span class="stat-label">已有总结</span></div>
       `;
     } catch (e) {
       // Stats optional
     }
 
-    // Generate button
+    // Generate button - disable if no completed lessons
     const actions = document.createElement('div');
     actions.className = 'cp-summary-actions';
-    actions.innerHTML = `
-      <button class="btn primary" id="btnGenerateSummary">生成整课总结</button>
-    `;
+    if (completedCount === 0) {
+      actions.innerHTML = `
+        <p class="desc" style="margin:0">暂无已完成课程，请先完成一些课程再生成总结。</p>
+      `;
+    } else {
+      actions.innerHTML = `
+        <button class="btn primary" id="btnGenerateSummary">生成整课总结</button>
+      `;
+    }
     root.append(actions);
 
     // Streaming output area
@@ -111,14 +122,13 @@
     output.style.display = 'none';
     root.append(output);
 
-    // After output: save + advanced buttons
+    // After output: advanced generation button
     const postActions = document.createElement('div');
     postActions.id = 'summaryPostActions';
     postActions.className = 'cp-summary-actions';
     postActions.style.display = 'none';
     postActions.innerHTML = `
-      <button class="btn primary" id="btnSaveSummary">保存总结</button>
-      <button class="btn" id="btnGenerateAdvanced" style="display:none">基于总结生成进阶课程</button>
+      <button class="btn" id="btnGenerateAdvanced">基于总结生成进阶课程</button>
     `;
     root.append(postActions);
 
@@ -245,36 +255,15 @@
       // Generation complete
       output.innerHTML = `<div class="cp-summary-result">${currentSummaryContent.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>`;
       postActions.style.display = '';
-      document.getElementById('btnSaveSummary').onclick = saveSummary;
       document.getElementById('btnGenerateAdvanced').onclick = generateAdvanced;
+      showToast('总结已自动生成并保存');
+      loadSummaryList();  // Refresh the list
 
     } catch (e) {
       output.innerHTML = `<div class="cp-summary-error">生成失败：${e.message}</div>`;
     } finally {
       btn.disabled = false;
       btn.textContent = '生成整课总结';
-    }
-  }
-
-  async function saveSummary() {
-    if (!currentSummaryContent) return;
-    const btn = document.getElementById('btnSaveSummary');
-    btn.disabled = true;
-    btn.textContent = '保存中...';
-
-    try {
-      // The summary is already saved by the backend after generation completes
-      // Just refresh the list
-      await loadSummaryList();
-      document.getElementById('summaryPostActions').style.display = 'none';
-      document.getElementById('btnGenerateAdvanced').style.display = '';
-      // Toast
-      showToast('总结已保存');
-    } catch (e) {
-      alert('保存失败：' + e.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '保存总结';
     }
   }
 
@@ -286,7 +275,6 @@
       output.innerHTML = `<div class="cp-summary-result">${data.content.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>`;
       currentSummaryContent = data.content;
       document.getElementById('summaryPostActions').style.display = '';
-      document.getElementById('btnGenerateAdvanced').style.display = '';
     } catch (e) {
       alert('加载失败：' + e.message);
     }
