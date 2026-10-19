@@ -19,7 +19,7 @@ class DailyArrangementsTests(PostgreSQLFixture):
         self.fixed.start(); self.addCleanup(self.fixed.stop)
         app = FastAPI(); actions.register(app)
         self.client = TestClient(app, base_url='http://localhost'); self.addCleanup(self.client.close)
-        self.headers = {'X-Copilot-Request': '1'}
+        self.headers = {'X-Copilot-Request': '1', 'X-Grow-Action-Schema':'2'}
         self.target = {'kind': 'article', 'course': 'article-' + 'a' * 20}
         self.article = {'id': self.target['course'], 'type': 'article', 'title': '证据与判断', 'read': False,
                         'full_content': '保存的原文', 'note': '私有笔记'}
@@ -63,13 +63,23 @@ class DailyArrangementsTests(PostgreSQLFixture):
         future = self.schedule().json()['plan']
         timed = actions.create(actions.NewPlan(title='阅读20分钟', period='day', start_date='2026-10-19', end_date='2026-10-19',
                                              target=self.target, key=str(uuid.uuid4())))['plans'][0]
-        actions.content_completed(self.target)
+        with actions.connection() as c:
+            event={'event_id':'source-fixture','request_key':'fixture-confirm','owner':self.schema,
+                   'confirmed_at':actions.clock().isoformat(),'normalized_target':self.target}
+            c.execute('INSERT INTO action_content_events VALUES (?,?,?) ON CONFLICT(id) DO NOTHING',
+                      (event['event_id'],event['request_key'],json.dumps(event)))
+        actions.content_completed(self.target,'source-fixture')
         plans = {p['id']: p for p in actions.listing()['plans']}
         self.assertEqual(plans[today['id']]['status'], 'completed')
         self.assertEqual(plans[today['id']]['progress']['minutes'], 0)
         self.assertEqual(plans[future['id']]['status'], 'active')
         self.assertEqual(plans[timed['id']]['status'], 'active')
-        actions.content_completed(self.target)
+        with actions.connection() as c:
+            event={'event_id':'source-fixture','request_key':'fixture-confirm','owner':self.schema,
+                   'confirmed_at':actions.clock().isoformat(),'normalized_target':self.target}
+            c.execute('INSERT INTO action_content_events VALUES (?,?,?) ON CONFLICT(id) DO NOTHING',
+                      (event['event_id'],event['request_key'],json.dumps(event)))
+        actions.content_completed(self.target,'source-fixture')
         self.assertEqual(self.client.get('/api/action-plans/records').json()['total'], 1)
 
     def test_time_target_never_marks_article_read_and_unfinished_does_not_roll_forward(self):

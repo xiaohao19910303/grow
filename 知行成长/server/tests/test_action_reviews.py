@@ -38,7 +38,7 @@ class ActionReviewTests(plan_tests.ActionPlansTests):
         history=self.client.get('/api/action-plans/reviews',params={'plan_id':year['id']}).json()
         self.assertEqual(history['review_total'],1)
         self.assertEqual(history['reviews'][0]['stats']['completed'],1)
-        self.assertEqual(self.post('/preview',self.scope(month,end_date='2026-11-01')).status_code,422)
+        self.assertEqual(self.post('/preview',self.scope(month,end_date='2026-11-01')).status_code,200)
         invalid=dict(title='invalid',period='month',start_date='2026-10-01',end_date='2026-11-01',key='invalid-month-key')
         self.assertEqual(self.client.post('/api/action-plans',json=invalid,headers=self.headers).status_code,422)
 

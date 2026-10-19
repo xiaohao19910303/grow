@@ -169,13 +169,21 @@ def register(app):
         try:
             guard(request)
             if path.startswith('/api/action-link'):return await call_next(request)
+            if request.method=='POST' and request.headers.get('X-Grow-Action-Schema')!='2':
+                fail(409,'行动服务合同需升级。','CONTRACT_UPGRADE_REQUIRED')
             def read_state():
                 with connection() as c:return state(c)[0]
             link=await run_in_threadpool(read_state)
             if link.get('phase')=='local':return await call_next(request)
             source=identity()
+            if request.method=='GET' and path.startswith('/api/action-plans/requests/'):
+                return await call_next(request)
             if link.get('phase')!='active':fail(503,'计划正在接管，请在 LightTick 联动中点击重试；已保留本地输入。')
             if request.method not in ('GET','POST'):fail(405,'请求方式无效。')
+            if request.method=='POST':
+                capability=await run_in_threadpool(call,source,dict(action='request',method='GET',path='',body={},query={}))
+                if not isinstance(capability,dict) or capability.get('action_schema_version')!=2:
+                    fail(409,'连接服务尚未支持P0，输入已保留，请等待合同升级。','CONTRACT_UPGRADE_REQUIRED')
             body=await request.json() if request.method=='POST' else {}
             result=await run_in_threadpool(call,source,dict(action='request',method=request.method,path=path[len('/api/action-plans'):],body=body,query=dict(request.query_params)))
             if path.endswith('/calendar.ics'):response=Response(result,media_type='text/calendar',headers={'Content-Disposition':'attachment; filename="grow-action.ics"'})
@@ -183,5 +191,5 @@ def register(app):
             response.headers['Cache-Control']='no-store';return response
         except Exception as exc:
             from fastapi import HTTPException
-            if isinstance(exc,HTTPException):return JSONResponse({'detail':exc.detail},status_code=exc.status_code,headers={'Cache-Control':'no-store'})
+            if isinstance(exc,HTTPException):return JSONResponse({'detail':exc.detail,**({'code':exc.code,**exc.extra} if hasattr(exc,'code') else {})},status_code=exc.status_code,headers={'Cache-Control':'no-store'})
             raise

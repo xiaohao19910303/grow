@@ -125,22 +125,21 @@ def register(app,root,db):
                 'path':str(file)}
     @router.post('/articles/{aid}/personal')
     def personal(aid:str,body:Payload):
-        saved = store.update_personal(aid,body.data)
         if body.data.get('read') is True:
-            from action_plans import with_content_completion
-            return with_content_completion(saved, {'kind':'article','course':aid})
-        return saved
+            from action_content import confirm_source
+            return confirm_source(store,{'kind':'article','course':aid},body.data,lambda:store.update_personal(aid,body.data))
+        return store.update_personal(aid,body.data)
     @router.get('/articles/{aid}/position')
     def position(aid:str):return store.reading_position(aid)
     @router.post('/articles/{aid}/position')
     def save_position(aid:str,body:Payload):return store.reading_position(aid,body.data)
     @router.post('/articles/{aid}/feedback')
     def feedback(aid:str,body:Payload):
-        saved = store.save_feedback(aid,body.data)
+        data={k:v for k,v in body.data.items() if k not in ('key','origin_action_id')}
         if body.data.get('mark_read') is True:
-            from action_plans import with_content_completion
-            return with_content_completion(saved, {'kind':'article','course':aid})
-        return saved
+            from action_content import confirm_source
+            return confirm_source(store,{'kind':'article','course':aid},body.data,lambda:store.save_feedback(aid,data))
+        return store.save_feedback(aid,data)
     @router.post('/articles/{aid}/guide')
     async def guide(aid:str,body:Payload):
         require_config(body.data.get('ai_config'))
