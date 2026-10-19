@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: zhixingchengzhang
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd 知行成长/server && uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.12.12
+      - key: CLOUD_DEPLOY
+        value: "1"
+      - key: LEARN_ROOT
+        value: /opt/render/project/src/知行成长/学习资料
+      - key: PLAN_CONTENT_BACKEND
+        value: github
+      - key: GITHUB_CONTENT_REPO
+        value: xiaohao19910303/zhixing
+      - key: GITHUB_CONTENT_BRANCH
+        value: main
+      - key: GITHUB_CONTENT_TOKEN
+        sync: false
+      - key: APP_USERNAME
+        value: owner
+      - key: APP_PASSWORD
+        sync: false
+      - key: ACCOUNT_ENCRYPTION_KEY
+        sync: false
+    healthCheckPath: /api/health
+    autoDeploy: true

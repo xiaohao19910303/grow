@@ -11,6 +11,7 @@ import httpx
 
 TOPICS={
  '认知':['cognition','thinking','reason','evidence','decision','思考','认知','判断','学习'],
+ '科技':['technolog','science','artificial intelligence','robot','space','physics','科技','科学','人工智能','航天','物理','医疗技术'],
  '经济学':['econom','market','money','growth','inequality','经济','金融','市场','贫富','增长'],
  '社会学':['social','societ','culture','institution','community','社会','文化','制度','人口'],
  '心理':['psycholog','emotion','mind','mental','memory','心理','情绪','记忆','幸福'],
@@ -21,10 +22,10 @@ DEFAULT_FEEDS=[
  {'id':'aeon','name':'Aeon','url':'https://aeon.co/feed.rss','language':'en','domains':['aeon.co'],'topics':['认知','社会学','心理'],'custom':False},
  {'id':'behavioral','name':'Behavioral Scientist','url':'https://behavioralscientist.org/feed/','language':'en','domains':['behavioralscientist.org'],'topics':['认知','心理','社会学'],'custom':False},
  {'id':'ftchinese','name':'FT中文网','url':'https://www.ftchinese.com/rss/feed','language':'zh','domains':['www.ftchinese.com','ftchinese.com'],'topics':['经济学','社会学'],'custom':False},
- {'id':'ruanyifeng','name':'阮一峰的网络日志','url':'https://www.ruanyifeng.com/blog/atom.xml','language':'zh','domains':['www.ruanyifeng.com','ruanyifeng.com'],'topics':['成长','社会学'],'custom':False},
+ {'id':'ruanyifeng','name':'阮一峰的网络日志','url':'https://www.ruanyifeng.com/blog/atom.xml','language':'zh','domains':['www.ruanyifeng.com','ruanyifeng.com'],'topics':['科技','成长','社会学'],'custom':False},
  {'id':'owid','name':'Our World in Data','url':'https://ourworldindata.org/atom.xml','language':'en','domains':['ourworldindata.org'],'topics':['经济学','社会学','认知'],'custom':False},
- {'id':'36kr','name':'36氪','url':'https://36kr.com/feed','language':'zh','domains':['36kr.com'],'topics':['成长','经济学'],'custom':False},
- {'id':'sspai','name':'少数派','url':'https://sspai.com/feed','language':'zh','domains':['sspai.com'],'topics':['成长','认知'],'custom':False},
+ {'id':'36kr','name':'36氪','url':'https://36kr.com/feed','language':'zh','domains':['36kr.com'],'topics':['科技','成长','经济学'],'custom':False},
+ {'id':'sspai','name':'少数派','url':'https://sspai.com/feed','language':'zh','domains':['sspai.com'],'topics':['科技','成长','认知'],'custom':False},
  {'id':'hbr','name':'Harvard Business Review','url':'https://hbr.org/feed','language':'en','domains':['hbr.org'],'topics':['成长','认知','心理'],'custom':False},
  {'id':'psychology_today','name':'Psychology Today','url':'https://www.psychologytoday.com/us/blog/rss','language':'en','domains':['psychologytoday.com'],'topics':['心理','认知'],'custom':False},
  {'id':'waitbutwhy','name':'Wait But Why','url':'https://waitbutwhy.com/feed','language':'en','domains':['waitbutwhy.com'],'topics':['认知','成长','心理'],'custom':False},
@@ -116,24 +117,10 @@ def matches(article,prefs):
         if not groups or not any(any(w in hay for w in group) for group in groups):return False
     return True
 
-async def fetch_article_content(url):
-    """Fetch full article content from URL and extract main text."""
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(30,connect=10),follow_redirects=True) as client:
-            response=await client.get(url,headers={'User-Agent':'ZhixingReading/1.0 (personal article reader)'})
-            response.raise_for_status()
-            html_content=response.text
-        # Extract main content (simplified - remove scripts, styles, nav)
-        parser=Plain();parser.feed(html_content)
-        text=''.join(parser.parts)
-        # Clean up whitespace
-        text=re.sub(r'\s+',' ',text).strip()
-        # Limit to reasonable size for AI processing
-        return text[:15000] if len(text)>15000 else text
-    except Exception:
-        return None
+# Keep the existing import contract for collection, URL import and readers.
+from .content import fetch_article_content
 
-def choose(candidates,prefs,seen,today):
+def choose(candidates,prefs,seen,today,seed=None,history=(),selected=()):
     cutoff=(datetime.fromisoformat(today)-timedelta(days=30)).date().isoformat()
     eligible={}
     for a in candidates:
@@ -141,11 +128,28 @@ def choose(candidates,prefs,seen,today):
         if a['category']=='recent' and not (a.get('published_at') and cutoff<=a['published_at']<=today):continue
         if prefs['mode']!='mixed' and a['category']!=prefs['mode']:continue
         eligible.setdefault(a['id'],a)
-    rows=sorted(eligible.values(),key=lambda a:a.get('published_at') or '',reverse=True)
-    result=[];used=set()
+    # Stable per job, but different jobs/days explore different eligible articles.
+    seed=str(seed or today)
+    shuffle={aid:int(hashlib.sha256((seed+':'+aid).encode()).hexdigest(),16) for aid in eligible}
+    rows=sorted(eligible.values(),key=lambda a:shuffle[a['id']])
+    signals={t:[] for t in prefs['topics']}
+    for a in sorted(history,key=lambda a:a.get('saved_at',''),reverse=True)[:60]:
+        value={'insightful':1,'neutral':0,'not_for_me':-1}.get((a.get('feedback') or {}).get('value'))
+        if value is None:continue
+        for t in set(a.get('topics',[])) & signals.keys():signals[t].append(value)
+    weights={t:sum(v)/(len(v)+3) for t,v in signals.items()}
+    result=list(selected);used={a['source'] for a in result};covered=set().union(*(set(a.get('topics',[])) for a in result));interests=set(prefs['topics'])
     categories=['recent']*max(0,prefs['count']-1)+['classic'] if prefs['mode']=='mixed' else [prefs['mode']]*prefs['count']
+    for a in result:
+        if a['category'] in categories:categories.remove(a['category'])
+        elif categories:categories.pop()
     for category in categories:
         options=[a for a in rows if a['category']==category and a['id'] not in {x['id'] for x in result}]
-        options.sort(key=lambda a:(a['source'] in used, a['language'] in {x['language'] for x in result}))
-        if options:result.append(options[0]);used.add(options[0]['source'])
+        if not options and prefs['mode']=='mixed':
+            options=[a for a in rows if a['id'] not in {x['id'] for x in result}]
+        options.sort(key=lambda a:(-len((interests & set(a.get('topics',[])))-covered),
+                                   0 if len(result)%3==2 else -sum(weights.get(t,0) for t in set(a.get('topics',[])))/max(1,len(a.get('topics',[]))),
+                                   a['source'] in used, a['language'] in {x['language'] for x in result},shuffle[a['id']]))
+        if options:
+            result.append(options[0]);used.add(options[0]['source']);covered.update(options[0].get('topics',[]))
     return result

@@ -3,7 +3,7 @@ import argparse
 import json
 import os
 import shutil
-import sqlite3
+import db
 import tempfile
 import uuid
 from pathlib import Path
@@ -27,6 +27,8 @@ def inventory(store):
 
 def snapshot(store, label='manual'):
     """Caller holds the shared writer lock and has coordinated external writers."""
+    from plans.backup import require_offline
+    require_offline(store)
     files = inventory(store)
     folder = store.runtime / 'backups' / f'{label}-{uuid.uuid4().hex}'
     folder.mkdir(parents=True)
@@ -37,7 +39,7 @@ def snapshot(store, label='manual'):
             shutil.copyfile(store.path(relative), destination)
             if digest(destination.read_bytes()) != files[relative]:
                 fail('conflict', '备份期间资料发生变化，请重试。')
-        with closing(sqlite3.connect(store.db)) as src, closing(sqlite3.connect(folder / 'data.db')) as dst:
+        with closing(db.connect()) as src, closing(db.connect()) as dst:
             src.backup(dst)
         if inventory(store) != files:
             fail('conflict', '备份期间发现外部写入，请重新协调后重试。')
@@ -62,26 +64,30 @@ def validated_backup(folder):
             fail('conflict', '备份文件校验失败。')
     if digest((folder / 'data.db').read_bytes()) != manifest['database_hash']:
         fail('conflict', '备份数据库校验失败。')
-    with closing(sqlite3.connect(f'file:{folder / "data.db"}?mode=ro', uri=True)) as c:
+    with closing(db.connect()) as c:
         if c.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
             fail('conflict', '备份数据库完整性检查失败。')
     return folder, manifest
 
 
 def restore_preview(store, folder):
+    from plans.backup import require_offline
+    require_offline(store)
     folder, manifest = validated_backup(folder)
     current = inventory(store)
     target = manifest['files']
     diff = [{'path': p, 'action': 'remove' if p not in target else 'create' if p not in current else 'replace'}
             for p in sorted(set(current) | set(target)) if current.get(p) != target.get(p)]
     # Includes DB state: restoring must not silently discard edits made after preview.
-    with closing(sqlite3.connect(f'file:{store.db}?mode=ro', uri=True)) as c:
+    with closing(db.connect()) as c:
         db_state = digest('\n'.join(c.iterdump()))
     token = digest(encoded({'files': current, 'database': db_state, 'target': manifest}))
     return {'preview_token': token, 'changes': diff, 'database': '将恢复整份知行成长平台数据库；当前状态先完整备份'}
 
 
 def restore(store, folder, token):
+    from plans.backup import require_offline
+    require_offline(store)
     with store.lock():
         preview = restore_preview(store, folder)
         if preview['preview_token'] != token:
@@ -108,7 +114,7 @@ def restore(store, folder, token):
             finally:
                 if os.path.exists(temp):
                     os.unlink(temp)
-        with closing(sqlite3.connect(folder / 'data.db')) as src, closing(sqlite3.connect(store.db)) as dst:
+        with closing(db.connect()) as src, closing(db.connect()) as dst:
             src.backup(dst)
         journal.unlink()
         return {'restored': str(folder), 'previous_backup': before}

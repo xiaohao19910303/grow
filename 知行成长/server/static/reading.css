@@ -1,9 +1,9 @@
 #view-reading>.btn{margin:4px 8px 12px 0}.reading-card{padding:20px 0;border-bottom:1px solid var(--border);line-height:1.75}.reading-card h3{margin:10px 0;font-size:18px}.reading-card .btn{margin:4px 8px 4px 0}.reading-tag{font-size:12px;color:var(--muted)}.reading-banner{padding:16px;background:var(--bg,#f5f6fb);border-radius:12px;margin:16px 0}.reading-actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.reading-warning{padding:12px;border-left:3px solid #b57918;background:#fff8e9;color:#66440b}.reading-stream{white-space:pre-wrap;max-height:40vh;overflow:auto;line-height:1.8}#view-reading fieldset{border:1px solid var(--border);border-radius:10px;margin:12px 0;padding:12px}#view-reading .plan-field:has(input[type=checkbox]){flex-direction:row;align-items:center}#view-reading input[type=checkbox]{width:auto;order:-1}#view-reading .cp-reader{max-width:840px}#view-reading .desc{overflow-wrap:anywhere}#view-reading select{padding:8px;max-width:100%}#view-reading .btn:disabled{opacity:.6}#view-reading :focus-visible{outline:2px solid #4f5ee8;outline-offset:3px}#view-reading details{padding:12px 0}#view-reading textarea{width:100%}
 
-/* Five-view tabs */
+/* Reading views */
 .reading-tabs{display:flex;gap:4px;margin:16px 0;border-bottom:2px solid var(--border);padding-bottom:0}
 .reading-tabs .btn{margin:0;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;padding:8px 16px;font-weight:500}
-.reading-tabs .btn.primary{border-bottom-color:var(--primary,#4f6ef7);background:var(--primary-soft,#eef1ff)}
+.reading-tabs .btn.primary,.reading-tabs .btn.primary:hover{border-bottom-color:var(--primary,#4f6ef7);background:var(--primary-soft,#eef1ff);color:var(--primary,#4f6ef7)}
 
 /* Bilingual paragraphs */
 .bilingual-paragraph{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);line-height:1.8}
@@ -21,6 +21,9 @@
 .article-content-box h3,.article-summary-box h3,.article-english-box h3,.article-guide-box h3{margin:0 0 16px 0;font-size:18px;color:var(--text,#1a1a1a)}
 .article-full-content{line-height:1.8;font-size:15px;max-width:100%;overflow-wrap:break-word}
 .article-full-content p{margin:12px 0}
+.reading-source-link{display:inline-block;margin:8px 12px 8px 0;color:var(--muted);font-size:13px}
+.article-full-content .cp-reader{max-width:72ch;margin:auto;line-height:1.95;font-size:16px}
+@media(max-width:520px){.article-content-box{padding:14px}.article-full-content .cp-reader{font-size:16px}}
 .article-full-content h1,.article-full-content h2,.article-full-content h3,.article-full-content h4{margin:20px 0 12px 0;font-weight:600}
 .article-full-content h1{font-size:24px}
 .article-full-content h2{font-size:20px}
@@ -49,5 +52,56 @@
 .source-row a{color:var(--primary,#4f6ef7);text-decoration:none;margin:0 4px}
 .source-row a:hover{text-decoration:underline}
 .source-row button{margin-left:8px}
+.reading-loading{display:flex;align-items:center;gap:8px}
+.reading-loading:before{content:'';width:16px;height:16px;flex-shrink:0;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:reading-start-spin .8s linear infinite}
+
+/* Loading overlay for article detail */
+.reading-loading-overlay{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;background:var(--bg,#f5f6fb);border-radius:12px;border:1px solid var(--border);margin:20px 0}
+.reading-loading-spinner{width:48px;height:48px;border:3px solid var(--border,#e5e7eb);border-top-color:var(--primary,#4f6ef7);border-radius:50%;animation:reading-spin 0.8s linear infinite}
+.reading-loading-text{margin-top:16px;color:var(--muted,#6b7280);font-size:14px}
+
+@media(prefers-reduced-motion:reduce){.reading-loading:before,.reading-loading-spinner{animation:none}}
+.reading-startup{margin:16px 0;padding:20px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.reading-startup-steps{display:flex;flex-wrap:wrap;gap:24px;list-style:none;padding:0;margin:16px 0 24px;counter-reset:startup-step}
+.reading-startup-steps li{display:flex;align-items:center;gap:8px;counter-increment:startup-step;color:var(--muted);font-size:13px}
+.reading-startup-steps li:before{content:counter(startup-step);display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--border);border-radius:50%;background:var(--card)}
+.reading-startup-steps [aria-current=step]{color:var(--primary);font-weight:600}
+.reading-startup-steps [aria-current=step]:before{border-color:var(--primary)}
+@keyframes reading-start-spin{to{transform:rotate(360deg)}}
+@keyframes reading-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.reading-loading:before,.reading-loading-spinner{animation:none}}
 #view-reading h4{margin:20px 0 12px 0;font-size:16px;font-weight:600;color:var(--text,#1a1a1a)}
 
+
+.reading-tabs{flex-wrap:wrap}.reading-tabs .btn{padding:8px 12px}.reading-feedback-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.reading-feedback-label{color:var(--primary,#4f6ef7);font-size:13px}.article-guide-box .plan-field{margin:12px 0}.article-guide-box details .plan-field{display:flex;flex-direction:column;gap:8px}@media(max-width:520px){.reading-feedback-grid{grid-template-columns:1fr}.reading-tabs .btn{padding:8px 10px}.article-guide-box{padding:14px}}
+
+/* A quiet, bounded reading column, independent of the surrounding dashboard. */
+#view-reading .reading-body-panel{background:var(--card,#fff);padding:28px clamp(16px,4vw,48px) 48px}
+.reading-body-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px}
+#view-reading .reading-body-toolbar h3{margin:0;font-size:16px}
+.reading-font-controls{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.reading-font-controls .btn{min-width:36px;min-height:36px;padding:5px 8px;margin:0;font-size:15px;line-height:1.4}
+.reading-font-controls span{min-width:34px;text-align:center}
+#view-reading .reading-body-panel>.desc{font-size:12px;margin-bottom:32px}
+#view-reading .reading-body-panel .article-full-content>.cp-reader{width:100%;max-width:680px;margin-inline:auto;font-size:var(--reading-font-size,18px);line-height:1.95;font-family:Georgia,"Noto Serif SC","Songti SC",serif;color:var(--text,#1f2430);text-align:start;overflow-wrap:anywhere}
+#view-reading .reading-body-panel .cp-reader p{margin:0 0 1.35em}
+#view-reading .reading-body-panel .cp-reader :is(h1,h2,h3,h4,h5,h6){margin:2em 0 .8em;font-family:system-ui,-apple-system,"PingFang SC",sans-serif;font-weight:650;line-height:1.45;text-wrap:pretty}
+#view-reading .reading-body-panel .cp-reader :is(h1,h2){font-size:1.4em}
+#view-reading .reading-body-panel .cp-reader :is(h3,h4,h5,h6){font-size:1.12em}
+#view-reading .reading-body-panel .cp-reader>:first-child{margin-top:0}
+#view-reading .reading-body-panel .cp-reader p:has(>strong:only-child){margin-top:1.8em;margin-bottom:.65em}
+#view-reading .reading-body-panel .cp-reader :is(ul,ol){margin:0 0 1.4em;padding-left:1.4em}
+#view-reading .reading-body-panel .cp-reader li{margin:.45em 0;padding-left:.2em}
+#view-reading .reading-body-panel .cp-reader blockquote{margin:1.5em 0;padding:12px 20px;background:var(--bg);border-left:3px solid var(--border);color:var(--muted)}
+#view-reading .reading-body-panel .cp-reader hr{border:0;border-top:1px solid var(--border);margin:2em 0}
+#view-reading .reading-body-panel .cp-reader table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;font-family:system-ui,sans-serif;font-size:.85em;margin:1.5em 0}
+#view-reading .reading-body-panel .cp-reader td{padding:8px 12px;border:1px solid var(--border)}
+#view-reading .reading-body-panel .cp-reader pre{font-size:.8em;line-height:1.7;max-width:100%}
+#view-reading .reading-body-panel .cp-reader a{text-decoration:underline;text-underline-offset:3px}
+@media(max-width:520px){
+  #view-reading .reading-body-panel{padding:20px 12px 28px;margin-inline:-8px}
+  .reading-font-controls .btn{min-width:44px;min-height:44px}
+  #view-reading .reading-body-panel .article-full-content>.cp-reader{line-height:1.85}
+  #view-reading .reading-body-panel .cp-reader :is(h1,h2){font-size:1.25em}
+  #view-reading .reading-body-panel>.desc{margin-bottom:24px}
+}

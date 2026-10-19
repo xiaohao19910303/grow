@@ -3,40 +3,23 @@ import asyncio
 import fcntl
 import importlib.util
 import json
-import os
 import re
 import time
 import uuid
+from contextlib import ExitStack
 
 from .core import digest, encoded, fail, now
+from .ai_config import config, generation_config
 
 SEPARATOR = '\n<!-- COPILOT_SOURCES -->\n'
+SOURCE_BOUNDARY = re.compile(r'\r?\n[\t ]*<!-- COPILOT_SOURCES -->[\t ]*\r?\n')
 
 
 def event(name, data):
     return f'event: {name}\ndata: {encoded(data)}\n\n'
 
 
-def config(store=None):
-    db = {}
-    if store:
-        for key in ('api_base_url', 'api_key', 'model_name', 'price_version',
-                     'input_price', 'output_price'):
-            v = store.get_setting(key)
-            if v:
-                db[key] = v
-    return {'model': db.get('model_name') or os.getenv('QWEN_MODEL', 'qwen-plus'),
-            'url': db.get('api_base_url') or os.getenv('QWEN_BASE_URL', ''),
-            'key': db.get('api_key') or os.getenv('QWEN_API_KEY', ''),
-            'price_version': db.get('price_version') or os.getenv('QWEN_PRICE_VERSION', ''),
-            'input_price': db.get('input_price') or os.getenv('QWEN_INPUT_PRICE_PER_MILLION', ''),
-            'output_price': db.get('output_price') or os.getenv('QWEN_OUTPUT_PRICE_PER_MILLION', '')}
-
-
 def availability(store=None):
-    c = config(store)
-    if not c['key'] or not c['url']:
-        return '未配置Qwen密钥和完整接口地址；本地阅读仍可用。'
     if importlib.util.find_spec('httpx') is None or importlib.util.find_spec('copilot.transport') is None:
         return '生成适配器所需httpx尚未安装，请按使用说明配置。'
     return None
@@ -65,6 +48,8 @@ def messages(d):
             '不上传或索取个人笔记，不评价掌握程度，无反馈时不提高难度。'
             '事实必须有清单内依据，教学假设必须注明。资料之外的结论明确说明局限，不虚构来源。'
             '输出Markdown正文，然后单独一行<!-- COPILOT_SOURCES -->，再输出可离线阅读的资料摘要。'
+            f'正文第一行必须是“# 第{n:03d}课：课程主题”，将课程主题替换为规划中的主题，不加粗或另写课次。'
+            '正文日期单独写成“日期：YYYY-MM-DD”，替换为给定日期，不加粗。'
             '不得使用代码围栏包裹整体输出；只引用清单内原样URL，不生成本地链接。'
             '正文包括日期、课次、引导问题、核心概念、完整示范、误区与边界、练习、参考分析、'
             '自查和记忆提示；练习和答案之间用独立---分隔。复盘课包含知识回顾，整合课有跨领域案例。'
@@ -80,7 +65,8 @@ class Generator:
         self.transport = transport
         self.active = {}
 
-    def begin(self, number, key):
+    def begin(self, number, key, ai_config=None):
+        cfg = generation_config(ai_config, self.transport)
         request_hash = digest(encoded({'lesson_no': number}))
         with self.store.lock():
             with self.store.conn() as c:
@@ -108,7 +94,7 @@ class Generator:
                 c.execute('INSERT INTO copilot_drafts VALUES (?,?,1,?,?,?)',
                           (draft_id, number, 'generating', encoded(data), now()))
                 c.execute('INSERT INTO copilot_generation_attempts VALUES (?,?,?,?,?,?)',
-                          (draft_id, key, request_hash, draft_id, 'generating', encoded({'model': config(self.store)['model'], 'started_at': now()})))
+                          (draft_id, key, request_hash, draft_id, 'generating', encoded({'model': cfg['model'], 'started_at': now()})))
         return draft_id, True
 
     def cancel(self, draft_id):
@@ -128,7 +114,8 @@ class Generator:
             c.execute('UPDATE copilot_generation_attempts SET status=?,data=? WHERE id=?',
                       (status, encoded(metrics), draft_id))
 
-    async def stream(self, draft_id, fresh):
+    async def stream(self, draft_id, fresh, cfg=None):
+        cfg = cfg or config()
         if not fresh:
             d = self.store.draft(draft_id)
             yield event('started', {'id': draft_id, 'existing': True, 'status': d['status']})
@@ -143,18 +130,21 @@ class Generator:
             yield event('cancelled', {'id': draft_id})
             return
         started = time.monotonic()
-        metrics = {'model': config(self.store)['model'], 'usage': None, 'cost': None,
-                   'price_version': config(self.store)['price_version'] or None, 'first_token_seconds': None,
+        metrics = {'model': cfg['model'], 'usage': None, 'cost': None,
+                   'price_version': cfg['price_version'] or None, 'first_token_seconds': None,
                    'total_seconds': None, 'error': None, 'started_at': now()}
         self.active[draft_id] = asyncio.current_task()
         status = 'failed'
-        gate = None
+        gate = ExitStack()
         try:
-            gate = (self.store.db.parent / '.ai-generation.lock').open('a')
-            try:
-                fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                fail('generation_busy', '另一个生成任务正在运行。')
+            if getattr(self.store, 'remote', False):
+                gate.enter_context(self.store.generation_gate())
+            else:
+                stream = gate.enter_context((self.store.db.parent / '.ai-generation.lock').open('a'))
+                try:
+                    fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    fail('generation_busy', '另一个生成任务正在运行。')
             yield event('started', {'id': draft_id, 'version': d['version']})
             if self.transport is None:
                 from .transport import qwen_stream
@@ -162,7 +152,8 @@ class Generator:
             else:
                 transport = self.transport
             finished = False
-            async for packet in transport(messages(d), config(self.store)):
+            last_progress_write = None
+            async for packet in transport(messages(d), cfg):
                 if packet.get('usage') is not None:
                     metrics['usage'] = packet['usage']
                 if packet.get('done'):
@@ -175,17 +166,22 @@ class Generator:
                     d['raw'] += chunk
                     if len(d['raw']) > 100000:
                         fail('generation_failed', '生成内容超出限制。')
-                    pieces = d['raw'].split(SEPARATOR, 1)
+                    pieces = SOURCE_BOUNDARY.split(d['raw'], maxsplit=1)
                     d['content'], d['sources'] = pieces[0], pieces[1] if len(pieces) > 1 else ''
-                    self.persist(draft_id, d, 'generating', metrics)
+                    current = time.monotonic()
+                    if last_progress_write is None or current - last_progress_write >= 1:
+                        self.persist(draft_id, d, 'generating', metrics)
+                        last_progress_write = time.monotonic()
                     yield event('delta', {'text': chunk})
+                # Buffered provider packets may never suspend on their own.
+                await asyncio.sleep(0)
             if not finished:
                 fail('generation_failed', '上游未返回完整结束信号。')
             d['stream_completed'] = True
             d['errors'] = self.store.validate_draft(d)
             status = 'ready' if not d['errors'] else 'failed'
             metrics['total_seconds'] = round(time.monotonic() - started, 3)
-            self._cost(metrics)
+            self._cost(metrics, cfg)
             self.persist(draft_id, d, status, metrics)
             yield event('completed' if status == 'ready' else 'failed',
                         self.store.draft(draft_id) if status == 'ready' else
@@ -199,14 +195,13 @@ class Generator:
             yield event('failed', {'id': draft_id, 'message': '生成失败或响应不完整；草稿已保留。可检查配置后显式重新生成。'})
         finally:
             metrics['total_seconds'] = round(time.monotonic() - started, 3)
-            self._cost(metrics)
+            self._cost(metrics, cfg)
             self.persist(draft_id, d, status, metrics)
             self.active.pop(draft_id, None)
             if gate:
                 gate.close()
 
-    def _cost(self, metrics):
-        c = config(self.store)
+    def _cost(self, metrics, c):
         usage = metrics.get('usage')
         if usage and c['price_version'] and c['input_price'] and c['output_price']:
             try:

@@ -9,15 +9,16 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from copilot.core import digest, encoded, fail, now
 from plans.store import Plans, integer
-from .sources import TOPICS, DEFAULT_FEEDS
+from .sources import TOPICS, DEFAULT_FEEDS, identify
+from .content import is_readable_text, CONTENT_VERSION
 
-DEFAULT={'enabled':True,'hour':10,'minute':0,'count':3,'mode':'mixed','topics':list(TOPICS),'languages':['zh','en'],'query':''}
+DEFAULT={'enabled':True,'hour':10,'minute':0,'count':3,'mode':'mixed','topics':list(TOPICS),'languages':['zh','en'],'query':'','auto_guide':False}
 TABLE='reading_records'
 
 def preferences(data):
     if not isinstance(data,dict):fail('invalid','阅读偏好格式无效。',422)
     p={**DEFAULT,**data}
-    if set(p)!=set(DEFAULT) or type(p['enabled']) is not bool:fail('invalid','阅读偏好字段无效。',422)
+    if set(p)!=set(DEFAULT) or any(type(p[k]) is not bool for k in ('enabled','auto_guide')):fail('invalid','阅读偏好字段无效。',422)
     for k,lo,hi in [('hour',0,23),('minute',0,59),('count',1,8)]:integer(p[k],lo,hi,k)
     if p['mode'] not in ('recent','classic','mixed'):fail('invalid','文章类型无效。',422)
     for k,allowed in [('topics',TOPICS),('languages',('zh','en'))]:
@@ -36,6 +37,8 @@ class ReadingStore(Plans):
         if not p.resolve().is_relative_to(self.root.resolve()):fail('invalid','阅读路径越界。',422)
         return p
     def initialize(self):
+        if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
+            fail('legacy_content_migration', '旧认知阅读的文件与笔记尚未完成云端迁移，暂不写入临时磁盘。', 503)
         with self.lock():
             with self.conn() as c:installed=c.execute("SELECT 1 FROM sqlite_master WHERE name='reading_records'").fetchone()
             if not installed:
@@ -62,16 +65,93 @@ class ReadingStore(Plans):
                     FOREIGN KEY (vocab_id) REFERENCES reading_vocabulary(id))''')
                 c.execute('CREATE INDEX IF NOT EXISTS idx_review_vocab ON reading_reviews(vocab_id)')
             self.recover_exports()
+            self.restore_article_index()
             for job in self.jobs():
                 if job['state'] in ('queued','running'):
                     job.update(state='failed',error='服务重启导致任务中断，未自动重试。',finished_at=now());self.put(TABLE,job['id'],job)
             if self.optional('preferences') is None:self.set_preferences_locked(DEFAULT)
+    def restore_article_index(self):
+        """Reattach local mirrors missing from the index; never replace indexed records or files.
+
+        Called under the writer lock after pending exports have recovered.
+        """
+        records=[]
+        base=self.path('认知阅读/文章资料')
+        if not base.is_dir():return 0
+        for metadata in sorted(base.glob('article-*/文章信息.json')):
+            aid=metadata.parent.name
+            if not re.fullmatch(r'article-[a-f0-9]{20}',aid) or self.optional(aid):continue
+            rel=f'认知阅读/文章资料/{aid}'
+            try:
+                a=json.loads(self.path(rel+'/文章信息.json').read_text(encoding='utf-8'))
+                if not isinstance(a,dict) or a.get('id')!=aid or a.get('type')!='article':continue
+                if any(not isinstance(a.get(k),str) or not a[k] for k in ('title','url','source','saved_at')):continue
+                url=urlsplit(a['url'])
+                if url.scheme not in ('http','https') or not url.hostname or url.username or url.password:continue
+                if identify(a['url'])!=aid or a.get('language') not in ('zh','en'):continue
+                if any(k in a and type(a[k]) is not bool for k in ('read','read_later','bookmarked','archived')):continue
+                hashes={};contents={}
+                for name in ('文章信息.json','中文导读.md','原文.md','详细总结.md','英语学习.md'):
+                    path=rel+'/'+name;file=self.path(path)
+                    if file.is_file():
+                        raw=file.read_bytes();hashes[path]=digest(raw);contents[name]=raw.decode('utf-8')
+                a.update(hashes=hashes,guide=contents.get('中文导读.md',''))
+                if '原文.md' in contents and not a.get('full_content'):a['full_content']=contents['原文.md']
+                for key in ('read','read_later','bookmarked'):a.setdefault(key,False)
+                a.setdefault('access','从本地已保存资料恢复；未重新核验原文')
+                records.append(a)
+            except (OSError,ValueError,UnicodeError):
+                continue
+        with self.conn() as c:
+            for a in records:
+                c.execute('INSERT INTO reading_records VALUES (?,?) ON CONFLICT(id) DO NOTHING',(a['id'],encoded(a)))
+        return len(records)
     def optional(self,key):
         with self.conn() as c:r=c.execute('SELECT data FROM reading_records WHERE id=?',(key,)).fetchone()
         return json.loads(r[0]) if r else None
     def record(self,key):return self.get(TABLE,key)
-    def prefs(self):return self.record('preferences')['value']
+    def prefs(self):return {**DEFAULT,**self.record('preferences')['value']}
     def jobs(self):return [r for r in self.rows(TABLE) if r.get('type')=='job']
+    def library(self, search='', filter='all', page=1, page_size=20, kind='articles'):
+        """List saved metadata in one connection, without downloading article bodies.
+
+        Original records remain untouched, including escaped NULs in old PDFs.
+        This works for both local and GitHub-backed stores: history lives in PG.
+        """
+        if kind not in ('articles', 'jobs') or filter not in ('all', 'bookmark', 'later', 'read', 'feedback', 'archived'):
+            fail('invalid', '历史筛选条件无效。', 422)
+        integer(page, 1, 100000, '页码');integer(page_size, 1, 50, '每页数量')
+        fields = ('id,title,zh_title,url,source,author,published_at,saved_at,summary,reason,access,category,'
+                  'language,tags,read,bookmarked,read_later,archived,feedback').split(',') if kind == 'articles' else (
+                  'id,kind,state,created_at,finished_at,date,daily,phase,error,saved_ids').split(',')
+        projection = ','.join(f"'{name}',doc->'{name}'" for name in fields)
+        if kind == 'jobs':
+            projection += ", 'candidate_count',CASE WHEN jsonb_typeof(doc->'candidates')='array' THEN jsonb_array_length(doc->'candidates') ELSE 0 END"
+        conditions = ["doc->>'type'=?"]
+        params = ['article' if kind == 'articles' else 'job']
+        if kind == 'articles':
+            archived = "COALESCE(doc->>'archived','false')='true'"
+            conditions.append(archived if filter == 'archived' else 'NOT (' + archived + ')')
+            key = {'bookmark': 'bookmarked', 'later': 'read_later', 'read': 'read'}.get(filter)
+            if key:conditions.append(f"doc->>'{key}'='true'")
+            if filter == 'feedback':
+                conditions.append("(COALESCE(doc->'feedback'->>'value','')<>'' OR COALESCE(doc->'feedback'->>'difficulty','')<>'' OR COALESCE(doc->'feedback'->>'takeaway','')<>'' OR COALESCE(doc->'feedback'->>'question','')<>'' OR COALESCE(doc->'feedback'->>'action','')<>'' OR CASE WHEN jsonb_typeof(doc->'feedback'->'tags')='array' THEN jsonb_array_length(doc->'feedback'->'tags')>0 ELSE false END)")
+            if search:
+                conditions.append("strpos(lower(concat_ws(' ',doc->>'title',doc->>'zh_title',doc->>'author',doc->>'source',doc->>'summary',doc->>'guide',doc->>'full_content',doc->>'tags',doc->>'feedback')),lower(?))>0")
+                params.append(search)
+        # Materialize once: inlining the JSON expression repeats parsing for
+        # every projected field. Skip large export journals before parsing.
+        prefix = "WITH records AS MATERIALIZED (SELECT replace(data,?,?)::jsonb AS doc FROM reading_records WHERE id LIKE ?), matches AS MATERIALIZED (SELECT doc FROM records"
+        where = ' WHERE ' + ' AND '.join(conditions)
+        args = [r'\u0000', r'\ufffd', 'article-%' if kind == 'articles' else 'job-%', *params]
+        order = 'saved_at' if kind == 'articles' else 'created_at'
+        with self.conn() as c:
+            row = c.execute(prefix + where + '), page_rows AS (SELECT jsonb_build_object(' + projection + ') AS item FROM matches' +
+                            f" ORDER BY doc->>'{order}' DESC,doc->>'id' DESC LIMIT ? OFFSET ?) " +
+                            "SELECT (SELECT count(*) FROM matches),COALESCE((SELECT jsonb_agg(item) FROM page_rows),'[]'::jsonb)",
+                            [*args, page_size, (page - 1) * page_size]).fetchone()
+        return {kind: row[1], 'total': row[0], 'page': page, 'page_size': page_size}
+
     def articles(self,search=None,include_archived=False):
         """获取文章列表，支持搜索和归档过滤。"""
         result=[]
@@ -80,9 +160,11 @@ class ReadingStore(Plans):
             if not include_archived and r.get('archived'):continue
             if search:
                 q=search.lower()
-                hay=' '.join(str(r.get(f,'')) for f in ('title','zh_title','author','source','summary')).lower()
-                tags=' '.join(r.get('tags',[])).lower()
-                if q not in hay and q not in tags:continue
+                feedback=r.get('feedback') or {}
+                hay=' '.join(str(r.get(f,'')) for f in ('title','zh_title','author','source','summary','guide','full_content'))
+                hay+=' '+' '.join(str(feedback.get(f,'')) for f in ('takeaway','question','action'))
+                hay+=' '+' '.join(r.get('tags',[])+feedback.get('tags',[]))
+                if q not in hay.lower():continue
             result.append(r)
         return result
     def search_articles(self,query,include_archived=False):
@@ -215,6 +297,30 @@ class ReadingStore(Plans):
             a['hashes'].update({r:digest(v) for r,v in files.items() if '/阅读笔记/' not in r})
             self.export(files,[a],expected)
             return {**a,**({'note_hash':digest(data['note'])} if 'note' in data else {})}
+    def save_feedback(self,aid,data):
+        if not isinstance(data,dict) or set(data)-{'version','value','difficulty','takeaway','question','action','tags','mark_read'}:
+            fail('invalid','阅读反馈字段无效。',422)
+        version=integer(data.get('version'),0,2147483647,'反馈版本')
+        result={}
+        for key,allowed in [('value',('','insightful','neutral','not_for_me')),('difficulty',('','easy','right','hard'))]:
+            if data.get(key,'') not in allowed:fail('invalid','请选择有效的价值和难度反馈。',422)
+            result[key]=data.get(key,'')
+        for key,limit in [('takeaway',4000),('question',2000),('action',2000)]:
+            value=data.get(key,'')
+            if not isinstance(value,str) or len(value)>limit:fail('invalid','反馈内容过长或格式无效。',422)
+            result[key]=value.strip()
+        tags=data.get('tags',[])
+        if not isinstance(tags,list) or len(tags)>8 or any(not isinstance(t,str) or not t.strip() or len(t)>32 for t in tags):
+            fail('invalid','最多填写 8 个标签，每个标签不超过 32 字。',422)
+        if type(data.get('mark_read',False)) is not bool:fail('invalid','读完状态无效。',422)
+        result.update(tags=list(dict.fromkeys(t.strip() for t in tags)),version=version+1,updated_at=now())
+        with self.lock():
+            self.recover_exports();a=self.article(aid)
+            if a.get('feedback',{}).get('version',0)!=version:fail('conflict','反馈已在其他页面更新，请保留输入并重新核对。')
+            a['feedback']=result
+            if data.get('mark_read'):a['read']=True
+            a['record_version']=a.get('record_version',1)+1
+            return self._persist_article_info(a)
     def save_selection(self,jid,ids):
         with self.lock():
             self.recover_exports();job=self.record(jid)
@@ -225,6 +331,10 @@ class ReadingStore(Plans):
             if job.get('saved_ids'):
                 if set(ids)!=set(job['saved_ids']):fail('conflict','本次结果已保存，请重新搜集。')
                 return job
+            for aid in ids:
+                a=self.optional(aid) or lookup[aid]
+                if a.get('content_version')!=CONTENT_VERSION or not is_readable_text(a.get('full_content')):
+                    fail('unreadable','文章尚无已核验的可读正文，请重新搜集；已有文章和学习记录保留。',409)
             records=[];files={};expected={};date=job['date']
             for aid in ids:
                 if self.optional(aid):continue
@@ -247,12 +357,19 @@ class ReadingStore(Plans):
             log=f'认知阅读/搜集记录/{date}-{jid}.md';files[log]='# 搜集记录\n\n'+encoded({k:job[k] for k in ('date','preferences','sources','warnings')})+'\n';expected[log]=None
             job.update(saved_ids=ids,saved_at=now(),path=str(self.path(index)));records.append(job)
             self.export(files,records,expected);return job
-    def save_guide(self,aid,guide,expected_hash):
+    def save_guide(self,aid,guide,expected_hash,details=None):
         with self.lock():
             self.recover_exports();a=self.article(aid);rel=f'认知阅读/文章资料/{aid}/中文导读.md'
             if a['hashes'][rel]!=expected_hash:fail('conflict','导读已经更新，请先查看新版。')
             a['guide']=guide;a['hashes'][rel]=digest(guide)
-            self.export({rel:guide},[a],{rel:expected_hash});return a
+            files={rel:guide};expected={rel:expected_hash}
+            if details:
+                a.update(details)
+                info=f'认知阅读/文章资料/{aid}/文章信息.json'
+                expected[info]=a['hashes'].get(info)
+                files[info]=encoded({k:v for k,v in a.items() if k not in ('hashes','guide')})
+                a['hashes'][info]=digest(files[info])
+            self.export(files,[a],expected);return a
     def save_summary(self,aid,summary):
         """Save comprehensive AI summary based on full article content."""
         with self.lock():
@@ -282,6 +399,8 @@ class ReadingStore(Plans):
             a['hashes'][rel]=digest(full_content)
             # Also save to full_content field in article record
             a['full_content']=content
+            a['content_version']=2
+            a['content_saved_at']=now()
             self.export({rel:full_content},[a],expected);return a
     def archive_article(self,aid):
         """归档文章（不删除，可恢复）。"""

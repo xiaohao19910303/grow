@@ -7,7 +7,7 @@ import fcntl
 import json
 import os
 import re
-import sqlite3
+import db
 import tempfile
 import uuid
 from contextlib import contextmanager, closing
@@ -81,18 +81,28 @@ class ReflectionsStore:
     def __init__(self, root, db):
         self.root = Path(root).absolute()
         self.db = Path(db)
-        self.runtime = self.db.parent / '.plans'
+        self.runtime = self.db / '.plans'
         self.startup_error = None
+        self.remote = os.getenv('PLAN_CONTENT_BACKEND') == 'github'
 
     @contextmanager
     def conn(self):
-        with closing(sqlite3.connect(self.db, timeout=20)) as c:
-            c.row_factory = sqlite3.Row
+        with closing(db.connect()) as c:
             with c:
                 yield c
 
+    def lock_id(self, name):
+        from tenancy import current_user
+        user = current_user.get()
+        return int(digest((user['schema_name'] + ':' if user else '') + name)[:15], 16)
+
     @contextmanager
     def lock(self):
+        if self.remote:
+            with self.conn() as c:
+                c.execute('SELECT pg_advisory_xact_lock(?)', (self.lock_id('reflection-writes'),))
+                yield
+            return
         if not self.root.is_dir():
             fail('unavailable', '学习磁盘不可用。', 503)
         self.runtime.mkdir(parents=True, exist_ok=True)
@@ -102,6 +112,22 @@ class ReflectionsStore:
                 yield
             finally:
                 fcntl.flock(stream, fcntl.LOCK_UN)
+
+    @contextmanager
+    def generation_gate(self):
+        if self.remote:
+            with self.conn() as c:
+                acquired = c.execute('SELECT pg_try_advisory_xact_lock(?)', (self.lock_id('learning-plan-generation'),)).fetchone()[0]
+                if not acquired:
+                    fail('generation_busy', '另一个 AI 任务正在运行。')
+                yield
+        else:
+            with (self.db.parent / '.ai-generation.lock').open('a') as gate:
+                try:
+                    fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    fail('generation_busy', '另一个 AI 任务正在运行。')
+                yield
 
     def path(self, relative):
         prefix = f'{REFLECTION_DIR}/{DAILY_DIR}/'
@@ -123,6 +149,43 @@ class ReflectionsStore:
         p = self.path(relative)
         return digest(p.read_bytes()) if p.exists() else None
 
+    def expected_mirror(self, entry):
+        # Legacy records are trusted only if the existing mirror exactly matches
+        # the stored entry rendered today. Never adopt an arbitrary disk hash.
+        expected = entry.get('mirror_hash') or digest(render_markdown(entry))
+        if self.remote:
+            return expected
+        try:
+            actual = self.hash(entry['path'])
+        except OSError:
+            fail('external_change', '本地文件无法读取，已停止覆盖。请先核对文件。')
+        if actual != expected:
+            fail('external_change', '本地文件已被修改或移走，已停止覆盖。请核对文件与原保存内容。')
+        return expected
+
+    def mirror_status(self, entry_id):
+        entry = self.entry(entry_id)
+        if self.remote:
+            return {'id': entry_id, 'path': None, 'storage': 'database', 'conflict': False,
+                    'saved_markdown': render_markdown(entry), 'file_markdown': None}
+        p = self.path(entry['path'])
+        content = None
+        try:
+            if p.exists():
+                with p.open('rb') as stream:
+                    raw = stream.read(200001)
+                if len(raw) > 200000:
+                    fail('external_change', '本地文件过大，请在文件编辑器中核对；系统未覆盖。')
+                content = raw.decode('utf-8')
+        except UnicodeError:
+            fail('external_change', '文件已不是UTF-8文本，请在文件编辑器中核对；系统未覆盖。')
+        except OSError:
+            fail('external_change', '本地文件无法读取，请在文件编辑器中核对；系统未覆盖。')
+        expected = entry.get('mirror_hash') or digest(render_markdown(entry))
+        return {'id': entry_id, 'path': entry['path'],
+                'conflict': content is None or digest(content) != expected,
+                'saved_markdown': render_markdown(entry), 'file_markdown': content}
+
     def get(self, table, key):
         with self.conn() as c:
             row = c.execute(f'SELECT data FROM {table} WHERE id=?', (key,)).fetchone()
@@ -135,11 +198,11 @@ class ReflectionsStore:
             return [json.loads(r[0]) for r in c.execute(f'SELECT data FROM {table}')]
 
     def initialize(self):
-        if (self.runtime / 'restore-pending.json').exists():
+        if not self.remote and (self.runtime / 'restore-pending.json').exists():
             fail('restore_pending', '存在未完成的恢复，请先处理恢复日志。', 503)
         with self.lock():
             with self.conn() as c:
-                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='reflection_entries'").fetchone()
+                installed = True if self.remote else c.execute("SELECT 1 FROM sqlite_master WHERE name='reflection_entries'").fetchone()
             if not installed:
                 from plans.backup import database_snapshot
                 database_snapshot(self, self.runtime / f'before-reflection-{uuid.uuid4().hex}.db')
@@ -152,7 +215,8 @@ class ReflectionsStore:
                         a.update(status='failed', error='服务重启导致生成中断；不会自动重试。', finished_at=now())
                         c.execute('UPDATE reflection_ai_attempts SET data=? WHERE id=?', (encoded(a), row['id']))
             self.recover_locked()
-            self._ensure_readme()
+            if not self.remote:
+                self._ensure_readme()
 
     def get_setting(self, key, default=''):
         """共享 copilot 的模型配置，复用其 settings 表。"""
@@ -184,7 +248,18 @@ class ReflectionsStore:
         return op['result']
 
     def publish(self, key, request, files, records, result):
-        """Caller holds the shared writer lock. 两阶段：先原子写文件，再落 SQLite 记录。"""
+        """Caller holds the writer lock; cloud records and journal commit together."""
+        if self.remote:
+            previous = self.replay(key, request)
+            if previous is not None:
+                return previous
+            op = {'id': key, 'state': 'done', 'request_hash': digest(encoded(request)),
+                  'files': {}, 'result': result, 'created_at': now()}
+            with self.conn() as c:
+                for record in records:
+                    c.execute(record['sql'], record['params'])
+                c.execute('INSERT INTO reflection_operations VALUES (?,?)', (key, encoded(op)))
+            return result
         with self.conn() as c:
             existing = c.execute('SELECT data FROM reflection_operations WHERE id=?', (key,)).fetchone()
         if existing:
@@ -221,7 +296,9 @@ class ReflectionsStore:
 
     def recover_locked(self):
         with self.conn() as c:
-            keys = [r[0] for r in c.execute("SELECT id FROM reflection_operations WHERE json_extract(data,'$.state')='pending'")]
+            keys = [r[0] for r in c.execute('SELECT id,data FROM reflection_operations') if json.loads(r[1]).get('state') == 'pending']
+        if self.remote and keys:
+            fail('migration_pending', '存在旧文件写入任务，请先完成迁移核对。', 503)
         for key in keys:
             self._resume(key)
 
@@ -234,7 +311,7 @@ class ReflectionsStore:
                 stream.write(content)
                 stream.flush()
                 os.fsync(stream.fileno())
-            if old_hash is not None and self.hash(relative) != old_hash:
+            if self.hash(relative) != old_hash:
                 fail('conflict', f'文件在保存期间发生变化：{relative}。')
             os.replace(tmp, p)
             directory = os.open(p.parent, os.O_RDONLY)
@@ -310,6 +387,7 @@ class ReflectionsStore:
             }
             rel = entry['path'][len(REFLECTION_DIR) + 1:] if entry['path'].startswith(REFLECTION_DIR + '/') else entry['path']
             md = render_markdown(entry)
+            entry['mirror_hash'] = digest(md)
             files = {entry['path']: {'old': None, 'content': md, 'new': digest(md)}}
             version = {'entry_id': entry_id, 'version': 1, 'record_date': record_date,
                        'prompt_kind': entry['prompt_kind'], 'raw_text': entry['raw_text'],
@@ -342,6 +420,7 @@ class ReflectionsStore:
                 fail('conflict', '已归档记录不能直接修改。')
             if entry['version'] != base_version:
                 fail('conflict', '记录已被更新，请重新查看。')
+            expected_hash = self.expected_mirror(entry)
             new_version = entry['version'] + 1
             entry.update(
                 record_date=data['record_date'],
@@ -354,7 +433,8 @@ class ReflectionsStore:
             if entry.get('adopted_summary') and entry['summary_basis_version'] is not None:
                 entry['status'] = 'basis_updated'
             md = render_markdown(entry)
-            files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
+            entry['mirror_hash'] = digest(md)
+            files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             version = {'entry_id': entry_id, 'version': new_version, 'record_date': entry['record_date'],
                        'prompt_kind': entry['prompt_kind'], 'raw_text': entry['raw_text'],
                        'guided_answers': entry['guided_answers'], 'tags': entry['tags'],
@@ -402,13 +482,15 @@ class ReflectionsStore:
             sections = attempt.get('sections') or []
             if not sections:
                 fail('invalid', '整理内容为空。', 422)
+            expected_hash = self.expected_mirror(entry)
             new_version = entry['version'] + 1
             entry.update(
                 adopted_summary={'sections': sections, 'adopted_at': now()},
                 summary_basis_version=entry['version'],
                 status='organized', version=new_version, updated_at=now())
             md = render_markdown(entry)
-            files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
+            entry['mirror_hash'] = digest(md)
+            files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             records = [{'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
                         'params': [entry_id, encoded(entry)]}]
             return self.publish(key, request, files, records, {'id': entry_id, 'version': new_version})
@@ -425,11 +507,13 @@ class ReflectionsStore:
             entry = self.get('reflection_entries', entry_id)
             if entry.get('archived_at'):
                 return {'id': entry_id, 'archived': True}
+            expected_hash = self.expected_mirror(entry)
             entry['archived_at'] = now()
             entry['updated_at'] = now()
             entry['version'] += 1
             md = render_markdown(entry)
-            files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
+            entry['mirror_hash'] = digest(md)
+            files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             records = [{'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
                         'params': [entry_id, encoded(entry)]}]
             return self.publish(key, request, files, records, {'id': entry_id, 'archived': True})
@@ -446,11 +530,13 @@ class ReflectionsStore:
             entry = self.get('reflection_entries', entry_id)
             if not entry.get('archived_at'):
                 return {'id': entry_id, 'archived': False}
+            expected_hash = self.expected_mirror(entry)
             entry['archived_at'] = None
             entry['updated_at'] = now()
             entry['version'] += 1
             md = render_markdown(entry)
-            files = {entry['path']: {'old': self.hash(entry['path']), 'content': md, 'new': digest(md)}}
+            entry['mirror_hash'] = digest(md)
+            files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             records = [{'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
                         'params': [entry_id, encoded(entry)]}]
             return self.publish(key, request, files, records, {'id': entry_id, 'archived': False})

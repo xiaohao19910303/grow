@@ -1,11 +1,13 @@
 """日常复盘路由：低门槛记录、独立保存、按需 AI 辅助。"""
+from tenancy import scoped, learning_root, runtime_root
 import json
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from copilot.core import fail, now
-from copilot.generation import availability, config
+from copilot.generation import availability
+from copilot.ai_config import require_config
 from .store import ReflectionsStore
 from .assist import ReflectionAssistant
 
@@ -37,6 +39,7 @@ class UpdatePayload(BaseModel):
 
 
 class AssistPayload(BaseModel):
+    ai_config: dict | None = Field(default=None, repr=False)
     model_config = ConfigDict(extra='forbid')
     kind: str
     snapshot: dict
@@ -50,8 +53,8 @@ class AdoptPayload(BaseModel):
 
 
 def register(app, root, db):
-    store = ReflectionsStore(root, db)
-    assistant = ReflectionAssistant(store)
+    store = scoped(app, lambda: ReflectionsStore(learning_root(root), runtime_root(db)), initialize=True)
+    assistant = scoped(app, lambda: ReflectionAssistant(store))
     router = APIRouter(prefix='/api/reflections')
 
     @app.middleware('http')
@@ -73,7 +76,7 @@ def register(app, root, db):
     def listing(include_archived: bool = False):
         entries = store.list_entries(include_archived)
         return {'entries': entries, 'generation_unavailable': availability(store),
-                'model': config(store)['model']}
+                'requires_own_config': True}
 
     @router.get('/export')
     def export(include_archived: bool = False):
@@ -98,6 +101,10 @@ def register(app, root, db):
     def versions(entry_id: str):
         return {'versions': store.versions(entry_id)}
 
+    @router.get('/{entry_id}/file-status')
+    def file_status(entry_id: str):
+        return store.mirror_status(entry_id)
+
     @router.post('/{entry_id}/archive')
     def archive(entry_id: str, body: Payload):
         return store.archive(entry_id, body.data.get('key', ''))
@@ -108,7 +115,8 @@ def register(app, root, db):
 
     @router.post('/{entry_id}/assist')
     async def assist(entry_id: str, body: AssistPayload):
-        return assistant.begin(entry_id, body.kind, body.snapshot, body.key)
+        require_config(body.ai_config)
+        return assistant.begin(entry_id, body.kind, body.snapshot, body.key, body.ai_config)
 
     @router.get('/attempts/{attempt_key}')
     def attempt(attempt_key: str):

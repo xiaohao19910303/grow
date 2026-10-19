@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sqlite3
+import db
 import tempfile
 import uuid
 from collections import Counter
@@ -23,6 +24,12 @@ LINK = re.compile(r'\[[^\]]*\]\(([^)]+)\)')
 
 def now():
     return datetime.now(TZ).isoformat(timespec='seconds')
+
+
+def completion_label(record):
+    stamp = datetime.fromisoformat(record['completed_at'])
+    stamp = stamp.replace(tzinfo=TZ) if stamp.tzinfo is None else stamp.astimezone(TZ)
+    return '已完成 · ' + stamp.strftime('%Y-%m-%d %H:%M')
 
 
 def digest(value):
@@ -70,12 +77,11 @@ class Store:
         self.root = Path(root).absolute()
         self.db = Path(db)
         self.module = self.root / MODULE
-        self.runtime = self.db.parent / '.copilot'
+        self.runtime = self.db / '.copilot'
 
     @contextmanager
     def conn(self):
-        connection = sqlite3.connect(self.db, timeout=10)
-        connection.row_factory = sqlite3.Row
+        connection = db.connect()
         try:
             with connection:
                 yield connection
@@ -115,13 +121,17 @@ class Store:
                 fcntl.flock(lock, fcntl.LOCK_UN)
 
     def initialize(self):
+        if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
+            fail('legacy_content_migration', '旧认知课程的文件发布尚未迁移到 GitHub，请使用新学习计划；历史资料保留。', 503)
         self.workspace()
         if (self.runtime / 'restore-pending.json').exists():
             fail('save_pending_recovery', '存在未完成的离线恢复，请先处理恢复日志。', 503)
         with self.lock():
             with self.conn() as c:
-                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_meta'").fetchone()
-            if not installed:
+                sqlite = isinstance(c, sqlite3.Connection)
+                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_meta'" if sqlite else
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='copilot_meta'").fetchone()
+            if not installed and sqlite:
                 # SQLite backup API captures a consistent database; never copy a live db file.
                 from .backup import snapshot
                 snapshot(self, 'before-migration')
@@ -181,6 +191,8 @@ class Store:
                 c.execute("INSERT INTO copilot_meta VALUES('schema_version','1') ON CONFLICT(key) DO NOTHING")
                 schema_ver = c.execute("SELECT value FROM copilot_meta WHERE key='schema_version'").fetchone()[0]
                 if schema_ver < '2':
+                    if not sqlite and c.execute('SELECT COUNT(*) FROM copilot_learning_records').fetchone()[0]:
+                        fail('legacy_schema_migration', '旧学习记录需要版本迁移，原记录已保留。', 503)
                     c.execute("DROP TABLE IF EXISTS copilot_learning_records")
                     c.execute('''CREATE TABLE copilot_learning_records (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -207,7 +219,33 @@ class Store:
                 c.execute("UPDATE copilot_drafts SET status='failed' WHERE status='generating'")
                 c.execute("UPDATE copilot_generation_attempts SET status='failed' WHERE status='generating'")
             self.set_meta('writer_session', {})
+            state = self._scan()
+            if not any(b['code'] == 'save_pending_recovery' for b in state['blockers']):
+                self.migrate_learning_records(state['lessons'])
             self._scan()
+
+    def migrate_learning_records(self, lessons):
+        """Import dated local completion evidence without replacing personal records."""
+        with self.conn() as c:
+            for lesson in lessons:
+                label = lesson['learning_label']
+                if not label.startswith(('已完成', '已学习')):
+                    continue
+                match = re.search(r'\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?', label)
+                if not match:
+                    continue  # Never substitute the course date or today's date.
+                try:
+                    stamp = datetime.fromisoformat(match[0])
+                except ValueError:
+                    continue
+                stamp = stamp.replace(tzinfo=TZ) if stamp.tzinfo is None else stamp.astimezone(TZ)
+                timestamp = stamp.isoformat()
+                kind = next((value for word, value in (('快速', 'quick'), ('复盘', 'review'), ('总结', 'summary')) if word in label), 'manual')
+                c.execute('''INSERT INTO copilot_learning_records
+                    (module_id,round_id,lesson_no,completion_type,time_spent_seconds,completed_at,idempotency_key)
+                    VALUES ('renzhi',1,?,?,0,?,?)
+                    ON CONFLICT(module_id,round_id,lesson_no) DO NOTHING''',
+                    (lesson['lesson_no'], kind, timestamp, 'markdown-completion:' + digest(str(lesson['lesson_no']) + timestamp)))
 
     def rows(self, text):
         return [(i, int(m[1]), line) for i, line in enumerate(text.splitlines(keepends=True))
@@ -222,6 +260,10 @@ class Store:
         self.workspace()
         record = self.path('学习记录.md').read_text(encoding='utf-8')
         rows = self.record_rows(record)
+        with self.conn() as c:
+            records = {r['lesson_no']: r for r in c.execute('''
+                SELECT lesson_no,completed_at,time_spent_seconds FROM copilot_learning_records
+                WHERE module_id='renzhi' AND round_id=1''').fetchall()}
         grouped, blockers, courses = {}, [], []
         for p in sorted(self.path('每日课程').glob('*.md')):
             m = NAME.fullmatch(p.name)
@@ -317,9 +359,9 @@ class Store:
         while prefix + 1 in complete:
             prefix += 1
         with self.conn() as c:
-            c.execute('DELETE FROM copilot_lessons')
-            c.executemany('INSERT INTO copilot_lessons(lesson_no,data) VALUES (?,?)',
-                          [(x['lesson_no'], encoded(x)) for x in courses])
+            c.execute('DELETE FROM copilot_lessons WHERE module_id=? AND round_id=?',('renzhi',1))
+            c.executemany('INSERT INTO copilot_lessons(module_id,round_id,lesson_no,data) VALUES (?,?,?,?)',
+                          [('renzhi',1,x['lesson_no'],encoded(x)) for x in courses])
             pending = c.execute("SELECT id FROM copilot_operations WHERE status!='done'").fetchall()
         blockers.extend({'code': 'save_pending_recovery', 'message': '保存操作需要恢复', 'operation_id': r[0]}
                         for r in pending)
@@ -358,6 +400,9 @@ class Store:
         return json.loads(row[0]) if row else default
 
     def update_settings(self, updates):
+        from .ai_config import SERVER_AI_KEYS
+        if set(updates) & set(SERVER_AI_KEYS):
+            fail('browser_config_only', 'AI 配置仅保存在浏览器。', 410)
         with self.conn() as c:
             for key, value in updates.items():
                 c.execute('INSERT INTO copilot_settings VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
@@ -484,10 +529,10 @@ class Store:
                 fail('conflict', '同一请求标识不能用于不同内容。')
             return {'operation_id': row['id'], 'status': row['status']}
 
-    def prepare(self, key, request, files, draft_id=None):
+    def prepare(self, key, request, files, draft_id=None, sql=()):
         op_id = str(uuid.uuid4())
         # Store durable target content in the journal itself; filesystem staging is recreated as needed.
-        data = {'files': files, 'draft_id': draft_id}
+        data = {'files': files, 'draft_id': draft_id, 'sql': sql}
         with self.conn() as c:
             c.execute('INSERT INTO copilot_operations VALUES (?,?,?,?,?,?)',
                       (op_id, key, digest(encoded(request)), 'prepared', encoded(data), now()))
@@ -531,11 +576,15 @@ class Store:
                         os.unlink(temp)
             self._scan()
             with self.conn() as c:
+                # Completion records and the operation's success commit together.
+                # Recovery replays the same statements after any interrupted file write.
+                for statement, parameters in data.get('sql', []):
+                    c.execute(statement, parameters)
                 if data.get('draft_id'):
                     c.execute("UPDATE copilot_drafts SET status='published' WHERE id=?", (data['draft_id'],))
                 c.execute("UPDATE copilot_operations SET status='done' WHERE id=?", (op_id,))
             return {'operation_id': op_id, 'status': 'done'}
-        except (OSError, sqlite3.Error, Problem) as e:
+        except (OSError, db.Error, db.psycopg2.Error, Problem) as e:
             data['error'] = e.message if isinstance(e, Problem) else '文件或数据库写入失败，检查磁盘与权限后恢复。'
             with self.conn() as c:
                 c.execute("UPDATE copilot_operations SET status=?,data=? WHERE id=?",
@@ -575,21 +624,15 @@ class Store:
             cells = line.rstrip('\r\n').split('|')
             cells[-2] = f' 已完成（本人确认：{ts}） ' if state == 'completed' else f' 待本人记录（本人撤销：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
-
             if state == 'completed':
-                with self.conn() as c:
-                    c.execute('''
-                        INSERT OR REPLACE INTO copilot_learning_records
+                sql = [('''INSERT INTO copilot_learning_records
                         (module_id, round_id, lesson_no, completion_type, time_spent_seconds,
                          completed_at, idempotency_key)
                         VALUES ('renzhi', 1, ?, 'manual', 0, ?, ?)
-                    ''', (number, ts, key))
-            elif state == 'unknown':
-                with self.conn() as c:
-                    c.execute('DELETE FROM copilot_learning_records WHERE module_id=? AND round_id=1 AND lesson_no=?',
-                              ('renzhi', number))
-            return result
+                        ON CONFLICT(module_id,round_id,lesson_no) DO NOTHING''', (number, ts, key))]
+            else:
+                sql = [('DELETE FROM copilot_learning_records WHERE module_id=? AND round_id=1 AND lesson_no=?', ('renzhi', number))]
+            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}], sql=sql)
 
     def submit_review(self, number, answers, time_spent, version, key):
         """Submit review answers and mark lesson as completed."""
@@ -620,16 +663,16 @@ class Store:
             ts = now()
             cells[-2] = f' 已完成（复盘提交：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
-
-            with self.conn() as c:
-                c.execute('''
+            sql = [('''
                     INSERT INTO copilot_learning_records
                     (module_id, round_id, lesson_no, completion_type, review_answers,
                      time_spent_seconds, completed_at, idempotency_key)
                     VALUES ('renzhi', 1, ?, 'review', ?, ?, ?, ?)
-                ''', (number, json.dumps(answers, ensure_ascii=False), time_spent, ts, key))
-            return result
+                    ON CONFLICT(module_id,round_id,lesson_no) DO UPDATE SET
+                        completion_type=excluded.completion_type, review_answers=excluded.review_answers,
+                        time_spent_seconds=excluded.time_spent_seconds, idempotency_key=excluded.idempotency_key
+                ''', (number, json.dumps(answers, ensure_ascii=False), time_spent, ts, key))]
+            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}], sql=sql)
 
     def submit_summary(self, number, summary, time_spent, version, key):
         """Submit learning summary and mark lesson as completed."""
@@ -660,16 +703,16 @@ class Store:
             ts = now()
             cells[-2] = f' 已完成（总结提交：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
-
-            with self.conn() as c:
-                c.execute('''
+            sql = [('''
                     INSERT INTO copilot_learning_records
                     (module_id, round_id, lesson_no, completion_type, summary_text,
                      time_spent_seconds, completed_at, idempotency_key)
                     VALUES ('renzhi', 1, ?, 'summary', ?, ?, ?, ?)
-                ''', (number, summary, time_spent, ts, key))
-            return result
+                    ON CONFLICT(module_id,round_id,lesson_no) DO UPDATE SET
+                        completion_type=excluded.completion_type, summary_text=excluded.summary_text,
+                        time_spent_seconds=excluded.time_spent_seconds, idempotency_key=excluded.idempotency_key
+                ''', (number, summary, time_spent, ts, key))]
+            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}], sql=sql)
 
     def quick_complete(self, number, time_spent, version, key):
         """Quick mark lesson as completed without review or summary."""
@@ -700,22 +743,20 @@ class Store:
             ts = now()
             cells[-2] = f' 已完成（快速完成：{ts}） '
             lines[i] = '|'.join(cells) + ('\n' if line.endswith('\n') else '')
-            result = self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}])
-
-            with self.conn() as c:
-                c.execute('''
+            sql = [('''
                     INSERT INTO copilot_learning_records
                     (module_id, round_id, lesson_no, completion_type, time_spent_seconds,
                      completed_at, idempotency_key)
                     VALUES ('renzhi', 1, ?, 'quick', ?, ?, ?)
-                ''', (number, time_spent, ts, key))
-            return result
+                    ON CONFLICT(module_id,round_id,lesson_no) DO NOTHING
+                ''', (number, time_spent, ts, key))]
+            return self.prepare(key, request, [{'path': '学习记录.md', 'old_hash': digest(text), 'content': ''.join(lines)}], sql=sql)
 
     def get_learning_record(self, number):
         """Get learning record for a specific lesson."""
         with self.conn() as c:
             row = c.execute('''
-                SELECT completion_type, review_answers, summary_text,
+                SELECT lesson_no, completion_type, review_answers, summary_text,
                        time_spent_seconds, completed_at
                 FROM copilot_learning_records
                 WHERE module_id = 'renzhi' AND round_id = 1 AND lesson_no = ?
@@ -760,7 +801,7 @@ class Store:
                 SELECT lesson_no, completion_type, review_answers, summary_text,
                        time_spent_seconds, completed_at
                 FROM copilot_learning_records
-                WHERE module_id = ? AND DATE(completed_at) = ?
+                WHERE module_id = ? AND round_id = 1 AND DATE(completed_at) = ?
                 ORDER BY completed_at DESC
             ''', (module_id, date)).fetchall()
 
@@ -779,7 +820,7 @@ class Store:
             rows = c.execute('''
                 SELECT DATE(completed_at) as date, COUNT(*) as count
                 FROM copilot_learning_records
-                WHERE module_id = ? AND completed_at >= ? AND completed_at < ?
+                WHERE module_id = ? AND round_id = 1 AND completed_at >= ? AND completed_at < ?
                 GROUP BY DATE(completed_at)
                 ORDER BY date DESC
             ''', (module_id, start_date, end_date)).fetchall()
@@ -998,6 +1039,8 @@ class Store:
             return self.draft(draft_id)
 
     def publish(self, draft_id, version, key):
+        if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
+            fail('legacy_content_migration', '旧课程尚未接入 GitHub 发布，请使用新学习计划。', 503)
         request = {'draft_id': draft_id, 'version': version}
         with self.lock():
             replay = self.replay(key, request)

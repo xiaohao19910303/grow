@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sqlite3
+import db
 import tempfile
 import uuid
 from contextlib import contextmanager, closing
@@ -117,13 +118,12 @@ def plan_markdown(b, doc):
 class Plans:
     def __init__(self, root, db):
         self.root, self.db = Path(root).absolute(), Path(db)
-        self.runtime = self.db.parent / '.plans'
+        self.runtime = self.db / '.plans'
         self.startup_error = None
 
     @contextmanager
     def conn(self):
-        with closing(sqlite3.connect(self.db, timeout=20)) as c:
-            c.row_factory = sqlite3.Row
+        with closing(db.connect()) as c:
             with c: yield c
 
     @contextmanager
@@ -155,13 +155,32 @@ class Plans:
         p = self.path(relative)
         return digest(p.read_bytes()) if p.exists() else None
 
+    def read_text(self, relative, ref=None):
+        return self.path(relative).read_text(encoding='utf-8')
+
+    def exists(self, relative):
+        return self.path(relative).exists()
+
+    def file_location(self, relative):
+        return str(self.path(relative))
+
+    def read_course(self, pid, number):
+        self.plan(pid)
+        lesson = next((x for x in self.lessons(pid) if x['lesson_no'] == number), None)
+        if not lesson: fail('not_found', '课程不存在。', 404)
+        base = self.base(pid)
+        return {'lesson': lesson, 'content': self.read_text(base+'/'+lesson['path']),
+                'sources': self.read_text(base+'/'+lesson['source'])}
+
     def initialize(self):
         if (self.runtime / 'restore-pending.json').exists():
             fail('restore_pending', '存在未完成的恢复，请先核对日志。', 503)
         with self.lock():
             with self.conn() as c:
-                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='learning_draft_families'").fetchone()
-            if not installed:
+                sqlite = isinstance(c, sqlite3.Connection)
+                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='learning_draft_families'" if sqlite else
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='learning_draft_families'").fetchone()
+            if not installed and sqlite:
                 target = self.runtime / f'before-migration-{uuid.uuid4().hex}.db'
                 from .backup import database_snapshot
                 database_snapshot(self, target)
@@ -173,12 +192,36 @@ class Plans:
                         a.update(state='failed', error='服务已重启，生成中断；不会自动重试。')
                         c.execute('UPDATE learning_ai_attempts SET data=? WHERE id=?', (encoded(a), row['id']))
             self.recover_locked()
-            # Old drafts become independent roots; do not infer historical parentage.
-            for d in self.rows('learning_drafts'):
+            self.migrate_draft_families()
+
+    def migrate_draft_families(self):
+        # Old drafts become independent roots; do not infer historical parentage.
+        with self.conn() as c:
+            drafts=[]
+            for row in c.execute('SELECT id,data FROM learning_drafts').fetchall():
+                try:d=json.loads(row[1])
+                except (ValueError,TypeError):fail('draft_migration','旧草稿格式无法识别，原文保留，请先核对。',503)
+                if not isinstance(d,dict) or d.get('id')!=row[0] or not isinstance(d.get('state'),str):
+                    fail('draft_migration','旧草稿缺少编号或状态，原文保留，请先核对。',503)
+                if d.get('family_id') is not None and not isinstance(d['family_id'],str):
+                    fail('draft_migration','旧草稿族编号无效，原文保留，请先核对。',503)
+                if not d.get('family_id') and d.get('parent_draft_id'):
+                    fail('draft_migration','旧草稿已有父子关系但缺少族编号，原关系保留，请先核对。',503)
+                drafts.append(d)
+            families={row[0] for row in c.execute('SELECT id FROM learning_draft_families')}
+            for d in drafts:
                 if not d.get('family_id'):
-                    d.update(family_id=d['id'], parent_draft_id=None, operation='original')
-                    self.put('learning_drafts', d['id'], d)
-                    self.put('learning_draft_families', d['id'], {'id':d['id'], 'published_draft_id':d['id'] if d['state']=='published' else None})
+                    d['family_id']=d['id'];d.setdefault('parent_draft_id',None);d.setdefault('operation','original')
+                    c.execute('UPDATE learning_drafts SET data=? WHERE id=?',(encoded(d),d['id']))
+            for d in drafts:
+                if d['family_id']==d['id'] and d['id'] not in families:
+                    published=[item['id'] for item in drafts if item['family_id']==d['id'] and item['state']=='published']
+                    if len(published)>1:fail('draft_migration','旧草稿族存在多个已发布版本，原记录保留，请先核对。',503)
+                    family={'id':d['id'],'published_draft_id':published[0] if published else None}
+                    c.execute('INSERT INTO learning_draft_families VALUES (?,?)',(d['id'],encoded(family)))
+                    families.add(d['id'])
+            if any(d['family_id'] not in families for d in drafts):
+                fail('draft_migration','旧草稿族缺少原始根草稿，原关系保留，请先核对。',503)
 
     def get(self, table, key):
         with self.conn() as c:
@@ -189,7 +232,11 @@ class Plans:
     def get_setting(self, key, default=''):
         # Share the existing settings screen without creating a second credential store.
         with self.conn() as c:
-            if not c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_settings'").fetchone():
+            if isinstance(c, sqlite3.Connection):
+                columns = {r[1] for r in c.execute('PRAGMA table_info(copilot_settings)')}
+            else:
+                columns = {r[0] for r in c.execute("SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='copilot_settings'")}
+            if not {'key', 'value'} <= columns:
                 return default
             row = c.execute('SELECT value FROM copilot_settings WHERE key=?', (key,)).fetchone()
         return json.loads(row[0]) if row else default
@@ -380,16 +427,17 @@ class Plans:
                         fail('conflict', '已发布课程必须完整保留，包括尚未学完的课。')
                 p['version'] += 1
                 for rel in d.get('overrides', {}):
-                    files[f'{self.base(pid)}/规划历史/外部修改-v{p["version"]:03d}.md'] = self.path(rel).read_text()
+                    files[f'{self.base(pid)}/规划历史/外部修改-v{p["version"]:03d}.md'] = self.read_text(rel)
             else:
                 prefix = 'plan-' + now()[:10].replace('-', '') + '-'
                 numbers = [int(p['id'].rsplit('-',1)[1]) for p in self.rows('learning_plans') if p['id'].startswith(prefix)]
                 pid = prefix + f'{max(numbers, default=0)+1:03d}'
-                if self.path(self.base(pid)).exists(): fail('conflict', '计划目录已存在，请检查未登记内容。')
+                if self.exists(self.base(pid)): fail('conflict', '计划目录已存在，请检查未登记内容。')
                 p = {'id': pid, 'version': 1, 'status': 'active', 'created_at': now(), 'hashes': {}}
-                files[f'{self.base(pid)}/学习记录.md'] = '# 学习记录\n\n## 个人笔记\n\n请在此保留自己的练习、疑问和记录。\n'
+                if not getattr(self,'remote',False):
+                    files[f'{self.base(pid)}/学习记录.md'] = '# 学习记录\n\n## 个人笔记\n\n请在此保留自己的练习、疑问和记录。\n'
                 files[f'{self.base(pid)}/课程目录.md'] = '# 已发布课程\n\n| 课次 | 日期 | 课程 | 资料 |\n|---|---|---|---|\n'
-                files[f'{self.base(pid)}/README.md'] = '# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md) · [学习记录](学习记录.md)\n'
+                files[f'{self.base(pid)}/README.md'] = ('# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md)\n' if getattr(self,'remote',False) else '# 学习计划\n\n[规划](学习规划.md) · [课程目录](课程目录.md) · [学习记录](学习记录.md)\n')
             p.update(brief=b, name=b['title'])
             base = self.base(pid)
             files[base+'/学习规划.md'] = plan_markdown(b, doc)
@@ -426,8 +474,8 @@ class Plans:
         doc = self.version(pid)['document']
         if n > len(doc['lessons']): fail('conflict', '当前规划课程已生成完毕，请修订或新建计划。')
         rel = f'{self.base(pid)}/备课资料/第{n:03d}课.json'
-        if not self.path(rel).exists(): fail('sources', '请先准备备课资料。')
-        entries = sources(json.loads(self.path(rel).read_text()))
+        if not self.exists(rel): fail('sources', '请先准备备课资料。')
+        entries = sources(json.loads(self.read_text(rel)))
         return {'plan_id':pid, 'base_version':p['version'], 'lesson_no':n, 'date':now()[:10],
                 'brief':p['brief'], 'lesson':doc['lessons'][n-1], 'source_entries':entries,
                 'source_hash':self.hash(rel), 'previous_topics':[x['topic'] for x in lessons[-3:]]}
@@ -498,12 +546,12 @@ class Plans:
             if ctx['date']!=now()[:10]:fail('conflict','草稿日期已过期，请编辑为今天日期后保存。')
             title=re.sub(r'[^\w\u4e00-\u9fff-]+','-',ctx['lesson']['topic']).strip('-')[:60] or '课程'
             course=f'每日课程/{ctx["date"]}-第{n:03d}课-{title}.md'; source=f'参考资料/第{n:03d}课-参考资料.md';base=self.base(pid)
-            if self.path(base+'/'+course).exists() or self.path(base+'/'+source).exists():fail('conflict','课程或资料已存在。')
+            if self.exists(base+'/'+course) or self.exists(base+'/'+source):fail('conflict','课程或资料已存在。')
             files={base+'/'+course:d['content']+f'\n\n[参考资料](../{source})\n',
                    base+'/'+source:f'# 第{n:03d}课参考资料\n\n[对应课程](../{course})\n\n'+d['sources']}
             index=base+'/课程目录.md'
             topic=ctx['lesson']['topic'].replace('|','／').replace('\n',' ')
-            files[index]=self.path(index).read_text()+f'| {n:03d} | {ctx["date"]} | [{topic}]({course}) | [资料]({source}) |\n'
+            files[index]=self.read_text(index)+f'| {n:03d} | {ctx["date"]} | [{topic}]({course}) | [资料]({source}) |\n'
             p['hashes'].update({k:digest(v) for k,v in files.items()})
             lesson={'lesson_no':n,'topic':ctx['lesson']['topic'],'date':ctx['date'],'path':course,'source':source,
                     'version':ctx['base_version'],'learning_state':'unknown','learning_label':'待本人反馈'}
@@ -511,7 +559,7 @@ class Plans:
             return self.publish(key,request,files,[('INSERT INTO learning_lessons VALUES (?,?,?)',[pid,n,encoded(lesson)]),
                 ('UPDATE learning_plans SET data=? WHERE id=?',[encoded(p),pid]),
                 ('UPDATE learning_drafts SET data=? WHERE id=?',[encoded(d),did]),
-                self.family_sql(d,{'plan_id':pid,'lesson_no':n})],{'plan_id':pid,'lesson_no':n,'path':str(self.path(base+'/'+course))})
+                self.family_sql(d,{'plan_id':pid,'lesson_no':n})],{'plan_id':pid,'lesson_no':n,'path':self.file_location(base+'/'+course)})
 
     def feedback(self, pid, n, data, key):
         state=data.get('state')
@@ -529,7 +577,7 @@ class Plans:
             lesson.update(learning_state=state,learning_label='本人确认完成' if state=='completed' else '待本人反馈')
             feedback={'state':state,'comment':comment,'date':now()}
             rel=self.base(pid)+'/学习记录.md'
-            current=self.path(rel).read_text()
+            current=self.read_text(rel)
             updated=current+f'\n## 第{n:03d}课反馈 · {now()}\n\n{lesson["learning_label"]}\n\n{comment}\n'
             return self.publish(key,request,{rel:updated},[
                 ('UPDATE learning_lessons SET data=? WHERE plan_id=? AND lesson_no=?',[encoded(lesson),pid,n]),

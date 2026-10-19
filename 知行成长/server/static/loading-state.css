@@ -1,0 +1,5 @@
+.page-loading{display:flex;align-items:center;gap:14px;padding:22px;margin:14px 0;border:1px solid var(--border,#e1e6ee);border-radius:12px;background:var(--card,#fff);color:var(--text,#202a3a);line-height:1.6}
+.page-loading strong{font-size:15px}.page-loading p{margin:4px 0 0;color:var(--muted,#68758b);font-size:13px}
+.page-loading-spinner{width:24px;height:24px;flex-shrink:0;border:3px solid var(--border,#e1e6ee);border-top-color:var(--primary,#4f6ef7);border-radius:50%;animation:page-loading-spin .8s linear infinite}
+@keyframes page-loading-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.page-loading-spinner{animation:none}}

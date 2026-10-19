@@ -138,10 +138,15 @@
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
 <link rel="stylesheet" href="/static/growth.css?v=20261014-design2">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
-<link rel="stylesheet" href="/static/reading.css?v=1">
+<link rel="stylesheet" href="/static/reading.css?v=20261017-onsite1">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
 <link rel="stylesheet" href="/static/stocks.css?v=1">
 <link rel="stylesheet" href="/static/learning-history.css?v=1">
+<link rel="stylesheet" href="/static/account.css">
+<link rel="stylesheet" href="/static/search.css?v=1">
+<link rel="stylesheet" href="/static/timeline.css?v=1">
+<link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
+<link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
 </head>
 <body>
 
@@ -155,42 +160,84 @@
     </div>
   </div>
   <div class="toolbar">
+    <div class="search-box">
+      <input type="search" id="globalSearch" placeholder="搜索…" autocomplete="off" aria-label="全局搜索">
+      <kbd class="search-shortcut">⌘K</kbd>
+    </div>
+    <span id="accountName" class="badge" aria-label="当前账号"></span>
+    <button class="btn" onclick="Account.logout()">退出登录</button>
     <span class="badge" id="storageStatus" role="status">连接中…</span>
     <button class="btn" onclick="goTab('settings')">设置</button>
   </div>
 </div>
 
 <div class="wrap">
+  <div id="legacyConflict" class="section" role="alert" hidden>
+    <p>其他页面或同步已更新记录，自动保存已暂停。当前页面的修改仍然保留；导出后可对照最新记录重新编辑。</p>
+    <button class="btn" onclick="exportJson()">下载本地修改副本</button>
+    <button class="btn" onclick="reloadLegacyState()">下载副本并载入最新记录</button>
+  </div>
   <nav class="tabs main-nav" id="tabs" aria-label="主导航">
     <button class="tab active" data-group="personal" aria-current="page" onclick="goGroup('personal')">今日</button>
     <button class="tab" data-group="learning" onclick="goGroup('learning')">学习</button>
     <button class="tab" data-group="records" onclick="goGroup('records')">记录</button>
     <button class="tab" data-group="growth" onclick="goGroup('growth')">成长</button>
   </nav>
-  <nav id="subnav" class="subnav" aria-label="栏目导航" hidden></nav>
+  <nav id="subnav" class="subnav" aria-label="栏目导航">
+    <button class="btn primary" aria-current="page" onclick="goTab('personal')">今日</button>
+    <button class="btn" onclick="goTab('reading')">阅读</button>
+  </nav>
   <div id="view-settings" style="display:none" class="section">
     <h2>设置与数据</h2><p class="desc">记录会自动保存。需要时可手动重试保存或导出备份。</p>
+    <section class="account-settings" aria-labelledby="invitationsTitle">
+      <h2 id="invitationsTitle">邀请其他人</h2>
+      <p class="desc">只有获得邀请才能注册。每个链接限一人使用，7 天内有效；对方注册后也可以邀请其他人。</p>
+      <button class="btn primary" id="invitationCreate">生成邀请链接</button>
+      <div id="invitationResult" class="github-fields" hidden>
+        <label for="invitationLink">邀请链接<input id="invitationLink" type="text" readonly autocomplete="off"></label>
+        <div><button class="btn" id="invitationCopy">复制邀请链接</button></div>
+        <p class="desc">链接仅在生成时显示，请复制后发给受邀人。</p>
+      </div>
+      <p id="invitationStatus" class="github-status" role="status" aria-live="polite"></p>
+      <div id="invitationList" class="invitation-list"></div>
+    </section>
     <div class="cp-actions"><button class="btn" onclick="saveToServer()">立即保存</button><button class="btn" onclick="exportJson()">导出 JSON</button></div>
     <details><summary>重置记录</summary><p>清空成长记录前，请先导出备份。</p><button class="btn danger" onclick="resetData()">重置</button></details>
     <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
     <h2 style="font-size:18px;margin:0 0 8px">课程生成配置</h2>
-    <p class="desc">配置兼容 OpenAI 协议的 LLM 接口，用于自动生成课程草稿。</p>
+    <p class="desc">配置按账号保存在当前浏览器，换浏览器或清除站点数据后需重新填写。生成和测试时经后端临时调用，不保存到远端数据库。已有内容无需配置即可阅读。</p>
     <div id="apiSettingsForm" class="cp-settings-form">
       <div class="field-row" style="flex-direction:column">
-        <label>API Base URL<input type="text" id="apiBaseUrl" placeholder="https://ark.cn-beijing.volces.com/api/plan/v3/chat/completions"></label>
+        <label>API Base URL<input type="text" id="apiBaseUrl" placeholder="https://api.example.com/v1"></label>
       </div>
       <div class="field-row" style="flex-direction:column">
         <label>API Key<input type="password" id="apiKey" placeholder="sk-..."></label>
       </div>
       <div class="field-row" style="flex-direction:column">
-        <label>模型名称<input type="text" id="modelName" placeholder="kimi-k3"></label>
+        <label>模型名称<input type="text" id="modelName" placeholder="填写服务商提供的模型名称"></label>
       </div>
       <div id="apiStatus" style="font-size:13px;color:var(--muted)"></div>
-      <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="testApiConnection()">测试连接</button><button class="btn" onclick="loadApiSettings()">恢复保存的配置</button></div>
+      <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="testApiConnection()">测试连接</button><button class="btn" onclick="loadApiSettings()">读取本地配置</button><button class="btn" onclick="clearApiSettings()">清除本地配置</button></div>
     </div>
+    <section class="account-settings" aria-labelledby="githubTitle">
+      <h2 id="githubTitle">GitHub 内容存储</h2>
+      <p class="desc">生成的学习规划、正式课程和参考资料存入 GitHub，个人记录与反馈保存在账号数据库中。默认沿用平台当前仓库，也可连接自己的仓库。</p>
+      <div class="github-fields">
+        <label for="githubMode">存储位置<select id="githubMode"><option value="default">使用平台默认配置</option><option value="custom">使用我的 GitHub 仓库</option></select></label>
+        <div id="githubCustomFields" hidden>
+          <label for="githubRepository">仓库<input id="githubRepository" placeholder="用户名/仓库名" autocomplete="off" maxlength="160"></label>
+          <label for="githubBranch">分支<input id="githubBranch" value="main" autocomplete="off" maxlength="160"></label>
+          <label for="githubToken">GitHub Token<input id="githubToken" type="password" autocomplete="off" maxlength="1000" placeholder="填写仅授权该仓库的 Token"></label>
+          <p class="desc">使用 fine-grained Token，仅授予该仓库 Contents 读写权限。Token 加密保存到服务端，不会回传浏览器。</p>
+        </div>
+      </div>
+      <p class="desc">公开仓库中的课程可被他人访问，需要私密课程时请使用私有仓库。已有正式计划后，更换仓库或分支需要先迁移内容；仍可更新 Token。</p>
+      <p id="githubStatus" class="github-status" role="status" aria-live="polite">进入设置后读取存储配置。</p>
+      <div class="cp-actions"><button class="btn primary" id="githubSave">保存存储配置</button><button class="btn" id="githubTest">测试连接</button></div>
+    </section>
   </div>
   <div id="view-library" style="display:none" class="section">
-    <div class="section-heading"><div><h2>我的课程</h2><p class="desc">按模块继续学习，学习状态以本人反馈为准。</p></div><button class="btn" onclick="window.loadDailyLearning()">刷新课程</button></div>
+    <div class="section-heading"><div><h2>我的课程</h2><p class="desc">按模块继续学习，学习状态以本人反馈为准。</p></div><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新课程</button></div>
     <div id="learningLibrary"></div>
   </div>
   <div id="view-reader" style="display:none"><section class="section cp-reader" id="dailyReader" hidden></section></div>
@@ -201,14 +248,14 @@
     </div>
     <div class="today-layout">
       <section class="section learning-panel" aria-labelledby="dailyLearningTitle">
-        <div class="section-heading"><h2 id="dailyLearningTitle">今日待学习</h2><button class="btn" onclick="window.loadDailyLearning()">刷新</button></div>
+        <div class="section-heading"><h2 id="dailyLearningTitle">继续学习</h2><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新</button></div>
         <div id="dailyLearning" aria-live="polite"><p>正在读取学习内容…</p></div>
       </section>
       <div class="personal-grid" id="personalDays"></div>
     </div>
   </div>
   <div id="view-overview" style="display:none">
-    <div class="help" style="font-size:12px;color:var(--muted);background:#fafbfd;border:1px dashed var(--border);border-radius:10px;padding:10px 14px;margin-bottom:18px">数据由本地服务写入 SQLite 数据库（`server/data.db`），默认仅本机访问；手机访问须显式开启局域网模式并提供凭证。改动会自动保存。</div>
+    <div class="help" style="font-size:12px;color:var(--muted);background:#fafbfd;border:1px dashed var(--border);border-radius:10px;padding:10px 14px;margin-bottom:18px">记录保存在远端数据库，正式学习资料发布到 GitHub。AI 配置仅保存在当前浏览器，生成前需填写自己的配置。改动会自动保存。</div>
     <div class="cards" id="statCards"></div>
     <div class="section"><h2>本周各模块投入度</h2><p class="desc">近 7 天（周一起）各模块完成情况，完成度 = 有进展(≥1)的天数 ÷ 7</p><div id="barChart"></div></div>
     <div class="section"><h2>活动记录热力图</h2><p class="desc">最近约 4 个月，颜色越深表示当天学习活动越多</p><div id="heatmap"></div><div class="legend"><span><i style="background:#ebedf0"></i>无</span><span><i style="background:#c6e48b"></i>少</span><span><i style="background:#7bc96f"></i>中</span><span><i style="background:#239a3b"></i>多</span><span><i style="background:#196127"></i>很多</span></div></div>
@@ -415,27 +462,79 @@
       <div id="aiReportList"></div>
     </div>
   </div>
+
+  <div id="view-search" style="display:none" class="section">
+    <h2>搜索结果</h2>
+    <p class="desc" id="searchMeta"></p>
+
+    <!-- 筛选栏 -->
+    <div class="search-filters">
+      <div class="field-row">
+        <label>模块类型
+          <select id="searchTypeFilter" multiple size="1">
+            <option value="">全部模块</option>
+            <option value="learning">学习记录</option>
+            <option value="reflection">反思日志</option>
+            <option value="decision">决策记录</option>
+            <option value="prediction">预测记录</option>
+            <option value="knowledge">知识图谱</option>
+          </select>
+        </label>
+        <label>开始日期<input type="date" id="searchStartDate"></label>
+        <label>结束日期<input type="date" id="searchEndDate"></label>
+      </div>
+    </div>
+
+    <!-- 搜索结果列表 -->
+    <div id="searchResults"></div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="searchPagination"></div>
+  </div>
+
+  <div id="view-timeline" style="display:none" class="section">
+    <h2>时间线</h2>
+    <p class="desc">跨模块的学习活动记录，按时间顺序展示</p>
+
+    <!-- 统计卡片 -->
+    <div class="cards" id="timelineStats"></div>
+
+    <!-- 筛选栏 -->
+    <div class="timeline-filters">
+      <div class="field-row">
+        <label>开始日期<input type="date" id="timelineStartDate"></label>
+        <label>结束日期<input type="date" id="timelineEndDate"></label>
+        <label>模块类型
+          <select id="timelineTypeFilter" multiple size="1">
+            <option value="">全部模块</option>
+            <option value="learning">学习记录</option>
+            <option value="reflection">反思日志</option>
+            <option value="decision">决策记录</option>
+            <option value="prediction">预测记录</option>
+            <option value="review">复盘记录</option>
+            <option value="insight">灵感记录</option>
+            <option value="knowledge">知识图谱</option>
+          </select>
+        </label>
+        <button class="btn" onclick="Timeline.load()">刷新</button>
+      </div>
+    </div>
+
+    <!-- 时间线列表 -->
+    <div id="timelineList"></div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="timelinePagination"></div>
+  </div>
 </div>
 
 <div class="overlay" id="overlay"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="/static/loading-state.js?v=20261018-1"></script>
+<script src="/static/account.js?v=20261018-loading"></script>
+<script src="/static/ai-config.js?v=20261017"></script>
 <script>
-/* 局域网模式的凭证只保留在当前标签页。 */
-const nativeFetch = window.fetch.bind(window);
-let lanAccessToken = '';
-window.fetch = async (input, options = {}) => {
-  const url = new URL(typeof input === 'string' ? input : input.url, location.href);
-  if (url.origin !== location.origin || !url.pathname.startsWith('/api/')) return nativeFetch(input, options);
-  const headers = new Headers(options.headers || {});
-  if (lanAccessToken) headers.set('X-Copilot-Token', lanAccessToken);
-  let response = await nativeFetch(input, {...options, headers});
-  if (response.status === 403 && !['localhost','127.0.0.1','[::1]'].includes(location.hostname)) {
-    const token = prompt('局域网访问凭证（仅用于当前页面）：');
-    if (token) { lanAccessToken = token; headers.set('X-Copilot-Token', token); response = await nativeFetch(input, {...options, headers}); }
-  }
-  return response;
-};
 /* ================= 工具 ================= */
 const DAY = 86400000;
 const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
@@ -462,26 +561,75 @@ let dataLoaded = false;
 
 /* ================= 与服务端同步 ================= */
 async function loadFromServer(){
+  const generation = editGeneration;
   try{
-    const r = await fetch('/api/data');
-    if(r.ok){ const d = await r.json(); if(d && d.modules){ state = d; dataLoaded = Array.isArray(d.todos); state.todos = state.todos || []; refreshModuleNames(); } setStatus(dataLoaded?'已连接本地库':'请重启本地服务以启用待办',dataLoaded?'on':'warn'); }
-    else setStatus('服务异常','err');
-  }catch(e){ setStatus('服务未连接','warn'); }
-  render();
+    const r = await fetch('/api/data', {cache:'no-store'});
+    if(!r.ok) throw Error('load failed');
+    const d = await r.json();
+    if(editGeneration !== generation){
+      setStatus('读取期间有新修改，未替换；请先导出副本再重试','warn'); return false;
+    }
+    if(!d || !Array.isArray(d.todos) || typeof d._revision !== 'string'){
+      setStatus('请重启服务并刷新页面以启用安全保存','warn'); return false;
+    }
+    state = d; dataLoaded = true; legacyConflict = false;
+    document.getElementById('legacyConflict').hidden = true;
+    refreshModuleNames(); setStatus('已连接个人数据库','on'); render(); return true;
+  }catch(e){ setStatus('读取失败，本地修改未替换','err'); return false; }
 }
-let saveTimer = null;
+let saveTimer = null, saveInFlight = false, legacyConflict = false, editGeneration = 0;
 function persist(){
+  editGeneration++;
   clearTimeout(saveTimer);
+  if(legacyConflict){ setStatus('存在版本冲突，本地修改尚未保存','warn'); return; }
   setStatus('保存中…','');
   saveTimer = setTimeout(saveToServer, 400);
 }
+async function reloadLegacyState(){
+  if(saveInFlight) return;
+  exportJson(); // The explicit button downloads the local copy before replacing it.
+  clearTimeout(saveTimer);
+  await loadFromServer();
+}
 async function saveToServer(){
   clearTimeout(saveTimer);
-  if(!dataLoaded){ setStatus('请先连接并读取本地记录','err'); return; }
+  if(saveInFlight || legacyConflict) return;
+  if(!dataLoaded){ setStatus('请先连接并读取本地记录；修改未保存','err'); return; }
+  for(const key of ['decisions','predictions','reviews','insights','customRecords']){
+    const field = key === 'customRecords' ? '_record_id' : 'id';
+    for(const item of state[key]){
+      if(item[field] == null && !item._client_id)
+        item._client_id = crypto.randomUUID ? crypto.randomUUID() : 'draft-'+Date.now()+'-'+Math.random();
+    }
+  }
+  const payload = JSON.stringify(state), generation = editGeneration;
+  saveInFlight = true;
+  let saved = false;
   try{
-    const r = await fetch('/api/data', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(state)});
-    if(r.ok) setStatus('已保存 · 本地数据库','on'); else setStatus('保存失败','err');
-  }catch(e){ setStatus('保存失败 · 服务未连接','err'); }
+    const r = await fetch('/api/data', {method:'PUT', headers:{'Content-Type':'application/json','X-Legacy-State-Protocol':'1'}, body:payload});
+    const d = await r.json();
+    if(!r.ok){
+      if(r.status === 409){
+        legacyConflict = true; document.getElementById('legacyConflict').hidden = false;
+        setStatus('其他页面或同步已更新记录；本地修改未覆盖，请先保留副本','warn');
+      }else setStatus(d.message || '保存失败，本地修改仍保留','err');
+      return;
+    }
+    if(!d.state || typeof d.state._revision !== 'string') throw Error('old server');
+    for(const [key, identities] of Object.entries(d.assigned_ids || {})){
+      const field = key === 'customRecords' ? '_record_id' : 'id';
+      for(const item of state[key] || []){
+        if(Object.prototype.hasOwnProperty.call(identities, item._client_id)) item[field] = identities[item._client_id];
+      }
+    }
+    state._revision = d.state._revision; saved = true;
+    setStatus(editGeneration === generation ? '已保存 · 个人数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
+  }catch(e){ setStatus('保存失败 · 本地修改保留，请重试；若有冲突请先导出副本','err'); }
+  finally{
+    saveInFlight = false;
+    if(saved && editGeneration !== generation) saveTimer = setTimeout(saveToServer, 0);
+  }
+  return saved;
 }
 function setStatus(txt, cls){ const el=document.getElementById('storageStatus'); el.textContent=txt; el.className='badge'+(cls?(' '+cls):''); }
 function exportJson(){
@@ -492,54 +640,40 @@ function resetData(){
   openModal('<h3>确认重置</h3><p style="color:var(--muted);font-size:13px">将清空所有记录并恢复默认模块。此操作不可撤销，建议先「导出 JSON」备份。</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doReset()">确认重置</button></div>');
 }
 function doReset(){
-  state={modules:[],checkins:{},habits:{},customFields:[],customRecords:[],decisions:[],predictions:[],reviews:[],insights:[],todos:[]};
+  state={_revision:state._revision,modules:[],checkins:{},habits:{},customFields:[],customRecords:[],decisions:[],predictions:[],reviews:[],insights:[],todos:[]};
   persist(); render(); closeModal(); toast('已重置');
 }
 
-async function loadApiSettings(){
-  try{
-    const r=await fetch('/api/copilot/settings',{headers:{'X-Copilot-Request':'1'}});
-    const d=await r.json();
-    document.getElementById('apiBaseUrl').value=d.api_base_url||'';
-    document.getElementById('modelName').value=d.model_name||'';
-    document.getElementById('apiKey').value=d.api_key&&d.api_key.includes('****')?'':d.api_key;
-    document.getElementById('apiKey').placeholder=d.api_key&&d.api_key.includes('****')?'已保存，留空则保留原值':'sk-...';
-    const el=document.getElementById('apiStatus');
-    el.textContent=d.generation_available?'✅ 生成可用：配置已保存':'⚠️ 生成不可用：请填写 Base URL 和 API Key';
-    el.style.color=d.generation_available?'var(--green)':'var(--muted)';
-  }catch(e){document.getElementById('apiStatus').textContent='读取配置失败';}
+function apiSettingsValue(){
+  return {api_base_url:document.getElementById('apiBaseUrl').value.trim(),
+    api_key:document.getElementById('apiKey').value.trim(),
+    model_name:document.getElementById('modelName').value.trim()};
+}
+function loadApiSettings(){
+  const d=AIConfig.read();
+  document.getElementById('apiBaseUrl').value=d.api_base_url;
+  document.getElementById('modelName').value=d.model_name;
+  document.getElementById('apiKey').value=d.api_key;
+  document.getElementById('apiStatus').textContent=AIConfig.status()||'已读取本浏览器配置，生成时使用自己的密钥。';
 }
 async function testApiConnection(){
-  const body={api_base_url:document.getElementById('apiBaseUrl').value.trim(),
-    api_key:document.getElementById('apiKey').value.trim(),
-    model_name:document.getElementById('modelName').value.trim()||'qwen-plus'};
-  if(!body.api_base_url){toast('请填写 API Base URL');return;}
-  if(!body.api_key){toast('请填写 API Key');return;}
+  const body=apiSettingsValue();
   const el=document.getElementById('apiStatus');
-  el.textContent='⏳ 正在测试连接...';
-  el.style.color='var(--muted)';
+  if(!body.api_base_url||!body.api_key||!body.model_name){el.textContent='请完整填写 Base URL、API Key 和模型名称。';return;}
+  el.textContent='正在测试连接…';
   try{
-    const r=await fetch('/api/copilot/settings/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
+    const r=await fetch('/api/ai/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
     const d=await r.json();
-    if(d.ok){el.textContent='✅ '+d.message;el.style.color='var(--green)';}
-    else{el.textContent='❌ '+d.message;el.style.color='var(--red)';}
-  }catch(e){el.textContent='❌ 测试失败：'+e.message;el.style.color='var(--red)';}
+    el.textContent=d.message||'连接测试失败，请检查配置。';
+  }catch(e){el.textContent='测试失败，请检查网络与配置。';}
 }
-async function saveApiSettings(){
-  const body={api_base_url:document.getElementById('apiBaseUrl').value.trim(),
-    api_key:document.getElementById('apiKey').value.trim(),
-    model_name:document.getElementById('modelName').value.trim()||'qwen-plus'};
-  if(!body.api_base_url){toast('请填写 API Base URL');return;}
-  try{
-    let r=await fetch('/api/copilot/settings',{method:'PUT',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
-    if(r.status===503){
-      await fetch('/api/copilot/writer-session',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify({confirmed:true})});
-      r=await fetch('/api/copilot/settings',{method:'PUT',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
-    }
-    const d=await r.json();
-    if(d.ok){toast('配置已保存');loadApiSettings();}
-    else{toast('保存失败：'+(d.message||'未知错误'));}
-  }catch(e){toast('保存失败：'+e.message);}
+function saveApiSettings(){
+  try{AIConfig.save(apiSettingsValue());loadApiSettings();toast('配置已保存到本浏览器');}
+  catch(e){toast(e.message);}
+}
+function clearApiSettings(){
+  try{AIConfig.clear();loadApiSettings();toast('本地 AI 配置已清除');}
+  catch(e){toast('无法清除，请检查浏览器存储权限。');}
 }
 
 /* ================= 个人日程 ================= */
@@ -1766,7 +1900,7 @@ async function scanKnowledgeLinks(){
 function render(){
   renderPersonal(); renderOverview(); renderProgress(); renderHabits();
   renderDecisions(); renderPredictions(); renderReviews(); renderInsights(); renderCustom();
-  renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest();
+  if(currentTab==='overview'){renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest();}
 }
 
 /* ================= 知识图谱 ================= */
@@ -1808,7 +1942,7 @@ async function scanKnowledge(){
     const r = await fetch('/api/knowledge/scan', {method:'POST'});
     const j = await r.json();
     await loadKnowledge();
-    setStatus('已保存 · 本地数据库','on');
+    setStatus('已保存 · 个人数据库','on');
     toast('扫描完成，共 '+j.count+' 个节点');
   }catch(e){ setStatus('扫描失败','err'); }
 }
@@ -1864,7 +1998,7 @@ const navGroups={
   personal:[['personal','今日'],['reading','今日阅读']],
   learning:[['library','我的课程'],['plans','学习计划'],['progress','学习打卡'],['copilot','课程管理'],['archive','课程归档'],['summary','课程总结']],
   records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['stocks','投资复盘'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
-  growth:[['overview','成长总览'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告']]
+  growth:[['overview','成长总览'],['timeline','时间线'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告'],['search','搜索']]
 };
 const lastGroupTab={};
 let lessonOrigin=null;
@@ -1873,11 +2007,15 @@ function rememberLearningOrigin(){ lessonOrigin={tab:currentTab,scroll:window.sc
 function returnFromLesson(){
   const origin=lessonOrigin || {tab:'personal',scroll:0};
   goTab(origin.tab,{restore:true});
+  if(origin.tab==='personal' || origin.tab==='library')window.loadDailyLearning?.();
   requestAnimationFrame(()=>{window.scrollTo({top:origin.scroll,behavior:'instant'});if(origin.focus?.isConnected)origin.focus.focus({preventScroll:true});});
 }
 function goTab(name, options={}){
-  if(currentTab==='reading' && window.beforeReadingLeave && !window.beforeReadingLeave(name))return;
-  if(currentTab==='plans' && window.beforePlansLeave && !window.beforePlansLeave(name))return;
+  if(currentTab==='reader' && name!=='reader' && window.beforeStudyLeave && !window.beforeStudyLeave())return false;
+  if(currentTab==='reading' && window.beforeReadingLeave && !window.beforeReadingLeave(name))return false;
+  if(currentTab==='plans' && window.beforePlansLeave && !window.beforePlansLeave(name))return false;
+  if(window.StudyNotes && !window.StudyNotes.beforeLeave())return false;
+  window.studyReaderRequest=(window.studyReaderRequest||0)+1;
   if(window.leaveCopilot && currentTab==='copilot' && name!=='copilot') window.leaveCopilot();
   currentTab=name;
   const group=name==='reader'?'learning':Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===name));
@@ -1887,9 +2025,9 @@ function goTab(name, options={}){
     if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
   });
   const subnav=document.getElementById('subnav');
-  subnav.hidden=!group || group==='personal' || !!options.reading || name==='reader';
+  subnav.hidden=!group || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
-  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='personal' && !options.restore){ renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
@@ -1903,8 +2041,9 @@ function goTab(name, options={}){
   if(name==='predictions') renderPredictionAnalysis();
   if(name==='ai-report') renderAIReports();
   if(name==='knowledge') renderKnowledgeGraph();
+  if(name==='timeline') window.Timeline?.load();
   if(name==='overview'){ renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
-  if(name==='settings') loadApiSettings();
+  if(name==='settings') { loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='stocks') window.initStocksModule?.();
 }
@@ -1929,7 +2068,7 @@ function saveHabit(){
   const note=document.getElementById('habitNote').value.trim();
   if(!min&&!note){ if(state.habits[d]) delete state.habits[d]; persist(); render(); toast('已清除当天记录'); return; }
   if(!state.habits[d]) state.habits[d]={}; state.habits[d].minutes=isNaN(min)?0:min; state.habits[d].note=note;
-  persist(); render(); toast('已保存 '+fmtDateCN(d)+' 的记录');
+  persist(); render(); toast('已更新 '+fmtDateCN(d)+' 的记录，等待保存');
 }
 function addField(){
   const label=(document.getElementById('newFieldLabel').value||'').trim(); if(!label){toast('请输入字段名称');return;}
@@ -1942,7 +2081,7 @@ function openRecordForm(idx){ editingRecordId=(idx==null)?null:idx; const rec=ed
   const inputs=state.customFields.map(f=>{ const v=rec[f.key]!=null?rec[f.key]:''; let inp=f.type==='number'?'<input type="number" id="rf_'+esc(f.key)+'" value="'+esc(v)+'">':f.type==='date'?'<input type="date" id="rf_'+esc(f.key)+'" value="'+esc(v)+'">':'<input type="text" id="rf_'+esc(f.key)+'" value="'+esc(v)+'">'; return '<label>'+esc(f.label)+inp+'</label>'; }).join('');
   openModal('<h3>'+(editingRecordId!=null?'编辑记录':'新增记录')+'</h3><div class="form-grid">'+(inputs||'<p style="color:var(--muted);font-size:13px">尚无字段，请先添加</p>')+'</div><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="saveRecord()">保存</button></div>');
 }
-function saveRecord(){ const rec={}; state.customFields.forEach(f=>{ const el=document.getElementById('rf_'+f.key); let v=el?el.value.trim():''; if(f.type==='number') v=v===''?'':(parseFloat(v)||0); rec[f.key]=v; }); if(editingRecordId!=null) state.customRecords[editingRecordId]=rec; else state.customRecords.push(rec); persist(); render(); closeModal(); toast('已保存'); }
+function saveRecord(){ const rec=editingRecordId!=null?{...state.customRecords[editingRecordId]}:{}; state.customFields.forEach(f=>{ const el=document.getElementById('rf_'+f.key); let v=el?el.value.trim():''; if(f.type==='number') v=v===''?'':(parseFloat(v)||0); rec[f.key]=v; }); if(editingRecordId!=null) state.customRecords[editingRecordId]=rec; else state.customRecords.push(rec); persist(); render(); closeModal(); toast('已更新，等待保存'); }
 function delRecord(i){ openModal('<h3>删除记录</h3><p style="color:var(--muted);font-size:13px">确定删除这条记录？</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doDelRecord('+i+')">删除</button></div>'); }
 function doDelRecord(i){ state.customRecords.splice(i,1); persist(); render(); closeModal(); toast('已删除'); }
 
@@ -1995,14 +2134,14 @@ function openFormModal(title, fields, initial, onSave){
 function openDecisionForm(idx){
   const isEdit=(idx!=null);
   const rec=isEdit?state.decisions[idx]:{date:today(),probability:'',title:'',context:'',options:'',reason:'',expected:'',emotion:'',actual:'',bias:''};
-  openFormModal(isEdit?'编辑决策':'新增决策', DECISION_FIELDS, rec, obj=>{ if(isEdit) state.decisions[idx]=obj; else state.decisions.push(obj); persist(); render(); toast('已保存'); });
+  openFormModal(isEdit?'编辑决策':'新增决策', DECISION_FIELDS, rec, obj=>{ if(isEdit) state.decisions[idx]={...rec,...obj}; else state.decisions.push(obj); persist(); render(); toast('已更新，等待保存'); });
 }
 function openPredictionForm(idx){ const isEdit=(idx!=null); const rec=isEdit?state.predictions[idx]:{date:today(),statement:'',probability:'',result:'',deviation:''};
-  openFormModal(isEdit?'编辑预测':'新增预测', PREDICTION_FIELDS, rec, obj=>{ if(isEdit) state.predictions[idx]=obj; else state.predictions.push(obj); persist(); render(); toast('已保存'); }); }
+  openFormModal(isEdit?'编辑预测':'新增预测', PREDICTION_FIELDS, rec, obj=>{ if(isEdit) state.predictions[idx]={...rec,...obj}; else state.predictions.push(obj); persist(); render(); toast('已更新，等待保存'); }); }
 function openReviewForm(idx, reviewDate){ const isEdit=(idx!=null); const rec=isEdit?state.reviews[idx]:{date:reviewDate || today(),thought:'',actual:'',gap:'',action:''};
-  openFormModal(isEdit?'编辑复盘':'新增复盘', REVIEW_FIELDS, rec, obj=>{ if(isEdit) state.reviews[idx]=obj; else state.reviews.push(obj); persist(); render(); toast('已保存'); }); }
+  openFormModal(isEdit?'编辑复盘':'新增复盘', REVIEW_FIELDS, rec, obj=>{ if(isEdit) state.reviews[idx]={...rec,...obj}; else state.reviews.push(obj); persist(); render(); toast('已更新，等待保存'); }); }
 function openInsightForm(idx){ const isEdit=(idx!=null); const rec=isEdit?state.insights[idx]:{date:today(),source:'',insight:''};
-  openFormModal(isEdit?'编辑洞察':'新增洞察', INSIGHT_FIELDS, rec, obj=>{ if(isEdit) state.insights[idx]=obj; else state.insights.push(obj); persist(); render(); toast('已保存'); }); }
+  openFormModal(isEdit?'编辑洞察':'新增洞察', INSIGHT_FIELDS, rec, obj=>{ if(isEdit) state.insights[idx]={...rec,...obj}; else state.insights.push(obj); persist(); render(); toast('已更新，等待保存'); }); }
 function delItem(collection, idx){
   openModal('<h3>删除记录</h3><p style="color:var(--muted);font-size:13px">确定删除这条记录？</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doDelItem(\''+collection+'\','+idx+')">删除</button></div>');
 }
@@ -2038,7 +2177,8 @@ let toastTimer=null;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2400); }
 
 /* ================= 初始化 ================= */
-function init(){
+async function init(){
+  await Account.ready;
   document.getElementById('todayLabel').textContent=fmtDateFull(today())+' · '+WEEKCN[(new Date().getDay()+6)%7];
   const hd=document.getElementById('habitDate'); if(hd){ hd.value=today(); hd.addEventListener('change', renderHabits); }
   document.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='s'){ e.preventDefault(); saveToServer(); } });
@@ -2047,15 +2187,22 @@ function init(){
 }
 init();
 </script>
-<script src="/static/copilot.js?v=20261014-design2"></script>
+<script src="/static/copilot.js?v=20261018-performance"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
 <script src="/static/course-archive.js?v=20261019-1"></script>
 <script src="/static/course-summary.js?v=20261019-1"></script>
-<script src="/static/plans.js?v=20261014-2"></script>
-<script src="/static/daily-learning.js?v=20261014-design2"></script>
-<script src="/static/reading.js?v=1"></script>
-<script src="/static/reflections.js?v=1"></script>
-<script src="/static/learning-history.js?v=1"></script>
+<script src="/static/study-note-session.js?v=20261018-1"></script>
+<script src="/static/study-notes.js?v=20261018-1"></script>
+<script src="/static/plans.js?v=20261018-performance"></script>
+<script src="/static/study-generation.js?v=20261018-performance"></script>
+<script src="/static/daily-learning.js?v=20261018-performance"></script>
+<script src="/static/reading-growth.js?v=20261017-growth1"></script>
+<script src="/static/reading-body.js?v=20261017-onsite2"></script>
+<script src="/static/reading.js?v=20261018-performance"></script>
+<script src="/static/reflections.js?v=20261017-local-ai"></script>
+<script src="/static/learning-history.js?v=20261017-records"></script>
 <script src="/static/stocks.js?v=1"></script>
+<script src="/static/search.js?v=20261018-performance"></script>
+<script src="/static/timeline.js?v=1"></script>
 </body>
 </html>

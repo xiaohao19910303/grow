@@ -1,7 +1,7 @@
 """知识图谱可视化 — 数据层。"""
 from __future__ import annotations
 
-import sqlite3
+import db
 from pathlib import Path
 from typing import Optional
 
@@ -27,9 +27,8 @@ class KnowledgeGraphStore:
         self.db_path = db_path
         self.startup_error: Optional[Exception] = None
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+    def _conn(self) -> db.CompatConnection:
+        conn = db.connect()
         return conn
 
     def initialize(self):
@@ -116,12 +115,12 @@ class KnowledgeGraphStore:
         for source_id, target_id, link_type, weight in links:
             try:
                 conn.execute(
-                    "INSERT OR IGNORE INTO knowledge_links(source_id, target_id, link_type, weight) "
-                    "VALUES(?, ?, ?, ?)",
+                    "INSERT INTO knowledge_links(source_id, target_id, link_type, weight) "
+                    "VALUES(?, ?, ?, ?) ON CONFLICT(source_id,target_id,link_type) DO NOTHING",
                     (source_id, target_id, link_type, weight),
                 )
                 count += 1
-            except sqlite3.IntegrityError:
+            except db.IntegrityError:
                 pass
         conn.commit()
         conn.close()

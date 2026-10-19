@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-import sqlite3
+import db
 from pathlib import Path
 from collections import defaultdict
 
@@ -28,9 +28,7 @@ def extract_keywords(text: str) -> set[str]:
 
 def detect_links(db_path: Path) -> list[tuple]:
     """检测知识节点之间的关系。返回 (source_id, target_id, link_type, weight) 列表。"""
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-
+    conn = db.connect()
     nodes = conn.execute("SELECT * FROM knowledge").fetchall()
     if not nodes:
         conn.close()

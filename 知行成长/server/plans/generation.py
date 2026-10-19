@@ -2,11 +2,14 @@
 import asyncio
 import fcntl
 import json
+import time
 import uuid
+from contextlib import ExitStack
 from datetime import datetime, timedelta
 
 from copilot.core import encoded, digest, fail, now, Problem
 from copilot.generation import config, availability, SEPARATOR
+from copilot.ai_config import generation_config
 from .store import brief, document, text
 from .refinement import validate_scope, merge, content_hash, payload, sections
 
@@ -55,6 +58,8 @@ class PlanGenerator:
         self.store=store; self.transport=transport; self.tasks={}
 
     def begin(self, body):
+        body = dict(body)
+        cfg = generation_config(body.pop('ai_config', None), self.transport)
         kind=body.get('kind'); key=body['key']
         if kind not in ('plan','course'):fail('invalid','未知生成类型。',422)
         request=digest(encoded(body))
@@ -98,7 +103,7 @@ class PlanGenerator:
                          'previous_plan':old,'frozen_lessons':frozen,'selected_feedback':selected}
             else:context=self.store.course_context(body['plan_id'])
             a={'id':key,'request':request,'kind':kind,'state':'queued','raw':'','draft_id':None,
-               'model':config(self.store)['model'],'usage':None,'cost':None,'price_version':config(self.store)['price_version'] or None,
+               'model':cfg['model'],'usage':None,'cost':None,'price_version':cfg['price_version'] or None,
                'created_at':now(),'context':context,'error':None,'operation':body.get('operation','generate'),
                'phase':'queued','revision':0,'first_content_at':None,'last_content_at':None}
             try:deadline=float(self.store.get_setting('generation_total_timeout_seconds',300))
@@ -106,33 +111,46 @@ class PlanGenerator:
             if not 0<deadline<=86400:deadline=300
             a['deadline_at']=(datetime.fromisoformat(a['created_at'])+timedelta(seconds=deadline)).isoformat()
             self.store.put('learning_ai_attempts',key,a)
-        self.tasks[key]=asyncio.create_task(self.run(key))
+        self.tasks[key]=asyncio.create_task(self.run(key, cfg))
         self.tasks[key].add_done_callback(lambda task: self.tasks.pop(key, None))
         return a
 
-    async def run(self, key):
+    async def run(self, key, cfg=None):
         a=self.store.get('learning_ai_attempts',key)
-        gate=None
-        c=config(self.store)
+        gate=ExitStack()
+        c=cfg or config()
         a.update(model=c['model'], price_version=c['price_version'] or None)
         try:
-            gate=(self.store.runtime.parent/'.ai-generation.lock').open('a')
-            try:fcntl.flock(gate,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            except BlockingIOError:fail('busy','另一个生成任务正在运行。')
+            if getattr(self.store,'remote',False):
+                gate.enter_context(self.store.generation_gate())
+            else:
+                stream=gate.enter_context((self.store.runtime.parent/'.ai-generation.lock').open('a'))
+                try:fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                except BlockingIOError:fail('busy','另一个生成任务正在运行。')
             a.update(state='generating',phase='waiting',started_at=now());self.persist(a)
             from copilot.transport import qwen_stream
             done=False
+            last_progress_write = None
             prompt=refinement_messages(a['context']) if a['operation']=='refine' else messages(a['kind'],a['context'])
-            async for packet in (self.transport or qwen_stream)(prompt,c):
-                if packet.get('usage') is not None:a['usage']=packet['usage']
-                if packet.get('done'):done=True
-                delta=packet.get('text','')
-                if delta:
-                    a['first_content_at']=a['first_content_at'] or now()
-                    a.update(last_content_at=now(),phase='receiving')
-                    a['raw']+=delta
-                if len(a['raw'])>180000:fail('invalid','输出超出限制，请缩短规划。')
-                self.persist(a)
+            remaining=(datetime.fromisoformat(a['deadline_at'])-datetime.fromisoformat(now())).total_seconds()
+            async with asyncio.timeout(max(0,remaining)):
+                async for packet in (self.transport or qwen_stream)(prompt,c):
+                    if packet.get('usage') is not None:a['usage']=packet['usage']
+                    if packet.get('done'):done=True
+                    delta=packet.get('text','')
+                    if delta:
+                        a['first_content_at']=a['first_content_at'] or now()
+                        a.update(last_content_at=now(),phase='receiving')
+                        a['raw']+=delta
+                    if len(a['raw'])>180000:fail('invalid','输出超出限制，请缩短规划。')
+                    # A buffered SSE stream can yield without suspending. Persist the
+                    # first content promptly, then checkpoint at most once a second
+                    # so remote PostgreSQL connections do not dominate each token.
+                    current = time.monotonic()
+                    if last_progress_write is None or current - last_progress_write >= 1:
+                        self.persist(a)
+                        last_progress_write = time.monotonic()
+                    await asyncio.sleep(0)
             if not done:fail('incomplete','响应未完整结束。')
             a['complete']=True
             a['phase']='validating';self.persist(a)

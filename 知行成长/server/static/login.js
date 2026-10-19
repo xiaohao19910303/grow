@@ -1,0 +1,66 @@
+(() => {
+  let mode = 'login';
+  let invitation = '';
+  let submitting = false;
+  const $ = id => document.getElementById(id);
+  function choose(next) {
+    if (next === 'register' && !invitation) return;
+    mode = next;
+    const registering = mode === 'register';
+    $('loginTab').setAttribute('aria-pressed', String(!registering));
+    $('registerTab').setAttribute('aria-pressed', String(registering));
+    $('loginTitle').textContent = registering ? '开始积累你的成长' : '继续你的学习';
+    $('loginDescription').textContent = registering ? '用户名使用 3–32 位字母、数字、下划线或短横线，密码至少 10 位。' : '登录后，接着记录每一天的思考与成长。';
+    $('authSubmit').textContent = registering ? '注册并开始学习' : '登录';
+    $('password').autocomplete = registering ? 'new-password' : 'current-password';
+    $('password').minLength = registering ? 10 : 1;
+    $('confirmField').hidden = !registering;
+    $('confirmPassword').required = registering;
+    $('authMessage').textContent = '';
+  }
+  $('loginTab').onclick = () => choose('login');
+  $('registerTab').onclick = () => choose('register');
+  function readInvitation() {
+    invitation = new URLSearchParams(location.hash.slice(1)).get('invite') || '';
+    $('registerTab').hidden = !invitation;
+    $('invitationNotice').textContent = invitation
+      ? '你正在通过邀请注册。每个邀请仅可使用一次，有效期为 7 天。'
+      : '暂不开放直接注册，请向已有账号的用户获取邀请链接。每个账号独立保存学习内容和记录。';
+    choose(invitation ? 'register' : 'login');
+  }
+  window.addEventListener('hashchange', readInvitation);
+  readInvitation();
+  $('authForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (submitting) return;
+    if (mode === 'register' && $('password').value !== $('confirmPassword').value) {
+      $('authMessage').textContent = '两次密码不一致，请重新填写。';
+      $('confirmPassword').focus(); return;
+    }
+    submitting = true;
+    const controls = [$('authSubmit'), $('loginTab'), $('registerTab')];
+    controls.forEach(control => control.disabled = true);
+    $('authForm').setAttribute('aria-busy', 'true');
+    $('authMessage').replaceChildren();
+    $('authSubmit').textContent = mode === 'register' ? '正在创建…' : '正在登录…';
+    const loading = window.LoadingState?.start($('authMessage'), mode === 'register' ? '正在创建账号…' : '正在登录…', '正在确认账号信息，请勿重复提交。');
+    if (!loading) $('authMessage').textContent = mode === 'register' ? '正在创建账号…' : '正在登录…';
+    try {
+      const response = await fetch('/api/auth/' + mode, {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Copilot-Request':'1'},
+        body:JSON.stringify({username:$('username').value.trim(), password:$('password').value,
+          ...(mode === 'register' ? {invitation} : {})})
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || '暂时无法登录，请稍后再试。');
+      $('authMessage').textContent = mode === 'register' ? '账号已创建，正在打开学习首页…' : '登录成功，正在打开学习首页…';
+      location.replace('/');
+    } catch (error) {
+      $('authMessage').textContent = error.message === 'Failed to fetch' ? '连接中断，请检查网络后重试。' : error.message;
+      submitting = false; controls.forEach(control => control.disabled = false);
+      $('authSubmit').textContent = mode === 'register' ? '注册并开始学习' : '登录';
+    } finally {
+      loading?.finish(); $('authForm').removeAttribute('aria-busy');
+    }
+  });
+})();

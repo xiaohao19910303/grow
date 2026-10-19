@@ -1,20 +1,24 @@
-"""知行成长 · 本地服务端（FastAPI + SQLite）
+"""知行成长 · 云端服务端（FastAPI + PostgreSQL）
 
-- 单用户本地应用，采用「全量 state 同步」模式：前端启动 GET /api/data 拉全量，
-  任何修改 PUT /api/data 全量回写，服务端事务内落盘到 SQLite。
+- 多用户应用，按账号隔离 PostgreSQL schema，采用带快照修订的 state 同步：前端 GET /api/data 读取状态与修订，
+  PUT /api/data 在同一事务内校验修订并保存，保留既有记录ID。
 - 规范化表结构便于后续做 SQL 查询 / 周月报 / 知识图谱。
 - v3：扫描工作区 Markdown 生成知识图谱（knowledge 表）+ 周报/月报汇总。
-- 首次启动若 data.db 为空，自动迁移归档的 v1 data.json。
+- 数据库使用 Supabase PostgreSQL，支持多设备同步。
+- 支持云端部署（Render.com）。
 """
 import json
+import os
 import re
-import sqlite3
+import db
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
+from threading import RLock
+from tenancy import learning_root, shutdown_all
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from copilot.api import register as register_copilot
@@ -28,13 +32,20 @@ from behavior_report.api import register as register_behavior_report
 from knowledge.api import register as register_knowledge
 from reflections.api import register as register_reflections
 from stocks.api import register as register_stocks
+from study_materials import register as register_materials, initialize as initialize_materials
+from search_api import register as register_search
+from timeline_api import register as register_timeline
 import asyncio
+from legacy_state import load_state as read_legacy_state, save_state as write_legacy_state
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "data.db"
 STATIC_DIR = BASE_DIR / "static"
+# 运行时目录 — 用于锁文件、快照等（不再需要 SQLite 文件）
+DB_PATH = Path(os.environ.get('RUNTIME_ROOT', BASE_DIR / 'runtime'))
+DB_PATH.mkdir(parents=True, exist_ok=True)
 LEGACY_JSON = BASE_DIR.parent / "v1-legacy" / "data.json"  # v1 归档数据（迁移源）
-LEARN_ROOT = BASE_DIR.parent.parent  # /Volumes/Xiaohao/学习（Markdown 学习资料根目录）
+# 学习资料根目录 — 云端部署时使用项目内的学习资料文件夹
+LEARN_ROOT = Path(os.environ.get('LEARN_ROOT', BASE_DIR.parent / '学习资料'))
 
 DEFAULT_MODULES = [
     {"id": "fupan", "name": "执行复盘", "color": "#4F6EF7", "order": 1},
@@ -65,27 +76,27 @@ CREATE TABLE IF NOT EXISTS custom_fields (
     key TEXT PRIMARY KEY, label TEXT, type TEXT
 );
 CREATE TABLE IF NOT EXISTS custom_records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT
+    id SERIAL PRIMARY KEY, data TEXT
 );
 CREATE TABLE IF NOT EXISTS decisions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     date TEXT, title TEXT, context TEXT, options TEXT, reason TEXT,
     expected TEXT, probability INTEGER, emotion TEXT, actual TEXT, bias TEXT
 );
 CREATE TABLE IF NOT EXISTS predictions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     date TEXT, statement TEXT, probability INTEGER, result TEXT, deviation TEXT
 );
 CREATE TABLE IF NOT EXISTS reviews (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     date TEXT, thought TEXT, actual TEXT, gap TEXT, action TEXT
 );
 CREATE TABLE IF NOT EXISTS insights (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     date TEXT, insight TEXT, source TEXT
 );
 CREATE TABLE IF NOT EXISTS knowledge (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     name TEXT, category TEXT, summary TEXT, source TEXT, kind TEXT,
     date TEXT DEFAULT ''
 );
@@ -97,9 +108,7 @@ TABLES = ["modules", "checkins", "habits", "custom_fields", "custom_records",
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return db.connect()
 
 
 def init_db():
@@ -107,81 +116,18 @@ def init_db():
     conn.executescript(SCHEMA)
     conn.commit()
     conn.close()
+    from legacy_schema import migrate
+    migrate()
+    initialize_materials()
 
 
-def save_state(state: dict):
-    conn = get_conn()
-    cur = conn.cursor()
-    for t in TABLES:
-        cur.execute(f"DELETE FROM {t}")
-    # Older clients and sync scripts omit todos; preserve them in that case.
-    if "todos" in state:
-        cur.execute("DELETE FROM todos")
-        for item in state["todos"]:
-            cur.execute("INSERT INTO todos(id,date,title,done) VALUES(?,?,?,?)",
-                        (item["id"], item["date"], item["title"], int(bool(item.get("done", False)))))
-    for m in state.get("modules", []):
-        cur.execute("INSERT INTO modules(id,name,color,ord) VALUES(?,?,?,?)",
-                    (m["id"], m["name"], m.get("color", "#4F6EF7"), m.get("order", 0)))
-    for d, cmap in state.get("checkins", {}).items():
-        for mid, lvl in cmap.items():
-            cur.execute("INSERT INTO checkins(date,module_id,level) VALUES(?,?,?)", (d, mid, int(lvl)))
-    for d, h in state.get("habits", {}).items():
-        cur.execute("INSERT INTO habits(date,minutes,note) VALUES(?,?,?)",
-                    (d, int(h.get("minutes", 0) or 0), h.get("note", "")))
-    for f in state.get("customFields", []):
-        cur.execute("INSERT INTO custom_fields(key,label,type) VALUES(?,?,?)",
-                    (f["key"], f["label"], f["type"]))
-    for r in state.get("customRecords", []):
-        cur.execute("INSERT INTO custom_records(data) VALUES(?)", (json.dumps(r, ensure_ascii=False),))
-    for d in state.get("decisions", []):
-        cur.execute("INSERT INTO decisions(date,title,context,options,reason,expected,probability,emotion,actual,bias) "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?)",
-                    (d.get("date", ""), d.get("title", ""), d.get("context", ""), d.get("options", ""),
-                     d.get("reason", ""), d.get("expected", ""), d.get("probability"),
-                     d.get("emotion", ""), d.get("actual", ""), d.get("bias", "")))
-    for p in state.get("predictions", []):
-        cur.execute("INSERT INTO predictions(date,statement,probability,result,deviation) VALUES(?,?,?,?,?)",
-                    (p.get("date", ""), p.get("statement", ""), p.get("probability"),
-                     p.get("result", ""), p.get("deviation", "")))
-    for r in state.get("reviews", []):
-        cur.execute("INSERT INTO reviews(date,thought,actual,gap,action) VALUES(?,?,?,?,?)",
-                    (r.get("date", ""), r.get("thought", ""), r.get("actual", ""),
-                     r.get("gap", ""), r.get("action", "")))
-    for i in state.get("insights", []):
-        cur.execute("INSERT INTO insights(date,insight,source) VALUES(?,?,?)",
-                    (i.get("date", ""), i.get("insight", ""), i.get("source", "")))
-    conn.commit()
-    conn.close()
+def save_state(state: dict, *, require_revision=False):
+    # Only bootstrap/internal callers may omit a revision. HTTP writes are strict.
+    return write_legacy_state(get_conn, state, require_revision=require_revision)
 
 
 def load_state() -> dict:
-    conn = get_conn()
-    cur = conn.cursor()
-    state = {"modules": [], "checkins": {}, "habits": {},
-             "customFields": [], "customRecords": [],
-             "decisions": [], "predictions": [], "reviews": [], "insights": []}
-    state["todos"] = [dict(r) for r in cur.execute("SELECT id,date,title,done FROM todos ORDER BY rowid")]
-    for r in cur.execute("SELECT id,name,color,ord FROM modules ORDER BY ord, id"):
-        state["modules"].append({"id": r["id"], "name": r["name"], "color": r["color"], "order": r["ord"]})
-    for r in cur.execute("SELECT date,module_id,level FROM checkins"):
-        state["checkins"].setdefault(r["date"], {})[r["module_id"]] = r["level"]
-    for r in cur.execute("SELECT date,minutes,note FROM habits"):
-        state["habits"][r["date"]] = {"minutes": r["minutes"], "note": r["note"] or ""}
-    for r in cur.execute("SELECT key,label,type FROM custom_fields"):
-        state["customFields"].append({"key": r["key"], "label": r["label"], "type": r["type"]})
-    for r in cur.execute("SELECT data FROM custom_records ORDER BY id"):
-        state["customRecords"].append(json.loads(r["data"]))
-    for r in cur.execute("SELECT * FROM decisions ORDER BY id"):
-        state["decisions"].append(dict(r))
-    for r in cur.execute("SELECT * FROM predictions ORDER BY id"):
-        state["predictions"].append(dict(r))
-    for r in cur.execute("SELECT * FROM reviews ORDER BY id"):
-        state["reviews"].append(dict(r))
-    for r in cur.execute("SELECT * FROM insights ORDER BY id"):
-        state["insights"].append(dict(r))
-    conn.close()
-    return state
+    return read_legacy_state(get_conn)
 
 
 def migrate_if_empty():
@@ -190,6 +136,14 @@ def migrate_if_empty():
     n = conn.execute("SELECT COUNT(*) FROM modules").fetchone()[0]
     conn.close()
     if n > 0:
+        return
+    if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
+        # Bootstrap the cloud pilot without the legacy SQLite full-state writer.
+        # Existing cloud records are never replaced or imported from local files.
+        with get_conn() as conn:
+            for m in DEFAULT_MODULES:
+                conn.execute('INSERT INTO modules VALUES (?,?,?,?) ON CONFLICT(id) DO NOTHING',
+                             (m['id'],m['name'],m['color'],m['order']))
         return
     if LEGACY_JSON.exists():
         try:
@@ -226,7 +180,7 @@ def import_pending_sync():
     # 导入 reviews
     for r in data.get("reviews", []):
         cur.execute(
-            "INSERT OR REPLACE INTO reviews(date, thought, actual, gap, action) VALUES(?,?,?,?,?)",
+            "INSERT INTO reviews(date, thought, actual, gap, action) VALUES(?,?,?,?,?)",
             (r["date"], r.get("thought", ""), r.get("actual", ""),
              r.get("gap", ""), r.get("action", ""))
         )
@@ -279,7 +233,7 @@ def import_pending_sync():
     # 导入 checkins
     for c in data.get("checkins", []):
         cur.execute(
-            "INSERT OR REPLACE INTO checkins(date, module_id, level) VALUES(?,?,?)",
+            "INSERT INTO checkins(date, module_id, level) VALUES(?,?,?) ON CONFLICT(date,module_id) DO UPDATE SET level=excluded.level",
             (c["date"], c["module_id"], c["level"])
         )
         count += 1
@@ -347,7 +301,7 @@ def parse_thinking_tools(directory: Path):
             if m:
                 name = re.sub(r"[（(].*?[）)]\s*$", "", m.group(1).strip()).strip()
                 nodes.append({"name": name, "category": "思维工具", "summary": stage_name,
-                              "source": str(f.relative_to(LEARN_ROOT)), "kind": "tool", "date": ""})
+                              "source": str(f.relative_to(learning_root(LEARN_ROOT))), "kind": "tool", "date": ""})
     return nodes
 
 
@@ -355,9 +309,9 @@ def parse_footprints():
     """解析课程/文章/练习文件名 → 学习足迹节点。"""
     nodes = []
     patterns = [
-        (LEARN_ROOT / "每日认知与通识学习" / "每日课程", "认知课程"),
-        (LEARN_ROOT / "英文阅读" / "每日文章", "英文阅读"),
-        (LEARN_ROOT / "结构化表达" / "每日练习", "结构化表达"),
+        (learning_root(LEARN_ROOT) / "每日认知与通识学习" / "每日课程", "认知课程"),
+        (learning_root(LEARN_ROOT) / "英文阅读" / "每日文章", "英文阅读"),
+        (learning_root(LEARN_ROOT) / "结构化表达" / "每日练习", "结构化表达"),
     ]
     for d, cat in patterns:
         if not d.exists():
@@ -372,16 +326,16 @@ def parse_footprints():
             if not title:
                 title = name
             nodes.append({"name": title, "category": cat, "summary": "",
-                          "source": str(f.relative_to(LEARN_ROOT)), "kind": "footprint", "date": date_s})
+                          "source": str(f.relative_to(learning_root(LEARN_ROOT))), "kind": "footprint", "date": date_s})
     return nodes
 
 
 def scan_markdown():
     nodes = []
-    idx = LEARN_ROOT / "知识索引.md"
+    idx = learning_root(LEARN_ROOT) / "知识索引.md"
     if idx.exists():
         nodes += parse_index(idx)
-    tt = LEARN_ROOT / "现代思维工具教程"
+    tt = learning_root(LEARN_ROOT) / "现代思维工具教程"
     if tt.exists():
         nodes += parse_thinking_tools(tt)
     nodes += parse_footprints()
@@ -392,8 +346,12 @@ def refresh_knowledge():
     nodes = scan_markdown()
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("DELETE FROM knowledge")
+    # Keep existing identities and imported nodes: knowledge links refer to these IDs.
     for n in nodes:
+        existing = cur.execute("SELECT id FROM knowledge WHERE name=? AND COALESCE(source,'')=? AND COALESCE(kind,'')=?",
+                               (n['name'], n.get('source',''), n.get('kind',''))).fetchone()
+        if existing:
+            continue
         cur.execute("INSERT INTO knowledge(name,category,summary,source,kind,date) VALUES(?,?,?,?,?,?)",
                     (n["name"], n["category"], n["summary"], n["source"], n["kind"], n.get("date", "")))
     conn.commit()
@@ -480,42 +438,54 @@ def build_report(days: int):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if (plans_store.runtime / 'restore-pending.json').exists():
+    if not getattr(plans_store,'remote',False) and (plans_store.runtime / 'restore-pending.json').exists():
         raise RuntimeError('存在未完成的学习计划恢复，请先核对恢复日志。')
+    accounts.initialize()
     init_db()
+    from legacy_migrations import migrate as migrate_legacy_tables
+    try:
+        with get_conn() as connection:
+            migrated = migrate_legacy_tables(connection)
+        if migrated: print('旧表结构迁移完成：'+', '.join(migrated))
+    except (Problem, db.psycopg2.Error):
+        # Original records remain intact; unaffected modules and AI settings stay available.
+        print('部分旧表需要人工核对迁移，原数据已保留。')
+    from copilot.ai_config import remove_server_config
+    with get_conn() as connection:
+        remove_server_config(connection)
     migrate_if_empty()
     # 导入 pending_sync.json（每日复盘同步脚本生成的）
     import_pending_sync()
     try:
         copilot_store.initialize()
         copilot_store.startup_error = None
-    except Problem as exc:
-        copilot_store.startup_error = exc
+    except (Problem, OSError, db.psycopg2.Error) as exc:
+        copilot_store.startup_error = exc if isinstance(exc,Problem) else Problem('legacy_storage','旧认知模块存储暂不可用；新学习计划可独立使用。',503)
         # Do not reset missing workspaces or fail unrelated dashboard features.
-        print(f"学习副驾驶暂不可用：{exc.code}")
+        print('学习副驾驶暂不可用，请检查旧模块存储配置。')
     try:
         plans_store.initialize()
         plans_store.startup_error = None
-    except (Problem, OSError) as exc:
+    except (Problem, OSError, db.psycopg2.Error) as exc:
         plans_store.startup_error = exc
-        print("学习计划暂不可用，请检查磁盘或恢复日志。")
+        print('学习计划暂不可用，请检查内容存储、数据库配置或恢复记录。')
     try:
         reading_store.initialize()
         reading_store.startup_error = None
         reading_service.scheduler = asyncio.create_task(reading_service.schedule())
-    except (Problem, OSError) as exc:
+    except (Problem, OSError, db.psycopg2.Error) as exc:
         reading_store.startup_error = exc
         print('认知阅读暂不可用，请检查磁盘或恢复日志。')
     try:
         reflections_store.initialize()
         reflections_store.startup_error = None
-    except (Problem, OSError) as exc:
+    except (Problem, OSError, db.psycopg2.Error) as exc:
         reflections_store.startup_error = exc
         print('日常记录暂不可用，请检查磁盘或恢复日志。')
     try:
         stocks_store.initialize()
         stocks_store.startup_error = None
-    except (Problem, OSError) as exc:
+    except (Problem, OSError, db.psycopg2.Error) as exc:
         stocks_store.startup_error = exc
         print('股票复盘暂不可用，请检查磁盘或恢复日志。')
     try:
@@ -551,11 +521,22 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        await plans_generator.shutdown()
-        await reading_service.shutdown()
+        await shutdown_all()
 
 
 app = FastAPI(title="知行成长", lifespan=lifespan)
+app.state.multiuser = True
+
+@app.middleware('http')
+async def legacy_module_readiness(request: Request, call_next):
+    for prefix, store in (('/api/behavior', behavior_store), ('/api/errors', error_store),
+                          ('/api/behavior-report', behavior_report_store)):
+        if (request.url.path == prefix or request.url.path.startswith(prefix+'/')) and store.startup_error:
+            return JSONResponse({'error':'legacy_schema_migration',
+                                 'message':'该旧模块的数据表尚未完成迁移，原数据保留，请先核对表结构。'},status_code=503)
+    return await call_next(request)
+
+
 copilot_store = register_copilot(app, LEARN_ROOT, DB_PATH)
 plans_store, plans_generator = register_plans(app, LEARN_ROOT, DB_PATH)
 reading_store, reading_service = register_reading(app, LEARN_ROOT, DB_PATH)
@@ -566,81 +547,53 @@ prediction_stats = register_predictions(app, LEARN_ROOT, DB_PATH)
 behavior_report_store = register_behavior_report(app, LEARN_ROOT, DB_PATH)
 knowledge_graph_store = register_knowledge(app, LEARN_ROOT, DB_PATH)
 stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
+from migration_api import register as register_migrations
+register_migrations(app, copilot_store, LEARN_ROOT)
+materials = register_materials(app, LEARN_ROOT)
+from study_notes import register as register_study_notes
+register_study_notes(app)
+search_service = register_search(app, DB_PATH)
+timeline_service = register_timeline(app, DB_PATH)
+
+
+@app.get('/api/storage-status')
+def storage_status():
+    return {'records': 'postgresql', 'formal_markdown': os.getenv('PLAN_CONTENT_BACKEND', 'local'),
+            'ai_config': 'browser', 'requires_own_ai_config': True,
+            'modules': {name: {'ready': not getattr(store, 'startup_error', None),
+                               'reason': (getattr(store.startup_error, 'code', 'legacy_schema_or_storage') if getattr(store, 'startup_error', None) else None)}
+                        for name, store in (('plans', plans_store), ('copilot', copilot_store),
+                                            ('reading', reading_store), ('reflections', reflections_store),
+                                            ('stocks', stocks_store), ('behavior', behavior_store),
+                                            ('errors', error_store), ('behavior_report', behavior_report_store),
+                                            ('knowledge', knowledge_graph_store))}}
 
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    return {"ok": True,
+            "revision": os.getenv('RENDER_GIT_COMMIT', 'local'),
+            "plan_storage": 'github' if getattr(plans_store, 'remote', False) else 'local',
+            "learning_plans_ready": plans_store.startup_error is None}
 
 
 @app.get("/api/data")
 def get_data():
-    return load_state()
+    return JSONResponse(load_state(), headers={'Cache-Control': 'no-store'})
 
 
 @app.put("/api/data")
 async def put_data(request: Request):
-    data = await request.json()
-    save_state(data)
-    return {"ok": True}
-
-
-# Only expose lesson folders, never arbitrary workspace files.
-STUDY_MODULES = {
-    "yingyu": ("英文阅读", "每日文章", "35 分钟"),
-    "biaoda": ("结构化表达", "每日练习", "15 分钟"),
-}
-
-
-def study_files(module):
-    if module not in STUDY_MODULES:
-        raise HTTPException(404, "未找到学习模块")
-    name, folder, _ = STUDY_MODULES[module]
-    directory = (LEARN_ROOT / name / folder).resolve()
-    return [p for p in sorted(directory.glob("*.md"))
-            if p.is_file() and p.resolve().is_relative_to(directory)
-            and p.resolve().is_relative_to(LEARN_ROOT.resolve())]
-
-
-@app.get("/api/study-materials")
-def study_materials():
-    modules = []
-    for module, (name, _, duration) in STUDY_MODULES.items():
-        record = LEARN_ROOT / name / "学习记录.md"
-        record_text = record.read_text(encoding="utf-8") if record.exists() else ""
-        lessons = []
-        for path in study_files(module):
-            body = path.read_text(encoding="utf-8")
-            title = re.search(r"^#\s+(.+)", body, re.M)
-            day = re.search(r"Day\s*(\d+)", path.stem, re.I)
-            stamp = re.match(r"(\d{4}-\d{2}-\d{2})", path.name)
-            if not stamp:
-                stamp = re.search(r"日期[：:]\s*(\d{4}-\d{2}-\d{2})", body.replace("**", ""))
-            # English has an explicit completion column. Expression has no
-            # lesson-level completion contract, so never infer it from a check-in.
-            status = "待本人反馈"
-            if module == "yingyu" and day:
-                rows = []
-                for line in record_text.splitlines():
-                    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-                    if len(cells) >= 3 and re.fullmatch(r"Day\s*0*" + str(int(day[1])), cells[1], re.I):
-                        rows.append(cells)
-                if len(rows) == 1:
-                    status = rows[0][2] or status
-            completed = status.startswith(("已完成", "已学习")) or status in ("完成", "✅", "[x]", "[X]")
-            lessons.append({"filename": path.name, "topic": title[1] if title else path.stem,
-                            "date": stamp[1] if stamp else "", "learning_label": status,
-                            "learning_state": "completed" if completed else "unknown"})
-        modules.append({"id": module, "name": name, "duration": duration, "lessons": lessons})
-    return {"modules": modules}
-
-
-@app.get("/api/study-materials/{module}/{filename}")
-def study_material(module: str, filename: str):
-    path = next((p for p in study_files(module) if p.name == filename), None)
-    if path is None:
-        raise HTTPException(404, "未找到课程")
-    return {"content": path.read_text(encoding="utf-8")}
+    if request.headers.get('x-legacy-state-protocol') != '1':
+        return JSONResponse({'code': 'client_outdated',
+                             'message': '页面保存协议过旧，请先导出本地修改，再刷新页面。'}, status_code=409)
+    try:
+        data = await request.json()
+        return save_state(data, require_revision=True)
+    except Problem as exc:
+        return JSONResponse({'code': exc.code, 'message': exc.message}, status_code=exc.status)
+    except (ValueError, db.IntegrityError):
+        return JSONResponse({'code': 'invalid', 'message': '记录格式或编号无效，未保存。'}, status_code=422)
 
 
 @app.get("/api/knowledge")
@@ -666,3 +619,31 @@ def index():
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+_prepared_users = set()
+_prepare_lock = RLock()
+
+
+def prepare_user(user):
+    with _prepare_lock:
+        if user['id'] not in _prepared_users and not user['is_owner']:
+            init_db()
+            # New accounts start empty and never import the owner's files or snapshots.
+            with get_conn() as conn:
+                for module in DEFAULT_MODULES:
+                    conn.execute('INSERT INTO modules VALUES (?,?,?,?) ON CONFLICT(id) DO NOTHING',
+                                 (module['id'], module['name'], module['color'], module['order']))
+            if os.getenv('PLAN_CONTENT_BACKEND', 'local') != 'github':
+                learning_root(LEARN_ROOT).mkdir(parents=True, exist_ok=True)
+        _prepared_users.add(user['id'])
+    # Initialize in the request's worker thread, before synchronous module
+    # middleware accesses these proxies on the event loop.
+    for module in (plans_store, copilot_store, reading_store, reflections_store,
+                   behavior_store, error_store, behavior_report_store,
+                   knowledge_graph_store, stocks_store):
+        module.resolve()
+
+
+from accounts import install as install_accounts
+accounts = install_accounts(app, STATIC_DIR, prepare_user)

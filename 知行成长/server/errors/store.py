@@ -5,7 +5,7 @@ error_records 表和 error_types 表的 CRUD 和统计查询。
 """
 from __future__ import annotations
 
-import sqlite3
+import db
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
@@ -61,9 +61,8 @@ class ErrorStore:
         self.db_path = db_path
         self.startup_error: Optional[Exception] = None
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+    def _conn(self) -> db.CompatConnection:
+        conn = db.connect()
         return conn
 
     def initialize(self):
@@ -72,13 +71,10 @@ class ErrorStore:
         conn.executescript(TABLE_SQL)
         # 预置错误类型
         for name, desc in DEFAULT_ERROR_TYPES:
-            try:
-                conn.execute(
-                    "INSERT INTO error_types(name, description) VALUES(?, ?)",
-                    (name, desc),
-                )
-            except sqlite3.IntegrityError:
-                pass  # 已存在
+            conn.execute(
+                "INSERT INTO error_types(name, description) VALUES(?, ?) ON CONFLICT(name) DO NOTHING",
+                (name, desc),
+            )
         conn.commit()
         conn.close()
 
@@ -248,7 +244,7 @@ class ErrorStore:
             ).fetchone()
             conn.close()
             return dict(row)
-        except sqlite3.IntegrityError:
+        except db.IntegrityError:
             conn.close()
             raise ValueError(f"error_type '{name}' already exists")
 

@@ -15,3 +15,25 @@
 #view-plans .btn{max-width:100%;white-space:normal;margin:4px}#view-plans summary{cursor:pointer;line-height:1.8}#view-plans select{max-width:100%;padding:8px}
 #view-plans :focus-visible{outline:2px solid var(--primary,#4f5ee8);outline-offset:3px}.plan-history{padding:12px 0;border-bottom:1px solid var(--border)}
 @media(prefers-reduced-motion:reduce){.plan-stream{scroll-behavior:auto}}
+
+/* 计划状态按钮组 */
+.plan-status-actions{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
+.plan-status-actions .btn{padding:6px 14px;font-size:13px}
+.plan-status-actions .btn.pause{background:#fff3cd;border-color:#ffc107;color:#856404}
+.plan-status-actions .btn.pause:hover{background:#ffe69c}
+.plan-status-actions .btn.resume{background:#d1e7dd;border-color:#198754;color:#0f5132}
+.plan-status-actions .btn.resume:hover{background:#b6d7c8}
+.plan-status-actions .btn.archive{background:#f8d7da;border-color:#dc3545;color:#842029}
+.plan-status-actions .btn.archive:hover{background:#f1aeb5}
+
+/* 状态历史 */
+.plan-status-history{margin-top:20px;padding:16px;background:#fafbfd;border:1px solid var(--border);border-radius:10px}
+.plan-status-history h4{margin:0 0 12px;font-size:14px;font-weight:600}
+.plan-status-timeline{position:relative;padding-left:24px}
+.plan-status-timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--border)}
+.plan-status-event{position:relative;padding:8px 0;font-size:13px}
+.plan-status-event::before{content:'';position:absolute;left:-20px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--primary);border:2px solid var(--card)}
+.plan-status-event-date{font-size:11px;color:var(--muted);margin-bottom:2px}
+.plan-status-event-label{font-weight:600;color:var(--text)}
+.plan-status-event-note{font-size:12px;color:var(--muted);margin-top:2px}
+

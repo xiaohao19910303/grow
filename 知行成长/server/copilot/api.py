@@ -1,4 +1,5 @@
 """Additive API routes; construction does not open the database or start a service."""
+from tenancy import scoped, learning_root, runtime_root
 import json
 import secrets
 import os
@@ -7,8 +8,11 @@ from typing import Literal
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
 
-from .core import Problem, Store
+from .core import Problem, Store, fail
+from .cloud_store import make_store
+from .ai_config import require_config
 from .generation import Generator, availability
 from .backup import snapshot
 
@@ -24,6 +28,7 @@ class Key(Input):
 
 class Generation(Key):
     lesson_no: int = Field(ge=1, le=168)
+    ai_config: dict | None = Field(default=None, repr=False)
 
 
 class Edit(Input):
@@ -89,44 +94,36 @@ class WriterConfirmation(Input):
     confirmed: Literal[True]
 
 
-class SettingsUpdate(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    api_base_url: str = ''
-    api_key: str = ''
-    model_name: str = 'qwen-plus'
-    price_version: str = ''
-    input_price: str = ''
-    output_price: str = ''
-
-
-class ConnectionTest(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    api_base_url: str = Field(min_length=1)
-    api_key: str = Field(min_length=1)
-    model_name: str = Field(min_length=1, max_length=100)
-
-
 def register(app: FastAPI, root, db):
-    store = Store(root, db)
-    generator = Generator(store)
+    from .ai_api import register as register_ai
+    register_ai(app)
+    store = scoped(app, lambda: make_store(learning_root(root), runtime_root(db)), initialize=True)
+    generator = scoped(app, lambda: Generator(store))
     router = APIRouter(prefix='/api/copilot')
-
-    @app.exception_handler(Problem)
-    async def problem_handler(request, error):
-        return JSONResponse({'error': error.code, 'message': error.message}, status_code=error.status)
 
     @app.middleware('http')
     async def local_access(request: Request, call_next):
         hostname = request.url.hostname or ''
-        allowed = {'localhost', '127.0.0.1', '::1'}
-        lan_hosts = {h.strip() for h in os.getenv('COPILOT_ALLOWED_HOSTS', '').split(',') if h.strip()}
         lan_token = os.getenv('COPILOT_ACCESS_TOKEN', '')
         lan = os.getenv('COPILOT_LAN', '') == '1'
-        if hostname not in allowed and not (lan and hostname in lan_hosts and len(lan_token) >= 24):
-            return JSONResponse({'message': '此访问地址未获允许。'}, status_code=403)
+        cloud_pilot = os.getenv('CLOUD_DEPLOY', '') == '1' and os.getenv('PLAN_CONTENT_BACKEND', '') == 'github'
+        if cloud_pilot and not getattr(app.state, 'multiuser', False):
+            from cloud_auth import guard
+            rejected = await run_in_threadpool(guard,request)
+            if rejected is not None:return rejected
+        # 云端部署时允许所有主机（通过环境变量控制）
+        if os.getenv('CLOUD_DEPLOY', '') == '1':
+            pass  # 云端部署，跳过主机检查
+        else:
+            allowed = {'localhost', '127.0.0.1', '::1'}
+            lan_hosts = {h.strip() for h in os.getenv('COPILOT_ALLOWED_HOSTS', '').split(',') if h.strip()}
+            lan_token = os.getenv('COPILOT_ACCESS_TOKEN', '')
+            lan = os.getenv('COPILOT_LAN', '') == '1'
+            if hostname not in allowed and not (lan and hostname in lan_hosts and len(lan_token) >= 24):
+                return JSONResponse({'message': '此访问地址未获允许。'}, status_code=403)
         if request.url.path.startswith('/api/'):
             peer = request.client.host if request.client else ''
-            if peer not in ('127.0.0.1', '::1', 'testclient'):
+            if not getattr(app.state, 'multiuser', False) and not cloud_pilot and peer not in ('127.0.0.1', '::1', 'testclient'):
                 supplied = request.headers.get('x-copilot-token', '')
                 if not lan or len(lan_token) < 24 or not secrets.compare_digest(supplied, lan_token):
                     return JSONResponse({'message': '局域网访问需要有效凭证。'}, status_code=403)
@@ -139,9 +136,9 @@ def register(app: FastAPI, root, db):
             if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.url.path.startswith('/api/copilot'):
                 if request.headers.get('x-copilot-request') != '1':
                     return JSONResponse({'message': '写操作需要同源请求标识。'}, status_code=403)
-            if (store.runtime / 'restore-pending.json').exists():
+            if request.url.path.startswith('/api/copilot') and not request.url.path.startswith('/api/copilot/settings') and (store.runtime / 'restore-pending.json').exists():
                 return JSONResponse({'message': '存在未完成的离线恢复，请先按备份说明处理。'}, status_code=503)
-        if request.url.path.startswith('/api/copilot') and getattr(store, 'startup_error', None):
+        if request.url.path.startswith('/api/copilot') and not request.url.path.startswith('/api/copilot/settings') and getattr(store, 'startup_error', None):
             error = store.startup_error
             return JSONResponse({'error': error.code, 'message': error.message + ' 处理后请重新启动本地服务。'}, status_code=503)
         response = await call_next(request)
@@ -280,8 +277,9 @@ def register(app: FastAPI, root, db):
 
     @router.post('/generations')
     def generate(body: Generation):
-        draft_id, fresh = generator.begin(body.lesson_no, body.key)
-        return StreamingResponse(generator.stream(draft_id, fresh), media_type='text/event-stream',
+        cfg = require_config(body.ai_config)
+        draft_id, fresh = generator.begin(body.lesson_no, body.key, body.ai_config)
+        return StreamingResponse(generator.stream(draft_id, fresh, cfg), media_type='text/event-stream',
                                  headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
     @router.post('/generations/{draft_id}/cancel')
@@ -327,49 +325,11 @@ def register(app: FastAPI, root, db):
 
     @router.post('/backups')
     def backup(body: Input):
+        if getattr(store,'remote',False):
+            fail('remote_backup','云端资料请分别备份 GitHub 内容仓库和 PostgreSQL 数据库。',409)
         with store.lock():
             store.require_writer()
             return snapshot(store)
-
-    @router.get('/settings')
-    def get_settings():
-        keys = ('api_base_url', 'api_key', 'model_name', 'price_version', 'input_price', 'output_price')
-        result = {}
-        for k in keys:
-            v = store.get_setting(k)
-            if k == 'api_key' and v:
-                result[k] = v[:4] + '****' + v[-4:] if len(v) > 8 else '****'
-            else:
-                result[k] = v
-        return {**result, 'generation_available': not availability(store)}
-
-    @router.put('/settings')
-    def update_settings(body: SettingsUpdate):
-        with store.lock():
-            store.require_writer()
-            store.update_settings({k: v for k, v in body.model_dump().items() if v})
-        return {'ok': True, 'generation_available': not availability(store)}
-
-    @router.post('/settings/test')
-    async def test_connection(body: ConnectionTest):
-        from .transport import qwen_stream
-        import asyncio
-        test_messages = [{'role': 'user', 'content': '请回复"连接成功"四个字'}]
-        test_config = {'url': body.api_base_url, 'key': body.api_key, 'model': body.model_name}
-        try:
-            collected = ''
-            async for packet in qwen_stream(test_messages, test_config):
-                if packet.get('done'):
-                    break
-                if packet.get('text'):
-                    collected += packet['text']
-                    if len(collected) > 100:
-                        break
-            if collected:
-                return {'ok': True, 'message': f'连接成功，模型 {body.model_name} 正常响应'}
-            return {'ok': False, 'message': '连接失败：未收到有效响应'}
-        except Exception as e:
-            return {'ok': False, 'message': f'连接失败：{str(e)[:100]}'}
 
     app.include_router(router)
     return store
