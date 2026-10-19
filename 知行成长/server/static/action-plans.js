@@ -21,7 +21,9 @@
       if(signature!==lastSignature||days!==lastDays){lastSignature=signature;lastDays=days;renderHome();renderBar();if(visible())renderWorkspace();}remind().catch(()=>{});return data;});
     loading=task;try{return await task;}finally{if(loading===task)loading=null;}
   }
+  function requireP0(){if(snapshot.action_schema_version!==2)throw Error('连接的行动服务尚未支持P0，输入已保留，请等待升级。');}
   async function change(p,action,values={}){
+    requireP0();
     const result=await client.write(action+':'+(values.execution_id||p.id),'/'+p.id+'/operations',{revision:p.revision,action,...values});
     const old=planById(p.id);snapshot.plans=snapshot.plans.map(item=>item.id===p.id?{...old,...result.plan}:item);
     if(result.execution&&(result.execution.outcome==='running'||result.execution.id===snapshot.execution?.id))snapshot.execution=result.execution.outcome==='running'?result.execution:null;
@@ -66,7 +68,7 @@
     const horizonFilter=field(root,'规划视角','select');for(const [value,text] of [['all','全部长短期'],['long','长期规划'],['short','短期计划']])option(horizonFilter,value,text);horizonFilter.value=horizon;horizonFilter.onchange=()=>{horizon=horizonFilter.value;page=1;renderWorkspace();};
     const filter=field(root,'计划状态','select');for(const [value,text] of Object.entries(statusLabel))option(filter,value,text);option(filter,'all','全部状态');filter.value=status;filter.onchange=()=>{status=filter.value;page=1;renderWorkspace();};
     const plans=snapshot.plans.filter(p=>(period==='all'?p.period!=='day':p.period===period)&&(horizon==='all'||p.horizon===horizon)&&(status==='all'||p.status===status));
-    const list=n('div');root.append(list);for(const p of plans.slice((page-1)*15,page*15))item(list,p);
+    const list=n('div');root.append(list);for(const p of plans.slice((page-1)*15,page*15)){if(p.period==='day')DailyAgenda.row(list,p);else item(list,p);}
     if(!plans.length)list.append(n('p','这个范围里还没有计划。可以先安排一次阅读，也可以从年目标开始。','action-empty'));
     const paging=n('div',undefined,'action-buttons');root.append(paging);const previous=button(paging,'上一页',()=>{page--;renderWorkspace();});previous.disabled=page===1;
     paging.append(n('span',`第 ${page} 页 · 共 ${plans.length} 项`));const next=button(paging,'下一页',()=>{page++;renderWorkspace();});next.disabled=page*15>=plans.length;
@@ -79,20 +81,22 @@
   async function renderRecords(container,recordPage){
     const turn=++historyTurn,rows=n('div');container.querySelector('.action-history-rows')?.remove();rows.className='action-history-rows';container.append(rows);rows.append(n('p','正在读取执行记录…'));
     try{const data=await client.read('/records?page='+recordPage);if(turn!==historyTurn||!rows.isConnected)return;rows.replaceChildren();
-      for(const record of data.records){const row=n('article',undefined,'action-history-row');row.append(n('strong',record.title),n('p',`${record.business_date} · ${{running:'进行中',completed:record.completion_mode==='content'?'内容已完成':record.completion_mode==='check'?'待办已完成':'已达标',minimum:'已完成起步',partial:'已保存投入',interrupted:'中断已保存',reopened:'已撤销勾选'}[record.outcome]||record.outcome} · 实际 ${record.actual_minutes} 分钟`));if(record.note)row.append(n('p',record.note));rows.append(row);}
+      for(const record of data.records){const row=n('article',undefined,'action-history-row');row.append(n('strong',record.title),n('p',`${record.business_date} · ${{running:'进行中',completed:record.completion_mode==='content'?'内容已完成':record.completion_mode==='check'?'待办已完成':'已达标',minimum:'已完成起步',partial:'已保存投入',interrupted:'中断已保存',recorded:'投入已记录',reopened:'已撤销勾选'}[record.outcome]||record.outcome} · 实际 ${record.actual_minutes} 分钟`));if(record.date_basis==='legacy_planned')row.append(n('p','历史记录沿用原计划日期口径。','desc'));else if(record.planned_date&&record.planned_date!==record.business_date)row.append(n('p','原安排：'+record.planned_date,'desc'));if(record.note)row.append(n('p',record.note));rows.append(row);}
       if(!data.records.length)rows.append(n('p','开始一次行动后，执行记录会保存在这里。'));
       const controls=n('div',undefined,'action-buttons');rows.append(controls);const previous=button(controls,'更近的记录',()=>renderRecords(container,recordPage-1));previous.disabled=recordPage===1;
       controls.append(n('span',`共 ${data.total} 次执行 · 第 ${recordPage} 页`));const next=button(controls,'更早的记录',()=>renderRecords(container,recordPage+1));next.disabled=recordPage*30>=data.total;
     }catch(e){rows.replaceChildren(n('p',e.message));button(rows,'重新读取执行记录',()=>renderRecords(container,recordPage));}
   }
-  function dialog(title){if(formDialog)formDialog.close();const d=n('dialog',undefined,'action-dialog');formDialog=d;d.append(n('h2',title));document.body.append(d);d.addEventListener('close',()=>{d.remove();if(formDialog===d)formDialog=null;});d.showModal();return d;}
+  function dialog(title){const origin=document.activeElement;if(formDialog)formDialog.close();const d=n('dialog',undefined,'action-dialog');formDialog=d;d.append(n('h2',title));document.body.append(d);d.addEventListener('close',()=>{d.remove();if(formDialog===d)formDialog=null;if(origin?.isConnected)origin.focus();});d.showModal();return d;}
   function range(kind,selected=day()){
     if(kind==='year')return [selected.slice(0,4)+'-01-01',selected.slice(0,4)+'-12-31'];
     if(kind==='month'){const dt=new Date(selected.slice(0,7)+'-01T12:00:00Z');dt.setUTCMonth(dt.getUTCMonth()+1);dt.setUTCDate(0);return [selected.slice(0,7)+'-01',dt.toISOString().slice(0,10)];}
     if(kind==='week'){const dt=new Date(selected+'T12:00:00Z'),shift=(dt.getUTCDay()+6)%7;dt.setUTCDate(dt.getUTCDate()-shift);const begin=dt.toISOString().slice(0,10);dt.setUTCDate(dt.getUTCDate()+6);return [begin,dt.toISOString().slice(0,10)];}
     return [selected,selected];
   }
+  function quick(existing=null,parent=null,options={}){requireP0();return ActionQuickEditor.open({client,snapshot,dialog,field,button,option,day,refresh:()=>load(true),change,existing,parent,...options});}
   function editor(kind,existing=null,parent=null){
+    if(kind==='day')return quick(existing,parent);
     const draftName='form.'+(existing?.id||'new'),draft=client.get(draftName),anchor=parent?[parent.start_date,day(parent.timezone),parent.end_date].sort()[1]:day(),[begin,end]=range(kind,anchor).map(value=>parent?[parent.start_date,value,parent.end_date].sort()[1]:value),defaultDate=parent?anchor:begin;
     const base=existing||{title:'',period:kind,horizon:kind==='year'?'long':'short',start_date:kind==='day'?defaultDate:begin,end_date:kind==='day'?defaultDate:end,parent_id:parent?.id||null,timezone:parent?.timezone||'Asia/Shanghai',target_minutes:20,minimum_minutes:5,target_count:kind==='day'?1:kind==='week'?5:kind==='month'?20:100,at:'21:00',reminder:true,reason:'',if_then:'',target:{kind:'library'}};
     const seed=draft?.period===kind?{...base,...draft}:base;
@@ -143,7 +147,9 @@
     }catch(e){error.textContent=e.message;}finally{save.disabled=false;}};
     fields.title.focus();
   }
-  async function openTarget(target){
+  async function openTarget(target,actionId=null){
+    window.actionContentOrigin=actionId?{actionId,target}:null;
+    if(!target){toast('已开始行动，请在底部保存投入。');return;}
     if(target.kind==='book'){toast('已开始行动，可以在底部保存实际投入。');return;}
     if(target.kind==='library'){goTab('library');return;}
     if(target.kind==='renzhi'){rememberLearningOrigin();await window.openCopilotLesson(target.lesson_no);return;}
@@ -151,36 +157,36 @@
     if(target.kind==='article'){if(goTab('reading')===false)return;await window.openActionArticle(target.course);return;}
     await window.loadDailyLearning();await window.openStudyCourse(target.kind,target.course);
   }
-  async function start(p,variant){const result=await change(p,'start',{variant});try{await openTarget(result.plan.target);}catch(e){toast('执行已保留，学习内容暂未打开：'+e.message);}}
+  async function start(p,variant){const result=await change(p,'start',{variant});try{await openTarget(result.plan.target,p.id);}catch(e){toast('执行已保留，学习内容暂未打开：'+e.message);}}
   function renderBar(){
     bar.replaceChildren();bar.hidden=!snapshot.execution;document.body.classList.toggle('action-running',!!snapshot.execution);if(!snapshot.execution)return;
     const execution=snapshot.execution,p=planById(execution.plan_id),text=n('div');text.append(n('strong','正在执行：'+execution.title),n('span',' 计时中 · 计划 '+execution.planned_minutes+' 分钟','action-clock'));bar.append(text);
-    const actions=n('div',undefined,'action-buttons');bar.append(actions);button(actions,'继续执行',()=>openTarget(execution.target));button(actions,p?.completion_mode==='content'?'记录投入':'记录完成',()=>finish(p,execution,'completed'),true);button(actions,'中断并保留记录',()=>finish(p,execution,'interrupted'));
+    const actions=n('div',undefined,'action-buttons');bar.append(actions);button(actions,'继续执行',()=>openTarget(execution.target,execution.plan_id));button(actions,p?.completion_mode==='content'?'记录投入':'记录完成',()=>finish(p,execution,'completed'),true);button(actions,'中断并保留记录',()=>finish(p,execution,'interrupted'));
   }
   function finish(p,execution,outcome){const draftKey='finish.'+execution.id,draft=client.get(draftKey)||{};const d=dialog(outcome==='completed'?'确认本次执行':'保存中断记录'),form=n('form');d.append(form);form.append(n('p',execution.title),n('p',p.completion_mode==='content'?'计时只作参考，请确认实际投入。读完／学完请在原内容中确认，这里仅保存投入。':'计时只作参考，请确认实际投入。课程完成与学习笔记保持独立。','desc'));
     const minutes=field(form,'实际执行分钟','number',draft.minutes??Math.max(0,Math.floor((now()-new Date(execution.started_at))/60000)));minutes.min=outcome==='completed'?1:0;minutes.max=1440;minutes.required=true;
     const note=field(form,'收获或中断原因（可选）','textarea',draft.note||'');note.maxLength=2000;form.addEventListener('input',()=>client.put(draftKey,{minutes:minutes.value,note:note.value}));const error=n('p','','action-error');error.setAttribute('role','alert');form.append(error);
     const actions=n('div',undefined,'action-buttons');form.append(actions);const save=n('button',outcome==='completed'?'确认并记录':'保存中断','btn primary');save.type='submit';actions.append(save);button(actions,'继续执行',()=>d.close());
-    form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{const result=await change(p,'finish',{execution_id:execution.id,outcome,actual_minutes:Number(minutes.value),note:note.value});client.remove(draftKey);d.close();toast(result.execution.outcome==='completed'?'本次已达标，执行记录已保存。':'记录已保存，之后可以继续。');}catch(e){error.textContent=e.message;}finally{save.disabled=false;}};
+    form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{const result=await change(p,'finish',{execution_id:execution.id,outcome,actual_minutes:Number(minutes.value),note:note.value});client.remove(draftKey);d.close();toast(result.execution.outcome==='completed'?'累计投入已达标，执行记录已保存。':'记录已保存，之后可以继续。');}catch(e){error.textContent=e.message;}finally{save.disabled=false;}};
   }
   async function enableNotifications(){
     if(!('Notification' in window)||!window.isSecureContext){toast('当前浏览器不支持通知，可使用站内提醒或添加到日历。');return;}
     const permission=await Notification.requestPermission();client.put('notifications',permission==='granted');toast(permission==='granted'?'已允许网页打开时的浏览器提醒。':'将继续使用站内提醒，也可以添加到日历。');
   }
   async function remind(){
-    if(!client||document.hidden)return;const due=ActionPlanClient.pending(snapshot.plans,now(),snapshot.execution).filter(p=>p.reminder&&new Date(p.reminder_at)<=now()&&p.id!==snapshot.execution?.plan_id);
+    if(!client||document.hidden||snapshot.action_schema_version!==2)return;const due=ActionPlanClient.pending(snapshot.plans,now(),snapshot.execution).filter(p=>p.reminder&&p.reminder_at&&new Date(p.reminder_at)<=now()&&p.id!==snapshot.execution?.plan_id);
     const banner=document.getElementById('actionReminder'),identity=due.length?JSON.stringify([due[0].id,due[0].revision]):'';
     if(banner.dataset.reminder!==identity){banner.dataset.reminder=identity;banner.replaceChildren();banner.hidden=!due.length;
-      if(due.length){const p=due[0];banner.append(n('strong','你留给自己的行动时间到了：'+p.title));button(banner,'现在开始',()=>start(p,'standard'),true);button(banner,'延后 15 分钟',()=>change(p,'snooze'));}}
+      if(due.length){const p=due[0];banner.append(n('strong','你留给自己的行动时间到了：'+p.title));button(banner,p.completion_mode==='check'?'完成事项':'现在开始',()=>p.completion_mode==='check'?change(p,'complete'):p.completion_mode==='content'?openTarget(p.target,p.id):start(p,'standard'),true);button(banner,'延后 15 分钟',()=>change(p,'snooze'));}}
     if(!client.get('notifications')||!('Notification' in window)||Notification.permission!=='granted')return;
-    for(const p of due.slice(0,3)){const claim=await client.read('/'+p.id+'/reminder-claim',{device_id:client.device,reminder_at:p.reminder_at});if(claim.notify){try{const notice=new Notification('留一点时间给自己',{body:p.title+' · 先开始 '+p.minimum_minutes+' 分钟也可以',tag:p.id});notice.onclick=()=>{window.focus();openWorkspace();notice.close();};}catch{client.put('notifications',false);}}}
+    for(const p of due.slice(0,3)){const claim=await client.read('/'+p.id+'/reminder-claim',{device_id:client.device,reminder_at:p.reminder_at});if(claim.notify){try{const notice=new Notification('留一点时间给自己',{body:p.title+(p.minimum_minutes?' · 先开始 '+p.minimum_minutes+' 分钟也可以':' · 按本人确认记录完成'),tag:p.id});notice.onclick=()=>{window.focus();openWorkspace();notice.close();};}catch{client.put('notifications',false);}}}
   }
   async function schedule(values){
-    await initialized;const result=await client.write('schedule:'+JSON.stringify(values.target)+':'+values.date,'/schedules',values);
+    await initialized;requireP0();const result=await client.write('schedule:'+JSON.stringify(values.target)+':'+values.date,'/schedules',values);
     await load(true);return result;
   }
   async function addTask(title,date){
-    await initialized;const values={title,period:'day',start_date:date,end_date:date,completion_mode:'check',target:{kind:'book'}};
+    await initialized;requireP0();const values={title,period:'day',start_date:date,end_date:date,completion_mode:'check',target:{kind:'book'}};
     await client.write('todo:'+date,'',values);await load(true);
   }
   async function records(){
@@ -188,9 +194,9 @@
     try{await initialized;await renderRecords(target,1);}catch(e){target.append(n('p',e.message));button(target,'重试',records);}
   }
   window.ActionPlans={enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','目标与计划'),n('p','正在读取计划与进度…'));try{await initialized;await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},
-    refresh:async()=>{await initialized;return load(true);},snapshot:()=>snapshot,day,newDay:async()=>{await initialized;editor('day');},
-    schedule,addTask,change,start,openTarget,records,
-    reconcile:async p=>{const result=await change(p,'reconcile');toast('已核对保存的内容完成记录。');return result;}};
+    refresh:async()=>{await initialized;return load(true);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;quick(null,null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
+    schedule,addTask,change,start,openTarget,records,review:p=>window.ActionReviews.open({client,plan:p,dialog,edit:()=>quick(p)}),
+    reconcile:async p=>{const result=await change(p,'reconcile-content');toast('已核对保存的内容完成记录。');return result;}};
   document.querySelector('.topbar').after(document.getElementById('actionReminder'));
   initialized=(window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{client=ActionPlanClient.create({request:window.fetch.bind(window),storage:localStorage,account:user.id});
     load().then(remind).catch(e=>{const list=document.getElementById('agendaList');list.replaceChildren(n('p',e.message));button(list,'重新读取安排',()=>load(true));});

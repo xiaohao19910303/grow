@@ -44,3 +44,5 @@
 .action-review-preview,.action-ai-review,.action-review-history{margin:20px 0;padding:16px;border:1px solid var(--border);border-radius:12px}
 .action-context{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:12px}
 .action-ai-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}
+
+.action-field[hidden],.action-dialog section[hidden]{display:none}

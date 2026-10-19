@@ -76,7 +76,7 @@ def context(c, scope, include_notes=False, include_review=False):
               'start_date': begin, 'end_date': end,
               'stats': {'minutes': sum(r['actual_minutes'] for r in finished if r['record_kind']=='session'),
                         'completed': len(done),
-                        'minimum': sum(r['outcome'] in ('minimum','partial') for r in finished),
+                        'minimum': sum(r['outcome']=='minimum' for r in finished),
                         'interrupted': sum(r['outcome'] == 'interrupted' for r in finished),
                         'partial':sum(r['outcome']=='partial' for r in finished),'planned_days': len(days), 'completed_days': len(done & {p['id'] for p in days}),
                         'running': sum(r['outcome'] == 'running' for r in records)},

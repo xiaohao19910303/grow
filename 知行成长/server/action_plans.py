@@ -383,6 +383,8 @@ def complete_fact(c,plan,source_event=None):
         record.update(source_event_id=source_event['event_id'],recorded_at=clock().isoformat())
         if source_event.get('origin_action_id'):
             record['planned_date']=source_event.get('planned_date_at_confirmation')
+            record['timezone']=source_event.get('timezone_at_confirmation') or plan['timezone']
+            record['business_date']=datetime.fromisoformat(source_event['confirmed_at']).astimezone(ZoneInfo(record['timezone'])).date().isoformat()
     mark_complete(plan,record);save_fact(c,record)
     return record
 
@@ -454,7 +456,7 @@ def mutate(pid,body):
             if action=='edit':
                 if not body.fields:fail(422,'请提供编辑字段。')
                 fields=body.fields.model_dump(mode='json')
-                if fields['start_date']!=plan['start_date'] or fields['end_date']!=plan['end_date']:
+                if plan['period']=='day' and (fields['start_date']!=plan['start_date'] or fields['end_date']!=plan['end_date']):
                     fail(422,'请使用改期操作调整日期。')
                 if facts(c,pid) and any(fields[k]!=plan.get(k) for k in ('completion_mode','target','target_minutes','minimum_minutes')):
                     fail(409,'已有执行事实，完成方式、内容和阈值已锁定，请复制新行动。')

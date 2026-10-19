@@ -13,7 +13,7 @@
   let libraryState={account:'',kind:'articles',search:'',filter:'all',page:1};
   function invalidateLibrary(){libraryEpoch++;libraryCache.clear();}
   const accountKey=()=>window.Account?.user?.id||'';
-  async function api(path='',data){if(data!==undefined && /^\/articles\/[^/]+\/(guide|summary|english)$/.test(path))data={...data,ai_config:AIConfig.require()};const r=await fetch('/api/reading'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});let j;try{j=await r.json();}catch(error){throw new Error('服务暂时不可用，请稍后重试。');}if(!r.ok)throw new Error(j.message||'读取失败，请稍后重试。');if(data!==undefined){invalidateLibrary();if(j.arrangement_sync_error)toast(j.arrangement_sync_error);if(j.completed_arrangements?.length)window.ActionPlans?.refresh().catch(()=>{});}return j;}
+  async function api(path='',data){if(data&&(data.read===true||data.mark_read===true)){const origin=window.actionContentOrigin;data={...data,key:data.key||crypto.randomUUID(),...(origin?.target?.kind==='article'&&path.startsWith('/articles/'+origin.target.course+'/')?{origin_action_id:origin.actionId}:{})};}if(data!==undefined && /^\/articles\/[^/]+\/(guide|summary|english)$/.test(path))data={...data,ai_config:AIConfig.require()};const r=await fetch('/api/reading'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});let j;try{j=await r.json();}catch(error){throw new Error('服务暂时不可用，请稍后重试。');}if(!r.ok)throw new Error(j.message||j.detail||'读取失败，请稍后重试。');if(data!==undefined){invalidateLibrary();if(j.arrangement_sync_error)toast(j.arrangement_sync_error);if(j.completed_arrangements?.length)window.ActionPlans?.refresh().catch(()=>{});}return j;}
   function button(parent,label,action,primary=false){const b=node('button',label,'btn'+(primary?' primary':''));b.type='button';b.onclick=async()=>{const turn=revision;b.disabled=true;try{await action();}catch(e){toast(e.message);const status=root.querySelector('[role=status]');if(turn===revision&&status)status.textContent=e.message;}finally{b.disabled=false;}};parent.append(b);return b;}
   function field(parent,label,value='',type='text'){const wrap=node('label',label,'plan-field');const input=node(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value;wrap.append(input);parent.append(wrap);return input;}
   function select(parent,label,values,value){const wrap=node('label',label,'plan-field'),input=node('select');for(const [v,t] of values){const o=node('option',t);o.value=v;input.append(o);}input.value=value;wrap.append(input);parent.append(wrap);return input;}
@@ -344,6 +344,7 @@
 
     // Reading views
     const tabBox=node('div',undefined,'reading-tabs');root.append(tabBox);
+    if(a.read||window.actionContentOrigin?.target?.course===id)button(actions,'确认本次读完',async()=>{await api('/articles/'+id+'/personal',{read:true});a.read=true;toast('本次读完确认已保存。');});
     const views=['original','guide','bilingual','summary','english','notes','feedback'];
     const viewLabels={guide:'中文导读',original:'文章正文',bilingual:'双语',summary:'总结',english:'英语解析',notes:'我的笔记',feedback:'阅读反馈'};
     let currentView=requestedView||'original';

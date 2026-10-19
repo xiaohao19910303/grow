@@ -130,7 +130,11 @@ def register(app):
 
     @router.post('/preview')
     def preview(body:Preview):
-        source=identity();target=call(source,{'action':'preview','code':body.code})
+        source=identity()
+        with connection() as c:
+            if c.execute('SELECT count(*) FROM action_content_events').fetchone()[0] or any(json.loads(r[0]).get('schema_version')==2 for r in c.execute('SELECT data FROM action_plans')):
+                fail(409,'P0接管合同尚待双端验证；计划继续保存在当前唯一写入方。','CONTRACT_UPGRADE_REQUIRED')
+        target=call(source,{'action':'preview','code':body.code})
         with connection(True,allow_link=True) as c:
             current,_=state(c)
             if current.get('phase')!='local':fail(409,'这个账号已开始接管，请刷新连接状态。')

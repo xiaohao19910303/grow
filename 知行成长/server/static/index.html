@@ -149,7 +149,7 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
-<link rel="stylesheet" href="/static/action-plans.css?v=20261019-1">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261020-p0">
 </head>
 <body>
 
@@ -252,7 +252,7 @@
       <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
     </div>
     <section id="actionHome" class="section action-home" aria-label="当日安排">
-      <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay()">新建计时行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
+      <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay()">新建行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
       <div id="agendaList" aria-live="polite"><p class="desc" role="status">正在读取安排…</p></div>
       <div id="agendaLegacy"></div>
       <div id="agendaPending"></div>
@@ -2229,18 +2229,18 @@ async function init(){
 init();
 </script>
 <script src="/static/copilot.js?v=20261018-performance"></script>
-<script src="/static/course-feedback.js?v=20261019-1"></script>
-<script src="/static/course-archive.js?v=20261019-1"></script>
-<script src="/static/course-summary.js?v=20261019-1"></script>
+<script src="/static/course-feedback.js?v=20261020-p0"></script>
+<script src="/static/course-archive.js?v=20261020-p0"></script>
+<script src="/static/course-summary.js?v=20261020-p0"></script>
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
 <script src="/static/plans.js?v=20261018-performance"></script>
 <script src="/static/study-generation.js?v=20261018-performance"></script>
-<script src="/static/daily-learning.js?v=20261019-1"></script>
+<script src="/static/daily-learning.js?v=20261020-p0"></script>
 <script src="/static/reading-growth.js?v=20261017-growth1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
-<script src="/static/reading-position.js?v=20261019-1"></script>
-<script src="/static/reading.js?v=20261019-1"></script>
+<script src="/static/reading-position.js?v=20261020-p0"></script>
+<script src="/static/reading.js?v=20261020-p0"></script>
 <script src="/static/reflections.js?v=20261017-local-ai"></script>
 <script src="/static/learning-history.js?v=20261017-records"></script>
 <script src="/static/stocks.js?v=1"></script>
@@ -2248,10 +2248,11 @@ init();
 <script src="/static/timeline.js?v=1"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
 <aside id="actionExecution" class="action-execution" aria-label="正在执行的行动" hidden></aside>
-<script src="/static/action-plan-client.js?v=20261019-1"></script>
+<script src="/static/action-plan-client.js?v=20261020-p0"></script>
 <script src="/static/action-reviews.js?v=20261018-1"></script>
-<script src="/static/action-link.js?v=20261019-1"></script>
-<script src="/static/daily-agenda.js?v=20261019-1"></script>
-<script src="/static/action-plans.js?v=20261019-1"></script>
+<script src="/static/action-link.js?v=20261020-p0"></script>
+<script src="/static/daily-agenda.js?v=20261020-p0"></script>
+<script src="/static/action-quick-editor.js?v=20261020-p0"></script>
+<script src="/static/action-plans.js?v=20261020-p0"></script>
 </body>
 </html>
