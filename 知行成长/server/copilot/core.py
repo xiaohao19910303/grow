@@ -280,15 +280,18 @@ class Store:
             # Also check database for completion records
             with self.conn() as c:
                 db_record = c.execute('''
-                    SELECT completed_at, time_spent_seconds FROM copilot_learning_records
+                    SELECT completed_at, time_spent_seconds, archived FROM copilot_learning_records
                     WHERE module_id = 'renzhi' AND round_id = 1 AND lesson_no = ?
                 ''', (n,)).fetchone()
                 if db_record:
                     lesson['learning_state'] = 'completed'
                     lesson['completed_at'] = db_record['completed_at']
                     lesson['time_spent_seconds'] = db_record['time_spent_seconds']
+                    lesson['archived'] = bool(db_record['archived'])
                     if not status:
                         lesson['learning_label'] = '已学习'
+                else:
+                    lesson['archived'] = False
             courses.append(lesson)
         counts = Counter(x['date'] for x in courses if x['date'])
         for x in courses:
@@ -837,6 +840,37 @@ class Store:
                 d['feeling_tags'] = json.loads(d['feeling_tags'])
             items.append(d)
         return items
+
+    def archive_lesson(self, number, key):
+        with self.lock():
+            self._ensure_completed(number)
+            with self.conn() as c:
+                c.execute('''
+                    UPDATE copilot_learning_records SET archived=1, archived_at=?
+                    WHERE module_id='renzhi' AND round_id=1 AND lesson_no=?
+                ''', (now(), number))
+            return {'archived': True}
+
+    def unarchive_lesson(self, number, key):
+        with self.lock():
+            with self.conn() as c:
+                c.execute('''
+                    UPDATE copilot_learning_records SET archived=0, archived_at=NULL
+                    WHERE module_id='renzhi' AND round_id=1 AND lesson_no=?
+                ''', (number,))
+            return {'archived': False}
+
+    def list_archived(self):
+        with self.conn() as c:
+            rows = c.execute('''
+                SELECT r.lesson_no, r.completed_at, r.archived_at,
+                       f.mastery_level, f.key_learnings
+                FROM copilot_learning_records r
+                LEFT JOIN copilot_feedback f ON r.module_id=f.module_id AND r.round_id=f.round_id AND r.lesson_no=f.lesson_no
+                WHERE r.module_id='renzhi' AND r.round_id=1 AND r.archived=1
+                ORDER BY r.completed_at DESC
+            ''').fetchall()
+        return [dict(r) for r in rows]
 
     def extract_review_questions(self, number):
         """Extract review questions from lesson content."""

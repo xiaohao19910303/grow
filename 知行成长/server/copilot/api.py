@@ -68,6 +68,10 @@ class FeedbackSubmission(Key):
     next_direction: str = Field(default='', max_length=1000)
 
 
+class ArchiveRequest(Key):
+    pass
+
+
 class PlanConfirmation(Input):
     hash: str = Field(min_length=64, max_length=64)
     lessons: list[int] = Field(min_length=1, max_length=168)
@@ -198,6 +202,18 @@ def register(app: FastAPI, root, db):
         if not result:
             return JSONResponse({'error': 'not_found', 'message': '未找到反馈记录。'}, status_code=404)
         return result
+
+    @router.post('/lessons/{number}/archive')
+    def archive(number: int, body: ArchiveRequest):
+        return store.archive_lesson(number, body.key)
+
+    @router.post('/lessons/{number}/unarchive')
+    def unarchive(number: int, body: ArchiveRequest):
+        return store.unarchive_lesson(number, body.key)
+
+    @router.get('/lessons/archived')
+    def archived_lessons(module: Literal['renzhi'] = 'renzhi'):
+        return {'items': store.list_archived()}
 
     @router.get('/learning-history/by-date')
     def learning_history_by_date(date: str, module: Literal['renzhi'] = 'renzhi'):
