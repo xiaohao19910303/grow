@@ -315,10 +315,12 @@
     async function saveFeedback() {
       try {
         await request(`/api/copilot/lessons/${lessonNo}/feedback`, 'POST', state.data);
-        dialog.close();
 
-        // Success animation
+        // Success animation - replace content without closing dialog
         dialog.className = 'cp-feedback-dialog success';
+        const content = dialog.querySelector('.cp-feedback-content');
+        if (content) content.remove();
+
         const successContent = document.createElement('div');
         successContent.className = 'fb-success';
         successContent.innerHTML = `
@@ -327,7 +329,6 @@
           <p>这有助于AI为你生成更精准的学习建议</p>
         `;
         dialog.append(successContent);
-        dialog.showModal();
 
         setTimeout(() => {
           dialog.close();
