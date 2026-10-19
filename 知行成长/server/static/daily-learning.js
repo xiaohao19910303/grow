@@ -1,6 +1,67 @@
 /* Reading never completes a course; only the explicit save action records completion. */
 (() => {
   'use strict';
+
+  // 注入庆祝动画样式
+  const celebrationStyle = document.createElement('style');
+  celebrationStyle.textContent = `
+    .completion-celebration {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000; animation: celebration-fade-in 0.3s ease-out;
+    }
+    .completion-celebration.fade-out {
+      animation: celebration-fade-out 0.5s ease-out forwards;
+    }
+    @keyframes celebration-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes celebration-fade-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    .celebration-content {
+      background: white; padding: 48px 64px; border-radius: 20px;
+      text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: celebration-pop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      position: relative; overflow: hidden;
+    }
+    @keyframes celebration-pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .celebration-icon {
+      font-size: 80px; margin-bottom: 20px;
+      animation: celebration-bounce 0.6s ease-in-out;
+    }
+    @keyframes celebration-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+    .celebration-content h2 {
+      margin: 0 0 12px; font-size: 32px; color: var(--text, #333);
+      font-weight: 700;
+    }
+    .celebration-content p {
+      margin: 0; font-size: 18px; color: var(--muted, #666);
+    }
+    .confetti-container {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none; overflow: hidden;
+    }
+    .confetti {
+      position: absolute; width: 10px; height: 10px;
+      top: -10px; animation: confetti-fall 3s linear forwards;
+    }
+    @keyframes confetti-fall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+  `;
+  document.head.append(celebrationStyle);
+
   let modules = [], errors = [], loaded = false, generation = 0, reading = 0;
   const root = document.getElementById('dailyLearning');
   const reader = document.getElementById('dailyReader');
@@ -91,6 +152,38 @@
     control.type = 'button'; control.onclick = action; parent.append(control);
     return control;
   }
+  // 课程完成庆祝动画
+  function showCompletionCelebration(lessonNo) {
+    const celebration = document.createElement('div');
+    celebration.className = 'completion-celebration';
+    celebration.innerHTML = `
+      <div class="celebration-content">
+        <div class="celebration-icon">🎉</div>
+        <h2>太棒了！</h2>
+        <p>你已完成第 ${lessonNo} 课</p>
+        <div class="confetti-container"></div>
+      </div>
+    `;
+    document.body.append(celebration);
+
+    // 创建彩纸效果
+    const confettiContainer = celebration.querySelector('.confetti-container');
+    for (let i = 0; i < 50; i++) {
+      const confetti = document.createElement('div');
+      confetti.className = 'confetti';
+      confetti.style.left = Math.random() * 100 + '%';
+      confetti.style.animationDelay = Math.random() * 0.5 + 's';
+      confetti.style.backgroundColor = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#6c5ce7'][Math.floor(Math.random() * 5)];
+      confettiContainer.append(confetti);
+    }
+
+    // 动画结束后移除
+    setTimeout(() => {
+      celebration.classList.add('fade-out');
+      setTimeout(() => celebration.remove(), 500);
+    }, 2500);
+  }
+
   function toast(message) {
     const toastEl = document.createElement('div');
     toastEl.className = 'toast';
@@ -345,7 +438,7 @@
         throw new Error(data.message || '请求失败');
       }
       stopLearningTimer();
-      toast(`课程已标记完成（学习时长：${Math.round(timeSpent / 60)} 分钟）`);
+      showCompletionCelebration(lesson.lesson_no);
       await window.loadDailyLearning({force:true});
     } catch (e) {
       alert('标记失败：' + e.message);
