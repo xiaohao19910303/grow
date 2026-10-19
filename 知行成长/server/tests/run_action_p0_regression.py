@@ -20,7 +20,7 @@ def main():
     results=[]
     for suite in SUITES:
         result=subprocess.run([sys.executable,'-m','unittest',suite,'-v'],capture_output=True,text=True,timeout=120)
-        log=result.stdout+result.stderr
+        log='\n'.join(line.rstrip() for line in (result.stdout+result.stderr).splitlines())+'\n'
         (output/(suite+'.log')).write_text(log)
         count=re.search(r'Ran (\d+) tests?',log)
         skipped=re.search(r'OK \(skipped=(\d+)\)',log)

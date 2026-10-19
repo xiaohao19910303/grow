@@ -198,7 +198,7 @@ ERROR: test_course_generation_publication_learning_and_reading_ai (test_legacy_c
     | psycopg2.errors.UndefinedColumn: column "archived" does not exist
     | LINE 2: ...         SELECT completed_at, time_spent_seconds, archived F...
     |                                                              ^
-    | 
+    |
     +------------------------------------
 
 The above exception was the direct cause of the following exception:
