@@ -124,9 +124,19 @@ def register(app,root,db):
                                     if j.get('kind')=='fetch_full' and (j.get('context') or {}).get('article_id')==aid),None),
                 'path':str(file)}
     @router.post('/articles/{aid}/personal')
-    def personal(aid:str,body:Payload):return store.update_personal(aid,body.data)
+    def personal(aid:str,body:Payload):
+        saved = store.update_personal(aid,body.data)
+        if body.data.get('read') is True:
+            from action_plans import with_content_completion
+            return with_content_completion(saved, {'kind':'article','course':aid})
+        return saved
     @router.post('/articles/{aid}/feedback')
-    def feedback(aid:str,body:Payload):return store.save_feedback(aid,body.data)
+    def feedback(aid:str,body:Payload):
+        saved = store.save_feedback(aid,body.data)
+        if body.data.get('mark_read') is True:
+            from action_plans import with_content_completion
+            return with_content_completion(saved, {'kind':'article','course':aid})
+        return saved
     @router.post('/articles/{aid}/guide')
     async def guide(aid:str,body:Payload):
         require_config(body.data.get('ai_config'))

@@ -118,7 +118,7 @@ start() {
     # 启动服务（后台运行）
     log_step "启动 uvicorn 服务..."
     cd "$PROJECT_ROOT/server"
-    nohup "$VENV_PYTHON" -m uvicorn app:app --host "$HOST" --port "$PORT" \
+    nohup "$VENV_PYTHON" "$PROJECT_ROOT/server/run_local.py" --host "$HOST" --port "$PORT" \
         > "$LOG_FILE" 2>&1 &
 
     local new_pid=$!

@@ -583,6 +583,7 @@
       }
     }
   }
+  window.openActionArticle=id=>read(id);
   window.enterReading=()=>{
     const m=location.hash.match(/^#reading\/(job|article)\/([a-zA-Z0-9-]+)$/);
     if(m){

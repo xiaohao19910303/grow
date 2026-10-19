@@ -9,7 +9,8 @@
   async function api(path, data) {
     if(data!==undefined && (path==='/generate'||/^\/drafts\/[^/]+\/refine$/.test(path))) data={...data,ai_config:AIConfig.require()};
     const r=await fetch('/api/plans'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});
-    const d=await r.json();if(!r.ok)throw new Error(typeof d.message==='string'?d.message:'请求未完成，请检查输入或重新读取。');return d;
+    let d;try{d=await r.json();}catch{throw new Error(r.ok?'返回的数据暂时无法读取，请重试。':`服务暂时无法完成请求（${r.status}），请稍后重试。`);}
+    if(!r.ok)throw new Error(typeof d.message==='string'?d.message:'请求未完成，请检查输入或重新读取。');return d;
   }
   function button(parent,label,action,primary=false) {
     const b=node('button',label,'btn'+(primary?' primary':''));b.type='button';

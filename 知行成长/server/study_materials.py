@@ -210,7 +210,8 @@ def register(app, root):
                 or request.headers.get('Origin', origin) != origin
                 or request.headers.get('Sec-Fetch-Site') == 'cross-site'):
             raise HTTPException(403, '保存学习记录需要同源请求。')
-        return materials.save(module, filename, body)
+        from action_plans import with_content_completion
+        return with_content_completion(materials.save(module, filename, body), {'kind':module,'course':filename})
 
     app.include_router(router)
     return materials

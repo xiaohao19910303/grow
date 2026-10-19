@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const context={window:{},Intl,Date,Map,JSON,Error,encodeURIComponent};vm.createContext(context);
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../static/action-plan-client.js'),'utf8'),context);
+const {create,day,pending}=context.window.ActionPlanClient;
+const data=new Map(),storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
+(async()=>{
+ let fail=true,requests=[],number=0;
+ const request=async(path,options)=>{requests.push({path,options});if(fail)throw Error('offline');return {ok:true,json:async()=>({saved:true})};};
+ let client=create({request,storage,account:'alice',random:()=>`request-${++number}`});
+ await assert.rejects(client.write('create','',{title:'original'}),/offline/);
+ const first=JSON.parse(requests[0].options.body).key;
+ client=create({request,storage,account:'alice',random:()=>`request-${++number}`});fail=false;
+ await client.write('create','',{title:'original'});
+ assert.equal(JSON.parse(requests[1].options.body).key,first,'reload/retry must preserve the request key');
+ assert.equal(client.pending('create'),undefined);
+ fail=true;await assert.rejects(client.write('create','',{title:'private draft'}));
+ const bob=create({request,storage,account:'bob',random:()=>`request-${++number}`});
+ assert.equal(bob.pending('create'),undefined,'a different account must not restore private inputs');
+ let quotaRequests=[],quotaFail=true;const quota=create({account:'quota',storage:{getItem:()=>null,setItem:()=>{throw Error('quota');},removeItem:()=>{}},random:()=>`request-${++number}`,request:async(path,options)=>{quotaRequests.push(JSON.parse(options.body));if(quotaFail)throw Error('offline');return {ok:true,json:async()=>({saved:true})};}});
+ await assert.rejects(quota.write('create','',{title:'draft'}));quotaFail=false;await quota.write('create','',{title:'draft'});assert.equal(quotaRequests[0].key,quotaRequests[1].key,'in-page retries keep the key even if browser storage is full');
+ fail=true;await assert.rejects(client.write('ai','/reviews/generate',{plan_id:'private-plan',consent:true},{ai_config:{api_key:'TEST_EPHEMERAL_SECRET'}}));
+ assert(!JSON.stringify([...data.values()]).includes('TEST_EPHEMERAL_SECRET'),'AI credentials must never be written to durable retry storage');
+ assert.equal(JSON.parse(requests.at(-1).options.body).ai_config.api_key,'TEST_EPHEMERAL_SECRET');
+ const now=new Date('2026-10-18T18:00:00Z');assert.equal(day(now,'Asia/Shanghai'),'2026-10-19');
+ const p=(id,status,date,blocked=false)=>({id,period:'day',status,start_date:date,timezone:'Asia/Shanghai',blocked,reminder_at:'2026-10-19T01:00:00Z'});
+ assert.equal(pending([p('a','active','2026-10-19'),p('b','paused','2026-10-19'),p('c','active','2026-10-18'),p('d','active','2026-10-19',true)],now,null).length,1);
+ console.log('Action client checks passed: lost-response retries, reload, account isolation and timezone-aware pending actions.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
