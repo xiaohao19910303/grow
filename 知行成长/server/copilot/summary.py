@@ -1,7 +1,56 @@
 """AI-powered course summary generation."""
 import json
+import uuid
 from .core import now, encoded, fail, MODULE, TZ
 from .generation import config, event
+
+
+ADVANCED_PROMPT_TEMPLATE = """你是一个个人学习助手，负责基于用户的学习反馈和总结，生成进阶课程内容。
+
+【上一轮课程总结】
+{summary_content}
+
+【用户反馈分析】
+掌握较好的领域：
+{well_mastered_topics}
+
+需要加强的领域：
+{weak_topics}
+
+用户希望深入的方向：
+{next_directions}
+
+【生成要求】
+请生成8-12课进阶内容，遵循以下原则：
+1. 重点覆盖用户需要加强的领域
+2. 延伸到用户感兴趣的新方向
+3. 课程难度可以适当提升，但要确保概念解释足够清晰
+4. 每课包含：引导问题、核心概念、完整示范、练习、记忆提示
+5. 课程之间要有递进关系，形成完整的学习脉络
+
+【输出格式】
+请逐课输出，每课使用以下结构：
+
+## 第XXX课：[课程主题]
+
+### 引导问题
+（引发思考的问题）
+
+### 核心概念
+（关键知识点，清晰解释）
+
+### 完整示范
+（具体案例或应用场景）
+
+### 练习
+（巩固练习，附答案）
+
+### 记忆提示
+（帮助记忆的技巧）
+
+---
+
+请开始生成进阶课程。"""
 
 
 SUMMARY_PROMPT_TEMPLATE = """你是一个个人学习助手。请基于以下信息，生成一份整门课程的复盘总结。
@@ -105,3 +154,88 @@ class SummaryGenerator:
                 yield event('error', {'message': str(e)})
 
         return _generate()
+
+    def generate_advanced(self, summary_content):
+        """Generate advanced courses based on summary and feedback."""
+        feedback = self.store.list_feedback()
+        if not feedback:
+            fail('no_feedback_data', '没有反馈数据，无法生成进阶课程。')
+
+        # Analyze feedback to find well-mastered and weak topics
+        well_mastered = []
+        weak_topics = []
+        next_directions = []
+        for fb in feedback:
+            if fb['mastery_level'] == 'fully_understood':
+                well_mastered.append(f"第{fb['lesson_no']:03d}课")
+            elif fb['mastery_level'] in ('partially_understood', 'not_understood'):
+                weak_topics.append(f"第{fb['lesson_no']:03d}课")
+            if fb.get('next_direction'):
+                next_directions.append(fb['next_direction'])
+
+        prompt = ADVANCED_PROMPT_TEMPLATE.format(
+            summary_content=summary_content,
+            well_mastered_topics='\n'.join(well_mastered) if well_mastered else '暂无',
+            weak_topics='\n'.join(weak_topics) if weak_topics else '暂无',
+            next_directions='\n'.join(set(next_directions)) if next_directions else '暂无明确方向'
+        )
+
+        messages = [
+            {'role': 'system', 'content': '你是一个个人学习助手，擅长根据学生学习情况生成进阶课程内容。'},
+            {'role': 'user', 'content': prompt}
+        ]
+
+        cfg = config(self.store)
+        if not cfg['key'] or not cfg['url']:
+            fail('ai_not_configured', '请先在设置页面配置AI API。')
+
+        if self.transport:
+            stream = self.transport.stream(messages, cfg)
+        else:
+            from .transport import qwen_stream
+            stream = qwen_stream(messages, cfg)
+
+        async def _generate_advanced():
+            full_content = ''
+            try:
+                async for packet in stream:
+                    if packet.get('done'):
+                        break
+                    text = packet.get('text', '')
+                    if text:
+                        full_content += text
+                        yield event('content', {'text': text})
+                # Save as a draft for user review
+                draft_id = str(uuid.uuid4())
+                lesson_no = self._get_next_lesson_no()
+                data = {
+                    'lesson_no': lesson_no,
+                    'content': full_content,
+                    'sources': '',
+                    'raw': full_content,
+                    'stream_completed': True,
+                    'errors': [],
+                    'plan_snapshot': None,
+                    'source_snapshot': {'entries': []},
+                    'record_hash': '',
+                    'context': [],
+                    'is_advanced': True
+                }
+                with self.store.lock():
+                    with self.store.conn() as c:
+                        c.execute('INSERT INTO copilot_drafts VALUES (?,?,1,?,?,?)',
+                                  (draft_id, lesson_no, 'draft', encoded(data), now()))
+                yield event('complete', {'content': full_content, 'draft_id': draft_id, 'lesson_no': lesson_no})
+            except Exception as e:
+                yield event('error', {'message': str(e)})
+
+        return _generate_advanced()
+
+    def _get_next_lesson_no(self):
+        """Get the next available lesson number for advanced courses."""
+        with self.store.conn() as c:
+            row = c.execute('SELECT MAX(lesson_no) FROM copilot_drafts').fetchone()
+            max_draft = row[0] if row and row[0] else 0
+            row = c.execute('SELECT MAX(lesson_no) FROM copilot_learning_records WHERE module_id=\'renzhi\' AND round_id=1').fetchone()
+            max_completed = row[0] if row and row[0] else 0
+            return max(max_draft, max_completed) + 1

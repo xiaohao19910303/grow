@@ -295,17 +295,78 @@
   async function generateAdvanced() {
     if (!currentSummaryContent) return;
     const btn = document.getElementById('btnGenerateAdvanced');
+    const origText = btn.textContent;
     btn.disabled = true;
     btn.textContent = '生成中...';
 
     try {
-      // This will be implemented in Task 7
-      showToast('进阶课程生成功能即将推出');
+      const response = await fetch('/api/copilot/summaries/generate-advanced', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-copilot-request': '1' },
+        body: JSON.stringify({
+          module: 'renzhi',
+          key: crypto.randomUUID(),
+          summary_content: currentSummaryContent
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || '生成失败');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let advancedContent = '';
+      let draftId = null;
+
+      // Show output area
+      const output = document.getElementById('summaryOutput');
+      output.style.display = '';
+      output.innerHTML = '<div class="cp-summary-streaming" id="advancedStreaming">正在生成进阶课程...</div>';
+      const streamingEl = document.getElementById('advancedStreaming');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.text) {
+                advancedContent += data.text;
+                streamingEl.textContent = advancedContent;
+              }
+              if (data.content) {
+                advancedContent = data.content;
+                streamingEl.textContent = advancedContent;
+                if (data.draft_id) draftId = data.draft_id;
+              }
+              if (data.error) {
+                throw new Error(data.error);
+              }
+            } catch (e) {
+              if (e.message !== '生成失败') console.error('SSE parse error:', e);
+            }
+          }
+        }
+      }
+
+      // Done
+      showToast('进阶课程已生成为草稿，请在"课程管理"页面查看和编辑');
+      document.getElementById('summaryPostActions').style.display = 'none';
+
     } catch (e) {
-      alert('生成失败：' + e.message);
+      showToast('生成失败：' + e.message);
     } finally {
       btn.disabled = false;
-      btn.textContent = '基于总结生成进阶课程';
+      btn.textContent = origText;
     }
   }
 

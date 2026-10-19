@@ -72,6 +72,10 @@ class SummaryGeneration(Input):
     scope: Literal['full_course', 'single_lesson'] = 'full_course'
 
 
+class AdvancedGeneration(Key):
+    summary_content: str = Field(max_length=100000)
+
+
 class ArchiveRequest(Key):
     pass
 
@@ -237,6 +241,14 @@ def register(app: FastAPI, root, db):
     @router.get('/summaries/{summary_id}')
     def summary(summary_id: int, module: Literal['renzhi'] = 'renzhi'):
         return store.get_summary(summary_id)
+
+    @router.post('/summaries/generate-advanced')
+    def generate_advanced(body: AdvancedGeneration):
+        from .summary import SummaryGenerator
+        gen = SummaryGenerator(store)
+        return StreamingResponse(gen.generate_advanced(body.summary_content),
+                                 media_type='text/event-stream',
+                                 headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
     @router.get('/learning-history/by-date')
     def learning_history_by_date(date: str, module: Literal['renzhi'] = 'renzhi'):
