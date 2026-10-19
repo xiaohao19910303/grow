@@ -290,8 +290,16 @@ class Store:
                     lesson['archived'] = bool(db_record['archived'])
                     if not status:
                         lesson['learning_label'] = '已学习'
+                    fb = c.execute('''
+                        SELECT mastery_level FROM copilot_feedback
+                        WHERE module_id='renzhi' AND round_id=1 AND lesson_no=?
+                    ''', (n,)).fetchone()
+                    lesson['has_feedback'] = fb is not None
+                    if fb:
+                        lesson['mastery_level'] = fb['mastery_level']
                 else:
                     lesson['archived'] = False
+                    lesson['has_feedback'] = False
             courses.append(lesson)
         counts = Counter(x['date'] for x in courses if x['date'])
         for x in courses:

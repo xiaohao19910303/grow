@@ -157,6 +157,9 @@
       // 分离今日待学习和已完成
       const todayPending = todayLessons.filter(lesson => lesson.learning_state !== 'completed');
       const todayCompleted = todayLessons.filter(lesson => lesson.learning_state === 'completed');
+      const todayNeedsFeedback = todayCompleted.filter(lesson => !lesson.archived && !lesson.has_feedback);
+      const todayArchived = todayCompleted.filter(lesson => lesson.archived);
+      const todayActiveCompleted = todayCompleted.filter(lesson => !lesson.archived);
 
       const section = node('section', undefined, 'learning-module');
       section.append(node('h3', module.name + ' · ' + module.duration));
@@ -177,21 +180,47 @@
       if (!todayLessons.length && !overdue.length) section.append(node('p', prefix + '暂无新课。', 'desc'));
       else if (!todayPending.length && !overdue.length) section.append(node('p', prefix + '待学习课程已完成。', 'desc'));
 
+      // 今日待反馈区域
+      if (todayNeedsFeedback.length) {
+        const feedbackSection = node('details', undefined, 'needs-feedback');
+        feedbackSection.open = true;
+        feedbackSection.append(node('summary', ` 待反馈 · ${todayNeedsFeedback.length} 课`));
+        todayNeedsFeedback.forEach(lesson => {
+          const row = node('div', undefined, 'todo-row lesson-row');
+          const text = node('div'); text.style.flex = '1'; text.style.minWidth = '0';
+          text.append(node('strong', lesson.topic, 'lesson-title'));
+          text.append(node('p', `✓ 已完成 · ${lesson.date} · 待反馈`, 'desc'));
+          row.append(text);
+          button(row, '完成反馈', () => window.showCourseFeedback(lesson.lesson_no));
+          feedbackSection.append(row);
+        });
+        section.append(feedbackSection);
+      }
+
       // 今日已完成区域
-      if (todayCompleted.length) {
+      if (todayActiveCompleted.length) {
         const completedSection = node('details', undefined, 'completed-today');
         completedSection.open = true;
-        completedSection.append(node('summary', `${prefix}已完成 · ${todayCompleted.length} 课`));
+        completedSection.append(node('summary', `${prefix}已完成 · ${todayActiveCompleted.length} 课`));
 
-        todayCompleted.forEach(lesson => {
+        todayActiveCompleted.forEach(lesson => {
           const row = node('div', undefined, 'todo-row lesson-row completed');
           const text = node('div'); text.style.flex = '1'; text.style.minWidth = '0';
           text.append(node('strong', lesson.topic, 'lesson-title'));
-          text.append(node('p', `✓ 已完成 · ${lesson.date}`, 'desc'));
+          const label = `✓ 已完成 · ${lesson.date}`;
+          text.append(node('p', label, 'desc'));
           row.append(text);
 
-          if (!lesson.completed_at) {
-            button(row, '标记完成', () => quickComplete(module, lesson));
+          // 反馈状态
+          if (lesson.has_feedback) {
+            const badge = document.createElement('span');
+            badge.className = 'fb-badge';
+            badge.textContent = (window.getMasteryEmoji ? window.getMasteryEmoji(lesson.mastery_level) : '') + ' 已反馈';
+            badge.style.marginRight = '8px';
+            row.append(badge);
+            button(row, '查看反馈', () => window.showCourseFeedback(lesson.lesson_no));
+          } else {
+            button(row, '完成反馈', () => window.showCourseFeedback(lesson.lesson_no));
           }
           button(row, '查看记录', () => viewLearningRecord(module, lesson));
           completedSection.append(row);
