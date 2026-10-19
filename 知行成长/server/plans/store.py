@@ -156,7 +156,10 @@ class Plans:
         return digest(p.read_bytes()) if p.exists() else None
 
     def read_text(self, relative, ref=None):
-        return self.path(relative).read_text(encoding='utf-8')
+        try:
+            return self.path(relative).read_text(encoding='utf-8')
+        except FileNotFoundError:
+            fail('not_found', '课程资料文件缺失，请核对内容存储配置或恢复原文件后重试。', 404)
 
     def exists(self, relative):
         return self.path(relative).exists()
@@ -168,6 +171,8 @@ class Plans:
         self.plan(pid)
         lesson = next((x for x in self.lessons(pid) if x['lesson_no'] == number), None)
         if not lesson: fail('not_found', '课程不存在。', 404)
+        if lesson.get('storage') == 'github':
+            fail('content_backend', '这节课程保存在 GitHub，请启用 GitHub 内容存储后重试。', 503)
         base = self.base(pid)
         return {'lesson': lesson, 'content': self.read_text(base+'/'+lesson['path']),
                 'sources': self.read_text(base+'/'+lesson['source'])}

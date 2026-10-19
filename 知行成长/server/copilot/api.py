@@ -151,19 +151,26 @@ def register(app: FastAPI, root, db):
 
     @router.patch('/lessons/{number}/learning-state')
     def learning(number: int, body: Learning):
-        return store.learning(number, body.state, body.version, body.key)
+        saved = store.learning(number, body.state, body.version, body.key)
+        if body.state == 'completed':
+            from action_plans import with_content_completion
+            return with_content_completion(saved, {'kind':'renzhi','lesson_no':number})
+        return saved
 
     @router.post('/lessons/{number}/review')
     def submit_review(number: int, body: ReviewSubmission):
-        return store.submit_review(number, body.answers, body.time_spent_seconds, body.version, body.key)
+        from action_plans import with_content_completion
+        return with_content_completion(store.submit_review(number, body.answers, body.time_spent_seconds, body.version, body.key), {'kind':'renzhi','lesson_no':number})
 
     @router.post('/lessons/{number}/summary')
     def submit_summary(number: int, body: SummarySubmission):
-        return store.submit_summary(number, body.summary, body.time_spent_seconds, body.version, body.key)
+        from action_plans import with_content_completion
+        return with_content_completion(store.submit_summary(number, body.summary, body.time_spent_seconds, body.version, body.key), {'kind':'renzhi','lesson_no':number})
 
     @router.post('/lessons/{number}/complete')
     def quick_complete(number: int, body: QuickCompletion):
-        return store.quick_complete(number, body.time_spent_seconds, body.version, body.key)
+        from action_plans import with_content_completion
+        return with_content_completion(store.quick_complete(number, body.time_spent_seconds, body.version, body.key), {'kind':'renzhi','lesson_no':number})
 
     @router.get('/lessons/{number}/learning-record')
     def learning_record(number: int, module: Literal['renzhi'] = 'renzhi'):

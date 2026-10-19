@@ -105,6 +105,8 @@ Render 不克隆内容仓库，不把正式课程、锁文件或发布恢复日�
 
 ### 首次配置
 
+本地 `./manage.sh start` / `restart` 会读取 `server/.env`，并从仓库根目录 `.env.local` 补充数据库与 GitHub 存储配置；进程已有环境变量优先。请在 `server/.env` 明确设置 `PLAN_CONTENT_BACKEND=github`、`GITHUB_CONTENT_REPO` 和分支，以读取已发布到 GitHub 的课程。根目录部署文件中的旧登录密码、AI 密钥及 Render 凭证不会导入本地服务。
+
 本次已确定内容仓库为 `xiaohao19910303/zhixing`，目标分支为 `main`，已写入部署配置。该仓库目前可公开访问，提交的教学内容会公开；个人反馈仍只存数据库。
 
 1. 使用已确定的内容仓库。空仓库会在首次正式发布时通过 Contents API 创建 README，再提交规划；生成草稿与阅读请求不会初始化仓库。若目标分支与空仓库的默认分支不同，须先在 GitHub 建立目标分支。需要私密课程时，先将仓库设置为私有。
@@ -218,3 +220,7 @@ PYTHONPATH=知行成长/server python -m unittest discover -s 知行成长/serve
 ```
 
 旧模块、旧表和 SQLite 原记录的迁移步骤与边界见 [旧模块云端迁移说明](旧模块云端迁移说明.md)。
+
+### 行动计划与复盘
+
+首页「我的行动计划」支持年／月／周／日计划、长短期分类、进度汇总、提醒、一键学习、执行恢复与历史复盘。AI 建议经数据预览和本人确认生成，调整计划需手动保存。使用、私有 API 与提醒边界见 [行动计划第一版](docs/action-plans-v1.md)。LightTick 原生联动目前为设计交付。

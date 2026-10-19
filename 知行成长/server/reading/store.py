@@ -3,6 +3,7 @@ import copy
 import json
 import os
 import re
+import sqlite3
 import tempfile
 import uuid
 from pathlib import Path
@@ -40,8 +41,11 @@ class ReadingStore(Plans):
         if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
             fail('legacy_content_migration', '旧认知阅读的文件与笔记尚未完成云端迁移，暂不写入临时磁盘。', 503)
         with self.lock():
-            with self.conn() as c:installed=c.execute("SELECT 1 FROM sqlite_master WHERE name='reading_records'").fetchone()
-            if not installed:
+            with self.conn() as c:
+                sqlite = isinstance(c, sqlite3.Connection)
+                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='reading_records'" if sqlite else
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='reading_records'").fetchone()
+            if not installed and sqlite:
                 from plans.backup import database_snapshot
                 database_snapshot(self,self.runtime/('before-reading-'+uuid.uuid4().hex+'.db'))
             with self.conn() as c:c.execute('CREATE TABLE IF NOT EXISTS reading_records (id TEXT PRIMARY KEY,data TEXT NOT NULL)')

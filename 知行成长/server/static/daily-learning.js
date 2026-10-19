@@ -383,6 +383,7 @@
   window.renderDailyLearning=()=>{renderHome();renderLibrary();};
   window.loadDailyLearning = (options = {}) => {
     if(listRequest && !options.force)return listRequest;
+    window.refreshAutoCheckins?.();
     const request=++generation;
     const groups=[modules.filter(m=>m.id==='renzhi'),modules.filter(m=>['yingyu','biaoda'].includes(m.id)),modules.filter(m=>m.kind==='plan')];
     const sources=[['认知课程','/api/copilot/today-task',data=>[{id:'renzhi',name:'认知与通识',duration:'15–20 分钟',lessons:data.lessons}]],

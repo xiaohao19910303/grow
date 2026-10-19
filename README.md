@@ -6,7 +6,9 @@
 
 - [知行成长平台说明](知行成长/README.md)
 - [内容生成与存储规则](知行成长/内容存储规则.md) — 模块目录、命名、课次、资料与索引约定
-- [Grow 统一产品方案与 App 改造计划](../project/plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — 待评审：沿用 LightTick 原生端，明确复用、新增、数据归属及分阶段验收；本轮仅规划
+- [Grow 统一产品方案与 App 改造计划](../project/plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — 方向已确认：沿用 LightTick 原生端，明确复用、新增、数据归属及分阶段验收；尚未改造代码
+- [Grow App G0 核验与 G1 任务](../project/plan/docs/04-planning/grow-app-g0-2026-10-18/README.md) — 基线、账户、数据归属和定向测试已核验，含具体任务及验收；尚未实施迁移
+- [客户端功能规划](../project/plan/docs/02-design/grow-client-feature-plan.md)与[迭代计划](../project/plan/docs/04-planning/grow-client-iteration-plan.md) — 记录、学习、行动三条路径，CF01–CF40 和 I0–I7；本轮仅完成规划
 
 - `学习系统总览.md` — 系统说明书：7 大模块 + 四层闭环
 - `长期成长学习体系总规划.md` — 总纲：目标 + 路线图 + 度量系统

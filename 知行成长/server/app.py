@@ -552,6 +552,8 @@ register_migrations(app, copilot_store, LEARN_ROOT)
 materials = register_materials(app, LEARN_ROOT)
 from study_notes import register as register_study_notes
 register_study_notes(app)
+from action_plans import register as register_action_plans
+register_action_plans(app)
 search_service = register_search(app, DB_PATH)
 timeline_service = register_timeline(app, DB_PATH)
 
@@ -580,6 +582,13 @@ def health():
 @app.get("/api/data")
 def get_data():
     return JSONResponse(load_state(), headers={'Cache-Control': 'no-store'})
+
+
+@app.get('/api/learning-checkins')
+def get_learning_checkins():
+    from learning_checkins import read_checkins
+    with db.connect() as conn:
+        return JSONResponse(read_checkins(conn), headers={'Cache-Control': 'no-store'})
 
 
 @app.put("/api/data")

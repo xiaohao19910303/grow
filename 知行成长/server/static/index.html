@@ -65,6 +65,8 @@
   .chip{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);cursor:pointer;font-size:13px;transition:.15s;background:#fff}
   .chip .dot{width:12px;height:12px}
   .chip:hover{border-color:var(--primary)}
+  #view-progress .chip,#view-progress .cell{cursor:default}
+  #view-progress .cell:hover{transform:none}
   .chip.on{background:var(--primary-soft);border-color:var(--primary);color:var(--primary);font-weight:600}
   .field-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
   .field-row label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px}
@@ -147,6 +149,7 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261018-1">
 </head>
 <body>
 
@@ -185,9 +188,11 @@
   </nav>
   <nav id="subnav" class="subnav" aria-label="栏目导航">
     <button class="btn primary" aria-current="page" onclick="goTab('personal')">今日</button>
+    <button class="btn" onclick="goTab('action-plans')">行动计划</button>
     <button class="btn" onclick="goTab('reading')">阅读</button>
   </nav>
   <div id="view-settings" style="display:none" class="section">
+    <section id="actionLinkSettings" class="account-settings" aria-label="LightTick 客户端联动"><h2>LightTick 客户端联动</h2><p>正在读取联动状态…</p></section>
     <h2>设置与数据</h2><p class="desc">记录会自动保存。需要时可手动重试保存或导出备份。</p>
     <section class="account-settings" aria-labelledby="invitationsTitle">
       <h2 id="invitationsTitle">邀请其他人</h2>
@@ -241,11 +246,13 @@
     <div id="learningLibrary"></div>
   </div>
   <div id="view-reader" style="display:none"><section class="section cp-reader" id="dailyReader" hidden></section></div>
+  <div id="view-action-plans" style="display:none" class="section"></div>
   <div id="view-personal">
     <div class="day-heading">
       <div><h2 id="dayHeading">今天，稳步向前</h2><p id="daySummary" class="desc">正在读取今日安排…</p></div>
       <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
     </div>
+    <section id="actionHome" class="section action-home" aria-label="待执行行动计划"><h2>把时间留给重要的事</h2><p class="desc" role="status">正在读取行动计划…</p></section>
     <div class="today-layout">
       <section class="section learning-panel" aria-labelledby="dailyLearningTitle">
         <div class="section-heading"><h2 id="dailyLearningTitle">继续学习</h2><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新</button></div>
@@ -272,11 +279,12 @@
 
   <div id="view-progress" style="display:none">
     <div class="section">
-      <h2>今日快速打卡</h2><p class="desc">点击模块切换今天的完成状态：未做 → 进行中 → 已完成</p>
+      <h2>今日学习打卡</h2><p class="desc">在「今日」学习并标记学完后，自动按分类打卡，无需重复操作。同一天同一分类只记一次，暂存笔记不会打卡。</p>
+      <p id="checkinStatus" class="desc" role="status"></p><button class="btn" onclick="refreshAutoCheckins()">刷新记录</button>
       <div class="chips" id="todayChips"></div>
     </div>
     <div class="section">
-      <h2>打卡矩阵（近 14 天）</h2><p class="desc">点击方格循环切换完成度 0-3</p>
+      <h2>打卡记录（近 14 天）</h2><p class="desc">✓ 表示当天已学完该分类的课程；历史手动打卡记录继续保留。</p>
       <div style="overflow-x:auto"><table class="matrix" id="matrix"></table></div>
     </div>
     <div class="section">
@@ -712,13 +720,34 @@ function editTodo(index){
 }
 
 /* ================= 统计 ================= */
+let automaticCheckins = {}, automaticCheckinModules = [], checkinRequest = 0;
+function checkinModules(){
+  return [...state.modules,...automaticCheckinModules.filter(m=>!state.modules.some(base=>base.id===m.id))];
+}
+function checkinsOn(date){
+  return {...(state.checkins[date]||{}),...(automaticCheckins[date]||{})};
+}
+async function refreshAutoCheckins(){
+  const request=++checkinRequest, status=document.getElementById('checkinStatus');
+  status.textContent='正在读取学习打卡记录…';
+  try{
+    const response=await fetch('/api/learning-checkins',{cache:'no-store'});
+    if(!response.ok)throw Error('读取失败');
+    const data=await response.json();
+    if(!data.checkins || Array.isArray(data.checkins) || !Array.isArray(data.modules))throw Error('记录格式无效');
+    if(request!==checkinRequest)return;
+    automaticCheckins=data.checkins;automaticCheckinModules=data.modules;
+    status.textContent='已按课程完成日期自动汇总（北京时间）。';
+    renderProgress();renderOverview();renderHabits();
+  }catch(error){if(request===checkinRequest)status.textContent='打卡记录更新失败，当前保留上次显示的记录，请点击刷新记录重试。';}
+}
 function activityOf(date){
-  let a=0; const c=state.checkins[date];
+  let a=0; const c=checkinsOn(date);
   if(c) a+=Object.values(c).filter(v=>v>0).length;
   const h=state.habits[date]; if(h&&(h.minutes>0||(h.note&&h.note.trim()))) a+=1; return a;
 }
 function activeDates(){
-  const set=new Set(Object.keys(state.checkins));
+  const set=new Set([...Object.keys(state.checkins),...Object.keys(automaticCheckins)]);
   Object.keys(state.habits).forEach(d=>{const h=state.habits[d]; if(h&&(h.minutes>0||(h.note&&h.note.trim()))) set.add(d);}); return set;
 }
 function streakInfo(){
@@ -730,7 +759,7 @@ function streakInfo(){
   return {cur,best,total:set.size};
 }
 function weekDates(){ const s=startOfWeek(new Date()); const a=[]; for(let i=0;i<7;i++) a.push(ds(addDays(s,i))); return a; }
-function moduleCompletionThisWeek(mid){ const wd=weekDates(); const done=wd.filter(d=>{const c=state.checkins[d]; return c&&c[mid]&&c[mid]>0;}).length; return Math.round(done/7*100); }
+function moduleCompletionThisWeek(mid){ const wd=weekDates(); const done=wd.filter(d=>{const c=checkinsOn(d); return c[mid]&&c[mid]>0;}).length; return Math.round(done/7*100); }
 function minutesOn(date){ const h=state.habits[date]; return h?(h.minutes||0):0; }
 function weekMinutes(){ return weekDates().reduce((s,d)=>s+minutesOn(d),0); }
 
@@ -782,39 +811,40 @@ function heatmap(el, levelMap, weeks){
 /* ================= 渲染 ================= */
 function renderOverview(){
   const {cur,best,total}=streakInfo();
-  const tc=state.checkins[today()]||{}; const done=Object.values(tc).filter(v=>v>=2).length;
+  const tc=checkinsOn(today()); const done=Object.values(tc).filter(v=>v>=2).length;
   const pending=state.decisions.filter(d=>!(d.actual&&d.actual.trim())).length;
   document.getElementById('statCards').innerHTML=`
     <div class="card"><div class="k">累计记录天数</div><div class="v">${total}<small> 天</small></div></div>
     <div class="card"><div class="k">当前连续打卡</div><div class="v">${cur}<small> 天</small></div></div>
     <div class="card"><div class="k">历史最长连续</div><div class="v">${best}<small> 天</small></div></div>
     <div class="card"><div class="k">本周学习时长</div><div class="v">${weekMinutes()}<small> 分钟</small></div></div>
-    <div class="card"><div class="k">今日完成模块</div><div class="v">${done}<small> / ${state.modules.length}</small></div></div>
+    <div class="card"><div class="k">今日完成模块</div><div class="v">${done}<small> / ${checkinModules().length}</small></div></div>
     <div class="card"><div class="k">决策日志</div><div class="v">${state.decisions.length}<small> 待复盘 ${pending}</small></div></div>
     <div class="card"><div class="k">预测校准</div><div class="v">${state.predictions.length}<small> 条</small></div></div>
     <div class="card"><div class="k">复盘 / 洞察</div><div class="v">${state.reviews.length}<small> / ${state.insights.length}</small></div></div>`;
-  barChart(document.getElementById('barChart'), state.modules.map(m=>m.name), state.modules.map(m=>moduleCompletionThisWeek(m.id)), state.modules.map(m=>m.color));
+  barChart(document.getElementById('barChart'), checkinModules().map(m=>m.name), checkinModules().map(m=>moduleCompletionThisWeek(m.id)), checkinModules().map(m=>m.color));
   const actLvl={}; activeDates().forEach(d=>{const a=activityOf(d); actLvl[d]=a>=4?4:a>=3?3:a>=2?2:1;});
   heatmap(document.getElementById('heatmap'), actLvl, 17);
   const days=lastNDays(7).slice().reverse();
   document.getElementById('recentList').innerHTML=days.map(d=>{
-    const c=state.checkins[d]||{};
-    const names=state.modules.filter(m=>c[m.id]&&c[m.id]>0).map(m=>'<span style="font-size:12px;margin:0 4px;padding:2px 8px;border-radius:99px;background:'+hexRgba(m.color,0.12)+';color:'+m.color+'">'+esc(m.name)+'</span>').join('')||'<span style="color:#c3c7d1">无记录</span>';
+    const c=checkinsOn(d);
+    const names=checkinModules().filter(m=>c[m.id]&&c[m.id]>0).map(m=>'<span style="font-size:12px;margin:0 4px;padding:2px 8px;border-radius:99px;background:'+hexRgba(m.color,0.12)+';color:'+m.color+'">'+esc(m.name)+'</span>').join('')||'<span style="color:#c3c7d1">无记录</span>';
     const h=state.habits[d]; const t=h&&h.minutes?(' · '+h.minutes+' 分钟'):'';
     return '<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f2f3f7;font-size:13px"><span style="min-width:80px;color:var(--muted)">'+fmtDateCN(d)+'</span><span style="flex:1">'+names+t+'</span></div>';}).join('')||'<div class="empty">暂无记录</div>';
 }
 function renderProgress(){
-  const t=today(); const tc=state.checkins[t]||{};
-  document.getElementById('todayChips').innerHTML=state.modules.map(m=>{
-    const v=tc[m.id]||0; const cls=v>=2?'chip on':'chip'; const label=v===0?'未做':(v===1?'进行中':'已完成');
-    return '<div class="'+cls+'" onclick="cycleCheckin(\''+t+'\',\''+m.id+'\')"><span class="dot" style="background:'+m.color+'"></span>'+esc(m.name)+'<span style="font-size:11px;color:var(--muted)">'+label+'</span></div>';}).join('');
+  const t=today(); const tc=checkinsOn(t);
+  document.getElementById('todayChips').innerHTML=checkinModules().map(m=>{
+    const v=tc[m.id]||0; const cls=v>=2?'chip on':'chip'; const label=automaticCheckins[t]?.[m.id]?'已完成 · 自动记录':v===0?'暂无完成记录':(v===1?'进行中':'已完成');
+    return '<div class="'+cls+'"><span class="dot" style="background:'+m.color+'"></span>'+esc(m.name)+'<span style="font-size:11px;color:var(--muted)">'+label+'</span></div>';}).join('');
   const days=lastNDays(14);
   let head='<tr><th class="mname" style="text-align:left">模块</th>';
   days.forEach(d=>{const dd=parseDt(d); head+='<th'+(d===t?' style="color:var(--primary)"':'')+'>'+(dd.getMonth()+1)+'/'+dd.getDate()+'</th>';}); head+='</tr>';
   let rows='';
-  state.modules.forEach(m=>{ rows+='<tr><td class="mname"><span class="dot" style="background:'+m.color+'"></span>'+esc(m.name)+'</td>';
-    days.forEach(d=>{ const v=(state.checkins[d]||{})[m.id]||0;
-      rows+='<td><span class="cell" style="'+(v>0?('background:'+hexRgba(m.color,v===1?0.22:v===2?0.55:0.95)+';color:'+(v>=2?'#fff':'inherit')+';border-color:'+hexRgba(m.color,v*0.4)):'')+'" onclick="cycleCheckin(\''+d+'\',\''+m.id+'\')" title="'+d+'：'+['未做','开始','进行中','已完成'][v]+'">'+(v===3?'✓':(v>0?v:''))+'</span></td>';});
+  checkinModules().forEach(m=>{ rows+='<tr><td class="mname"><span class="dot" style="background:'+m.color+'"></span>'+esc(m.name)+'</td>';
+    days.forEach(d=>{ const v=checkinsOn(d)[m.id]||0;
+      const label=d+'：'+['暂无完成记录','开始','进行中','已完成'][v]+(automaticCheckins[d]?.[m.id]?' · 学完后自动记录':'');
+      rows+='<td><span class="cell" style="'+(v>0?('background:'+hexRgba(m.color,v===1?0.22:v===2?0.55:0.95)+';color:'+(v>=2?'#fff':'inherit')+';border-color:'+hexRgba(m.color,v*0.4)):'')+'" title="'+label+'" aria-label="'+esc(m.name)+' '+label+'">'+(v===3?'✓':(v>0?v:''))+'</span></td>';});
     rows+='</tr>'; });
   document.getElementById('matrix').innerHTML=head+rows;
   document.getElementById('moduleList').innerHTML=state.modules.map(m=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid #f2f3f7"><span class="dot" style="background:'+m.color+'"></span><span style="flex:1">'+esc(m.name)+'</span><button class="icon-btn" onclick="renameModule(\''+m.id+'\')">重命名</button><button class="icon-btn del" onclick="delModule(\''+m.id+'\')">删除</button></div>').join('')||'<div class="empty">暂无模块</div>';
@@ -1981,7 +2011,7 @@ function exportReportMarkdown(){
 
 /* ================= Tab ================= */
 const navGroups={
-  personal:[['personal','今日'],['reading','阅读']],
+  personal:[['personal','今日'],['action-plans','行动计划'],['reading','阅读']],
   learning:[['library','我的课程'],['plans','学习计划'],['progress','学习打卡'],['copilot','课程管理']],
   records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['stocks','投资复盘'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
   growth:[['overview','成长总览'],['timeline','时间线'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告'],['search','搜索']]
@@ -2013,10 +2043,11 @@ function goTab(name, options={}){
   const subnav=document.getElementById('subnav');
   subnav.hidden=!group || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
-  ['reading','plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','action-plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='personal' && !options.restore){ renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
+  if(name==='action-plans')window.ActionPlans?.enter();
   if(name==='plans')window.enterPlans?.();
   if(name==='library')window.renderDailyLearning?.();
   if(name==='copilot' && !options.reading){window.showCopilotManagement?.();window.loadCopilot();}
@@ -2031,11 +2062,11 @@ function goTab(name, options={}){
   if(name==='overview'){ renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
   if(name==='settings') { loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
   if(name==='learning-history') window.loadLearningHistory?.();
+  if(name==='progress' || name==='overview')refreshAutoCheckins();
   if(name==='stocks') window.initStocksModule?.();
 }
 
 /* ================= 学习进度 / 习惯 / 自定义 ================= */
-function cycleCheckin(d,mid){ if(!state.checkins[d]) state.checkins[d]={}; let v=state.checkins[d][mid]||0; v=(v+1)%4; if(v===0) delete state.checkins[d][mid]; else state.checkins[d][mid]=v; if(Object.keys(state.checkins[d]).length===0) delete state.checkins[d]; persist(); render(); }
 function addModule(){
   const name=(document.getElementById('newModuleName').value||'').trim(); if(!name){toast('请输入模块名称');return;}
   const palette=['#4F6EF7','#7C5CF0','#00A6A6','#E07B39','#D64580','#2FA84F','#6B7280','#C0362C','#0E8ED5','#9B6AD2'];
@@ -2176,7 +2207,7 @@ init();
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
 <script src="/static/copilot.js?v=20261018-performance"></script>
-<script src="/static/plans.js?v=20261018-performance"></script>
+<script src="/static/plans.js?v=20261018-main-qa"></script>
 <script src="/static/study-generation.js?v=20261018-performance"></script>
 <script src="/static/daily-learning.js?v=20261018-performance"></script>
 <script src="/static/reading-growth.js?v=20261017-growth1"></script>
@@ -2187,5 +2218,11 @@ init();
 <script src="/static/stocks.js?v=1"></script>
 <script src="/static/search.js?v=20261018-performance"></script>
 <script src="/static/timeline.js?v=1"></script>
+<div id="actionReminder" class="action-reminder" role="status" hidden></div>
+<aside id="actionExecution" class="action-execution" aria-label="正在执行的行动" hidden></aside>
+<script src="/static/action-plan-client.js?v=20261018-1"></script>
+<script src="/static/action-reviews.js?v=20261018-1"></script>
+<script src="/static/action-link.js?v=20261019-1"></script>
+<script src="/static/action-plans.js?v=20261018-1"></script>
 </body>
 </html>
