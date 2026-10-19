@@ -849,6 +849,40 @@ class Store:
             items.append(d)
         return items
 
+    def save_summary(self, module_id, round_id, scope, content, feedback_snapshot):
+        with self.lock():
+            with self.conn() as c:
+                c.execute('''
+                    INSERT INTO copilot_summaries
+                    (module_id, round_id, scope, content, feedback_snapshot, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (module_id, round_id, scope, content,
+                      encoded(feedback_snapshot), now()))
+            # Also write to Markdown file
+            round_num = round_id
+            summary_dir = self.module / '课程总结'
+            summary_dir.mkdir(parents=True, exist_ok=True)
+            summary_file = summary_dir / f'整课总结-第{round_num}轮.md'
+            header = f'# 整课总结 · 第{round_num}轮\n\n生成时间：{now()}\n\n---\n\n'
+            summary_file.write_text(header + content, encoding='utf-8')
+            return True
+
+    def list_summaries(self, module_id='renzhi', round_id=1):
+        with self.conn() as c:
+            rows = c.execute('''
+                SELECT id, module_id, round_id, scope, content, feedback_snapshot, created_at
+                FROM copilot_summaries WHERE module_id=? AND round_id=?
+                ORDER BY created_at DESC
+            ''', (module_id, round_id)).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_summary(self, summary_id):
+        with self.conn() as c:
+            row = c.execute('SELECT * FROM copilot_summaries WHERE id=?', (summary_id,)).fetchone()
+        if not row:
+            fail('not_found', '总结不存在。', 404)
+        return dict(row)
+
     def archive_lesson(self, number, key):
         with self.lock():
             self._ensure_completed(number)

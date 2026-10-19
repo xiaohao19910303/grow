@@ -68,6 +68,10 @@ class FeedbackSubmission(Key):
     next_direction: str = Field(default='', max_length=1000)
 
 
+class SummaryGeneration(Input):
+    scope: Literal['full_course', 'single_lesson'] = 'full_course'
+
+
 class ArchiveRequest(Key):
     pass
 
@@ -214,6 +218,25 @@ def register(app: FastAPI, root, db):
     @router.get('/lessons/archived')
     def archived_lessons(module: Literal['renzhi'] = 'renzhi'):
         return {'items': store.list_archived()}
+
+    @router.post('/summaries/generate')
+    def generate_summary(body: SummaryGeneration):
+        from .summary import SummaryGenerator
+        gen = SummaryGenerator(store)
+        round_id = 1
+        if hasattr(body, 'round_id'):
+            round_id = body.round_id
+        return StreamingResponse(gen.generate(body.module, round_id, body.scope),
+                                 media_type='text/event-stream',
+                                 headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+    @router.get('/summaries')
+    def summaries(module: Literal['renzhi'] = 'renzhi'):
+        return {'items': store.list_summaries(module)}
+
+    @router.get('/summaries/{summary_id}')
+    def summary(summary_id: int, module: Literal['renzhi'] = 'renzhi'):
+        return store.get_summary(summary_id)
 
     @router.get('/learning-history/by-date')
     def learning_history_by_date(date: str, module: Literal['renzhi'] = 'renzhi'):
