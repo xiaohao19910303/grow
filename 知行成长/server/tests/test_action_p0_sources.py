@@ -9,7 +9,7 @@ import test_plans
 import action_plans as actions
 
 
-class CourseReceiptTests(CloudFixture):
+class CourseReceiptFixture(CloudFixture):
     def setUp(self):
         super().setUp()
         self.pid=test_plans.StoreTests.adopt(self); test_plans.StoreTests.course(self,self.pid)
@@ -31,6 +31,8 @@ class CourseReceiptTests(CloudFixture):
         return self.client.post('/api/plans/'+self.pid+'/lessons/1/feedback',headers=self.headers,
             json={'data':{'state':'completed','comment':'只存私人反馈','key':key,'origin_action_id':self.plan['id'],**updates}})
 
+
+class CourseReceiptTests(CourseReceiptFixture):
     def test_C01_C06_course_receipt_survives_sync_failure_and_replays_once(self):
         with patch('action_plans.content_completed',side_effect=RuntimeError('synthetic outage')):
             saved=self.confirm()

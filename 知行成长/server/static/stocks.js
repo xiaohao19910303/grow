@@ -605,6 +605,7 @@ class StocksModule {
 
   setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
+      if (!this.formContainer || document.getElementById('view-stocks')?.style.display === 'none') return;
       // Ctrl+N: 新建记录
       if ((e.ctrlKey || e.metaKey) && e.key === 'n' && !this.formContainer.innerHTML) {
         e.preventDefault();

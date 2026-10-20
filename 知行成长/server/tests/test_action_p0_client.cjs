@@ -28,5 +28,16 @@ const client=context.window.ActionPlanClient.create({request,storage,account:'A'
  client.deleteDraft(first.draft_id);assert.equal(client.listDrafts(general)[0].values.title,'changed');
  const bob=context.window.ActionPlanClient.create({request,storage,account:'B',random:()=>`p0-${++serial}`});
  assert.equal(bob.listDrafts(general).length,0);assert.equal(bob.pending('draft:'+first.draft_id),undefined);
+ const second=client.newDraft(general,{title:'second independent draft'});
+ assert.equal(client.listDrafts(general).length,2);
+ assert.equal(client.listDrafts({...general,parent_context:'different-parent'}).length,0);
+ assert.equal(client.listDrafts({...general,entry_date:'2026-10-20'}).length,0);
+ const aliceAgain=context.window.ActionPlanClient.create({request,storage,account:'A',random:()=>`p0-${++serial}`});
+ assert.equal(aliceAgain.listDrafts(general).length,2,'switching accounts and reloading restores only that account');
+ aliceAgain.deleteDraft(second.draft_id);assert.equal(aliceAgain.listDrafts(article)[0].draft_id,other.draft_id);
+ const broken=context.window.ActionPlanClient.create({request,account:'broken',random:()=>`p0-${++serial}`,
+   storage:{getItem(){throw Error('denied');},setItem(){throw Error('denied');},removeItem(){throw Error('denied');}}});
+ const volatile=broken.newDraft(general,{title:'memory survives denied storage'});
+ assert.equal(broken.listDrafts(general)[0].draft_id,volatile.draft_id);
  console.log('P0 client acceptance passed: context/account isolation, stale-base version, immutable pending, forked edits and same-key recovery.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

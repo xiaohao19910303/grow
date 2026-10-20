@@ -6,9 +6,11 @@ import re
 import subprocess
 import sys
 
-SUITES = ('test_action_p0', 'test_action_p0_sources', 'test_action_plans', 'test_action_reviews',
+SUITES = ('test_action_p0', 'test_action_p0_sources', 'test_action_p0_closeout', 'test_action_p0_closeout_sources',
+          'test_action_p0_browser', 'test_action_plans', 'test_action_reviews',
           'test_daily_arrangements', 'test_arrangement_sources', 'test_github_plans',
-          'test_study_notes', 'test_study_materials', 'test_legacy_cloud_api', 'test_plan_read_errors')
+          'test_study_notes', 'test_study_materials', 'test_legacy_cloud_schema', 'test_legacy_cloud_content',
+          'test_legacy_cloud_api', 'test_plan_read_errors')
 
 
 def main():

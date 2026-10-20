@@ -17,8 +17,6 @@ def main():
     fixture=CloudHTTPFixture();fixture.setUp()
     try:
         app=fixture.app;actions(app);initialize();materials(app,fixture.root);notes(app)
-        import db
-        with db.connect() as c:c.execute('ALTER TABLE copilot_learning_records ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE')
         from plans.github_store import GitHubPlans
         from plans.github import GitHubContent
         import httpx

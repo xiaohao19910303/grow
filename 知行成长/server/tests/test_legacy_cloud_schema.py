@@ -26,6 +26,25 @@ class PostgreSQLFixture(unittest.TestCase):
 
 
 class LegacySchemaTests(PostgreSQLFixture):
+    def test_learning_archive_upgrade_is_additive_after_completed_migration(self):
+        migrate()
+        with db.connect() as c:
+            c.execute("INSERT INTO copilot_learning_records(module_id,round_id,lesson_no,completion_type,summary_text,time_spent_seconds,completed_at,idempotency_key) VALUES ('renzhi',2,1,'summary','PRIVATE PRESERVED',90,'2026-10-19','archive-upgrade')")
+            c.execute('ALTER TABLE copilot_learning_records DROP COLUMN IF EXISTS archived')
+            c.execute('ALTER TABLE copilot_learning_records DROP COLUMN IF EXISTS archived_at')
+        report = migrate()
+        with db.connect() as c:
+            record = dict(c.execute('SELECT * FROM copilot_learning_records').fetchone())
+            self.assertEqual(record['archived'], 0)
+            self.assertIsNone(record['archived_at'])
+            self.assertEqual((record['round_id'], record['summary_text'], record['time_spent_seconds']),
+                             (2, 'PRIVATE PRESERVED', 90))
+            c.execute("UPDATE copilot_learning_records SET archived=1,archived_at='2026-10-20'")
+        self.assertEqual(migrate(), report)
+        with db.connect() as c:
+            record = c.execute('SELECT archived,archived_at FROM copilot_learning_records').fetchone()
+            self.assertEqual((record['archived'], record['archived_at']), (1, '2026-10-20'))
+
     def test_old_bootstrap_schemas_are_archived_and_imported_once(self):
         with db.connect() as c:c.executescript((Path(__file__).parent/'fixtures/legacy-bootstrap.sql').read_text())
         seeds={

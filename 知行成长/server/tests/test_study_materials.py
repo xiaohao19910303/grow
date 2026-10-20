@@ -154,6 +154,9 @@ class StudyMaterialTests(PostgreSQLFixture):
             endpoint = route.request.url.split(base)[-1].split('?')[0]
             if endpoint.startswith(('/api/study-materials', '/api/study-notes')):
                 return route.continue_()
+            if endpoint == '/api/action-plans':
+                return route.fulfill(json={'plans': [], 'execution': None, 'server_time': '2026-10-19T12:00:00Z',
+                    'action_schema_version': 2, 'capabilities': {'nullable_schedule': True}, 'reminder_delivery': 'foreground-and-calendar'})
             if endpoint == '/api/auth/me':
                 result = {'user': {'id': 'fixture', 'username': 'tester', 'is_owner': True}}
             elif endpoint == '/api/data':
@@ -173,17 +176,19 @@ class StudyMaterialTests(PostgreSQLFixture):
                     page = browser.new_page(viewport={'width': 1280, 'height': 960})
                     page.route('**/api/**', unrelated)
                     errors = []
-                    page.on('pageerror', lambda error: errors.append(str(error)))
+                    page.on('pageerror', lambda error: errors.append(error.stack))
                     page.goto(base)
-                    home = page.locator('#dailyLearning')
+                    page.locator('[data-group="learning"]').click()
+                    home = page.locator('#learningLibrary')
                     expression = home.locator('.learning-module').filter(has=page.get_by_role('heading', name='结构化表达 · 15 分钟', exact=True))
-                    expression.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()
+                    expression.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).first.click()
                     reader = page.locator('#dailyReader')
                     note = reader.get_by_label('学习笔记（可选）')
                     note.fill('PRIVATE 浏览器笔记 <script>alert(1)</script>')
                     page.locator('[data-group="personal"]').click()
                     reader.wait_for(state='hidden')
-                    expression.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()
+                    page.locator('[data-group="learning"]').click()
+                    expression.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).first.click()
                     note.wait_for()
                     self.assertIn('PRIVATE 浏览器笔记', note.input_value(), 'Leaving and returning must restore the independent draft')
                     self.assertIsNone(self.client.get(self.path + '/learning-record').json())
@@ -209,9 +214,9 @@ class StudyMaterialTests(PostgreSQLFixture):
                     reader.get_by_role('heading', name='结构化表达第 2 课', exact=True).first.wait_for()
                     self.assertEqual(note.input_value(), '')
                     reader.get_by_role('button', name='返回学习列表', exact=True).click()
-                    expression.get_by_text('已完成课程 · 1 课', exact=True).click()
+                    expression.locator('.lesson-row.completed').wait_for()
                     with page.expect_response(lambda response: response.url == base + '/api/study-materials'):
-                        page.locator('.learning-panel').get_by_role('button', name='刷新', exact=True).click()
+                        page.get_by_role('button', name='刷新课程', exact=True).click()
                     expression.get_by_role('button', name='查看记录', exact=True).click()
                     page.get_by_role('dialog').get_by_text(first['summary_text'], exact=True).wait_for()
                     page.get_by_role('dialog').get_by_role('button', name='关闭', exact=True).click()
@@ -222,7 +227,7 @@ class StudyMaterialTests(PostgreSQLFixture):
                     reader.get_by_role('status').filter(has_text='已学完，学习记录已保存').wait_for()
                     reader.get_by_role('button', name='返回学习列表', exact=True).click()
                     english = home.locator('.learning-module').filter(has=page.get_by_role('heading', name='英文阅读 · 35 分钟', exact=True))
-                    english.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()
+                    english.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).first.click()
                     reader.get_by_role('heading', name='英文阅读第 2 课', exact=True).first.wait_for()
                     note.fill('PRIVATE English learning note')
                     page.set_viewport_size({'width': 390, 'height': 844})
@@ -234,8 +239,10 @@ class StudyMaterialTests(PostgreSQLFixture):
                     reader.get_by_role('heading', name='英文阅读第 10 课', exact=True).first.wait_for()
                     reader.get_by_role('button', name='返回学习列表', exact=True).click()
                     page.reload()
-                    expression.get_by_text('已完成课程 · 1 课', exact=True).wait_for()
-                    english.get_by_text('待学习 1 课 · 累计已完成 2 课', exact=True).wait_for()
+                    page.locator('[data-group="learning"]').click()
+                    expression.locator('.lesson-row.completed').wait_for()
+                    self.assertEqual(english.locator('.lesson-row.completed').count(), 2)
+                    self.assertEqual(english.get_by_role('button', name='开始学习', exact=True).count(), 1)
                     page.get_by_role('button', name='记录', exact=True).click()
                     page.get_by_role('button', name='学习记录', exact=True).click()
                     history = page.locator('#view-learning-history')
@@ -243,7 +250,11 @@ class StudyMaterialTests(PostgreSQLFixture):
                     history.get_by_text('PRIVATE English learning note', exact=True).wait_for()
                     self.assertEqual(history.locator('.history-card').count(), 2)
                     page.set_viewport_size({'width': 390, 'height': 844})
-                    self.assertFalse(page.evaluate('document.documentElement.scrollWidth > window.innerWidth'))
+                    page.screenshot(path='/tmp/grow-study-record-history.png',full_page=True)
+                    overflow=page.evaluate('''() => [...document.querySelectorAll('body *')].filter(e => {
+                        const r=e.getBoundingClientRect();return r.width && r.right>innerWidth+1;
+                    }).map(e=>({tag:e.tagName,cls:e.className,width:e.getBoundingClientRect().width,text:e.textContent.slice(0,60)})).slice(0,20)''')
+                    self.assertFalse(page.evaluate('document.documentElement.scrollWidth > window.innerWidth'),overflow)
                     self.assertEqual(errors, [])
                 finally:
                     browser.close()
