@@ -4,6 +4,6 @@ test_github_course_never_falls_back_to_local_files (test_plan_read_errors.PlanRe
 test_missing_local_course_returns_json_without_exposing_server_paths (test_plan_read_errors.PlanReadErrorsTests.test_missing_local_course_returns_json_without_exposing_server_paths) ... ok
 
 ----------------------------------------------------------------------
-Ran 2 tests in 0.138s
+Ran 2 tests in 0.125s
 
 OK

@@ -15,6 +15,6 @@ test_summary_transport_collects_only_validated_provider_content (test_action_rev
 test_validation_repetition_csrf_and_foreign_reference (test_action_reviews.ActionReviewTests.test_validation_repetition_csrf_and_foreign_reference) ... ok
 
 ----------------------------------------------------------------------
-Ran 13 tests in 1.170s
+Ran 13 tests in 1.275s
 
 OK

@@ -1,0 +1,65 @@
+/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors (test_action_p0_browser.P0BrowserAcceptance.test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors) ... FAIL
+test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery (test_action_p0_browser.P0BrowserAcceptance.test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery) ... FAIL
+test_S06_S07_past_running_paused_and_partial_arrange_feedback (test_action_p0_browser.P0BrowserAcceptance.test_S06_S07_past_running_paused_and_partial_arrange_feedback) ... ok
+test_browser_save_retry_next_course_notes_calendar_and_mobile (test_study_materials.StudyMaterialTests.test_browser_save_retry_next_course_notes_calendar_and_mobile) ... FAIL
+
+======================================================================
+FAIL: test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors (test_action_p0_browser.P0BrowserAcceptance.test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/hao/.codex/worktrees/action-plans-p0/grow/知行成长/server/tests/test_action_p0_browser.py", line 49, in tearDown
+    def tearDown(self):self.assertEqual(self.errors,[])
+                       ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["TypeError: Cannot read properties of nul[259 chars]52)"] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"TypeError: Cannot read properties of null (reading 'innerHTML')\n    at HTMLDocument.<anonymous> (http://127.0.0.1:52778/static/stocks.js?v=1:621:52)"
+
++ []
+- ["TypeError: Cannot read properties of null (reading 'innerHTML')\n"
+-  '    at HTMLDocument.<anonymous> '
+-  '(http://127.0.0.1:52778/static/stocks.js?v=1:621:52)',
+-  "TypeError: Cannot read properties of null (reading 'innerHTML')\n"
+-  '    at HTMLDocument.<anonymous> '
+-  '(http://127.0.0.1:52778/static/stocks.js?v=1:621:52)']
+
+======================================================================
+FAIL: test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery (test_action_p0_browser.P0BrowserAcceptance.test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/hao/.codex/worktrees/action-plans-p0/grow/知行成长/server/tests/test_action_p0_browser.py", line 49, in tearDown
+    def tearDown(self):self.assertEqual(self.errors,[])
+                       ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["TypeError: Cannot read properties of nul[106 chars]52)"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"TypeError: Cannot read properties of null (reading 'innerHTML')\n    at HTMLDocument.<anonymous> (http://127.0.0.1:52778/static/stocks.js?v=1:621:52)"
+
++ []
+- ["TypeError: Cannot read properties of null (reading 'innerHTML')\n"
+-  '    at HTMLDocument.<anonymous> '
+-  '(http://127.0.0.1:52778/static/stocks.js?v=1:621:52)']
+
+======================================================================
+FAIL: test_browser_save_retry_next_course_notes_calendar_and_mobile (test_study_materials.StudyMaterialTests.test_browser_save_retry_next_course_notes_calendar_and_mobile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/hao/.codex/worktrees/action-plans-p0/grow/知行成长/server/tests/test_study_materials.py", line 255, in test_browser_save_retry_next_course_notes_calendar_and_mobile
+    self.assertEqual(errors, [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: Lists differ: ['RangeError: Invalid time value\n    at D[609 chars]04)'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'RangeError: Invalid time value\n    at DateTimeFormat.formatToParts (<anonymous>)\n    at Object.day (http://127.0.0.1:52995/static/action-plan-client.js?v=20261020-p0:59:132)\n    at Object.day (http://127.0.0.1:52995/static/action-plans.js?v=20261020-p0:9:72)\n    at day (http://127.0.0.1:52995/static/daily-agenda.js?v=20261020-p0:7:37)\n    at Object.render (http://127.0.0.1:52995/static/daily-agenda.js?v=20261020-p0:92:69)\n    at renderPersonal (http://127.0.0.1:52995/:712:23)\n    at goTab (http://127.0.0.1:52995/:2070:91)\n    at goGroup (http://127.0.0.1:52995/:2043:26)\n    at HTMLButtonElement.onclick (http://127.0.0.1:52995/:184:104)'
+
+Diff is 742 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 4 tests in 9.747s
+
+FAILED (failures=3)

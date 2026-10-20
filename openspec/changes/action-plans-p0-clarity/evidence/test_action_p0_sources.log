@@ -5,6 +5,6 @@ test_C10_receipt_and_source_sql_roll_back_together (test_action_p0_sources.Cours
 test_C10_source_transaction_failure_never_creates_receipt (test_action_p0_sources.CourseReceiptTests.test_C10_source_transaction_failure_never_creates_receipt) ... ok
 
 ----------------------------------------------------------------------
-Ran 3 tests in 1.295s
+Ran 3 tests in 1.158s
 
 OK

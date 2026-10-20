@@ -13,6 +13,24 @@
       "skipped": 0
     },
     {
+      "suite": "test_action_p0_closeout",
+      "exit_code": 0,
+      "tests": 11,
+      "skipped": 0
+    },
+    {
+      "suite": "test_action_p0_closeout_sources",
+      "exit_code": 0,
+      "tests": 24,
+      "skipped": 0
+    },
+    {
+      "suite": "test_action_p0_browser",
+      "exit_code": 0,
+      "tests": 7,
+      "skipped": 0
+    },
+    {
       "suite": "test_action_plans",
       "exit_code": 0,
       "tests": 7,
@@ -52,11 +70,23 @@
       "suite": "test_study_materials",
       "exit_code": 0,
       "tests": 5,
-      "skipped": 1
+      "skipped": 0
+    },
+    {
+      "suite": "test_legacy_cloud_schema",
+      "exit_code": 0,
+      "tests": 4,
+      "skipped": 0
+    },
+    {
+      "suite": "test_legacy_cloud_content",
+      "exit_code": 0,
+      "tests": 9,
+      "skipped": 0
     },
     {
       "suite": "test_legacy_cloud_api",
-      "exit_code": 1,
+      "exit_code": 0,
       "tests": 2,
       "skipped": 0
     },
@@ -67,9 +97,7 @@
       "skipped": 0
     }
   ],
-  "tests": 84,
-  "skipped": 1,
-  "failed_suites": [
-    "test_legacy_cloud_api"
-  ]
+  "tests": 139,
+  "skipped": 0,
+  "failed_suites": []
 }

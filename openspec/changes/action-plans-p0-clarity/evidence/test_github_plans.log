@@ -17,6 +17,6 @@ test_ref_failure_keeps_draft_and_restart_recovers (test_github_plans.GitHubPlanT
 test_rejects_path_escape_and_never_logs_credentials (test_github_plans.GitHubPlanTests.test_rejects_path_escape_and_never_logs_credentials) ... ok
 
 ----------------------------------------------------------------------
-Ran 15 tests in 2.493s
+Ran 15 tests in 2.607s
 
 OK

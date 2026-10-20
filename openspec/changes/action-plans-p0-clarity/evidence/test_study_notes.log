@@ -13,6 +13,6 @@ test_simultaneous_first_saves_have_one_winner (test_study_notes.StudyNotesTests.
 test_untrusted_note_and_answer_content_remains_plain_text (test_study_notes.StudyNotesTests.test_untrusted_note_and_answer_content_remains_plain_text) ... ok
 
 ----------------------------------------------------------------------
-Ran 11 tests in 0.481s
+Ran 11 tests in 0.445s
 
 OK

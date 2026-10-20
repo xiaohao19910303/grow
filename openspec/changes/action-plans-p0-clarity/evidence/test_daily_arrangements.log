@@ -8,6 +8,6 @@ test_same_article_same_day_is_deduplicated_even_for_concurrent_different_keys (t
 test_time_target_never_marks_article_read_and_unfinished_does_not_roll_forward (test_daily_arrangements.DailyArrangementsTests.test_time_target_never_marks_article_read_and_unfinished_does_not_roll_forward) ... ok
 
 ----------------------------------------------------------------------
-Ran 6 tests in 0.424s
+Ran 6 tests in 0.461s
 
 OK

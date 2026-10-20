@@ -1,0 +1,16 @@
+/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_changed_source_rejects_old_preview_and_preserves_target (test_legacy_cloud_content.LegacyCloudContentTests.test_changed_source_rejects_old_preview_and_preserves_target) ... ok
+test_course_generation_publication_feedback_and_restart (test_legacy_cloud_content.LegacyCloudContentTests.test_course_generation_publication_feedback_and_restart) ... ok
+test_course_index_without_legacy_defaults_keeps_other_rounds (test_legacy_cloud_content.LegacyCloudContentTests.test_course_index_without_legacy_defaults_keeps_other_rounds) ... ok
+test_database_interruption_after_github_commit_recovers_atomically (test_legacy_cloud_content.LegacyCloudContentTests.test_database_interruption_after_github_commit_recovers_atomically) ... ok
+test_document_snapshot_refreshes_after_commit_within_same_lock (test_legacy_cloud_content.LegacyCloudContentTests.test_document_snapshot_refreshes_after_commit_within_same_lock) ... ok
+test_external_edit_keeps_immutable_reading_and_blocks_overwrite (test_legacy_cloud_content.LegacyCloudContentTests.test_external_edit_keeps_immutable_reading_and_blocks_overwrite) ... ok
+test_import_retains_originals_and_never_publishes_private_state (test_legacy_cloud_content.LegacyCloudContentTests.test_import_retains_originals_and_never_publishes_private_state) ... ok
+test_lost_github_success_response_recovers_without_duplicate_publication (test_legacy_cloud_content.LegacyCloudContentTests.test_lost_github_success_response_recovers_without_duplicate_publication) ... ok
+test_reading_import_notes_drafts_adoption_and_reload (test_legacy_cloud_content.LegacyCloudContentTests.test_reading_import_notes_drafts_adoption_and_reload) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 2.997s
+
+OK

@@ -17,6 +17,6 @@ test_T03_interrupted_threshold_requires_explicit_confirmation (test_action_p0.Ac
 test_T06_T07_F09_state_locks_parent_and_future (test_action_p0.ActionP0Tests.test_T06_T07_F09_state_locks_parent_and_future) ... ok
 
 ----------------------------------------------------------------------
-Ran 15 tests in 1.031s
+Ran 15 tests in 1.314s
 
 OK
