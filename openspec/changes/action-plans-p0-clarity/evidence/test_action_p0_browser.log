@@ -7,6 +7,6 @@ test_article_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0
 test_course_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0BrowserAcceptance.test_course_source_schedule_cancel_timer_and_confirm) ... ok
 
 ----------------------------------------------------------------------
-Ran 7 tests in 12.745s
+Ran 7 tests in 11.641s
 
 OK

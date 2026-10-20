@@ -7,6 +7,6 @@ test_position_roundtrip_conflict_and_no_github_publication (test_arrangement_sou
 test_receipt_replay_and_running_time_are_independent (test_arrangement_sources.ArrangementSourceTests.test_receipt_replay_and_running_time_are_independent) ... ok
 
 ----------------------------------------------------------------------
-Ran 5 tests in 1.964s
+Ran 5 tests in 1.971s
 
 OK

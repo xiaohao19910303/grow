@@ -234,7 +234,15 @@ class P0BrowserAcceptance(unittest.TestCase):
             reader.get_by_role('button',name='暂存笔记与答案').click()
             expect(reader.get_by_label('学习笔记（可选）')).to_have_value('私人验收笔记，不代表完成')
         self.assertEqual(matching()[0]['status'],'active')
-        reader.get_by_role('button',name='确认本次读完' if kind=='article' else '本人确认学完',exact=True).click()
+        # The article button already contains '本次读完' before the POST returns.
+        # Wait for the durable receipt before ending the running session; otherwise
+        # a delayed source response can legitimately complete it before manual reconcile.
+        suffix='/personal' if kind=='article' else '/feedback'
+        with self.page.expect_response(lambda r:r.request.method=='POST' and r.url.endswith(suffix)) as confirmation:
+            reader.get_by_role('button',name='确认本次读完' if kind=='article' else '本人确认学完',exact=True).click()
+        self.assertEqual(confirmation.value.status,200)
+        self.assertIn('source_event_id',confirmation.value.json())
+        self.assertEqual(confirmation.value.json().get('completed_arrangements'),[])
         expect(reader).to_contain_text('本次读完' if kind=='article' else '本课已完成')
         bar=self.page.locator('#actionExecution');expect(bar).to_be_visible()
         self.assertEqual(matching()[0]['status'],'active')

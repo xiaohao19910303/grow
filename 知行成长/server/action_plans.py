@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS action_operations (key TEXT PRIMARY KEY,hash TEXT NOT
 CREATE TABLE IF NOT EXISTS action_link_state (id INTEGER PRIMARY KEY CHECK(id=1),data TEXT NOT NULL,backup TEXT);
 CREATE TABLE IF NOT EXISTS action_reviews (id TEXT PRIMARY KEY,data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_reports (id TEXT PRIMARY KEY,state TEXT NOT NULL,data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS action_source_contexts (id TEXT PRIMARY KEY,data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS action_source_outbox (event_id TEXT PRIMARY KEY,payload TEXT NOT NULL,state TEXT NOT NULL,attempts INTEGER NOT NULL,next_attempt TEXT NOT NULL,receipt TEXT,data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_content_events (id TEXT PRIMARY KEY,request_key TEXT UNIQUE,data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_reminder_claims (key TEXT PRIMARY KEY,claimed_at TEXT NOT NULL);
 '''
@@ -53,7 +55,7 @@ def fail(status, message, code=None, **extra):
 def connection(write=False, allow_link=False):
     with db.connect() as c:
         tables=c.execute("SELECT to_regclass('action_link_state') AS link,to_regclass('action_reviews') AS reviews").fetchone()
-        if tables[0] is None or tables[1] is None or c.execute("SELECT to_regclass('action_content_events')").fetchone()[0] is None:
+        if tables[0] is None or tables[1] is None or c.execute("SELECT to_regclass('action_source_outbox')").fetchone()[0] is None:
             c.execute("SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':actions-schema',0))")
             c.executescript(SCHEMA)
         if write:
@@ -434,6 +436,9 @@ def content_completed(target,event_id=None):
 def with_content_completion(result,target,event_id=None):
     if not event_id:return result
     try:
+        from action_source_delivery import completion
+        remote=completion(event_id)
+        if remote is not None:return {**result,**remote}
         completed=content_completed(target,event_id)
         return {**result,'source_event_id':event_id,'completed_arrangements':completed,
                 **({'arrangement_sync_error':'本次确认已保存；尚未匹配完成安排，可先保存投入后核对。'} if not completed else {})}

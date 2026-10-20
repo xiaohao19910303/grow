@@ -119,3 +119,6 @@ Chrome默认路径为 `/Applications/Google Chrome.app/Contents/MacOS/Google Chr
 - 内容完成和实际投入分别确认；运行时已经读完可先保存投入再核对回执。
 - 未知提交先核对或原key重试；修改后的输入是独立草稿，不猜测性重建。
 - 日期无具体时间不生成伪造日历；网页关闭后的通知仍需验证对应设备能力。
+
+
+2026-10-21 连接端 C2 增量：来源证明、可靠投递与核对的实现、故障恢复/合同/完整回归和剩余阻塞见 [source-delivery-verification.md](source-delivery-verification.md)。C3/原生/真实连接放行未完成，总任务7.3继续未勾选。

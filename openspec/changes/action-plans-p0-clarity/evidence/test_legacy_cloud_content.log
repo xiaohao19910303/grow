@@ -11,6 +11,6 @@ test_lost_github_success_response_recovers_without_duplicate_publication (test_l
 test_reading_import_notes_drafts_adoption_and_reload (test_legacy_cloud_content.LegacyCloudContentTests.test_reading_import_notes_drafts_adoption_and_reload) ... ok
 
 ----------------------------------------------------------------------
-Ran 9 tests in 2.997s
+Ran 9 tests in 2.948s
 
 OK

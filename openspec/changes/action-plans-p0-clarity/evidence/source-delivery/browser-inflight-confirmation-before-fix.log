@@ -1,0 +1,53 @@
+test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors (test_action_p0_browser.P0BrowserAcceptance.test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors) ... ok
+test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery (test_action_p0_browser.P0BrowserAcceptance.test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery) ... ok
+test_R01_R02_multiple_drafts_account_switch_and_reload (test_action_p0_browser.P0BrowserAcceptance.test_R01_R02_multiple_drafts_account_switch_and_reload) ... ok
+test_S06_S07_past_running_paused_and_partial_arrange_feedback (test_action_p0_browser.P0BrowserAcceptance.test_S06_S07_past_running_paused_and_partial_arrange_feedback) ... ok
+test_T01_T03_K01_A05_timer_check_copy_and_stale_tabs (test_action_p0_browser.P0BrowserAcceptance.test_T01_T03_K01_A05_timer_check_copy_and_stale_tabs) ... ok
+test_article_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0BrowserAcceptance.test_article_source_schedule_cancel_timer_and_confirm) ... ERROR
+test_course_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0BrowserAcceptance.test_course_source_schedule_cancel_timer_and_confirm) ... ok
+
+======================================================================
+ERROR: test_article_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0BrowserAcceptance.test_article_source_schedule_cancel_timer_and_confirm)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/hao/.codex/worktrees/action-plans-p0/grow/知行成长/server/tests/test_action_p0_browser.py", line 250, in test_article_source_schedule_cancel_timer_and_confirm
+    def test_article_source_schedule_cancel_timer_and_confirm(self):self.source_flow('article')
+                                                                    ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/Users/hao/.codex/worktrees/action-plans-p0/grow/知行成长/server/tests/test_action_p0_browser.py", line 245, in source_flow
+    row.get_by_role('button',name='核对完成',exact=True).click();expect(row).to_contain_text('已完成')
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/sync_api/_generated.py", line 11021, in click
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.click(
+        ^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+        )
+        ^
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py", line 111, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_locator.py", line 174, in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_frame.py", line 598, in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("#agendaList [data-plan-id=\"action-41f15a4ca0df4ad59c89b0e917b62ba2\"]").get_by_role("button", name="核对完成", exact=True)
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 23.502s
+
+FAILED (errors=1)

@@ -50,8 +50,9 @@ def call(source,body):
         data=response.json()
     except (httpx.HTTPError,ValueError):
         fail(503,'联动请求尚未确认，请检查连接后重试。已保存的数据和接管备份均保留。')
+    if not isinstance(data,dict):fail(503,'联动响应格式无效，已保存的数据保留。')
     if response.status_code>=400:
-        fail(response.status_code,'LightTick：'+str(data.get('message','联动暂未完成，请稍后重试。'))[:200])
+        fail(response.status_code,'LightTick：'+str(data.get('message','联动暂未完成，请稍后重试。'))[:200],str(data.get('code','REQUEST_REJECTED')))
     return data.get('data')
 
 
@@ -127,6 +128,19 @@ def register(app):
         identity()
         with connection() as c:link,_=state(c)
         return public(link)
+
+    @router.get('/source-deliveries')
+    def source_deliveries():
+        identity()
+        from action_source_delivery import list_deliveries
+        return {'deliveries':list_deliveries()}
+
+    @router.post('/source-deliveries/retry')
+    def retry_sources():
+        identity()
+        from action_source_delivery import retry_due,list_deliveries
+        retry_due(force=True,retry_blocked=True,limit=3)
+        return {'deliveries':list_deliveries()}
 
     @router.post('/preview')
     def preview(body:Preview):

@@ -7,6 +7,6 @@ test_invalid_writes_stale_tabs_and_missing_courses_cannot_overwrite (test_study_
 test_simultaneous_first_completions_have_one_winner_and_preserve_each_module (test_study_materials.StudyMaterialTests.test_simultaneous_first_completions_have_one_winner_and_preserve_each_module) ... ok
 
 ----------------------------------------------------------------------
-Ran 5 tests in 6.271s
+Ran 5 tests in 5.536s
 
 OK

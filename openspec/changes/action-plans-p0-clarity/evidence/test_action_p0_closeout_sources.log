@@ -26,6 +26,6 @@ test_T07_S01_S03_S05_source_lifecycle (test_action_p0_closeout_sources.CourseSou
 test_T07_parent_blocks_source_consumption_until_resumed (test_action_p0_closeout_sources.CourseSourceCloseout.test_T07_parent_blocks_source_consumption_until_resumed) ... ok
 
 ----------------------------------------------------------------------
-Ran 24 tests in 10.815s
+Ran 24 tests in 10.046s
 
 OK

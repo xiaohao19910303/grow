@@ -9,6 +9,6 @@ test_reminders_claim_once_per_device_snooze_and_calendar_timezone (test_action_p
 test_validation_repetition_csrf_and_foreign_reference (test_action_plans.ActionPlansTests.test_validation_repetition_csrf_and_foreign_reference) ... ok
 
 ----------------------------------------------------------------------
-Ran 7 tests in 0.810s
+Ran 7 tests in 0.668s
 
 OK

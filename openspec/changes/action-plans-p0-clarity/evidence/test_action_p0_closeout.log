@@ -13,6 +13,6 @@ test_T06_T07_running_and_parent_operations_are_atomic (test_action_p0_closeout.L
 test_T08_K03_mode_and_status_matrix (test_action_p0_closeout.LocalCloseoutTests.test_T08_K03_mode_and_status_matrix) ... ok
 
 ----------------------------------------------------------------------
-Ran 11 tests in 1.446s
+Ran 11 tests in 1.271s
 
 OK
