@@ -11,7 +11,7 @@ class Element{
 }
 const elements=new Map(),requests=[];
 const element=id=>{if(!elements.has(id))elements.set(id,new Element('div'));return elements.get(id);};
-const context={window:{addEventListener:()=>{}},document:{getElementById:element,createElement:tag=>new Element(tag)},setTimeout,clearTimeout,setInterval,clearInterval,console,
+const context={window:{addEventListener:()=>{}},document:{head:new Element('head'),getElementById:element,createElement:tag=>new Element(tag)},setTimeout,clearTimeout,setInterval,clearInterval,console,
   fetch:async url=>new Promise(resolve=>requests.push({url,resolve:data=>resolve({ok:true,json:async()=>data})}))};
 vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../static/daily-learning.js'),'utf8'),context);
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
@@ -20,7 +20,7 @@ const courseModule=(title)=>({id:'biaoda',name:title,duration:'15 分钟',lesson
   assert.equal(requests.length,3);const shared=context.window.loadDailyLearning();assert.equal(requests.length,3,'navigation shares the pending request');
   requests[1].resolve({modules:[courseModule('结构化表达')]});await flush();
   assert(element('dailyLearning').textContent.includes('结构化表达'),'available courses render while plans are pending');
-  assert(element('dailyLearning').textContent.includes('正在读取学习计划'));
+  assert(element('learningLibrary').textContent.includes('正在读取课程计划'));
   const newer=context.window.loadDailyLearning({force:true});assert.equal(requests.length,6);
   requests[4].resolve({modules:[courseModule('更新后的课程')]});await flush();
   requests[0].resolve({lessons:[]});requests[2].resolve({plans:[]});await shared;

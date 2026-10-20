@@ -68,12 +68,13 @@ class LearningCheckinsBrowser(unittest.TestCase):
                     result = {'lesson': lesson(number), 'content': '# 英文阅读\n\n学习内容。', 'record': completions.get(number)}
             else:
                 result = dict(modules=[], lessons=[], plans=[], records=[], items=[], articles=[], jobs=[],
-                              entries=[], reports=[], stats={}, preferences={}, budget={}, attempts=[])
+                              entries=[], reports=[], stats={}, preferences={}, budget={}, attempts=[],
+                              server_time=stamp, execution=None)
             route.fulfill(body=json.dumps(result), content_type='application/json')
 
         def progress(page):
-            page.locator('[data-group="learning"]').click()
-            page.get_by_role('button', name='学习打卡', exact=True).click()
+            page.locator('[data-group="growth"]').click()
+            page.get_by_role('button', name='学习足迹', exact=True).click()
             expect(page.locator('#checkinStatus')).to_contain_text('已按课程完成日期自动汇总')
 
         try:
@@ -84,7 +85,8 @@ class LearningCheckinsBrowser(unittest.TestCase):
                     page.route('**/api/**', fixture)
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     page.goto(base)
-                    page.locator('#dailyLearning').get_by_role('heading', name='英文阅读 · 35 分钟').wait_for()
+                    page.locator('.continue-learning > summary').click()
+                    page.locator('#dailyLearning').get_by_role('heading', name='英文阅读', exact=True).wait_for()
                     page.locator('#dailyLearning').get_by_role('button', name='开始学习', exact=True).click()
                     page.get_by_label('学习笔记（可选）').fill('只暂存，不完成')
                     page.get_by_role('button', name='暂存笔记与答案', exact=True).click()

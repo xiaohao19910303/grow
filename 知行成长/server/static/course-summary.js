@@ -324,7 +324,8 @@
     loadSummaryList();
 
     // Bind generate button
-    document.getElementById('btnGenerateSummary').onclick = generateSummary;
+    const generateButton = document.getElementById('btnGenerateSummary');
+    if (generateButton) generateButton.onclick = generateSummary;
   }
 
   async function loadSummaryList() {

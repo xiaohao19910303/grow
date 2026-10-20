@@ -283,12 +283,12 @@
 
   <div id="view-progress" style="display:none">
     <div class="section">
-      <h2>今日学习打卡</h2><p class="desc">在「今日」学习并标记学完后，自动按分类打卡，无需重复操作。同一天同一分类只记一次，暂存笔记不会打卡。</p>
+      <h2>今日学习足迹</h2><p class="desc">课程标记学完后，自动按分类记录，无需重复打卡。同一天同一分类只记一次，暂存笔记不会记录为完成。</p>
       <p id="checkinStatus" class="desc" role="status"></p><button class="btn" onclick="refreshAutoCheckins()">刷新记录</button>
       <div class="chips" id="todayChips"></div>
     </div>
     <div class="section">
-      <h2>打卡记录（近 14 天）</h2><p class="desc">✓ 表示当天已学完该分类的课程；历史手动打卡记录继续保留。</p>
+      <h2>学习足迹（近 14 天）</h2><p class="desc">✓ 表示当天已学完该分类的课程；历史手动打卡记录继续保留。</p>
       <div style="overflow-x:auto"><table class="matrix" id="matrix"></table></div>
     </div>
     <div class="section">
@@ -410,14 +410,16 @@
 
   <div id="view-archive" style="display:none">
     <div class="section">
-      <h2>课程归档</h2>
-      <p class="desc">已完成并归档的课程。可随时取消归档重新学习。</p>
+      <button class="btn" onclick="goTab('library')">返回我的课程</button>
+      <p class="desc">我的课程 / 认知与通识 / 课程归档</p>
       <div id="archiveRoot"></div>
     </div>
   </div>
 
   <div id="view-summary" style="display:none">
     <div class="section">
+      <button class="btn" onclick="goTab('library')">返回我的课程</button>
+      <p class="desc">我的课程 / 认知与通识 / 课程总结</p>
       <div id="summaryRoot"></div>
     </div>
   </div>
@@ -2034,10 +2036,10 @@ function exportReportMarkdown(){
 /* ================= Tab ================= */
 const navGroups={
   personal:[['personal','今日']],
-  actions:[['action-schedule','日程安排'],['action-plans','目标与计划']],
-  learning:[['library','我的课程'],['reading','阅读'],['plans','课程计划'],['progress','学习打卡'],['copilot','课程管理'],['archive','课程归档'],['summary','课程总结']],
-  records:[['reviews','每日复盘'],['action-records','执行记录'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['stocks','投资复盘'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
-  growth:[['overview','成长总览'],['timeline','时间线'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告'],['search','搜索']]
+  actions:[['action-schedule','日程安排'],['action-plans','目标与计划'],['action-records','执行记录']],
+  learning:[['library','我的课程'],['reading','阅读'],['plans','课程计划'],['copilot','课程管理']],
+  records:[['reviews','每日复盘'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['stocks','投资复盘'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
+  growth:[['overview','成长总览'],['progress','学习足迹'],['habits','学习时长'],['timeline','时间线'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告'],['search','搜索']]
 };
 const lastGroupTab={};
 let lessonOrigin=null;
@@ -2057,15 +2059,16 @@ function goTab(name, options={}){
   window.studyReaderRequest=(window.studyReaderRequest||0)+1;
   if(window.leaveCopilot && currentTab==='copilot' && name!=='copilot') window.leaveCopilot();
   currentTab=name;
-  const group=name==='reader'?'learning':Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===name));
-  if(group && !options.reading) lastGroupTab[group]=name;
+  const parentTab=['reader','archive','summary'].includes(name)?'library':name;
+  const group=Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===parentTab));
+  if(group && !options.reading) lastGroupTab[group]=parentTab;
   document.querySelectorAll('[data-group]').forEach(button=>{
     const active=button.dataset.group===group;button.classList.toggle('active',active);
     if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
   });
   const subnav=document.getElementById('subnav');
   subnav.hidden=!group || navGroups[group].length===1 || !!options.reading || name==='reader';
-  subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
+  subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===parentTab?'primary':''}" ${key===parentTab?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
   ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='personal' && !options.restore){ window.ActionPlans?.refresh().catch(()=>{}); renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
@@ -2232,12 +2235,12 @@ init();
 <script src="/static/copilot.js?v=20261018-performance"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
 <script src="/static/course-archive.js?v=20261019-1"></script>
-<script src="/static/course-summary.js?v=20261019-1"></script>
+<script src="/static/course-summary.js?v=20261021-navigation"></script>
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
 <script src="/static/plans.js?v=20261018-performance"></script>
 <script src="/static/study-generation.js?v=20261018-performance"></script>
-<script src="/static/daily-learning.js?v=20261019-1"></script>
+<script src="/static/daily-learning.js?v=20261021-navigation"></script>
 <script src="/static/reading-growth.js?v=20261017-growth1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
 <script src="/static/reading-position.js?v=20261019-1"></script>

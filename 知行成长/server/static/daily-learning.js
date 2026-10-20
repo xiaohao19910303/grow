@@ -433,6 +433,14 @@
     modules.forEach(module=>{
       const section=node('section',undefined,'learning-module');
       section.append(node('h3',module.name+' · '+module.duration));
+      if(module.id==='renzhi'){
+        const actions=node('div',undefined,'cp-actions');
+        actions.setAttribute('role','group');
+        actions.setAttribute('aria-label',module.name+'课程工具');
+        button(actions,'课程归档',()=>goTab('archive'));
+        button(actions,'课程总结',()=>goTab('summary'));
+        section.append(actions);
+      }
       [...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).forEach(lesson=>lessonRow(section,module,lesson));
       if(!module.lessons.length)section.append(node('p','尚无已保存课程。','desc'));
       if(module.lessons.every(lesson=>lesson.learning_state==='completed'))window.renderStudyGeneration?.(section,module);
