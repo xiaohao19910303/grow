@@ -30,3 +30,21 @@ CREATE TABLE IF NOT EXISTS copilot_learning_records (
     idempotency_key TEXT UNIQUE,
     UNIQUE(module_id, round_id, lesson_no));
 """
+
+REVIEW_TABLES = """
+CREATE TABLE IF NOT EXISTS copilot_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    module_id TEXT NOT NULL DEFAULT 'renzhi', round_id INTEGER NOT NULL DEFAULT 1,
+    lesson_no INTEGER NOT NULL CHECK(lesson_no BETWEEN 1 AND 168),
+    mastery_level TEXT NOT NULL CHECK(mastery_level IN ('fully_understood', 'basically_understood', 'partially_understood', 'not_understood')),
+    value_rating INTEGER NOT NULL CHECK(value_rating BETWEEN 0 AND 3),
+    feeling_tags TEXT, key_learnings TEXT, questions TEXT, next_direction TEXT,
+    created_at TEXT NOT NULL, UNIQUE(module_id, round_id, lesson_no));
+CREATE TABLE IF NOT EXISTS copilot_summaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    module_id TEXT NOT NULL DEFAULT 'renzhi', round_id INTEGER NOT NULL DEFAULT 1,
+    scope TEXT NOT NULL DEFAULT 'full_course', content TEXT NOT NULL,
+    feedback_snapshot TEXT, created_at TEXT NOT NULL);
+"""
+
+TABLES += REVIEW_TABLES

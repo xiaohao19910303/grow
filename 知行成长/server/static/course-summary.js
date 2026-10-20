@@ -420,7 +420,7 @@
       const response = await fetch('/api/copilot/summaries/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-copilot-request': '1' },
-        body: JSON.stringify({ module: 'renzhi', scope: 'full_course', key: crypto.randomUUID() })
+        body: JSON.stringify({ module: 'renzhi', scope: 'full_course', key: crypto.randomUUID(), ai_config: window.AIConfig.require() })
       });
 
       if (!response.ok) {
@@ -511,6 +511,7 @@
         body: JSON.stringify({
           module: 'renzhi',
           key: crypto.randomUUID(),
+          ai_config: window.AIConfig.require(),
           summary_content: currentSummaryContent
         })
       });

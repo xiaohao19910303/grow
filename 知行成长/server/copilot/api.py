@@ -73,12 +73,14 @@ class FeedbackSubmission(Key):
     next_direction: str = Field(default='', max_length=1000)
 
 
-class SummaryGeneration(Input):
+class SummaryGeneration(Key):
     scope: Literal['full_course', 'single_lesson'] = 'full_course'
+    ai_config: dict | None = Field(default=None, repr=False)
 
 
 class AdvancedGeneration(Key):
     summary_content: str = Field(max_length=100000)
+    ai_config: dict | None = Field(default=None, repr=False)
 
 
 class ArchiveRequest(Key):
@@ -166,6 +168,10 @@ def register(app: FastAPI, root, db):
         offset, limit = max(0, offset), min(168, max(1, limit))
         return {'total': len(data), 'items': data[offset:offset + limit]}
 
+    @router.get('/lessons/archived')
+    def archived_lessons(module: Literal['renzhi'] = 'renzhi'):
+        return {'items': store.list_archived()}
+
     @router.get('/lessons/{number}')
     def lesson(number: int, module: Literal['renzhi'] = 'renzhi'):
         return store.lesson(number)
@@ -223,10 +229,6 @@ def register(app: FastAPI, root, db):
     def unarchive(number: int, body: ArchiveRequest):
         return store.unarchive_lesson(number, body.key)
 
-    @router.get('/lessons/archived')
-    def archived_lessons(module: Literal['renzhi'] = 'renzhi'):
-        return {'items': store.list_archived()}
-
     @router.post('/summaries/generate')
     def generate_summary(body: SummaryGeneration):
         from .summary import SummaryGenerator
@@ -234,7 +236,7 @@ def register(app: FastAPI, root, db):
         round_id = 1
         if hasattr(body, 'round_id'):
             round_id = body.round_id
-        return StreamingResponse(gen.generate(body.module, round_id, body.scope),
+        return StreamingResponse(gen.generate(body.module, round_id, body.scope, body.ai_config),
                                  media_type='text/event-stream',
                                  headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
@@ -250,7 +252,7 @@ def register(app: FastAPI, root, db):
     def generate_advanced(body: AdvancedGeneration):
         from .summary import SummaryGenerator
         gen = SummaryGenerator(store)
-        return StreamingResponse(gen.generate_advanced(body.summary_content),
+        return StreamingResponse(gen.generate_advanced(body.summary_content, body.ai_config),
                                  media_type='text/event-stream',
                                  headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 

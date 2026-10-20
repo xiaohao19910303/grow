@@ -68,6 +68,11 @@ class NavigationOrganizationBrowser(unittest.TestCase):
                 result = {'items': [summary]}
             elif path == '/api/copilot/summaries/1':
                 result = summary
+            elif path == '/api/copilot/summaries/generate':
+                self.assertEqual(request.post_data_json['ai_config']['api_key'], 'TEST_ONLY_BROWSER_KEY')
+                route.fulfill(body='data: {"text":"浏览器配置生成的总结"}\n\ndata: {"content":"浏览器配置生成的总结"}\n\n',
+                              content_type='text/event-stream')
+                return
             else:
                 result = dict(modules=[], lessons=[], plans=[], records=[], items=[], articles=[], jobs=[],
                               entries=[], reports=[], stats={}, preferences={}, budget={}, attempts=[], checkins={})
@@ -103,6 +108,15 @@ class NavigationOrganizationBrowser(unittest.TestCase):
                     flags['completed'] = True
                     tools.get_by_role('button', name='课程总结', exact=True).click()
                     expect(page.get_by_role('button', name='生成整课总结', exact=True)).to_be_visible()
+                    page.get_by_role('button', name='设置', exact=True).click()
+                    page.locator('#apiBaseUrl').fill('https://model.example/v1')
+                    page.locator('#apiKey').fill('TEST_ONLY_BROWSER_KEY')
+                    page.locator('#modelName').fill('test-model')
+                    page.get_by_role('button', name='保存配置', exact=True).click()
+                    group('learning')
+                    tools.get_by_role('button', name='课程总结', exact=True).click()
+                    page.get_by_role('button', name='生成整课总结', exact=True).click()
+                    expect(page.locator('#outputContent')).to_have_text('浏览器配置生成的总结')
                     group('growth')
                     nav.get_by_role('button', name='学习足迹', exact=True).click()
                     expect(page.locator('#todayChips')).to_contain_text('已完成')
@@ -145,7 +159,8 @@ class NavigationOrganizationBrowser(unittest.TestCase):
                     nav.get_by_role('button', name='学习时长', exact=True).click()
                     expect(page.locator('#habitMinutes')).to_have_value('40')
                     self.assertEqual(errors, [])
-                    self.assertEqual(writes, [('PUT', '/api/data'), ('POST', '/api/copilot/lessons/1/unarchive')])
+                    self.assertEqual(writes, [('POST', '/api/copilot/summaries/generate'), ('PUT', '/api/data'),
+                                              ('POST', '/api/copilot/lessons/1/unarchive')])
                 finally:
                     browser.close()
         finally:

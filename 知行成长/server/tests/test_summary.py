@@ -61,7 +61,7 @@ class SummaryTest(unittest.TestCase):
                 yield {'text': 'summary text'}
                 yield {'done': True}
         async def _run():
-            with patch('copilot.summary.config', return_value={'key': 'test', 'url': 'http://test'}):
+            with patch('copilot.summary.generation_config', return_value={'key': 'test', 'url': 'http://test'}):
                 gen = SummaryGenerator(self.store, MockTransport())
                 results = []
                 async for item in gen.generate('renzhi', 1, 'full_course'):

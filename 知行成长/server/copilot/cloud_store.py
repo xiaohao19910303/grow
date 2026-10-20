@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from cloud_content import ContentPath, Documents, enabled
 from legacy_schema import migrate
 from .core import Store, MODULE, digest, encoded, fail, now, completion_label
+from .schema import REVIEW_TABLES
 
 
 class CloudStore(Store):
@@ -20,6 +21,7 @@ class CloudStore(Store):
     def initialize(self):
         migrate()
         with self.conn() as c:
+            c.executescript(REVIEW_TABLES)
             c.execute('ALTER TABLE copilot_learning_records ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0')
             c.execute('ALTER TABLE copilot_learning_records ADD COLUMN IF NOT EXISTS archived_at TEXT')
         self.documents.initialize()
