@@ -3,6 +3,7 @@ import copy
 import json
 import os
 import re
+import sqlite3
 import tempfile
 import uuid
 from pathlib import Path
@@ -40,8 +41,11 @@ class ReadingStore(Plans):
         if os.getenv('PLAN_CONTENT_BACKEND') == 'github':
             fail('legacy_content_migration', '旧认知阅读的文件与笔记尚未完成云端迁移，暂不写入临时磁盘。', 503)
         with self.lock():
-            with self.conn() as c:installed=c.execute("SELECT 1 FROM sqlite_master WHERE name='reading_records'").fetchone()
-            if not installed:
+            with self.conn() as c:
+                sqlite = isinstance(c, sqlite3.Connection)
+                installed = c.execute("SELECT 1 FROM sqlite_master WHERE name='reading_records'" if sqlite else
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='reading_records'").fetchone()
+            if not installed and sqlite:
                 from plans.backup import database_snapshot
                 database_snapshot(self,self.runtime/('before-reading-'+uuid.uuid4().hex+'.db'))
             with self.conn() as c:c.execute('CREATE TABLE IF NOT EXISTS reading_records (id TEXT PRIMARY KEY,data TEXT NOT NULL)')
@@ -282,6 +286,22 @@ class ReadingStore(Plans):
         a=self.record(aid)
         if a.get('type')!='article':fail('invalid','不是文章记录。',422)
         return a
+    def reading_position(self, aid, data=None):
+        """Private resume location, separate from published article metadata."""
+        self.article(aid)
+        with self.conn() as c:
+            c.execute("SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':reading-positions',0))")
+            c.execute('CREATE TABLE IF NOT EXISTS reading_positions (article_id TEXT PRIMARY KEY,data TEXT NOT NULL)')
+            row=c.execute('SELECT data FROM reading_positions WHERE article_id=?',(aid,)).fetchone()
+            old=json.loads(row[0]) if row else {'ratio':0,'revision':0}
+            if data is None:return old
+            if (not isinstance(data,dict) or set(data)!={'ratio','revision'} or type(data['ratio']) not in (int,float)
+                    or not 0<=data['ratio']<=1 or type(data['revision']) is not int):
+                fail('invalid','阅读位置无效。',422)
+            if data['revision']!=old['revision']:fail('conflict','阅读位置已在另一页面更新，本页位置没有覆盖它。')
+            saved={'ratio':data['ratio'],'revision':old['revision']+1,'updated_at':now()}
+            c.execute('INSERT INTO reading_positions VALUES (?,?) ON CONFLICT(article_id) DO UPDATE SET data=excluded.data',(aid,encoded(saved)))
+            return saved
     def update_personal(self,aid,data):
         with self.lock():
             self.recover_exports();a=self.article(aid);files={};expected={}

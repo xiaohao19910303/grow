@@ -176,7 +176,12 @@ def register(app, root, db):
         return store.read_course(pid,number)
 
     @router.post('/{pid}/lessons/{number}/feedback')
-    def feedback(pid:str,number:int,body:Payload):return store.feedback(pid,number,body.data,key(body.data))
+    def feedback(pid:str,number:int,body:Payload):
+        saved = store.feedback(pid,number,body.data,key(body.data))
+        if body.data.get('state') == 'completed':
+            from action_plans import with_content_completion
+            return with_content_completion(saved, {'kind':'plan','plan_id':pid,'lesson_no':number})
+        return saved
 
     @router.post('/{pid}/pause')
     def pause_plan(pid: str, body: Payload):

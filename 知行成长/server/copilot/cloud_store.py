@@ -19,6 +19,9 @@ class CloudStore(Store):
 
     def initialize(self):
         migrate()
+        with self.conn() as c:
+            c.execute('ALTER TABLE copilot_learning_records ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0')
+            c.execute('ALTER TABLE copilot_learning_records ADD COLUMN IF NOT EXISTS archived_at TEXT')
         self.documents.initialize()
         with self.lock():
             if self.documents.metadata(MODULE+'/学习记录.md') is None:

@@ -7,6 +7,7 @@ import fcntl
 import json
 import os
 import re
+import sqlite3
 import db
 import tempfile
 import uuid
@@ -202,8 +203,10 @@ class ReflectionsStore:
             fail('restore_pending', '存在未完成的恢复，请先处理恢复日志。', 503)
         with self.lock():
             with self.conn() as c:
-                installed = True if self.remote else c.execute("SELECT 1 FROM sqlite_master WHERE name='reflection_entries'").fetchone()
-            if not installed:
+                sqlite = isinstance(c, sqlite3.Connection)
+                installed = self.remote or c.execute("SELECT 1 FROM sqlite_master WHERE name='reflection_entries'" if sqlite else
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='reflection_entries'").fetchone()
+            if not installed and sqlite:
                 from plans.backup import database_snapshot
                 database_snapshot(self, self.runtime / f'before-reflection-{uuid.uuid4().hex}.db')
             with self.conn() as c:
@@ -221,7 +224,11 @@ class ReflectionsStore:
     def get_setting(self, key, default=''):
         """共享 copilot 的模型配置，复用其 settings 表。"""
         with self.conn() as c:
-            if not c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_settings'").fetchone():
+            if isinstance(c, sqlite3.Connection):
+                columns = {r[1] for r in c.execute('PRAGMA table_info(copilot_settings)')}
+            else:
+                columns = {r[0] for r in c.execute("SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='copilot_settings'")}
+            if not {'key', 'value'} <= columns:
                 return default
             row = c.execute('SELECT value FROM copilot_settings WHERE key=?', (key,)).fetchone()
         return json.loads(row[0]) if row else default

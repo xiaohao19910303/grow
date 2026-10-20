@@ -328,101 +328,16 @@
       button(row, '查看记录', () => viewLearningRecord(module, lesson));
     }
     parent.append(row);
+    const scheduleControls=node('div');parent.append(scheduleControls);window.DailyAgenda?.mount(scheduleControls,module.kind==='plan'?{kind:'plan',plan_id:module.id,lesson_no:lesson.lesson_no}:module.id==='renzhi'?{kind:'renzhi',lesson_no:lesson.lesson_no}:{kind:module.id,course:lesson.filename},lesson.topic,parseInt(module.duration,10)||20);
   }
   window.renderDailyLearning = () => {
-    const expanded = new Set([...root.querySelectorAll('.learning-module details[open]')]
-      .map(details => details.closest('.learning-module').dataset.module + ':' + details.dataset.kind));
-    document.getElementById('dailyLearningTitle').textContent = '继续学习';
-    root.replaceChildren();
-    if (!loaded) { root.append(node('p', '正在读取学习内容…')); return; }
-    errors.forEach(error => root.append(node('p', error)));
-    pendingModules.forEach(name => { const status=node('p','正在读取'+name+'…','desc reading-loading');status.setAttribute('role','status');root.append(status); });
-    modules.forEach(module => {
-      const available = module.lessons.filter(lesson => !lesson.date || lesson.date <= selected);
-      const todayLessons = available.filter(lesson => lesson.date === selected);
-      const overdue = available.filter(lesson => lesson.date !== selected && lesson.date < selected && lesson.learning_state !== 'completed');
-      const pending = available.filter(lesson => lesson.date !== selected && (!lesson.date || lesson.date > selected) && lesson.learning_state !== 'completed');
-      const completed = available.filter(lesson => lesson.learning_state === 'completed').length;
-
-      // 分离今日待学习和已完成
-      const todayPending = todayLessons.filter(lesson => lesson.learning_state !== 'completed');
-      const todayCompleted = todayLessons.filter(lesson => lesson.learning_state === 'completed');
-      const todayNeedsFeedback = todayCompleted.filter(lesson => !lesson.archived && !lesson.has_feedback);
-      const todayArchived = todayCompleted.filter(lesson => lesson.archived);
-      const todayActiveCompleted = todayCompleted.filter(lesson => !lesson.archived);
-
-      const section = node('section', undefined, 'learning-module');
-      section.dataset.module = module.id;
-      section.append(node('h3', module.name + ' · ' + module.duration));
-      const totalPending = todayPending.length + overdue.length;
-      section.append(node('p', `待学习 ${totalPending} 课 · 已完成 ${completed} 课` + (overdue.length ? ` · 逾期 ${overdue.length} 课` : ''), 'desc'));
-
-      // 逾期课程
-      if (overdue.length) {
-        const overdueSection = node('div', undefined, 'overdue-section');
-        overdueSection.append(node('h4', `⚠ 逾期课程 · ${overdue.length} 课`));
-        overdue.forEach(lesson => lessonRow(overdueSection, module, lesson));
-        section.append(overdueSection);
-      }
-
-      // 今日待学习课程
-      todayPending.forEach(lesson => lessonRow(section, module, lesson));
-
-      if (!todayLessons.length && !overdue.length) section.append(node('p', prefix + '暂无新课。', 'desc'));
-      else if (!todayPending.length && !overdue.length) section.append(node('p', prefix + '待学习课程已完成。', 'desc'));
-
-      // 今日待反馈区域
-      if (todayNeedsFeedback.length) {
-        const feedbackSection = node('details', undefined, 'needs-feedback');
-        feedbackSection.open = true;
-        feedbackSection.append(node('summary', ` 待反馈 · ${todayNeedsFeedback.length} 课`));
-        todayNeedsFeedback.forEach(lesson => {
-          const row = node('div', undefined, 'todo-row lesson-row');
-          const text = node('div'); text.style.flex = '1'; text.style.minWidth = '0';
-          text.append(node('strong', lesson.topic, 'lesson-title'));
-          text.append(node('p', `✓ 已完成 · ${lesson.date} · 待反馈`, 'desc'));
-          row.append(text);
-          button(row, '完成反馈', () => window.showCourseFeedback(lesson.lesson_no));
-          feedbackSection.append(row);
-        });
-        section.append(feedbackSection);
-      }
-
-      // 今日已完成区域
-      if (todayActiveCompleted.length) {
-        const completedSection = node('details', undefined, 'completed-today');
-        completedSection.open = true;
-        completedSection.append(node('summary', `${prefix}已完成 · ${todayActiveCompleted.length} 课`));
-
-        todayActiveCompleted.forEach(lesson => {
-          const row = node('div', undefined, 'todo-row lesson-row completed');
-          const text = node('div'); text.style.flex = '1'; text.style.minWidth = '0';
-          text.append(node('strong', lesson.topic, 'lesson-title'));
-          const label = `✓ 已完成 · ${lesson.date}`;
-          text.append(node('p', label, 'desc'));
-          row.append(text);
-
-          // 反馈状态
-          if (lesson.has_feedback) {
-            const badge = document.createElement('span');
-            badge.className = 'fb-badge';
-            badge.textContent = (window.getMasteryEmoji ? window.getMasteryEmoji(lesson.mastery_level) : '') + ' 已反馈';
-            badge.style.marginRight = '8px';
-            row.append(badge);
-            button(row, '查看反馈', () => window.showCourseFeedback(lesson.lesson_no));
-          } else {
-            button(row, '完成反馈', () => window.showCourseFeedback(lesson.lesson_no));
-          }
-          button(row, '查看记录', () => viewLearningRecord(module, lesson));
-          completedSection.append(row);
-        });
-
-        section.append(completedSection);
-      }
-
-
-      root.append(section);
-    });
+    document.getElementById('dailyLearningTitle').textContent='继续学习';root.replaceChildren();
+    if(!loaded){root.append(node('p','正在读取学习内容…'));return;}
+    errors.forEach(error=>root.append(node('p',error)));
+    const available=modules.map(module=>({module,lesson:[...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).find(l=>l.learning_state!=='completed')})).filter(x=>x.lesson).slice(0,3);
+    for(const {module,lesson} of available){const section=node('section',undefined,'learning-module');section.append(node('h3',module.name));lessonRow(section,module,lesson);root.append(section);}
+    if(!available.length)root.append(node('p',pendingModules.length?'正在读取可继续的课程…':'暂无未完成课程，可到学习查看历史内容。','desc'));
+    button(root,'查看全部课程',()=>goTab('library'));
   };
 
   async function quickComplete(module, lesson) {
@@ -528,11 +443,12 @@
   window.renderDailyLearning=()=>{renderHome();renderLibrary();};
   window.loadDailyLearning = (options = {}) => {
     if(listRequest && !options.force)return listRequest;
+    window.refreshAutoCheckins?.();
     const request=++generation;
     const groups=[modules.filter(m=>m.id==='renzhi'),modules.filter(m=>['yingyu','biaoda'].includes(m.id)),modules.filter(m=>m.kind==='plan')];
     const sources=[['认知课程','/api/copilot/today-task',data=>[{id:'renzhi',name:'认知与通识',duration:'15–20 分钟',lessons:data.lessons}]],
       ['英文阅读与结构化表达','/api/study-materials',data=>data.modules],
-      ['学习计划','/api/plans',data=>data.plans.map(p=>({id:p.id,kind:'plan',name:p.name,duration:p.brief.minutes+' 分钟',lessons:p.lessons}))]];
+      ['课程计划','/api/plans',data=>data.plans.map(p=>({id:p.id,kind:'plan',name:p.name,duration:p.brief.minutes+' 分钟',lessons:p.lessons}))]];
     pendingModules=sources.map(s=>s[0]);errors=[];loaded=true;window.renderDailyLearning();
     const task=Promise.all(sources.map(async([name,path,decode],index)=>{
       try{const data=await get(path);if(request!==generation)return;groups[index]=decode(data);}
