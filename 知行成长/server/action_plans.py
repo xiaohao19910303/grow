@@ -20,6 +20,11 @@ CREATE TABLE IF NOT EXISTS action_executions (
  id TEXT PRIMARY KEY,plan_id TEXT NOT NULL REFERENCES action_plans(id),state TEXT NOT NULL,data TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS action_one_running ON action_executions(state) WHERE state='running';
 CREATE INDEX IF NOT EXISTS action_execution_plan ON action_executions(plan_id);
+CREATE INDEX IF NOT EXISTS action_plans_data_gin ON action_plans USING GIN((data::jsonb) jsonb_ops);
+CREATE INDEX IF NOT EXISTS action_plans_period ON action_plans((data::jsonb->>'period'));
+CREATE INDEX IF NOT EXISTS action_plans_status ON action_plans((data::jsonb->>'status'));
+CREATE INDEX IF NOT EXISTS action_plans_start_date ON action_plans((data::jsonb->>'start_date'));
+CREATE INDEX IF NOT EXISTS action_executions_business_date ON action_executions((data::jsonb->>'business_date'));
 CREATE TABLE IF NOT EXISTS action_operations (key TEXT PRIMARY KEY,hash TEXT NOT NULL,result TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_link_state (id INTEGER PRIMARY KEY CHECK(id=1),data TEXT NOT NULL,backup TEXT);
 CREATE TABLE IF NOT EXISTS action_reviews (id TEXT PRIMARY KEY,data TEXT NOT NULL);
@@ -157,13 +162,19 @@ def same_target(left, right):
 def duplicate_schedule(c, fields, exclude=None):
     if fields.get('completion_mode') != 'content':
         return None
-    for row in c.execute('SELECT * FROM action_plans'):
-        other = public(row)
-        if (other['id'] != exclude and other['period'] == 'day' and other['status'] != 'archived'
-                and other['completion_mode'] == 'content' and other['start_date'] == fields['start_date']
-                and other['timezone'] == fields['timezone'] and same_target(other['target'], fields['target'])):
-            return other
-    return None
+    # Use targeted query with JSONB filters instead of loading all plans
+    target_json = encoded(StudyTarget.model_validate(fields['target']).model_dump(mode='json'))
+    query = '''SELECT * FROM action_plans
+               WHERE id != ?
+               AND data::jsonb->>'period' = 'day'
+               AND data::jsonb->>'status' != 'archived'
+               AND data::jsonb->>'completion_mode' = 'content'
+               AND data::jsonb->>'start_date' = ?
+               AND data::jsonb->>'timezone' = ?
+               AND data::jsonb->'target' = ?::jsonb
+               LIMIT 1'''
+    row = c.execute(query, (exclude or '', fields['start_date'], fields['timezone'], target_json)).fetchone()
+    return public(row) if row else None
 
 
 def get(c, pid):
@@ -171,6 +182,18 @@ def get(c, pid):
     if not row:
         fail(404, '行动计划不存在。')
     return public(row)
+
+
+def get_descendants(c, pid):
+    """Get all descendant plans using recursive SQL query instead of loading all plans."""
+    query = '''WITH RECURSIVE descendants AS (
+                 SELECT id, data FROM action_plans WHERE id = ?
+                 UNION ALL
+                 SELECT p.id, p.data FROM action_plans p
+                 INNER JOIN descendants d ON p.data::jsonb->>'parent_id' = d.id
+               )
+               SELECT * FROM descendants WHERE id != ?'''
+    return [public(row) for row in c.execute(query, (pid, pid))]
 
 
 def write(c, plan):
@@ -218,7 +241,9 @@ def validate_parent(c, fields, existing=None):
     if existing:
         if fields['period'] != existing['period']:
             fail(422, '计划周期不能直接改变，请新建另一周期的计划。')
-        children = [public(r) for r in c.execute('SELECT * FROM action_plans') if json.loads(r['data']).get('parent_id') == existing['id']]
+        # Use targeted query to find direct children instead of loading all plans
+        children = [public(r) for r in c.execute(
+            'SELECT * FROM action_plans WHERE data::jsonb->>\'parent_id\' = ?', (existing['id'],))]
         if any(not fields['start_date'] <= child['start_date'] <= child['end_date'] <= fields['end_date'] or child['timezone'] != fields['timezone'] for child in children):
             fail(422, '调整日期前请先处理已有子计划。')
     if duplicate_schedule(c, fields, existing['id'] if existing else None):
@@ -341,7 +366,11 @@ def content_completed(target):
                 continue
             ancestor = plan
             while ancestor.get('parent_id') and ancestor['status'] == 'active':
-                ancestor = by_id[ancestor['parent_id']]
+                parent = by_id.get(ancestor['parent_id'])
+                if parent is None:
+                    # Parent plan not found in loaded plans, skip this plan
+                    break
+                ancestor = parent
             if ancestor['status'] != 'active':
                 continue
             complete_fact(c, plan, running)
@@ -434,10 +463,9 @@ def mutate(pid, body):
                         fail(422, '未来待办请先改期再完成。')
                 if plan['status'] == 'archived' or body.action == 'resume' and plan['status'] != 'paused' or body.action in ('pause', 'complete') and plan['status'] != 'active':
                     fail(409, '这个计划当前无法进行该操作。')
-                descendants = [public(r) for r in c.execute('SELECT * FROM action_plans')]
-                todo = {pid}
-                for _ in range(4):
-                    todo |= {p['id'] for p in descendants if p.get('parent_id') in todo}
+                # Use recursive query to find descendants instead of loading all plans
+                descendants = get_descendants(c, pid)
+                todo = {pid} | {p['id'] for p in descendants}
                 if running and running['plan_id'] in todo:
                     fail(409, '请先结束子计划正在进行的执行。')
                 if body.action == 'complete' and plan['period'] == 'day':

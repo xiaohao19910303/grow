@@ -1,7 +1,10 @@
 """Read-only check-ins projected from tenant-scoped learning completions."""
 import json
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+logger = logging.getLogger(__name__)
 
 
 def read_checkins(conn):
@@ -12,7 +15,8 @@ def read_checkins(conn):
     def completed(module, stamp):
         try:
             moment = datetime.fromisoformat((stamp or '').replace('Z', '+00:00'))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as exc:
+            logger.debug('Skipping check-in with unparseable date for module %s: %s (error: %s)', module, stamp, exc)
             return
         zone = ZoneInfo('Asia/Shanghai')
         day = moment.replace(tzinfo=zone) if moment.tzinfo is None else moment.astimezone(zone)
