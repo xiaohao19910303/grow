@@ -3,6 +3,7 @@
   'use strict';
   const home=document.getElementById('actionHome'),root=document.getElementById('view-action-plans'),bar=document.getElementById('actionExecution');
   const label={year:'年目标',month:'月计划',week:'周计划',day:'日行动'},statusLabel={active:'待推进',paused:'已暂停',completed:'已完成',archived:'已归档'};
+  let initialized;
   let client,snapshot={plans:[],execution:null},offset=0,loading=null,loadTurn=0,lastSignature='',lastDays='',period='all',horizon='all',status='active',page=1,historyTurn=0,formDialog=null;
   const n=(tag,text,cls)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el;};
   const now=()=>new Date(Date.now()+offset),day=zone=>ActionPlanClient.day(now(),zone||'Asia/Shanghai');
@@ -16,14 +17,14 @@
     if(!client)return;if(loading&&!force)return loading;
     const turn=++loadTurn;
     const task=client.read('').then(data=>{if(turn!==loadTurn)return snapshot;snapshot=data;offset=new Date(data.server_time)-Date.now();
-      const signature=JSON.stringify([data.plans,data.execution]),days=[...new Set(data.plans.map(p=>p.timezone))].map(zone=>day(zone)).join(',');
+      const signature=JSON.stringify([data.plans,data.execution]),days=[...new Set(['Asia/Shanghai',...data.plans.map(p=>p.timezone)])].map(zone=>day(zone)).join(',');
       if(signature!==lastSignature||days!==lastDays){lastSignature=signature;lastDays=days;renderHome();renderBar();if(visible())renderWorkspace();}remind().catch(()=>{});return data;});
     loading=task;try{return await task;}finally{if(loading===task)loading=null;}
   }
   async function change(p,action,values={}){
     const result=await client.write(action+':'+(values.execution_id||p.id),'/'+p.id+'/operations',{revision:p.revision,action,...values});
     const old=planById(p.id);snapshot.plans=snapshot.plans.map(item=>item.id===p.id?{...old,...result.plan}:item);
-    if(result.execution)snapshot.execution=result.execution.outcome==='running'?result.execution:null;
+    if(result.execution&&(result.execution.outcome==='running'||result.execution.id===snapshot.execution?.id))snapshot.execution=result.execution.outcome==='running'?result.execution:null;
     renderHome();renderBar();if(visible())renderWorkspace();remind().catch(()=>{});
     try{await load(true);}catch{toast('操作已保存，列表暂未刷新，请稍后点击刷新计划。');}return result;
   }
@@ -55,26 +56,16 @@
       if(p.status!=='archived')button(actions,'归档',async()=>{if(confirm('归档后停止推进和提醒，历史执行记录会保留。'))await change(p,'archive');});
     }
   }
-  function renderHome(){
-    home.replaceChildren();const heading=n('div',undefined,'section-heading');home.append(heading);
-    const titles=n('div');titles.append(n('h2','把时间留给重要的事'),n('p','先开始一件小事，分心后也可以回来。','desc'));heading.append(titles);
-    const controls=n('div',undefined,'action-buttons');heading.append(controls);button(controls,'我的行动计划',openWorkspace);button(controls,'新建日行动',()=>editor('day'),true);
-    const today=ActionPlanClient.pending(snapshot.plans,now(),snapshot.execution),running=planById(snapshot.execution?.plan_id);
-    const featured=running||today[0];if(featured)item(home,featured,true);else{const done=snapshot.plans.filter(p=>p.period==='day'&&p.status==='completed'&&p.start_date===day(p.timezone));home.append(n('p',done.length?`今天已达标 ${done.length} 项行动，累计投入 ${done.reduce((sum,p)=>sum+p.progress.minutes,0)} 分钟。可以到行动计划回顾进度与收获。`:'今天还没有待执行的行动。可以为阅读留出 20 分钟，先从 5 分钟开始。','action-empty'));}
-    if(today.length>1)button(home,'今天还有 '+(today.length-1)+' 项行动',openWorkspace);
-    const weeks=snapshot.plans.filter(p=>p.period==='week'&&p.status==='active'&&!p.blocked&&p.start_date<=day(p.timezone)&&p.end_date>=day(p.timezone));
-    for(const p of weeks.slice(0,2))home.append(n('p',p.title+'：本周 '+p.progress.completed+' / '+p.target_count+' 次达标','action-progress'));
-    const earlier=snapshot.plans.filter(p=>p.period==='day'&&p.status==='active'&&!p.blocked&&p.start_date<day(p.timezone));
-    if(earlier.length)button(home,earlier.length+' 项过去的行动待调整',()=>{status='active';period='day';openWorkspace();});
-  }
+  function renderHome(){window.DailyAgenda?.render();}
+
   function renderWorkspace(){
     const reminderOpen=root.querySelector('.action-reminder-help')?.open;root.replaceChildren();const head=n('div',undefined,'section-heading');root.append(head);
-    const title=n('div');title.append(n('h2','我的行动计划'),n('p','年目标定方向，月周计划拆解，日行动从小处开始；随时查看进度并复盘。','desc'));head.append(title);
+    const title=n('div');title.append(n('h2','目标与计划'),n('p','年目标定方向，月周计划拆解，日行动从小处开始；随时查看进度并复盘。','desc'));head.append(title);
     const controls=n('div',undefined,'action-buttons');head.append(controls);for(const kind of ['year','month','week','day'])button(controls,'新建'+label[kind],()=>editor(kind),kind==='day');button(controls,'刷新计划',()=>load(true));button(controls,'LightTick 联动',()=>window.ActionLink.show());
     const tabs=n('div',undefined,'action-buttons');root.append(tabs);for(const [value,text] of [['all','全部'],['year','年目标'],['month','月计划'],['week','周计划'],['day','日行动']]){const b=button(tabs,text,()=>{period=value;page=1;renderWorkspace();},period===value);b.setAttribute('aria-pressed',String(period===value));}
     const horizonFilter=field(root,'规划视角','select');for(const [value,text] of [['all','全部长短期'],['long','长期规划'],['short','短期计划']])option(horizonFilter,value,text);horizonFilter.value=horizon;horizonFilter.onchange=()=>{horizon=horizonFilter.value;page=1;renderWorkspace();};
     const filter=field(root,'计划状态','select');for(const [value,text] of Object.entries(statusLabel))option(filter,value,text);option(filter,'all','全部状态');filter.value=status;filter.onchange=()=>{status=filter.value;page=1;renderWorkspace();};
-    const plans=snapshot.plans.filter(p=>(period==='all'||p.period===period)&&(horizon==='all'||p.horizon===horizon)&&(status==='all'||p.status===status));
+    const plans=snapshot.plans.filter(p=>(period==='all'?p.period!=='day':p.period===period)&&(horizon==='all'||p.horizon===horizon)&&(status==='all'||p.status===status));
     const list=n('div');root.append(list);for(const p of plans.slice((page-1)*15,page*15))item(list,p);
     if(!plans.length)list.append(n('p','这个范围里还没有计划。可以先安排一次阅读，也可以从年目标开始。','action-empty'));
     const paging=n('div',undefined,'action-buttons');root.append(paging);const previous=button(paging,'上一页',()=>{page--;renderWorkspace();});previous.disabled=page===1;
@@ -88,7 +79,7 @@
   async function renderRecords(container,recordPage){
     const turn=++historyTurn,rows=n('div');container.querySelector('.action-history-rows')?.remove();rows.className='action-history-rows';container.append(rows);rows.append(n('p','正在读取执行记录…'));
     try{const data=await client.read('/records?page='+recordPage);if(turn!==historyTurn||!rows.isConnected)return;rows.replaceChildren();
-      for(const record of data.records){const row=n('article',undefined,'action-history-row');row.append(n('strong',record.title),n('p',`${record.business_date} · ${{running:'进行中',completed:'已达标',minimum:'已完成起步',partial:'部分执行',interrupted:'中断已保存'}[record.outcome]} · 实际 ${record.actual_minutes} 分钟`));if(record.note)row.append(n('p',record.note));rows.append(row);}
+      for(const record of data.records){const row=n('article',undefined,'action-history-row');row.append(n('strong',record.title),n('p',`${record.business_date} · ${{running:'进行中',completed:record.completion_mode==='content'?'内容已完成':record.completion_mode==='check'?'待办已完成':'已达标',minimum:'已完成起步',partial:'已保存投入',interrupted:'中断已保存',reopened:'已撤销勾选'}[record.outcome]||record.outcome} · 实际 ${record.actual_minutes} 分钟`));if(record.note)row.append(n('p',record.note));rows.append(row);}
       if(!data.records.length)rows.append(n('p','开始一次行动后，执行记录会保存在这里。'));
       const controls=n('div',undefined,'action-buttons');rows.append(controls);const previous=button(controls,'更近的记录',()=>renderRecords(container,recordPage-1));previous.disabled=recordPage===1;
       controls.append(n('span',`共 ${data.total} 次执行 · 第 ${recordPage} 页`));const next=button(controls,'更早的记录',()=>renderRecords(container,recordPage+1));next.disabled=recordPage*30>=data.total;
@@ -139,7 +130,7 @@
     const repeat=n('fieldset',undefined,'action-repeat');if(kind==='day'&&!existing){repeat.append(n('legend','重复安排（同一周，可选）'));form.append(repeat);}
     function repeatChoices(){if(!repeat.isConnected)return;repeat.querySelectorAll('label').forEach(el=>el.remove());const [monday]=range('week',fields.start_date.value||day());for(let i=0;i<7;i++){const dt=new Date(monday+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()+i);const value=dt.toISOString().slice(0,10);const input=field(repeat,['周一','周二','周三','周四','周五','周六','周日'][i]+' '+value,'checkbox',(seed.repeat_dates||[]).includes(value));input.dataset.date=value;}}
     repeatChoices();fields.start_date.addEventListener('change',repeatChoices);
-    function payload(){const values={period:kind,target_count:1,reminder:false};for(const [name,input] of Object.entries(fields))values[name]=input.type==='checkbox'?input.checked:input.type==='number'?Number(input.value):input.value;values.parent_id||=null;values.end_date||=values.start_date;values.target=targets[Number(target.value)]?.value||seed.target;
+    function payload(){const values={period:kind,target_count:1,reminder:false};if(seed.completion_mode&&seed.completion_mode!=='time')values.completion_mode=seed.completion_mode;for(const [name,input] of Object.entries(fields))values[name]=input.type==='checkbox'?input.checked:input.type==='number'?Number(input.value):input.value;values.parent_id||=null;values.end_date||=values.start_date;values.target=targets[Number(target.value)]?.value||seed.target;
       return values;}
     function saveDraft(){const values=payload();values.revision=existing?.revision||seed.revision;values.repeat_dates=[...repeat.querySelectorAll('input:checked')].map(input=>input.dataset.date);client.put(draftName,values);}
     form.addEventListener('input',saveDraft);form.addEventListener('change',saveDraft);form.append(error);
@@ -153,20 +144,20 @@
     fields.title.focus();
   }
   async function openTarget(target){
-    if(target.kind==='book'){toast('已经开始计时，完成后确认实际分钟即可。');return;}
+    if(target.kind==='book'){toast('已开始行动，可以在底部保存实际投入。');return;}
     if(target.kind==='library'){goTab('library');return;}
     if(target.kind==='renzhi'){rememberLearningOrigin();await window.openCopilotLesson(target.lesson_no);return;}
     if(target.kind==='plan'){await window.openPlanCourse(target.plan_id,target.lesson_no);return;}
-    if(target.kind==='article'){if(goTab('reading')===false)return;await window.openActionArticle(target.course);return;}
+    if(target.kind==='article'){const origin={tab:currentTab,scroll:window.scrollY,focus:document.activeElement};if(goTab('reading')===false)return;await window.openActionArticle(target.course,origin);return;}
     await window.loadDailyLearning();await window.openStudyCourse(target.kind,target.course);
   }
   async function start(p,variant){const result=await change(p,'start',{variant});try{await openTarget(result.plan.target);}catch(e){toast('执行已保留，学习内容暂未打开：'+e.message);}}
   function renderBar(){
     bar.replaceChildren();bar.hidden=!snapshot.execution;document.body.classList.toggle('action-running',!!snapshot.execution);if(!snapshot.execution)return;
     const execution=snapshot.execution,p=planById(execution.plan_id),text=n('div');text.append(n('strong','正在执行：'+execution.title),n('span',' 计时中 · 计划 '+execution.planned_minutes+' 分钟','action-clock'));bar.append(text);
-    const actions=n('div',undefined,'action-buttons');bar.append(actions);button(actions,'继续学习',()=>openTarget(execution.target));button(actions,'记录完成',()=>finish(p,execution,'completed'),true);button(actions,'中断并保留记录',()=>finish(p,execution,'interrupted'));
+    const actions=n('div',undefined,'action-buttons');bar.append(actions);button(actions,'继续执行',()=>openTarget(execution.target));button(actions,p?.completion_mode==='content'?'记录投入':'记录完成',()=>finish(p,execution,'completed'),true);button(actions,'中断并保留记录',()=>finish(p,execution,'interrupted'));
   }
-  function finish(p,execution,outcome){const draftKey='finish.'+execution.id,draft=client.get(draftKey)||{};const d=dialog(outcome==='completed'?'确认本次执行':'保存中断记录'),form=n('form');d.append(form);form.append(n('p',execution.title),n('p','计时只作参考，请确认实际投入。课程完成与学习笔记保持独立。','desc'));
+  function finish(p,execution,outcome){const draftKey='finish.'+execution.id,draft=client.get(draftKey)||{};const d=dialog(outcome==='completed'?'确认本次执行':'保存中断记录'),form=n('form');d.append(form);form.append(n('p',execution.title),n('p',p.completion_mode==='content'?'计时只作参考，请确认实际投入。读完／学完请在原内容中确认，这里仅保存投入。':'计时只作参考，请确认实际投入。课程完成与学习笔记保持独立。','desc'));
     const minutes=field(form,'实际执行分钟','number',draft.minutes??Math.max(0,Math.floor((now()-new Date(execution.started_at))/60000)));minutes.min=outcome==='completed'?1:0;minutes.max=1440;minutes.required=true;
     const note=field(form,'收获或中断原因（可选）','textarea',draft.note||'');note.maxLength=2000;form.addEventListener('input',()=>client.put(draftKey,{minutes:minutes.value,note:note.value}));const error=n('p','','action-error');error.setAttribute('role','alert');form.append(error);
     const actions=n('div',undefined,'action-buttons');form.append(actions);const save=n('button',outcome==='completed'?'确认并记录':'保存中断','btn primary');save.type='submit';actions.append(save);button(actions,'继续执行',()=>d.close());
@@ -184,12 +175,27 @@
     if(!client.get('notifications')||!('Notification' in window)||Notification.permission!=='granted')return;
     for(const p of due.slice(0,3)){const claim=await client.read('/'+p.id+'/reminder-claim',{device_id:client.device,reminder_at:p.reminder_at});if(claim.notify){try{const notice=new Notification('留一点时间给自己',{body:p.title+' · 先开始 '+p.minimum_minutes+' 分钟也可以',tag:p.id});notice.onclick=()=>{window.focus();openWorkspace();notice.close();};}catch{client.put('notifications',false);}}}
   }
-  window.ActionPlans={enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','我的行动计划'),n('p','正在读取计划与进度…'));try{await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},refresh:()=>load(true)};
+  async function schedule(values){
+    await initialized;const result=await client.write('schedule:'+JSON.stringify(values.target)+':'+values.date,'/schedules',values);
+    await load(true);return result;
+  }
+  async function addTask(title,date){
+    await initialized;const values={title,period:'day',start_date:date,end_date:date,completion_mode:'check',target:{kind:'book'}};
+    await client.write('todo:'+date,'',values);await load(true);
+  }
+  async function records(){
+    const target=document.getElementById('view-action-records');target.replaceChildren(n('h2','执行记录'),n('p','本人确认的完成、投入与中断记录；内容完成不推算时长。','desc'));
+    try{await initialized;await renderRecords(target,1);}catch(e){target.append(n('p',e.message));button(target,'重试',records);}
+  }
+  window.ActionPlans={enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','目标与计划'),n('p','正在读取计划与进度…'));try{await initialized;await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},
+    refresh:async()=>{await initialized;return load(true);},snapshot:()=>snapshot,day,newDay:async()=>{await initialized;editor('day');},
+    schedule,addTask,change,start,openTarget,records,
+    reconcile:async p=>{const result=await change(p,'reconcile');toast('已核对保存的内容完成记录。');return result;}};
   document.querySelector('.topbar').after(document.getElementById('actionReminder'));
-  (window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{client=ActionPlanClient.create({request:window.fetch.bind(window),storage:localStorage,account:user.id});
-    load().then(remind).catch(e=>{home.replaceChildren(n('h2','行动计划暂未读取'),n('p',e.message));button(home,'重新读取行动计划',()=>load(true));});
+  initialized=(window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{client=ActionPlanClient.create({request:window.fetch.bind(window),storage:localStorage,account:user.id});
+    load().then(remind).catch(e=>{const list=document.getElementById('agendaList');list.replaceChildren(n('p',e.message));button(list,'重新读取安排',()=>load(true));});
     setInterval(()=>{const el=bar.querySelector('.action-clock');if(el&&snapshot.execution){const seconds=Math.max(0,Math.floor((now()-new Date(snapshot.execution.started_at))/1000));el.textContent=` · 已开始 ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} · 请确认实际投入`; }},1000);
     setInterval(()=>{if(!document.hidden)load().then(remind).catch(()=>{});},30000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)load().then(remind).catch(()=>{});});
-  }).catch(()=>{});
+  });
 })();

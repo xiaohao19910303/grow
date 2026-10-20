@@ -149,7 +149,7 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
-<link rel="stylesheet" href="/static/action-plans.css?v=20261018-1">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261019-1">
 </head>
 <body>
 
@@ -182,15 +182,12 @@
   </div>
   <nav class="tabs main-nav" id="tabs" aria-label="主导航">
     <button class="tab active" data-group="personal" aria-current="page" onclick="goGroup('personal')">今日</button>
+    <button class="tab" data-group="actions" onclick="goGroup('actions')">行动</button>
     <button class="tab" data-group="learning" onclick="goGroup('learning')">学习</button>
     <button class="tab" data-group="records" onclick="goGroup('records')">记录</button>
     <button class="tab" data-group="growth" onclick="goGroup('growth')">成长</button>
   </nav>
-  <nav id="subnav" class="subnav" aria-label="栏目导航">
-    <button class="btn primary" aria-current="page" onclick="goTab('personal')">今日</button>
-    <button class="btn" onclick="goTab('action-plans')">行动计划</button>
-    <button class="btn" onclick="goTab('reading')">阅读</button>
-  </nav>
+  <nav id="subnav" class="subnav" aria-label="栏目导航" hidden></nav>
   <div id="view-settings" style="display:none" class="section">
     <section id="actionLinkSettings" class="account-settings" aria-label="LightTick 客户端联动"><h2>LightTick 客户端联动</h2><p>正在读取联动状态…</p></section>
     <h2>设置与数据</h2><p class="desc">记录会自动保存。需要时可手动重试保存或导出备份。</p>
@@ -246,23 +243,30 @@
     <div id="learningLibrary"></div>
   </div>
   <div id="view-reader" style="display:none"><section class="section cp-reader" id="dailyReader" hidden></section></div>
+  <div id="view-action-schedule" style="display:none" class="section"></div>
+  <div id="view-action-records" style="display:none" class="section"></div>
   <div id="view-action-plans" style="display:none" class="section"></div>
   <div id="view-personal">
     <div class="day-heading">
       <div><h2 id="dayHeading">今天，稳步向前</h2><p id="daySummary" class="desc">正在读取今日安排…</p></div>
       <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
     </div>
-    <section id="actionHome" class="section action-home" aria-label="待执行行动计划"><h2>把时间留给重要的事</h2><p class="desc" role="status">正在读取行动计划…</p></section>
-    <div class="today-layout">
-      <section class="section learning-panel" aria-labelledby="dailyLearningTitle">
-        <div class="section-heading"><h2 id="dailyLearningTitle">继续学习</h2><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新</button></div>
-        <div id="dailyLearning" aria-live="polite"><p>正在读取学习内容…</p></div>
-      </section>
-      <div class="personal-grid" id="personalDays"></div>
-    </div>
+    <section id="actionHome" class="section action-home" aria-label="当日安排">
+      <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay()">新建计时行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
+      <div id="agendaList" aria-live="polite"><p class="desc" role="status">正在读取安排…</p></div>
+      <div id="agendaLegacy"></div>
+      <div id="agendaPending"></div>
+    </section>
+    <div class="personal-grid" id="personalDays"></div>
+    <details class="section continue-learning"><summary>继续学习 · 可选内容</summary>
+      <p class="desc">未安排的内容可随时学习，不计入今日必做。完整课程与历史记录在「学习」中查看。</p>
+      <div class="section-heading"><h2 id="dailyLearningTitle">继续学习</h2><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新</button></div>
+      <div id="dailyLearning" aria-live="polite"><p>正在读取学习内容…</p></div>
+    </details>
   </div>
   <div id="view-overview" style="display:none">
     <div class="help" style="font-size:12px;color:var(--muted);background:#fafbfd;border:1px dashed var(--border);border-radius:10px;padding:10px 14px;margin-bottom:18px">记录保存在远端数据库，正式学习资料发布到 GitHub。AI 配置仅保存在当前浏览器，生成前需填写自己的配置。改动会自动保存。</div>
+    <section id="actionGrowth" class="section" aria-label="行动积累"></section>
     <div class="cards" id="statCards"></div>
     <div class="section"><h2>本周各模块投入度</h2><p class="desc">近 7 天（周一起）各模块完成情况，完成度 = 有进展(≥1)的天数 ÷ 7</p><div id="barChart"></div></div>
     <div class="section"><h2>活动记录热力图</h2><p class="desc">最近约 4 个月，颜色越深表示当天学习活动越多</p><div id="heatmap"></div><div class="legend"><span><i style="background:#ebedf0"></i>无</span><span><i style="background:#c6e48b"></i>少</span><span><i style="background:#7bc96f"></i>中</span><span><i style="background:#239a3b"></i>多</span><span><i style="background:#196127"></i>很多</span></div></div>
@@ -549,7 +553,7 @@ const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>ESC[c]); }
 function pad(n){ return String(n).padStart(2,'0'); }
 function ds(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
-function today(){ return ds(new Date()); }
+function today(){ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(p=>[p.type,p.value]));return `${parts.year}-${parts.month}-${parts.day}`; }
 function parseDt(s){ const p=s.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
 function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
 function startOfWeek(d){ const x=new Date(d); const wd=(x.getDay()+6)%7; x.setDate(x.getDate()-wd); return x; }
@@ -689,40 +693,44 @@ function renderPersonal(){
   if(window.renderDailyLearning) window.renderDailyLearning();
   const selected=document.getElementById('personalDate').value || today();
   const dates=[selected,ds(addDays(parseDt(selected),1))];
-  const todayItems=state.todos.filter(item=>item.date===selected);
-  document.getElementById('dayHeading').textContent=selected===today()?'今天，稳步向前':fmtDateCN(selected)+'的安排';
-  document.getElementById('daySummary').textContent=`待办完成 ${todayItems.filter(item=>item.done).length}/${todayItems.length} · ${state.reviews.some(item=>item.date===selected)?'已记录复盘':'复盘待记录'}`;
-  const drafts=Object.fromEntries([...document.querySelectorAll('#personalDays input[id^="todoInput"]')].map(input=>[input.dataset.date,input.value]));
+  const drafts=Object.fromEntries([...document.querySelectorAll('input[id^="todoInput"]')].map(input=>[input.dataset.date,input.value]));
   const tomorrowOpen=document.getElementById('tomorrowPlan')?.open || false;
-  document.getElementById('personalDays').innerHTML=dates.map((date,day)=>{
-    const label=selected===today()?(day?'明日':'今日'):(day?'次日':'当日');
+  const tasks=(date,day)=>{
+    const label=day?'明日':'当日';
     const items=state.todos.map((item,index)=>({item,index})).filter(x=>x.item.date===date);
-    const done=items.filter(x=>x.item.done).length;
-    const reviews=state.reviews.map((item,index)=>({item,index})).filter(x=>x.item.date===date);
-    return `${day?'<details class="section tomorrow-plan" id="tomorrowPlan"'+(tomorrowOpen?' open':'')+'><summary>'+label+'安排 · '+esc(fmtDateCN(date))+'</summary><div class="tomorrow-content">':'<section class="section today-todos" id="todayTodos">'}<h2>${label}待办</h2>
-      <p class="desc">已完成 ${done} / ${items.length} 项</p>
-      <form class="manual-add" onsubmit="addTodo(event,'${date}',${day})"><input id="todoInput${day}" data-date="${date}" value="${esc(drafts[date] || '')}" aria-label="${label}待办内容" placeholder="添加一件想完成的事" required maxlength="500" style="max-width:none"><button class="btn primary" ${dataLoaded?'':'disabled'}>添加</button></form>
-      ${items.map(({item,index})=>`<div class="todo-row"><label><input type="checkbox" ${item.done?'checked':''} onchange="toggleTodo(${index})"><span class="${item.done?'todo-done':''}">${esc(item.title)}</span></label><button class="icon-btn" onclick="editTodo(${index})">编辑</button><button class="icon-btn del" onclick="delItem('todos',${index})">删除</button></div>`).join('') || '<p class="empty">还没有待办，添加第一件小事吧。</p>'}
-      <div style="margin-top:24px"><h2>${label}记录与复盘</h2><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn primary" onclick="Reflections.openEditor(null,'${date}')">记几句</button><button class="btn" onclick="openReviewForm(null,'${date}')" ${dataLoaded?'':'disabled'}>四问复盘</button></div></div>
-      <div id="refToday_${day}"></div>
-      ${reviews.map(({item,index})=>`<article class="daily-review">${[['原来怎么想','thought'],['实际结果','actual'],['哪对哪错','gap'],['下次怎么改','action']].map(([title,key])=>`<p><strong>${title}</strong><br>${esc(item[key] || '待补充')}</p>`).join('')}<button class="icon-btn" onclick="openReviewForm(${index})">编辑</button><button class="icon-btn del" onclick="delItem('reviews',${index})">删除</button></article>`).join('') || '<p class="empty">还没有复盘，写下预期或今天的收获。</p>'}
-    ${day?'</div></details>':'</section>'}`;
-  }).join('');
-  // 渲染自由记录（新日常记录），旧 reviews 保留为历史四问
-  if (window.Reflections && window.Reflections.renderDay) {
-    window.Reflections.renderDay(document.getElementById('refToday_0'), dates[0]);
-    window.Reflections.renderDay(document.getElementById('refToday_1'), dates[1]);
-  }
+    return `<form class="manual-add" onsubmit="addTodo(event,'${date}',${day})"><input id="todoInput${day}" data-date="${date}" value="${esc(drafts[date] || '')}" aria-label="${label}待办内容" placeholder="添加一件想完成的事" required maxlength="160" style="max-width:none"><button class="btn primary" ${dataLoaded?'':'disabled'}>添加待办</button></form>
+      ${items.map(({item,index})=>`<div class="todo-row"><label><input type="checkbox" ${item.done?'checked':''} onchange="toggleTodo(${index})"><span class="${item.done?'todo-done':''}">${esc(item.title)}</span></label><span class="desc">待办</span><button class="icon-btn" onclick="editTodo(${index})">改期／编辑</button><button class="icon-btn del" onclick="delItem('todos',${index})">删除</button></div>`).join('')}`;
+  };
+  document.getElementById('dayHeading').textContent=selected===today()?'今天，稳步向前':fmtDateCN(selected)+'的安排';
+  document.getElementById('agendaTitle').textContent=selected===today()?'今日安排':'当日安排';
+  document.getElementById('agendaLegacy').innerHTML=tasks(selected,0);
+  const reviews=state.reviews.map((item,index)=>({item,index})).filter(x=>x.item.date===selected);
+  document.getElementById('personalDays').innerHTML=`<section class="section"><h2>当日记录与复盘</h2><div class="action-buttons"><button class="btn primary" onclick="Reflections.openEditor(null,'${selected}')">记几句</button><button class="btn" onclick="openReviewForm(null,'${selected}')" ${dataLoaded?'':'disabled'}>四问复盘</button></div><div id="refToday_0"></div>
+    ${reviews.map(({item,index})=>`<article class="daily-review">${[['原来怎么想','thought'],['实际结果','actual'],['哪对哪错','gap'],['下次怎么改','action']].map(([title,key])=>`<p><strong>${title}</strong><br>${esc(item[key] || '待补充')}</p>`).join('')}<button class="icon-btn" onclick="openReviewForm(${index})">编辑</button><button class="icon-btn del" onclick="delItem('reviews',${index})">删除</button></article>`).join('') || '<p class="empty">还没有复盘，可以晚些再记。</p>'}</section>
+    <details class="section tomorrow-plan" id="tomorrowPlan"${tomorrowOpen?' open':''}><summary>${selected===today()?'明日':'次日'}预览 · ${esc(fmtDateCN(dates[1]))}</summary><div class="tomorrow-content"><div id="agendaTomorrowList"></div>${tasks(dates[1],1)}</div></details>`;
+  window.Reflections?.renderDay?.(document.getElementById('refToday_0'), selected);
+  window.DailyAgenda?.render();
+  updateDaySummary();
 }
+function updateDaySummary(){
+  const selected=document.getElementById('personalDate').value || today();
+  const items=state.todos.filter(item=>item.date===selected);
+  const plans=(window.ActionPlans?.snapshot().plans||[]).filter(p=>p.period==='day'&&p.start_date===selected&&p.status!=='archived');
+  const done=items.filter(item=>item.done).length+plans.filter(p=>p.status==='completed').length;
+  document.getElementById('daySummary').textContent=`安排完成 ${done}/${items.length+plans.length} · ${state.reviews.some(item=>item.date===selected)?'已记录复盘':'复盘待记录'}`;
+}
+window.legacyAgendaTasks=()=>state.todos.map((item,index)=>({...item,index}));
 function focusTodayTodo(){
   document.getElementById('todoInput0')?.focus();
 }
-function addTodo(event,date,day){
+async function addTodo(event,date,day){
   event.preventDefault(); if(!dataLoaded)return;
   const input=document.getElementById('todoInput'+day), title=input.value.trim();
   if(!title)return;
-  state.todos.push({id:crypto.randomUUID(),date,title,done:false});
-  input.value=''; persist(); renderPersonal(); document.getElementById('todoInput'+day).focus();
+  const submit=event.target.querySelector('button');submit.disabled=true;
+  try{await window.ActionPlans.addTask(title,date);input.value='';renderPersonal();document.getElementById('todoInput'+day)?.focus();}
+  catch(error){toast(error.message);}
+  finally{submit.disabled=false;}
 }
 function toggleTodo(index){ state.todos[index].done=!state.todos[index].done; persist(); renderPersonal(); }
 function editTodo(index){
@@ -2025,9 +2033,10 @@ function exportReportMarkdown(){
 
 /* ================= Tab ================= */
 const navGroups={
-  personal:[['personal','今日'],['action-plans','行动计划'],['reading','阅读']],
-  learning:[['library','我的课程'],['plans','学习计划'],['progress','学习打卡'],['copilot','课程管理'],['archive','课程归档'],['summary','课程总结']],
-  records:[['reviews','每日复盘'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['stocks','投资复盘'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
+  personal:[['personal','今日']],
+  actions:[['action-schedule','日程安排'],['action-plans','目标与计划']],
+  learning:[['library','我的课程'],['reading','阅读'],['plans','课程计划'],['progress','学习打卡'],['copilot','课程管理'],['archive','课程归档'],['summary','课程总结']],
+  records:[['reviews','每日复盘'],['action-records','执行记录'],['habits','学习时长'],['decisions','决策日志'],['predictions','预测校准'],['insights','个人洞察'],['stocks','投资复盘'],['custom','自定义记录'],['applications','应用记录'],['errors','错误记录'],['learning-history','学习记录']],
   growth:[['overview','成长总览'],['timeline','时间线'],['knowledge','知识图谱'],['report','周报'],['ai-report','AI 报告'],['search','搜索']]
 };
 const lastGroupTab={};
@@ -2055,13 +2064,15 @@ function goTab(name, options={}){
     if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
   });
   const subnav=document.getElementById('subnav');
-  subnav.hidden=!group || !!options.reading || name==='reader';
+  subnav.hidden=!group || navGroups[group].length===1 || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
-  ['reading','plans','action-plans','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
-  if(name==='personal' && !options.restore){ renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
+  if(name==='personal' && !options.restore){ window.ActionPlans?.refresh().catch(()=>{}); renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
   if(name==='action-plans')window.ActionPlans?.enter();
+  if(name==='action-schedule')window.DailyAgenda?.enter();
+  if(name==='action-records')window.ActionPlans?.records();
   if(name==='plans')window.enterPlans?.();
   if(name==='library')window.renderDailyLearning?.();
   if(name==='copilot' && !options.reading){window.showCopilotManagement?.();window.loadCopilot();}
@@ -2073,7 +2084,7 @@ function goTab(name, options={}){
   if(name==='ai-report') renderAIReports();
   if(name==='knowledge') renderKnowledgeGraph();
   if(name==='timeline') window.Timeline?.load();
-  if(name==='overview'){ renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
+  if(name==='overview'){ window.ActionPlans?.refresh().then(()=>window.DailyAgenda?.renderGrowth()).catch(()=>{}); renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
   if(name==='settings') { loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='progress' || name==='overview')refreshAutoCheckins();
@@ -2226,10 +2237,11 @@ init();
 <script src="/static/study-notes.js?v=20261018-1"></script>
 <script src="/static/plans.js?v=20261018-performance"></script>
 <script src="/static/study-generation.js?v=20261018-performance"></script>
-<script src="/static/daily-learning.js?v=20261018-performance"></script>
+<script src="/static/daily-learning.js?v=20261019-1"></script>
 <script src="/static/reading-growth.js?v=20261017-growth1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
-<script src="/static/reading.js?v=20261018-performance"></script>
+<script src="/static/reading-position.js?v=20261019-1"></script>
+<script src="/static/reading.js?v=20261019-1"></script>
 <script src="/static/reflections.js?v=20261017-local-ai"></script>
 <script src="/static/learning-history.js?v=20261017-records"></script>
 <script src="/static/stocks.js?v=1"></script>
@@ -2237,9 +2249,10 @@ init();
 <script src="/static/timeline.js?v=1"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
 <aside id="actionExecution" class="action-execution" aria-label="正在执行的行动" hidden></aside>
-<script src="/static/action-plan-client.js?v=20261018-1"></script>
+<script src="/static/action-plan-client.js?v=20261019-1"></script>
 <script src="/static/action-reviews.js?v=20261018-1"></script>
 <script src="/static/action-link.js?v=20261019-1"></script>
-<script src="/static/action-plans.js?v=20261018-1"></script>
+<script src="/static/daily-agenda.js?v=20261019-1"></script>
+<script src="/static/action-plans.js?v=20261019-1"></script>
 </body>
 </html>

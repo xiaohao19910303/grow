@@ -34,6 +34,13 @@
 .action-reminder-help summary{cursor:pointer;font-weight:600}
 @media(max-width:600px){.action-form-grid{grid-template-columns:1fr}.action-dialog{padding:16px}.action-dialog .action-buttons{bottom:-16px}.action-execution{padding:12px}.action-execution .action-buttons{gap:4px}.action-reminder{padding:12px 16px}.action-featured h3{font-size:19px}.action-home .section-heading{flex-wrap:wrap;gap:8px}.action-repeat .action-field{flex-basis:100%}}
 .action-row progress{width:min(260px,70%);height:12px;accent-color:var(--primary)}
+.agenda-row{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:16px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.agenda-row-content{min-width:0;flex:1}.agenda-row h3{font-size:17px;margin:4px 0}.agenda-row p{margin:4px 0}.agenda-row .action-buttons{flex-shrink:0;max-width:55%}
+.agenda-done h3{color:var(--muted)}.agenda-check{display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.agenda-content-controls{margin:8px 0 16px}.agenda-content-controls>.action-buttons{margin-bottom:4px}.agenda-scheduled{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+.agenda-scheduled .btn{font-size:12px;padding:4px 8px}.continue-learning>summary{font-weight:600;cursor:pointer}.continue-learning>.section-heading{margin-top:16px}
+#personalDays{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:20px}#agendaLegacy .manual-add{margin-top:16px}.main-nav .tab{min-width:0}.tabs.main-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:700px){.agenda-row{align-items:flex-start;flex-direction:column;gap:4px}.agenda-row .action-buttons{max-width:100%}#personalDays{grid-template-columns:1fr}.main-nav .tab{padding-left:6px;padding-right:6px}.agenda-row h3{font-size:16px}}
 .action-review-preview,.action-ai-review,.action-review-history{margin:20px 0;padding:16px;border:1px solid var(--border);border-radius:12px}
 .action-context{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:12px}
 .action-ai-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}

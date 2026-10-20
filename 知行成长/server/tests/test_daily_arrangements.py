@@ -94,5 +94,16 @@ class DailyArrangementsTests(PostgreSQLFixture):
     def test_invalid_missing_foreign_sources_and_csrf_cannot_create_schedule(self):
         self.assertEqual(self.schedule(target={'kind':'article','course':'article-missing'}).status_code, 404)
         self.assertEqual(self.schedule(date='bad').status_code, 422)
+        self.assertEqual(self.schedule(target={'kind':'library'}).status_code,422)
+        self.assertEqual(self.schedule(timezone='Invalid/Zone').status_code,422)
         self.assertEqual(self.client.post('/api/action-plans/schedules', json=dict(title='x', target=self.target,
             date='2026-10-20', key=str(uuid.uuid4()))).status_code, 403)
+
+    def test_completing_running_past_article_does_not_also_complete_todays_arrangement(self):
+        previous=self.schedule('2026-10-18').json()['plan']
+        today=self.schedule('2026-10-19').json()['plan']
+        self.assertEqual(self.change(previous,'start').status_code,200)
+        self.assertEqual(actions.content_completed(self.target),[previous['id']])
+        plans={p['id']:p for p in actions.listing()['plans']}
+        self.assertEqual(plans[today['id']]['status'],'active')
+        self.assertIsNone(actions.listing()['execution'])

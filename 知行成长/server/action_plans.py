@@ -134,7 +134,7 @@ class NewPlan(PlanFields):
 class Mutation(Input):
     key: str = Field(min_length=8, max_length=160)
     revision: int = Field(ge=1, strict=True)
-    action: Literal['edit', 'pause', 'resume', 'archive', 'complete', 'start', 'finish', 'snooze', 'reschedule', 'cancel', 'reopen']
+    action: Literal['edit', 'pause', 'resume', 'archive', 'complete', 'start', 'finish', 'snooze', 'reschedule', 'cancel', 'reopen', 'reconcile']
     date: CalendarDate | None = None
     fields: PlanFields | None = None
     variant: Literal['standard', 'minimum'] = 'standard'
@@ -257,9 +257,21 @@ class Schedule(Input):
     title: str = Field(min_length=1, max_length=160)
     target: StudyTarget
     date: CalendarDate
-    timezone: str = 'Asia/Shanghai'
+    timezone: str = Field(default='Asia/Shanghai', max_length=80)
     target_minutes: int = Field(default=20, ge=1, le=1440, strict=True)
     key: str = Field(min_length=8, max_length=160)
+
+    @model_validator(mode='after')
+    def valid_content(self):
+        if self.target.kind in ('library','book'):
+            raise ValueError('日期安排请选择具体文章或课程。')
+        try:
+            ZoneInfo(self.timezone)
+        except (ValueError,ZoneInfoNotFoundError):
+            raise ValueError('时区无效。') from None
+        if not self.title.strip():
+            raise ValueError('请填写内容标题。')
+        return self
 
 
 def schedule(body):
@@ -314,12 +326,17 @@ def content_completed(target):
         running = active(c)
         plans = [public(row) for row in c.execute('SELECT * FROM action_plans')]
         by_id = {p['id']: p for p in plans}
+        running_content = by_id.get(running['plan_id']) if running else None
+        if running_content and (running_content['completion_mode'] != 'content' or not same_target(running_content['target'], target)):
+            running_content = None
         completed = []
         for plan in plans:
             if (plan['completion_mode'] != 'content' or plan['status'] != 'active'
                     or not same_target(plan['target'], target)):
                 continue
             today = clock().astimezone(ZoneInfo(plan['timezone'])).date().isoformat()
+            if running_content and plan['id'] != running_content['id']:
+                continue
             if plan['start_date'] != today and not (running and running['plan_id'] == plan['id']):
                 continue
             ancestor = plan
@@ -337,9 +354,27 @@ def content_completed(target):
 def with_content_completion(result, target):
     """Source save succeeded even if a later schedule refresh is unavailable."""
     try:
-        return {**result, 'completed_arrangements': content_completed(target)}
+        content_completed(target)
+        return result
     except Exception:
         return {**result, 'arrangement_sync_error': '内容完成记录已保存，日期安排暂未同步，请在今日点击核对完成。'}
+
+
+def content_is_complete(c, target):
+    kind = target['kind']
+    table = {'article':'reading_records', 'plan':'learning_lessons', 'renzhi':'copilot_learning_records',
+             'yingyu':'study_learning_records', 'biaoda':'study_learning_records'}.get(kind)
+    if not table or c.execute('SELECT to_regclass(?)', (table,)).fetchone()[0] is None:
+        return False
+    if kind == 'article':
+        row = c.execute('SELECT data FROM reading_records WHERE id=?', (target['course'],)).fetchone()
+        return bool(row and json.loads(row[0]).get('read'))
+    if kind == 'plan':
+        row = c.execute('SELECT data FROM learning_lessons WHERE plan_id=? AND lesson_no=?', (target['plan_id'], target['lesson_no'])).fetchone()
+        return bool(row and json.loads(row[0]).get('learning_state') == 'completed')
+    if kind == 'renzhi':
+        return bool(c.execute("SELECT 1 FROM copilot_learning_records WHERE module_id='renzhi' AND round_id=1 AND lesson_no=?", (target['lesson_no'],)).fetchone())
+    return bool(c.execute('SELECT 1 FROM study_learning_records WHERE module_id=? AND filename=?', (kind, target['course'])).fetchone())
 
 
 def mutate(pid, body):
@@ -353,7 +388,20 @@ def mutate(pid, body):
             if body.action in ('edit', 'pause', 'archive', 'cancel', 'reschedule', 'reopen') and own_running:
                 fail(409, '请先结束或保存中断的执行，再调整计划。')
             result = {}
-            if body.action == 'edit':
+            if body.action == 'reconcile':
+                if plan['completion_mode'] != 'content' or plan['status'] != 'active':
+                    fail(422, '请选择待完成的内容安排。')
+                if plan['start_date'] > clock().astimezone(ZoneInfo(plan['timezone'])).date().isoformat():
+                    fail(422, '未来安排不能提前核对完成，请先改期。')
+                ancestor = plan
+                while ancestor.get('parent_id'):
+                    ancestor = get(c, ancestor['parent_id'])
+                    if ancestor['status'] != 'active':
+                        fail(409, '请先恢复上级计划。')
+                if not content_is_complete(c, plan['target']):
+                    fail(409, '原内容尚未确认读完／学完，请先打开内容完成确认。')
+                result['execution'] = complete_fact(c, plan, running)
+            elif body.action == 'edit':
                 if not body.fields or plan['status'] == 'archived':
                     fail(422, '请提供可编辑的计划内容。')
                 fields = body.fields.model_dump(mode='json')
@@ -420,7 +468,9 @@ def mutate(pid, body):
                 if body.outcome == 'completed' and not body.actual_minutes:
                     fail(422, '请填写实际执行分钟，未执行可选择中断保存。')
                 outcome = body.outcome
-                if outcome == 'completed' and body.actual_minutes < plan['target_minutes']:
+                if outcome == 'completed' and plan['completion_mode'] == 'content':
+                    outcome = 'partial'
+                elif outcome == 'completed' and body.actual_minutes < plan['target_minutes']:
                     outcome = 'minimum' if body.actual_minutes >= plan['minimum_minutes'] else 'partial'
                 running.update(ended_at=clock().isoformat(), actual_minutes=body.actual_minutes, note=body.note, outcome=outcome)
                 c.execute('UPDATE action_executions SET state=?,data=? WHERE id=?', (outcome, encoded(running), running['id']))
