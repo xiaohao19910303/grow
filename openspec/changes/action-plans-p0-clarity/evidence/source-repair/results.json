@@ -1,0 +1,83 @@
+{
+  "base": "10496b9",
+  "source_gate": {
+    "before_failed_files": 8,
+    "after_failed_files": 0,
+    "rules_unchanged": true,
+    "files": [
+      {
+        "path": "src/modules/bodylog/bodylog-group.service.ts",
+        "before": 873,
+        "after": 592
+      },
+      {
+        "path": "src/infrastructure/database/postgres/postgres-bodylog-admin.ts",
+        "before": 820,
+        "after": 572
+      },
+      {
+        "path": "src/infrastructure/database/application-database.ts",
+        "before": 746,
+        "after": 559
+      },
+      {
+        "path": "src/infrastructure/database/postgres/postgres-database.ts",
+        "before": 712,
+        "after": 643
+      },
+      {
+        "path": "apps/admin-web/app/lib/admin-api.ts",
+        "before": 669,
+        "after": 567
+      },
+      {
+        "path": "src/application-factory.ts",
+        "before": 646,
+        "after": 588
+      },
+      {
+        "path": "src/infrastructure/database/postgres/postgres-bodylog-checkin.ts",
+        "before": 644,
+        "after": 530
+      },
+      {
+        "path": "src/app/lighttick-v1-routes.ts",
+        "before": 605,
+        "after": 569
+      }
+    ]
+  },
+  "full_regression": {
+    "pass": 1500,
+    "fail": 0,
+    "skip": 0
+  },
+  "postgres": {
+    "pass": 3,
+    "fail": 0,
+    "skip": 0
+  },
+  "openapi_lint": {
+    "before_warnings": 212,
+    "after_warnings": 197,
+    "errors": 0,
+    "validation_equivalent": true
+  },
+  "admin_typecheck": "pass",
+  "admin_build": "pass",
+  "strict_backend_probe": {
+    "before_diagnostics": 716,
+    "after_diagnostics": 709,
+    "new_diagnostics": 0,
+    "is_full_pass": false
+  },
+  "grow_source_recovery": {
+    "pass": 12,
+    "fail": 0,
+    "skip": 0
+  },
+  "implementation_commits": {
+    "boundary_refactor": "5f902a7",
+    "conditional_contract_fix": "796e5c1"
+  }
+}

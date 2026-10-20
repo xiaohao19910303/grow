@@ -1,5 +1,7 @@
 # C2 来源证明与可靠投递验收
 
+> 后续修复：报告中8个行数门禁失败已全部解决，P0合同警告减少15条。原验收表作为历史基线保留，当前结果见 [source-repair-verification.md](source-repair-verification.md)。
+
 2026-10-21。沿用 Grow `codex/action-plans-p0`（基线 fc19fa0）和 Zook `feature/lighttick-p0-v2-contract-runtime`（基线71bb271）两个隔离实施工作树。本轮实施提交：Grow `110d36d`、Zook `f6a6363`。未改原生端，未合并、推送、部署或配对真实账号。
 
 ## 已实施

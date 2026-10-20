@@ -122,3 +122,6 @@ Chrome默认路径为 `/Applications/Google Chrome.app/Contents/MacOS/Google Chr
 
 
 2026-10-21 连接端 C2 增量：来源证明、可靠投递与核对的实现、故障恢复/合同/完整回归和剩余阻塞见 [source-delivery-verification.md](source-delivery-verification.md)。C3/原生/真实连接放行未完成，总任务7.3继续未勾选。
+
+
+2026-10-21 验收后修复：Zook 8个行数门禁失败已解决，合同警告212→197，详见 [source-repair-verification.md](source-repair-verification.md)。未启用连接写入或推进原生/C3。
