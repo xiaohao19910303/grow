@@ -58,28 +58,29 @@ class Generate(Selection):
 def context(c, scope, include_notes=False, include_review=False):
     plan = get(c, scope.plan_id)
     begin, end = scope.start_date.isoformat(), scope.end_date.isoformat()
-    if not plan['start_date'] <= begin <= end <= plan['end_date']:
-        fail(422, '复盘日期需位于所选计划范围内。')
+    # Actual execution can occur after the planned range or on an undated action.
     plans = [actions.public(r) for r in c.execute('SELECT * FROM action_plans')]
     ids = {plan['id']}
     for _ in range(4):
         ids |= {p['id'] for p in plans if p.get('parent_id') in ids}
     # The business date belongs to the execution snapshot, never the server's timezone.
-    records = [json.loads(r[0]) for r in c.execute('SELECT data FROM action_executions')]
+    records = actions.facts(c)
     records = sorted([r for r in records if r['plan_id'] in ids and begin <= r['business_date'] <= end],
                      key=lambda r: (r['started_at'], r['id']), reverse=True)
     finished = [r for r in records if r['outcome'] != 'running']
-    days = [p for p in plans if p['id'] in ids and p['period'] == 'day' and begin <= p['start_date'] <= end]
-    done = {r['plan_id'] for r in finished if r['outcome'] == 'completed'}
+    days = [p for p in plans if p['id'] in ids and p['period'] == 'day' and p.get('start_date') and begin <= p['start_date'] <= end]
+    all_facts=actions.facts(c)
+    reversals={r.get('reverses_record_id') for r in all_facts if r.get('completion_effect')=='reopen'}
+    done = {r['plan_id'] for r in finished if r.get('completion_effect')=='complete' and r['id'] not in reversals}
     result = {'plan': {k: plan[k] for k in ('id','title','period','horizon','start_date','end_date','target_count','target_minutes','minimum_minutes','reason','if_then','timezone')},
               'start_date': begin, 'end_date': end,
-              'stats': {'minutes': sum(r['actual_minutes'] for r in finished),
-                        'completed': sum(r['outcome'] == 'completed' for r in finished),
-                        'minimum': sum(r['outcome'] in ('minimum','partial') for r in finished),
+              'stats': {'minutes': sum(r['actual_minutes'] for r in finished if r['record_kind']=='session'),
+                        'completed': len(done),
+                        'minimum': sum(r['outcome']=='minimum' for r in finished),
                         'interrupted': sum(r['outcome'] == 'interrupted' for r in finished),
-                        'planned_days': len(days), 'completed_days': len(done & {p['id'] for p in days}),
+                        'partial':sum(r['outcome']=='partial' for r in finished),'planned_days': len(days), 'completed_days': len(done & {p['id'] for p in days}),
                         'running': sum(r['outcome'] == 'running' for r in records)},
-              'records': [{k:v for k,v in r.items() if k in ('id','title','business_date','timezone','actual_minutes','outcome') or (include_notes and k == 'note')} for r in records[:30]],
+              'records': [{k:v for k,v in r.items() if k in ('id','title','business_date','planned_date','date_basis','record_kind','completion_effect','timezone','actual_minutes','outcome') or (include_notes and k == 'note')} for r in records[:30]],
               'records_truncated': len(records) > 30}
     if include_notes:
         for record in result['records']:

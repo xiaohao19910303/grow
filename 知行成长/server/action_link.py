@@ -50,8 +50,9 @@ def call(source,body):
         data=response.json()
     except (httpx.HTTPError,ValueError):
         fail(503,'联动请求尚未确认，请检查连接后重试。已保存的数据和接管备份均保留。')
+    if not isinstance(data,dict):fail(503,'联动响应格式无效，已保存的数据保留。')
     if response.status_code>=400:
-        fail(response.status_code,'LightTick：'+str(data.get('message','联动暂未完成，请稍后重试。'))[:200])
+        fail(response.status_code,'LightTick：'+str(data.get('message','联动暂未完成，请稍后重试。'))[:200],str(data.get('code','REQUEST_REJECTED')))
     return data.get('data')
 
 
@@ -130,9 +131,26 @@ def register(app):
         with connection() as c:link,_=state(c)
         return public(link)
 
+    @router.get('/source-deliveries')
+    def source_deliveries():
+        identity()
+        from action_source_delivery import list_deliveries
+        return {'deliveries':list_deliveries()}
+
+    @router.post('/source-deliveries/retry')
+    def retry_sources():
+        identity()
+        from action_source_delivery import retry_due,list_deliveries
+        retry_due(force=True,retry_blocked=True,limit=3)
+        return {'deliveries':list_deliveries()}
+
     @router.post('/preview')
     def preview(body:Preview):
-        source=identity();target=call(source,{'action':'preview','code':body.code})
+        source=identity()
+        with connection() as c:
+            if c.execute('SELECT count(*) FROM action_content_events').fetchone()[0] or any(json.loads(r[0]).get('schema_version')==2 for r in c.execute('SELECT data FROM action_plans')):
+                fail(409,'P0接管合同尚待双端验证；计划继续保存在当前唯一写入方。','CONTRACT_UPGRADE_REQUIRED')
+        target=call(source,{'action':'preview','code':body.code})
         with connection(True,allow_link=True) as c:
             current,_=state(c)
             if current.get('phase')!='local':fail(409,'这个账号已开始接管，请刷新连接状态。')
@@ -171,13 +189,21 @@ def register(app):
         try:
             guard(request)
             if path.startswith('/api/action-link'):return await call_next(request)
+            if request.method=='POST' and request.headers.get('X-Grow-Action-Schema')!='2':
+                fail(409,'行动服务合同需升级。','CONTRACT_UPGRADE_REQUIRED')
             def read_state():
                 with connection() as c:return state(c)[0]
             link=await run_in_threadpool(read_state)
             if link.get('phase')=='local':return await call_next(request)
             source=identity()
+            if request.method=='GET' and path.startswith('/api/action-plans/requests/'):
+                return await call_next(request)
             if link.get('phase')!='active':fail(503,'计划正在接管，请在 LightTick 联动中点击重试；已保留本地输入。')
             if request.method not in ('GET','POST'):fail(405,'请求方式无效。')
+            if request.method=='POST':
+                capability=await run_in_threadpool(call,source,dict(action='request',method='GET',path='',body={},query={}))
+                if not isinstance(capability,dict) or capability.get('action_schema_version')!=2:
+                    fail(409,'连接服务尚未支持P0，输入已保留，请等待合同升级。','CONTRACT_UPGRADE_REQUIRED')
             body=await request.json() if request.method=='POST' else {}
             result=await run_in_threadpool(call,source,dict(action='request',method=request.method,path=path[len('/api/action-plans'):],body=body,query=dict(request.query_params)))
             if path.endswith('/calendar.ics'):response=Response(result,media_type='text/calendar',headers={'Content-Disposition':'attachment; filename="grow-action.ics"'})
@@ -185,5 +211,5 @@ def register(app):
             response.headers['Cache-Control']='no-store';return response
         except Exception as exc:
             from fastapi import HTTPException
-            if isinstance(exc,HTTPException):return JSONResponse({'detail':exc.detail},status_code=exc.status_code,headers={'Cache-Control':'no-store'})
+            if isinstance(exc,HTTPException):return JSONResponse({'detail':exc.detail,**({'code':exc.code,**exc.extra} if hasattr(exc,'code') else {})},status_code=exc.status_code,headers={'Cache-Control':'no-store'})
             raise

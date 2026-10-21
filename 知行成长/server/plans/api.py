@@ -177,11 +177,11 @@ def register(app, root, db):
 
     @router.post('/{pid}/lessons/{number}/feedback')
     def feedback(pid:str,number:int,body:Payload):
-        saved = store.feedback(pid,number,body.data,key(body.data))
         if body.data.get('state') == 'completed':
-            from action_plans import with_content_completion
-            return with_content_completion(saved, {'kind':'plan','plan_id':pid,'lesson_no':number})
-        return saved
+            from action_content import confirm_source
+            return confirm_source(store,{'kind':'plan','plan_id':pid,'lesson_no':number},body.data,
+                lambda:store.feedback(pid,number,body.data,key(body.data)))
+        return store.feedback(pid,number,body.data,key(body.data))
 
     @router.post('/{pid}/pause')
     def pause_plan(pid: str, body: Payload):

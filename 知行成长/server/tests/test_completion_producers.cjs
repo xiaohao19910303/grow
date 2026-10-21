@@ -118,7 +118,7 @@ async function transportProducers(){
   for(const [file,start,end,name,completions,unrelated] of cases){
     const calls=[],posts=[];let ok=true;
     const result={arrangement_sync_error:'完成记录已保存，日期安排暂未同步。'};
-    const context={window:{refreshLearningCompletion:async value=>{calls.push(value);return result.arrangement_sync_error;}},invalidateLibrary(){},
+    const context={crypto:require('node:crypto').webcrypto,window:{refreshLearningCompletion:async value=>{calls.push(value);return result.arrangement_sync_error;}},invalidateLibrary(){},
       fetch:async(url,options)=>{posts.push({url,options});return{ok,status:ok?200:409,json:async()=>result};}};
     vm.createContext(context);const code=source(file);vm.runInContext(code.slice(code.indexOf(start),code.indexOf(end)),context,{filename:file});
     for(const args of completions){const previous=calls.length;assert.equal(await context[name](...args),result,file+' returns the durable save result even with a sync warning');assert.equal(calls.length,previous+1,file+' completion/retraction refreshes dependent views');}

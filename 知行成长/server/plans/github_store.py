@@ -116,6 +116,11 @@ class GitHubPlans(Plans):
         if files and self.ref() is None:
             self.content.bootstrap()
             self.local.head = None
+        from action_content import pending_event,event_sql
+        event=pending_event.get()
+        if event:event['source_result']=dict(result)
+        sql=[*sql,*event_sql(event)]
+        if event:result={**result,'source_event_id':event['event_id']}
         changes = {rel: {'before': self.hash(rel), 'text': value, 'after': digest(value)}
                    for rel, value in files.items()}
         guards = {}

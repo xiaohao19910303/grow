@@ -1,0 +1,43 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const context={window:{},Intl,Date,Map,JSON,Error,Object,encodeURIComponent};vm.createContext(context);
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../static/action-plan-client.js'),'utf8'),context);
+const entries=new Map(),storage={getItem:k=>entries.get(k),setItem:(k,v)=>entries.set(k,v),removeItem:k=>entries.delete(k)};
+let serial=0,online=false,found=false,calls=[];
+const request=async(path,options)=>{
+ calls.push({path,options});if(!online)throw Error('synthetic offline');
+ return {ok:true,json:async()=>path.includes('/requests/')?{found,result:found?{plans:[{id:'saved'}]}:undefined}:{plans:[{id:'saved'}]}};
+};
+const client=context.window.ActionPlanClient.create({request,storage,account:'A',random:()=>`p0-${++serial}`});
+(async()=>{
+ const general={flow:'create-day',origin_key:'general',parent_context:null,entry_date:'2026-10-19'};
+ const article={...general,origin_key:'article-p0',entry_date:'2026-10-20'};
+ const first=client.newDraft(general,{title:'general',revision:3}),other=client.newDraft(article,{title:'article'});
+ assert.equal(client.listDrafts(general).length,1);assert.equal(client.listDrafts(article)[0].draft_id,other.draft_id);
+ await assert.rejects(client.write('draft:'+first.draft_id,'',first.values),/offline/);
+ const pending=client.pending('draft:'+first.draft_id);
+ const changed=client.saveDraft(first,{title:'changed'});
+ assert.equal(client.pendingDrafts(general).length,1);
+ assert.notEqual(first.draft_id,changed.draft_id,'editing unknown submissions forks the draft');
+ assert.equal(client.pending('draft:'+first.draft_id).title,'general');assert.equal(first.base_revision,3);assert.equal(changed.base_revision,3);
+ online=true;
+ let resolved=await client.resolvePending('draft:'+first.draft_id);
+ assert.equal(resolved.found,false);assert.equal(client.pending('draft:'+first.draft_id).key,pending.key,'not found is not permission to recreate');
+ await client.retryPending('draft:'+first.draft_id,'');
+ assert.equal(JSON.parse(calls.at(-1).options.body).key,pending.key);
+ assert.equal(calls.at(-1).options.headers['X-Grow-Action-Schema'],'2');
+ client.deleteDraft(first.draft_id);assert.equal(client.listDrafts(general)[0].values.title,'changed');
+ const bob=context.window.ActionPlanClient.create({request,storage,account:'B',random:()=>`p0-${++serial}`});
+ assert.equal(bob.listDrafts(general).length,0);assert.equal(bob.pending('draft:'+first.draft_id),undefined);
+ const second=client.newDraft(general,{title:'second independent draft'});
+ assert.equal(client.listDrafts(general).length,2);
+ assert.equal(client.listDrafts({...general,parent_context:'different-parent'}).length,0);
+ assert.equal(client.listDrafts({...general,entry_date:'2026-10-20'}).length,0);
+ const aliceAgain=context.window.ActionPlanClient.create({request,storage,account:'A',random:()=>`p0-${++serial}`});
+ assert.equal(aliceAgain.listDrafts(general).length,2,'switching accounts and reloading restores only that account');
+ aliceAgain.deleteDraft(second.draft_id);assert.equal(aliceAgain.listDrafts(article)[0].draft_id,other.draft_id);
+ const broken=context.window.ActionPlanClient.create({request,account:'broken',random:()=>`p0-${++serial}`,
+   storage:{getItem(){throw Error('denied');},setItem(){throw Error('denied');},removeItem(){throw Error('denied');}}});
+ const volatile=broken.newDraft(general,{title:'memory survives denied storage'});
+ assert.equal(broken.listDrafts(general)[0].draft_id,volatile.draft_id);
+ console.log('P0 client acceptance passed: context/account isolation, stale-base version, immutable pending, forked edits and same-key recovery.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -2,7 +2,7 @@
 
 当前行动创建主要围绕年/月/周/日和计时字段，普通事项、内容完成和时间投入尚未形成统一的用户流程。P0 先让用户用最少字段安排一件事，并让完成、投入、改期和恢复在所有入口使用相同事实。
 
-本变更为规格提案，不包含业务代码实现、真实数据迁移、账号配对或发布。
+本变更按已确认规格实施 Grow P0；不包含真实数据迁移、账号配对或发布。实施和验证状态以 tasks.md、verification.md 为准。
 
 ## What Changes
 
@@ -31,6 +31,6 @@
 - 私有 API：复用 `/api/action-plans`、`/schedules`、`/{id}/operations`、`/records`、`/requests/{key}`，增加明确的核对操作和附加响应字段。
 - 数据：沿用租户 PostgreSQL 的行动、执行与操作回执；增加内容确认回执和向后兼容的事实元数据。不重写历史投入和历史复盘。
 - 合同：与 `lighttick-grow-actions` 的 Zook 唯一合同源对齐；不建立第二套原生 API，不在本次规格阶段修改其他 change。
-- 交付：`design.md` 定义字段与状态，`specs/action-plans-p0/spec.md` 定义必须满足的行为，`acceptance.md` 提供验收数据与用例，`tasks.md` 提供实施顺序；全部实现任务保持未开始。
+- 交付：`design.md` 定义字段与状态，`specs/action-plans-p0/spec.md` 定义必须满足的行为，`acceptance.md` 提供验收数据与用例，`tasks.md` 提供实施顺序；实施进度与未通过项分别保存在 tasks.md、verification.md。
 
 P1/P2 的成果目标重构、完整场景模板、长期重复、AI 调整、原生通知和生产迁移不在本次范围。

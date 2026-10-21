@@ -4,12 +4,12 @@
   const node=(tag,text,cls)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el;};
   function field(parent,label,type,value){const wrap=node('label',label,'action-field'),el=node(type==='textarea'?'textarea':'input');el.setAttribute('aria-label',label);if(type!=='textarea')el.type=type;if(type==='checkbox')el.checked=!!value;else el.value=value||'';wrap.append(el);parent.append(wrap);return el;}
   function button(parent,label,run,primary=false){const b=node('button',label,'btn'+(primary?' primary':''));b.type='button';b.onclick=async()=>{b.disabled=true;try{await run();}finally{b.disabled=false;}};parent.append(b);return b;}
-  function statsText(s){return `累计 ${s.minutes} 分钟 · ${s.completed} 次达标 · ${s.minimum} 次起步或部分执行 · ${s.interrupted} 次中断 · 日行动 ${s.completed_days} / ${s.planned_days} 项达标`;}
+  function statsText(s){return `累计 ${s.minutes} 分钟 · ${s.completed} 次达标 · ${s.minimum} 次起步 · ${s.partial||0} 次部分执行 · ${s.interrupted} 次中断 · 日行动 ${s.completed_days} / ${s.planned_days} 项达标`;}
   function open({client,plan,dialog,edit}){
     const d=dialog('进度复盘与 AI 建议'),draftKey='review.'+plan.id,draft=client.get(draftKey)||{},form=node('form');d.append(node('h3',plan.title),node('p','所选计划及其下级行动按执行时的业务日期统计。统计包含全部记录；AI 明细取最近 30 条，长文本截取后会在预览标明。每次保存形成独立历史记录。','desc'),form);
     const dates=node('div',undefined,'action-form-grid');form.append(dates);
-    const begin=field(dates,'复盘开始日期','date',draft.start_date||plan.start_date),end=field(dates,'复盘结束日期','date',draft.end_date||plan.end_date);
-    for(const el of [begin,end]){el.required=true;el.min=plan.start_date;el.max=plan.end_date;}
+    const begin=field(dates,'复盘开始日期','date',draft.start_date||plan.start_date||ActionPlans.day(plan.timezone)),end=field(dates,'复盘结束日期','date',draft.end_date||plan.end_date||ActionPlans.day(plan.timezone));
+    for(const el of [begin,end]){el.required=true;}
     const preview=node('section',undefined,'action-review-preview'),error=node('p','','action-error');error.setAttribute('role','alert');form.append(preview,error);
     const worked=field(form,'做得好的地方','textarea',draft.worked),obstacles=field(form,'阻碍或分心的原因','textarea',draft.obstacles),next=field(form,'下一步准备怎么做','textarea',draft.next_action);
     for(const el of [worked,obstacles,next])el.maxLength=2000;
@@ -37,7 +37,7 @@
         const pages=node('div',undefined,'action-buttons');history.append(pages);button(pages,'较新的复盘',async()=>{historyPage--;await loadHistory();}).disabled=historyPage===1;pages.append(node('span','第 '+historyPage+' 页'));button(pages,'更早的复盘',async()=>{historyPage++;await loadHistory();}).disabled=historyPage*20>=Math.max(data.review_total,data.report_total);
         if(data.reports.some(r=>r.state==='generating'))pollTimer=setTimeout(loadHistory,2500);
       }catch(e){error.textContent=e.message;}}
-    const bottom=node('div',undefined,'action-buttons');d.append(bottom);button(bottom,'参考建议，手动调整计划',()=>{remember();d.close();edit();});button(bottom,'关闭并保留草稿',()=>{remember();d.close();});button(bottom,'刷新历史结果',loadHistory);
+    const bottom=node('div',undefined,'action-buttons');d.append(bottom);if(!['completed','archived'].includes(plan.status))button(bottom,'参考建议，手动调整计划',()=>{remember();d.close();edit();});button(bottom,'关闭并保留草稿',()=>{remember();d.close();});button(bottom,'刷新历史结果',loadHistory);
     d.addEventListener('close',()=>{clearTimeout(pollTimer);generation++;},{once:true});loadPreview();loadHistory();
   }
   window.ActionReviews={open};

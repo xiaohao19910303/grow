@@ -1,0 +1,388 @@
+/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+======================================================================
+ERROR: test_course_generation_publication_learning_and_reading_ai (test_legacy_cloud_api.LegacyCloudAPITests.test_course_generation_publication_learning_and_reading_ai)
+----------------------------------------------------------------------
+  + Exception Group Traceback (most recent call last):
+  |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_utils.py", line 104, in create_collapsing_task_group
+  |     async with anyio.create_task_group() as tg:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/opt/anaconda3/lib/python3.13/unittest/case.py", line 58, in testPartExecutor
+    |     yield
+    |   File "/opt/anaconda3/lib/python3.13/unittest/case.py", line 651, in run
+    |     self._callTestMethod(testMethod)
+    |     ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+    |   File "/opt/anaconda3/lib/python3.13/unittest/case.py", line 606, in _callTestMethod
+    |     if method() is not None:
+    |        ~~~~~~^^
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/tests/test_legacy_cloud_api.py", line 38, in test_course_generation_publication_learning_and_reading_ai
+    |     self.assertEqual(client.get('/api/copilot/today-task').status_code,200)
+    |                      ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 1053, in get
+    |     return self.request(
+    |            ~~~~~~~~~~~~^
+    |         "GET",
+    |         ^^^^^^
+    |     ...<7 lines>...
+    |         extensions=extensions,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/testclient.py", line 457, in request
+    |     return super().request(
+    |            ~~~~~~~~~~~~~~~^
+    |         method,
+    |         ^^^^^^^
+    |     ...<11 lines>...
+    |         extensions=extensions,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 825, in request
+    |     return self.send(request, auth=auth, follow_redirects=follow_redirects)
+    |            ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 914, in send
+    |     response = self._send_handling_auth(
+    |         request,
+    |     ...<2 lines>...
+    |         history=[],
+    |     )
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    |     response = self._send_handling_redirects(
+    |         request,
+    |         follow_redirects=follow_redirects,
+    |         history=history,
+    |     )
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    |     response = self._send_single_request(request)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    |     response = transport.handle_request(request)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/testclient.py", line 354, in handle_request
+    |     raise exc
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/testclient.py", line 351, in handle_request
+    |     portal.call(self.app, scope, receive, send)
+    |     ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/from_thread.py", line 340, in call
+    |     return cast(T_Retval, self.start_task_soon(func, *args).result())
+    |                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+    |   File "/opt/anaconda3/lib/python3.13/concurrent/futures/_base.py", line 456, in result
+    |     return self.__get_result()
+    |            ~~~~~~~~~~~~~~~~~^^
+    |   File "/opt/anaconda3/lib/python3.13/concurrent/futures/_base.py", line 401, in __get_result
+    |     raise self._exception
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/from_thread.py", line 265, in _call_func
+    |     retval = await retval_or_awaitable
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/applications.py", line 1216, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/applications.py", line 96, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    |     raise exc
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/reading/api.py", line 34, in protect
+    |     r=await call_next(request)
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 179, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/api.py", line 144, in local_access
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 179, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/routing.py", line 676, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 2791, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 1819, in handle
+    |     await self.original_router.handle(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 2874, in handle
+    |     await included_router._handle_selected(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    |     await original_route.handle(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 1308, in handle
+    |     await effective_context.app(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 165, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 151, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 727, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ...<3 lines>...
+    |     )
+    |     ^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 362, in run_endpoint_function
+    |     return await run_in_threadpool(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |         _run_sync_endpoint, function=dependant.call, arguments=values
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    |     return await anyio.to_thread.run_sync(func)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/to_thread.py", line 65, in run_sync
+    |     return await get_async_backend().run_sync_in_worker_thread(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    |     return await future
+    |            ^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    |     result = context.run(func, *args)
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    |     return function(**arguments)
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/api.py", line 152, in today_task
+    |     data, plan, sources, blockers = store.readiness()
+    |                                     ~~~~~~~~~~~~~~~^^
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/core.py", line 472, in readiness
+    |     data = data or self._scan()
+    |                    ~~~~~~~~~~^^
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/cloud_store.py", line 58, in _scan
+    |     result=super()._scan()
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/core.py", line 324, in _scan
+    |     db_record = c.execute('''
+    |                 ~~~~~~~~~^^^^
+    |         SELECT completed_at, time_spent_seconds, archived FROM copilot_learning_records
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         WHERE module_id = 'renzhi' AND round_id = 1 AND lesson_no = ?
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ''', (n,)).fetchone()
+    |     ^^^^^^^^^^
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/db.py", line 201, in execute
+    |     cursor.execute(sql, params)
+    |     ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+    |   File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/db.py", line 72, in execute
+    |     self._cursor.execute(translated, tuple(params))
+    |     ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/psycopg2/extras.py", line 236, in execute
+    |     return super().execute(query, vars)
+    |            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+    | psycopg2.errors.UndefinedColumn: column "archived" does not exist
+    | LINE 2: ...         SELECT completed_at, time_spent_seconds, archived F...
+    |                                                              ^
+    |
+    +------------------------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/tests/test_legacy_cloud_api.py", line 38, in test_course_generation_publication_learning_and_reading_ai
+    self.assertEqual(client.get('/api/copilot/today-task').status_code,200)
+                     ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 1053, in get
+    return self.request(
+           ~~~~~~~~~~~~^
+        "GET",
+        ^^^^^^
+    ...<7 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/testclient.py", line 457, in request
+    return super().request(
+           ~~~~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/testclient.py", line 354, in handle_request
+    raise exc
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/testclient.py", line 351, in handle_request
+    portal.call(self.app, scope, receive, send)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/from_thread.py", line 340, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/anaconda3/lib/python3.13/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/opt/anaconda3/lib/python3.13/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/from_thread.py", line 265, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/reading/api.py", line 34, in protect
+    r=await call_next(request)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 179, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/api.py", line 144, in local_access
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 179, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 151, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 727, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 362, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+        _run_sync_endpoint, function=dependant.call, arguments=values
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/api.py", line 152, in today_task
+    data, plan, sources, blockers = store.readiness()
+                                    ~~~~~~~~~~~~~~~^^
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/core.py", line 472, in readiness
+    data = data or self._scan()
+                   ~~~~~~~~~~^^
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/cloud_store.py", line 58, in _scan
+    result=super()._scan()
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/copilot/core.py", line 324, in _scan
+    db_record = c.execute('''
+                ~~~~~~~~~^^^^
+        SELECT completed_at, time_spent_seconds, archived FROM copilot_learning_records
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        WHERE module_id = 'renzhi' AND round_id = 1 AND lesson_no = ?
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ''', (n,)).fetchone()
+    ^^^^^^^^^^
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/db.py", line 201, in execute
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-p0-baseline-_m6ppcma/知行成长/server/db.py", line 72, in execute
+    self._cursor.execute(translated, tuple(params))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/psycopg2/extras.py", line 236, in execute
+    return super().execute(query, vars)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column "archived" does not exist
+LINE 2: ...         SELECT completed_at, time_spent_seconds, archived F...
+                                                             ^
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.681s
+
+FAILED (errors=1)

@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS copilot_learning_records (
     scroll_depth REAL,
     completed_at TEXT NOT NULL,
     idempotency_key TEXT UNIQUE,
+    archived INTEGER NOT NULL DEFAULT 0,
+    archived_at TEXT,
     UNIQUE(module_id, round_id, lesson_no));
 """
 
@@ -48,3 +50,13 @@ CREATE TABLE IF NOT EXISTS copilot_summaries (
 """
 
 TABLES += REVIEW_TABLES
+
+
+def upgrade_learning_archive(connection):
+    """Additive repair for stores already recorded as legacy-cloud-v3.
+
+    Keep these columns out of legacy_schema.REQUIRED: a missing optional flag
+    must never cause an otherwise valid learning table to be renamed/imported.
+    """
+    connection.execute('ALTER TABLE copilot_learning_records ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0')
+    connection.execute('ALTER TABLE copilot_learning_records ADD COLUMN IF NOT EXISTS archived_at TEXT')

@@ -121,7 +121,10 @@ def migrate(connection=None):
     c.execute('SELECT pg_advisory_xact_lock(?)',(int(digest(schema+':'+VERSION)[:15],16),))
     c.executescript(LEDGER)
     old=c.execute('SELECT data FROM platform_migrations WHERE id=?',(VERSION,)).fetchone()
-    if old:return json.loads(old[0])
+    from copilot.schema import upgrade_learning_archive
+    if old:
+        upgrade_learning_archive(c)
+        return json.loads(old[0])
     # Credentials are not migration records, and must not be copied to the archive.
     from copilot.ai_config import remove_server_config
     remove_server_config(c)
@@ -144,6 +147,7 @@ def migrate(connection=None):
             archives[table]=archive
     for ddl in schemas():
         c.executescript(re.sub(r'\bSERIAL\b','BIGSERIAL',ddl))
+    upgrade_learning_archive(c)
     for source,target in (('knowledge_nodes','knowledge'),('prediction_records','predictions')):
         if columns(c,source):archives[source]=source
     rows={table:[dict(r) for r in c.execute(f'SELECT * FROM {archive}')] for table,archive in archives.items()}

@@ -123,7 +123,11 @@ class CloudReadingStore(ReadingStore):
         self.recover_exports()
         for rel,h in (expected or {}).items():
             if self.hash(rel)!=h:fail('conflict','内容已更新，请重新读取：'+rel)
-        journal={'id':'export-'+uuid.uuid4().hex,'type':'export','state':'pending',
+        from action_content import pending_event
+        event=pending_event.get()
+        if event and records:
+            event['source_result']={k:v for k,v in records[0].items() if k in ('id','read','feedback','bookmarked','read_later')}
+        journal={'action_event':pending_event.get(),'id':'export-'+uuid.uuid4().hex,'type':'export','state':'pending',
                  'files':{rel:{'before':self.hash(rel),'text':text} for rel,text in files.items()},'records':records}
         self.put(TABLE,journal['id'],journal)
         self.finish_export(journal)
@@ -135,6 +139,8 @@ class CloudReadingStore(ReadingStore):
             if self.hash(rel) not in (old,digest(files[rel])):fail('conflict','阅读资料已变化，请先核对：'+rel)
         sql=[('INSERT INTO reading_records VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
               [record['id'],encoded(record)]) for record in journal['records']]
+        from action_content import event_sql
+        sql.extend(event_sql(journal.get('action_event')))
         done={**journal,'state':'done'}
         sql.append(('UPDATE reading_records SET data=? WHERE id=?',[encoded(done),journal['id']]))
         return self.documents.publish(journal['id'],{'export':journal['id']},files,sql,{'id':journal['id']})

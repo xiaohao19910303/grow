@@ -54,3 +54,6 @@
 .action-advanced{margin:16px 0;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary)}
 .action-advanced summary{cursor:pointer;font-weight:600;color:var(--text-secondary);margin-bottom:8px}
 .action-advanced summary:hover{color:var(--text)}
+
+
+.action-field[hidden],.action-dialog section[hidden]{display:none}

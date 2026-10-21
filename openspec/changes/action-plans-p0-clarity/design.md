@@ -241,6 +241,7 @@ same key+相同语义 payload 返回原结果，即使 revision 已变化；same
 - version 1 business_date 保持原值，标记 date_basis=legacy_planned；version 2 为 actual_start/actual_confirmation。展示和导出说明旧记录采用历史日期口径，不能无提示混称实际发生日。
 - 已存复盘/AI 结果不重算、不删除，生成新的预览按新事实规则；快照变更仍需重新预览与同意。
 - 连接 Zook 时需同步完成 nullable 日程、完成方式、事实与错误合同，并通过双端回归后才开放 P0 写入。未支持时明确“服务端待升级”，保留草稿；不私自写回 Grow 本地、不自动解绑。
+- P0来源事件不在当前旧接管包中；本地存在version 2行动或来源事件时，当前实现拒绝新配对预览，保持原写入方，不先冻结再尝试不完整导入。待唯一合同源和原生验证通过后解除该门槛。
 - 能力检查至少区分 nullable_schedule、completion_modes、content_receipts、actual_fact_dates；模块按能力开放，不把不支持的字段转换成假日期/假分钟。新 Web 不得在旧 backend 无能力标记时发送 P0 新语义命令。
 
 ## Risks / Trade-offs
@@ -250,7 +251,7 @@ same key+相同语义 payload 返回原结果，即使 revision 已变化；same
 - [来源确认与行动同步不是同一请求] → 持久确认回执、明确消费关系、幂等核对；无法留证的来源不开放 content。
 - [累计分钟改变旧 time 行为] → 不重算历史完成结论；新结算在确认界面显示本次/累计/阈值，验收覆盖中断达标。
 - [一个操作分安排和开始两步] → 明确展示中间成功状态与失败原因，不回滚已保存的日期，也不误报已开始。
-- [连接端仍在独立 change 中开发] → 本文件是待对齐合同；本次只落规格，不替另一 change 声称已支持。
+- [连接端仍在独立 change 中开发] → 本文件是待对齐合同；本次实现 Grow 侧并保留连接端写入门槛，不替另一 change 声称双端已支持。
 
 ## Migration Plan
 

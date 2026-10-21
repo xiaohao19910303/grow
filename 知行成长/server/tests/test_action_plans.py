@@ -22,7 +22,7 @@ class ActionPlansTests(PostgreSQLFixture):
         self.addCleanup(self.client.close)
         fixed = patch('action_plans.clock', return_value=datetime(2026, 10, 18, 12, tzinfo=timezone.utc))
         fixed.start();self.addCleanup(fixed.stop)
-        self.headers = {'X-Copilot-Request': '1'}
+        self.headers = {'X-Copilot-Request': '1', 'X-Grow-Action-Schema':'2'}
 
     def create(self, **updates):
         data = dict(title='减少短视频，阅读20分钟', period='day', start_date='2026-10-18', end_date='2026-10-18',
@@ -50,7 +50,7 @@ class ActionPlansTests(PostgreSQLFixture):
         result = self.client.get('/api/action-plans').json()
         self.assertIsNone(result['execution'])
         by_id = {p['id']: p for p in result['plans']}
-        self.assertEqual(by_id[year['id']]['progress'], dict(minutes=27, completed=1, minimum=1, interrupted=1))
+        self.assertEqual(by_id[year['id']]['progress'], dict(minutes=27, completed=1, minimum=1, partial=0, interrupted=1))
         self.assertEqual(by_id[week['id']]['progress']['completed'], 1)
         self.assertEqual(self.client.get('/api/action-plans/records').json()['total'], 3)
         with db.connect() as c:
