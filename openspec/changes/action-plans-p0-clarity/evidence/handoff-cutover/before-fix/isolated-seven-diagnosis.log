@@ -1,0 +1,19 @@
+(node:24388) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ admin remote log pull task detail and file APIs return task metadata and saved content (449.268042ms)
+(node:24389) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ ai_novel trace API is hidden outside local debug hosts (457.273459ms)
+✔ ai_novel trace API is hidden in the online runtime (352.72725ms)
+✔ ai_novel trace data API remains available in Docker-like dev runtime (385.480542ms)
+✔ ai_novel trace writer requires ai_novel bearer auth (298.398958ms)
+✔ ai_novel trace data API appends and filters session traces (273.971792ms)
+✔ ai_novel trace storage does not merge ids with similar punctuation (2.241834ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4175.722125

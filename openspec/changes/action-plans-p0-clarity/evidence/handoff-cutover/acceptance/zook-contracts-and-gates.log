@@ -1,0 +1,35 @@
+(node:43474) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ canonical C3 snapshot requires all inventories and rejects unproven event fields (4.531125ms)
+✔ real preflight/import receipts match the unique schema; malformed counts and ambiguous phase are rejected (8.308458ms)
+(node:43475) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ v2 preflight is read-only; complete/reversal/nullable/running and receipts survive exact replay (47.040917ms)
+✔ invalid graph/hash/identity/colliding receipts/stale preflight leaves staged workspace untouched (73.22525ms)
+✔ receipt persistence failure rolls back graph; retry after service restart imports once (23.7885ms)
+✔ imported unconsumed evidence maps owner and reconciles exactly once; forged consumption is rejected (47.286167ms)
+✔ v1 raw facts and archived parent relationships survive mixed-version import unchanged (7.488958ms)
+✔ arbitrary old request keys remain exact own properties, without prototype receipts (16.694167ms)
+(node:43476) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ canonical P0 input schemas cover null/modes, conditional dates and explicit operations (13.617375ms)
+✔ stable P0 errors preserve only safe recovery metadata in the Zook envelope (8.843166ms)
+✔ canonical output fixtures include nullable schedules and v2 facts without private inventory (36.038708ms)
+(node:43477) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ registered API and signed bridge remain closed independently of old enable flag and schema2 (264.592208ms)
+(node:43478) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ source contract requires explicit normalized proof, binding, version and signed origin context (9.702875ms)
+(node:43479) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ generated public contracts include restored AI Novel and BodyLog schemas (2.179709ms)
+✔ in-repository OpenAPI source reproduces committed runtime contracts (1276.427917ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1818.606375

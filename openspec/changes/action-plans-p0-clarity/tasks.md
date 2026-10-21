@@ -50,3 +50,5 @@
 2026-10-21 C2 继续实施：来源证明、可靠投递与核对的增量任务见 [source-delivery-design.md](source-delivery-design.md)。总任务 7.3 仍保留未完成，C3 快照接管和原生消费者不在本轮开放。
 
 2026-10-21 C3 内部基础设施：快照 v2 导出、全图预检、原子导入与接管前后回执查询已补齐；增量范围和未完成的切换协调/来源屏障见 [handoff-design.md](handoff-design.md)。公开入口继续关闭，7.3 不提前勾选。
+
+2026-10-21 C3 协调收尾：私有切换状态机、来源发布屏障、未完成日志阻断、目标版本重预检和迁移事件 C2 核对已补齐；验收及剩余阻塞见 [handoff-cutover-verification.md](handoff-cutover-verification.md)。原生 C4/C5、真实账号与公开放行仍未完成，7.3 保持未勾选。

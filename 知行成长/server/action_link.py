@@ -98,6 +98,9 @@ def finish_import(source):
     with connection() as c:
         link,backup=state(c)
     if link.get('phase')=='active':return public(link)
+    if link.get('snapshot_version')==2:
+        from action_handoff_coordinator import finish_v2
+        return finish_v2(source)
     if link.get('phase')!='pending' or not backup:fail(409,'没有待恢复的接管。')
     receipt=call(source,dict(action='import',snapshot=backup,snapshot_hash=link['snapshot_hash']))
     if not isinstance(receipt,dict) or receipt.get('snapshot_hash')!=link['snapshot_hash'] or receipt.get('source_counts')!=counts(backup) or receipt.get('binding_id')!=link['binding_id'] or receipt.get('target_user_id')!=link['target_user_id']:

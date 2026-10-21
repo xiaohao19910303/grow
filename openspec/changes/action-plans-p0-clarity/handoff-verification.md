@@ -1,5 +1,7 @@
 # 剩余 P0 推进：C3 内部基础设施验收
 
+> 历史阶段报告。C3 协调与来源屏障的后续实现、实际 HTTP/进程恢复和最新阻塞见 [handoff-cutover-verification.md](handoff-cutover-verification.md)。下文“未实施”描述保留当时状态。
+
 2026-10-21。Grow 基线 e9c81f2，Zook 基线 3db81b9，在原隔离工作树继续实施。Zook 实现提交 `e2ae870`，证据收尾 `3af3048`。范围为 [handoff-design.md](handoff-design.md)，7.3 总任务仍未完成。
 
 ## 本轮完成
