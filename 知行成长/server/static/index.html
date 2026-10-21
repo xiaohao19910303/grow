@@ -456,6 +456,11 @@
     </div>
   </div>
 
+  <div id="view-cycle-review" style="display:none">
+    <section class="section">
+      <h2>周期复盘</h2>
+      <p class="desc">回看阶段投入与变化，结合数据汇总和 AI 报告决定下一步。</p>
+    </section>
   <div id="view-report" style="display:none">
     <div class="section">
       <h2>周报 / 月报</h2>
@@ -463,8 +468,9 @@
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <button class="btn" id="btnWeek" onclick="setReportRange('week')">本周</button>
         <button class="btn" id="btnMonth" onclick="setReportRange('month')">本月</button>
-        <button class="btn primary" onclick="exportReportMarkdown()">导出 Markdown 报告</button>
+        <button class="btn primary" id="reportExport" onclick="exportReportMarkdown()" disabled>导出 Markdown 报告</button>
       </div>
+      <p id="reportStatus" class="desc" role="status"></p>
       <div class="cards" id="reportCards"></div>
       <div class="section" style="box-shadow:none;border:1px solid var(--border);padding:16px;margin-bottom:14px">
         <h2 style="font-size:14px">模块完成度</h2><div id="reportBarChart"></div>
@@ -481,6 +487,7 @@
       <div style="height:14px"></div>
       <div id="aiReportList"></div>
     </div>
+  </div>
   </div>
 
   <div id="view-search" style="display:none" class="section">
@@ -1985,15 +1992,25 @@ async function scanKnowledge(){
 /* ================= 周报 ================= */
 let reportRange = 'week';
 let reportData = null;
+let reportRequest = 0;
 async function loadReport(range){
   if(range) reportRange = range;
+  const request=++reportRequest;
+  reportData=null;
+  document.getElementById('reportExport').disabled=true;
+  document.getElementById('reportStatus').textContent='正在读取汇总…';
   const bw = document.getElementById('btnWeek'); const bm = document.getElementById('btnMonth');
   if(bw){ bw.className = 'btn'+(reportRange==='week'?' primary':''); }
   if(bm){ bm.className = 'btn'+(reportRange==='month'?' primary':''); }
   try{
     const r = await fetch('/api/report?range='+reportRange);
-    if(r.ok){ reportData = await r.json(); renderReport(); }
-  }catch(e){}
+    if(!r.ok)throw Error('读取失败');
+    const data=await r.json();
+    if(request!==reportRequest)return;
+    reportData=data;renderReport();
+    document.getElementById('reportExport').disabled=false;
+    document.getElementById('reportStatus').textContent='';
+  }catch(e){if(request===reportRequest)document.getElementById('reportStatus').textContent='汇总读取失败，请重新选择本周或本月重试。';}
 }
 function setReportRange(range){ loadReport(range); }
 function renderReport(){
@@ -2010,7 +2027,7 @@ function renderReport(){
   document.getElementById('reportDetail').textContent = '统计区间：'+d.start+' ~ '+d.end+'。课程学习计时 '+Math.round((d.duration_sources?.course_learning_seconds||0)/60)+' 分钟；行动确认投入 '+(d.duration_sources?.action_confirmed_minutes||0)+' 分钟。以上来源可能重叠，分别展示，不相加。';
 }
 function exportReportMarkdown(){
-  const d = reportData || state; if(!d || !d.modules) return;
+  const d = reportData; if(!d || !d.modules) return;
   const hh = Math.floor(d.total_minutes||0)/60|0, mm = (d.total_minutes||0)%60;
   let md = '# '+ (d.range==='week'?'周报':'月报') +'（'+d.start+' ~ '+d.end+'）\n\n## 概览\n\n';
   md += '- 记录天数：'+d.active_days+' / '+d.days+'\n';
@@ -2034,8 +2051,8 @@ const navGroups={
   personal:[['personal','今日']],
   actions:[['action-schedule','日程安排'],['action-plans','目标与计划'],['action-records','执行记录']],
   learning:[['library','我的课程'],['reading','阅读'],['plans','课程规划']],
-  records:[['reviews','日常记录'],['applications','实践记录'],['decisions','决策与预测'],['insights','个人洞察'],['custom','更多记录']],
-  growth:[['overview','成长总览'],['learning-history','学习历史'],['timeline','时间线'],['knowledge','知识图谱'],['report','阶段报告']]
+  records:[['reviews','日常记录'],['timeline','时间线'],['applications','实践记录'],['decisions','决策与预测'],['insights','个人洞察'],['custom','更多记录']],
+  growth:[['overview','成长总览'],['learning-history','学习历史'],['knowledge','知识图谱'],['report','周期复盘']]
 };
 const navParents={reader:'library',archive:'library',summary:'library',copilot:'library',errors:'applications',predictions:'decisions',stocks:'custom',progress:'learning-history',habits:'learning-history','ai-report':'report'};
 const contextGroups={
@@ -2043,7 +2060,7 @@ const contextGroups={
   decisions:[['decisions','决策日志'],['predictions','预测校准']],
   custom:[['custom','自定义记录'],['stocks','投资复盘']],
   'learning-history':[['learning-history','学习日历'],['progress','学习足迹'],['habits','补记时长']],
-  report:[['report','周报与月报'],['ai-report','AI 报告']]
+  report:[['report','周／月汇总'],['ai-report','AI 报告']]
 };
 const lastGroupTab={};
 let lessonOrigin=null;
@@ -2077,6 +2094,7 @@ function goTab(name, options={}){
   const subnav=document.getElementById('subnav');
   subnav.hidden=!group || navGroups[group].length===1 || !!options.reading || name==='reader';
   subnav.innerHTML=group?(navGroups[group].map(([key,label])=>`<button class="btn ${key===parentTab?'primary':''}" ${key===parentTab?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('')):'';
+  document.getElementById('view-cycle-review').style.display=['report','ai-report'].includes(name)?'':'none';
   const contextnav=document.getElementById('contextnav'), contexts=contextGroups[parentTab] || [];
   contextnav.hidden=!contexts.length || !!options.reading || ['reader','archive','summary'].includes(name);
   contextnav.innerHTML=contexts.map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('');
