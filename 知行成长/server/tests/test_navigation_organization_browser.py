@@ -55,6 +55,8 @@ class NavigationOrganizationBrowser(unittest.TestCase):
                     result = legacy
             elif path == '/api/action-plans':
                 result = {'plans': [], 'execution': None, 'server_time': stamp}
+            elif path == '/api/behavior-report':
+                result = [{'id': 7, 'date': day, 'period_days': 30, 'content': '保留的 AI 摘要'}]
             elif path == '/api/action-plans/records':
                 result = {'total': 1, 'records': [{'title': '原有执行记录', 'business_date': day,
                           'outcome': 'completed', 'actual_minutes': 20, 'note': '保留执行收获'}]}
@@ -92,6 +94,39 @@ class NavigationOrganizationBrowser(unittest.TestCase):
                     page.goto(base)
                     nav = page.locator('#subnav')
                     group = lambda key: page.locator(f'[data-group="{key}"]').click()
+                    expect(page.locator('#actionHome').get_by_role('button', name='新建行动', exact=True)).to_have_count(1)
+                    group('growth')
+                    shots = Path(os.getenv('NAV_SCREENSHOT_DIR', '/tmp/grow-navigation-verification'))
+                    shots.mkdir(parents=True, exist_ok=True)
+                    expect(page.locator('#statCards .card')).to_have_count(4)
+                    expect(page.locator('#overviewExtraCards .card')).to_have_count(4)
+                    expect(page.locator('#view-overview').get_by_role('button', name='生成新报告')).to_have_count(0)
+                    expect(page.locator('#aiReportLatest')).to_contain_text('保留的 AI 摘要')
+                    page.screenshot(path=str(shots / 'round3-overview-desktop.png'), full_page=True)
+                    for title, content in (('学习变化与活动明细', '#barChart'), ('更多成长指标', '#overviewExtraCards'),
+                                           ('实践应用分析', '#behaviorStatsCards'), ('错误模式分析', '#errorStatsCards'),
+                                           ('预测校准分析', '#predictionCalibrationCards')):
+                        details = page.locator('#view-overview details').filter(has=page.locator('summary', has_text=title))
+                        expect(details).not_to_have_attribute('open', '')
+                        details.locator('summary').click()
+                        expect(page.locator(content)).to_be_visible()
+                        details.locator('summary').click()
+                    page.locator('#view-overview').get_by_role('button', name='进入周期复盘').click()
+                    expect(page.locator('#view-ai-report')).to_be_visible()
+                    page.get_by_role('button', name='设置', exact=True).click()
+                    page.locator('#statisticsCategorySettings summary').click()
+                    expect(page.locator('#moduleList')).to_contain_text('认知与通识')
+                    page.once('dialog', lambda dialog: dialog.accept('重命名后的统计分类'))
+                    page.locator('#moduleList').get_by_role('button', name='重命名').click()
+                    expect(page.locator('#storageStatus')).to_contain_text('已保存')
+                    self.assertEqual(legacy['modules'][0]['id'], 'renzhi')
+                    self.assertEqual(legacy['checkins'][day], {'renzhi': 3})
+                    page.locator('#newModuleName').fill('新增统计分类')
+                    page.get_by_role('button', name='添加分类', exact=True).click()
+                    expect(page.locator('#storageStatus')).to_contain_text('已保存')
+                    expect(page.locator('#moduleList')).to_contain_text('新增统计分类')
+                    self.assertEqual(len(legacy['modules']), 2)
+                    self.assertEqual(legacy['checkins'][day], {'renzhi': 3})
                     group('learning')
                     expect(nav).not_to_contain_text('学习打卡')
                     expect(nav).not_to_contain_text('课程归档')
@@ -121,17 +156,19 @@ class NavigationOrganizationBrowser(unittest.TestCase):
                     page.get_by_role('button', name='生成整课总结', exact=True).click()
                     expect(page.locator('#outputContent')).to_have_text('浏览器配置生成的总结')
                     group('growth')
-                    nav.get_by_role('button', name='学习历史', exact=True).click()
-                    page.locator('#contextnav').get_by_role('button', name='学习足迹', exact=True).click()
+                    nav.get_by_role('button', name='学习回顾', exact=True).click()
+                    page.locator('#contextnav').get_by_role('button', name='分类足迹', exact=True).click()
+                    expect(page.locator('#view-progress #moduleList')).to_have_count(0)
                     expect(page.locator('#todayChips')).to_contain_text('已完成')
                     expect(page.locator('#matrix').get_by_text('✓', exact=True)).to_have_count(1)
                     shots = Path(os.getenv('NAV_SCREENSHOT_DIR', '/tmp/grow-navigation-verification'))
                     shots.mkdir(parents=True, exist_ok=True)
                     page.screenshot(path=str(shots / 'growth-desktop.png'), full_page=True)
-                    nav.get_by_role('button', name='学习历史', exact=True).click()
-                    page.locator('#contextnav').get_by_role('button', name='补记时长', exact=True).click()
+                    nav.get_by_role('button', name='学习回顾', exact=True).click()
+                    page.locator('#contextnav').get_by_role('button', name='时长趋势', exact=True).click()
                     expect(page.locator('#habitMinutes')).to_have_value('35')
                     expect(page.locator('#habitNote')).to_have_value('保留时长备注')
+                    page.locator('#habitEntry summary').click()
                     page.locator('#habitMinutes').fill('40')
                     page.get_by_role('button', name='保存当天记录', exact=True).click()
                     expect(page.locator('#storageStatus')).to_contain_text('已保存')
@@ -156,16 +193,24 @@ class NavigationOrganizationBrowser(unittest.TestCase):
                         for destination in ('learning', 'actions', 'growth'):
                             group(destination)
                             self.assertFalse(page.evaluate('document.documentElement.scrollWidth > innerWidth'))
+                        page.get_by_role('button', name='设置', exact=True).click()
+                        self.assertFalse(page.evaluate('document.documentElement.scrollWidth > innerWidth'))
                     page.set_viewport_size({'width': 390, 'height': 844})
+                    group('growth')
+                    nav.get_by_role('button', name='成长总览', exact=True).click()
+                    page.screenshot(path=str(shots / 'round3-overview-mobile.png'), full_page=True)
+                    page.get_by_role('button', name='设置', exact=True).click()
+                    page.screenshot(path=str(shots / 'round3-settings-mobile.png'), full_page=True)
                     group('learning')
                     page.screenshot(path=str(shots / 'courses-mobile.png'), full_page=True)
                     page.reload()
                     group('growth')
-                    nav.get_by_role('button', name='学习历史', exact=True).click()
-                    page.locator('#contextnav').get_by_role('button', name='补记时长', exact=True).click()
+                    nav.get_by_role('button', name='学习回顾', exact=True).click()
+                    page.locator('#contextnav').get_by_role('button', name='时长趋势', exact=True).click()
                     expect(page.locator('#habitMinutes')).to_have_value('40')
                     self.assertEqual(errors, [])
-                    self.assertEqual(writes, [('POST', '/api/copilot/summaries/generate'), ('PUT', '/api/data'),
+                    self.assertEqual(writes, [('PUT', '/api/data'), ('PUT', '/api/data'),
+                                              ('POST', '/api/copilot/summaries/generate'), ('PUT', '/api/data'),
                                               ('POST', '/api/copilot/lessons/1/unarchive')])
                 finally:
                     browser.close()

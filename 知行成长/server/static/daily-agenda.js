@@ -96,7 +96,6 @@
     lastDay=current;
     const selected=document.getElementById('personalDate')?.value||day();
     forDate(document.getElementById('agendaList'),selected);
-    const todayRoot=document.getElementById('agendaList');if(todayRoot)button(todayRoot,'新建行动',()=>ActionPlans.newDay({date:selected}));
     forDate(document.getElementById('agendaTomorrowList'),shift(selected,1));
     const pending=document.getElementById('agendaPending');if(pending){pending.replaceChildren();const count=data().plans.filter(p=>p.period==='day'&&['active','paused'].includes(p.status)&&p.start_date&&p.start_date<ActionPlans.day(p.timezone)&&p.id!==data().execution?.plan_id).length;
       if(count)button(pending,count+' 项过去的安排待调整',()=>{scope='earlier';page=1;goTab('action-schedule');});}

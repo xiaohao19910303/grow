@@ -46,7 +46,7 @@
   async function generateAndWatch(body){const turn=navigation;const a=await api('/generate',body);if(turn===navigation&&root.style.display!=='none')await watch(a.id);else observe(a.id);}
   function refresh(){window.loadDailyLearning?.({force:true});}
   window.loadPlans=async()=>{
-    const status=shell('课程计划');const turn=navigation;
+    const status=shell('课程规划');const turn=navigation;
     button(root,'创建课程计划',()=>create(),true);
     button(root,'检查未完成保存',async()=>{await api('/recover',{});toast('检查完成');await window.loadPlans();});
     const backupButton=button(root,'完整学习备份',async()=>{

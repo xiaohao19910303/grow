@@ -8,7 +8,7 @@ context.Account={loadStorage(){},loadInvitations(){}};context.window.loadLearnin
 vm.createContext(context);vm.runInContext(html.slice(html.indexOf('const navGroups='),html.indexOf('/* ================= 学习进度 / 习惯')),context);
 assert.equal(vm.runInContext('navGroups.records.length',context),6);assert.equal(vm.runInContext('navGroups.growth.length',context),4);assert.equal(vm.runInContext('navGroups.learning.length',context),3);
 context.goTab('errors');assert(element('subnav').innerHTML.includes('实践记录'));assert(element('contextnav').innerHTML.includes('错误记录'));assert(element('contextnav').innerHTML.includes('aria-current="page"'));assert.equal(buttons[3]['aria-current'],'page');
-context.goTab('progress');assert(element('subnav').innerHTML.includes('学习历史'));assert.equal(element('view-progress').style.display,'');
+context.goTab('progress');assert(element('subnav').innerHTML.includes('学习回顾'));assert.equal(element('view-progress').style.display,'');
 context.goTab('timeline');assert.equal(buttons[3]['aria-current'],'page');assert.equal(element('view-cycle-review').style.display,'none');
 context.goTab('ai-report');assert(element('subnav').innerHTML.includes('周期复盘'));assert(element('contextnav').innerHTML.includes('AI 报告'));assert.equal(element('view-cycle-review').style.display,'');
 context.goTab('search');assert.equal(element('subnav').hidden,true,'global search is not owned by a growth subtab');

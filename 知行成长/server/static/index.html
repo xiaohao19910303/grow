@@ -50,6 +50,8 @@
   .section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
   .section h2{font-size:15px;margin:0 0 4px;font-weight:650}
   .section .desc{font-size:12px;color:var(--muted);margin:0 0 16px}
+  details.section>summary, #statisticsCategorySettings>summary{cursor:pointer;font-weight:650}
+  details.section[open]>summary, #statisticsCategorySettings[open]>summary{margin-bottom:16px}
   .chart-svg{width:100%;height:auto;display:block}
   .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
@@ -210,6 +212,12 @@
       <div id="invitationList" class="invitation-list"></div>
     </section>
     <div class="cp-actions"><button class="btn" onclick="saveToServer()">立即保存</button><button class="btn" onclick="exportJson()">导出 JSON</button></div>
+    <details class="account-settings" id="statisticsCategorySettings">
+      <summary>统计分类管理</summary>
+      <p class="desc">管理学习足迹与成长统计使用的分类，已有分类与历史记录继续沿用。</p>
+      <div class="manual-add"><label for="newModuleName">新分类名称</label><input id="newModuleName" placeholder="新分类名称"><button class="btn primary" onclick="addModule()">添加分类</button></div>
+      <div id="moduleList"></div>
+    </details>
     <details><summary>重置记录</summary><p>清空成长记录前，请先导出备份。</p><button class="btn danger" onclick="resetData()">重置</button></details>
     <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
     <h2 style="font-size:18px;margin:0 0 8px">课程生成配置</h2>
@@ -258,7 +266,7 @@
       <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
     </div>
     <section id="actionHome" class="section action-home" aria-label="当日安排">
-      <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay()">新建行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
+      <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay({date:document.getElementById('personalDate').value||today()})">新建行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
       <div id="agendaList" aria-live="polite"><p class="desc" role="status">正在读取安排…</p></div>
       <div id="agendaLegacy"></div>
       <div id="agendaPending"></div>
@@ -274,13 +282,17 @@
     <p class="desc">从学习、实践和复盘看近期变化。学习完成与投入时长分别统计，避免重复累计。</p>
     <section id="actionGrowth" class="section" aria-label="行动积累"></section>
     <div class="cards" id="statCards"></div>
-    <div class="section"><h2>本周各模块投入度</h2><p class="desc">近 7 天（周一起）各模块完成情况，完成度 = 有进展(≥1)的天数 ÷ 7</p><div id="barChart"></div></div>
+    <details class="section"><summary>学习变化与活动明细</summary>
+    <div><h2>本周各模块投入度</h2><p class="desc">近 7 天（周一起）各模块完成情况，完成度 = 有进展(≥1)的天数 ÷ 7</p><div id="barChart"></div></div>
     <div class="section"><h2>活动记录热力图</h2><p class="desc">最近约 4 个月，颜色越深表示当天学习活动越多</p><div id="heatmap"></div><div class="legend"><span><i style="background:#ebedf0"></i>无</span><span><i style="background:#c6e48b"></i>少</span><span><i style="background:#7bc96f"></i>中</span><span><i style="background:#239a3b"></i>多</span><span><i style="background:#196127"></i>很多</span></div></div>
     <div class="section"><h2>最近 7 天记录</h2><div id="recentList"></div></div>
-    <div class="section"><h2>成长度量 · 行为应用</h2><p class="desc">你在真实场景中使用学到的概念/工具的频率。在「记录 → 实践记录」留下使用场景与效果。</p><div id="behaviorStatsCards" class="cards"></div><div id="behaviorTrendChart"></div><div id="behaviorTopConcepts" style="margin-top:16px"></div><div id="behaviorModuleDist" style="margin-top:16px"></div></div>
-    <div class="section"><h2>错误模式 · 重复追踪</h2><p class="desc">识别重复出现的错误模式，聚焦改进方向。</p><div id="errorStatsCards" class="cards"></div><div id="errorTypeChart" style="margin-top:16px"></div><div id="errorTrendChart" style="margin-top:16px"></div><div id="errorRepeatedList" style="margin-top:16px"></div></div>
-    <div class="section"><h2>预测校准</h2><p class="desc">你的预测有多准确？校准直觉，识别过度自信或保守。</p><div id="predictionCalibrationCards" class="cards"></div><div id="predictionCalibrationChart" style="margin-top:16px"></div></div>
-    <div class="section"><h2>AI 行为分析报告</h2><p class="desc">AI 分析你的行为数据，提供个性化洞察和建议。</p><div id="aiReportLatest"></div><button class="btn primary" onclick="generateNewReport(this)" style="margin-top:12px">生成新报告</button></div>
+    <button class="btn" onclick="goTab('learning-history')">查看学习回顾</button>
+    </details>
+    <details class="section"><summary>更多成长指标</summary><div class="cards" id="overviewExtraCards"></div></details>
+    <details class="section"><summary>实践应用分析</summary><p class="desc">在「记录 → 实践记录」留下使用场景与效果。</p><div id="behaviorStatsCards" class="cards"></div><div id="behaviorTrendChart"></div><div id="behaviorTopConcepts" style="margin-top:16px"></div><div id="behaviorModuleDist" style="margin-top:16px"></div></details>
+    <details class="section"><summary>错误模式分析</summary><p class="desc">识别重复出现的错误模式，聚焦改进方向。</p><div id="errorStatsCards" class="cards"></div><div id="errorTypeChart" style="margin-top:16px"></div><div id="errorTrendChart" style="margin-top:16px"></div><div id="errorRepeatedList" style="margin-top:16px"></div></details>
+    <details class="section"><summary>预测校准分析</summary><p class="desc">回看预测准确度，识别过度自信或保守。</p><div id="predictionCalibrationCards" class="cards"></div><div id="predictionCalibrationChart" style="margin-top:16px"></div></details>
+    <div class="section"><h2>最近一期 AI 报告</h2><div id="aiReportLatest"></div><button class="btn" onclick="goTab('ai-report')">进入周期复盘</button></div>
   </div>
 
   <div id="view-reading" style="display:none" class="section"></div>
@@ -289,31 +301,25 @@
 
   <div id="view-progress" style="display:none">
     <div class="section">
-      <h2>今日学习足迹</h2><p class="desc">课程标记学完后，自动按分类记录，无需重复打卡。同一天同一分类只记一次，暂存笔记不会记录为完成。</p>
+      <h2>今日分类足迹</h2><p class="desc">课程标记学完后，自动按分类记录，无需重复打卡。同一天同一分类只记一次，暂存笔记不会记录为完成。</p>
       <p id="checkinStatus" class="desc" role="status"></p><button class="btn" onclick="refreshAutoCheckins()">刷新记录</button>
       <div class="chips" id="todayChips"></div>
     </div>
     <div class="section">
-      <h2>学习足迹（近 14 天）</h2><p class="desc">✓ 表示当天已学完该分类的课程；历史手动打卡记录继续保留。</p>
+      <h2>分类足迹（近 14 天）</h2><p class="desc">✓ 表示当天已学完该分类的课程；历史手动打卡记录继续保留。</p>
       <div style="overflow-x:auto"><table class="matrix" id="matrix"></table></div>
-    </div>
-    <div class="section">
-      <h2>模块管理</h2>
-      <div class="manual-add"><input id="newModuleName" placeholder="新模块名称"><button class="btn primary" onclick="addModule()">添加模块</button></div>
-      <div id="moduleList"></div>
     </div>
   </div>
 
   <div id="view-habits" style="display:none">
-    <div class="section">
-      <h2>补记学习时长</h2><p class="desc">补记课程计时之外的投入。手工补记、课程学习计时和行动确认投入分别统计，不自动相加。</p>
+    <div class="section"><h2>时长趋势</h2><p class="desc">下图展示手工补记时长。课程学习计时与行动确认投入在周期复盘中分别查看，不自动相加。</p><button class="btn" onclick="goTab('report')">查看周期投入</button><h3>近 30 天手工补记时长</h3><div id="lineChart"></div></div>
+    <details class="section" id="habitEntry"><summary>补记学习时长</summary><p class="desc">补记课程计时之外的投入。手工补记、课程学习计时和行动确认投入分别统计，不自动相加。</p>
       <div class="field-row"><label>日期<input type="date" id="habitDate"></label><label>学习时长（分钟）<input type="number" id="habitMinutes" min="0"></label></div>
       <div class="field-row"><label style="flex:1">备注<textarea id="habitNote" rows="2"></textarea></label></div>
       <button class="btn primary" onclick="saveHabit()">保存当天记录</button>
       <span style="margin-left:12px;font-size:12px;color:var(--muted)" id="habitHint"></span>
-    </div>
-    <div class="section"><h2>近 30 天学习时长趋势</h2><div id="lineChart"></div></div>
-    <div class="section"><h2>时长热力图（近 4 个月）</h2><div id="habitHeatmap"></div><div class="legend"><span><i style="background:#ebedf0"></i>0</span><span><i style="background:#c6e48b"></i>≤30</span><span><i style="background:#7bc96f"></i>≤60</span><span><i style="background:#239a3b"></i>≤120</span><span><i style="background:#196127"></i>&gt;120 分钟</span></div></div>
+    </details>
+    <div class="section"><h2>手工补记时长热力图（近 4 个月）</h2><div id="habitHeatmap"></div><div class="legend"><span><i style="background:#ebedf0"></i>0</span><span><i style="background:#c6e48b"></i>≤30</span><span><i style="background:#7bc96f"></i>≤60</span><span><i style="background:#239a3b"></i>≤120</span><span><i style="background:#196127"></i>&gt;120 分钟</span></div></div>
   </div>
 
   <div id="view-decisions" style="display:none">
@@ -457,13 +463,9 @@
   </div>
 
   <div id="view-cycle-review" style="display:none">
-    <section class="section">
-      <h2>周期复盘</h2>
-      <p class="desc">回看阶段投入与变化，结合数据汇总和 AI 报告决定下一步。</p>
-    </section>
   <div id="view-report" style="display:none">
     <div class="section">
-      <h2>周报 / 月报</h2>
+      <h2>周期复盘 · 周／月汇总</h2>
       <p class="desc">自动汇总打卡、时长、决策、预测、复盘、洞察与知识节点，可导出 Markdown。</p>
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <button class="btn" id="btnWeek" onclick="setReportRange('week')">本周</button>
@@ -481,7 +483,7 @@
 
   <div id="view-ai-report" style="display:none">
     <div class="section">
-      <h2>AI 行为分析报告</h2>
+      <h2>周期复盘 · AI 报告</h2>
       <p class="desc">AI 分析你的行为数据，提供个性化洞察和建议。</p>
       <button class="btn primary" onclick="generateNewReport(this)">生成新报告</button>
       <div style="height:14px"></div>
@@ -862,9 +864,10 @@ function renderOverview(){
   document.getElementById('statCards').innerHTML=`
     <div class="card"><div class="k">累计记录天数</div><div class="v">${total}<small> 天</small></div></div>
     <div class="card"><div class="k">当前连续打卡</div><div class="v">${cur}<small> 天</small></div></div>
-    <div class="card"><div class="k">历史最长连续</div><div class="v">${best}<small> 天</small></div></div>
     <div class="card"><div class="k">本周手工补记时长</div><div class="v">${weekMinutes()}<small> 分钟</small></div></div>
-    <div class="card"><div class="k">今日完成模块</div><div class="v">${done}<small> / ${checkinModules().length}</small></div></div>
+    <div class="card"><div class="k">今日完成分类</div><div class="v">${done}<small> / ${checkinModules().length}</small></div></div>`;
+  document.getElementById('overviewExtraCards').innerHTML=`
+    <div class="card"><div class="k">历史最长连续</div><div class="v">${best}<small> 天</small></div></div>
     <div class="card"><div class="k">决策日志</div><div class="v">${state.decisions.length}<small> 待复盘 ${pending}</small></div></div>
     <div class="card"><div class="k">预测校准</div><div class="v">${state.predictions.length}<small> 条</small></div></div>
     <div class="card"><div class="k">复盘 / 洞察</div><div class="v">${state.reviews.length+(window.Reflections?.entries||[]).filter(e=>!e.archived_at).length}<small> / ${state.insights.length}</small></div></div>`;
@@ -1604,16 +1607,15 @@ async function renderAIReportLatest(){
     if(!r.ok) throw new Error('fetch failed');
     const reports = await r.json();
     if(reports.length === 0){
-      el.innerHTML = '<p style="color:var(--muted);font-size:13px">尚无报告。点击"生成新报告"开始。</p>';
+      el.innerHTML = '<p class="desc">尚无报告，可进入周期复盘生成并管理报告。</p>';
       return;
     }
     const latest = reports[0];
     const preview = latest.content.split('\n').slice(0, 3).join('\n');
     el.innerHTML = `
-      <div class="card" style="margin-top:12px;cursor:pointer" onclick="goTab('ai-report')">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${latest.date} · ${latest.period_days}天</div>
+      <div class="card" style="margin-top:12px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${esc(latest.date)} · ${Number(latest.period_days)}天</div>
         <div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${esc(preview)}...</div>
-        <div style="margin-top:8px;font-size:12px;color:#4F6EF7">查看详情 →</div>
       </div>
     `;
   } catch(e) {
@@ -2051,15 +2053,15 @@ const navGroups={
   personal:[['personal','今日']],
   actions:[['action-schedule','日程安排'],['action-plans','目标与计划'],['action-records','执行记录']],
   learning:[['library','我的课程'],['reading','阅读'],['plans','课程规划']],
-  records:[['reviews','日常记录'],['timeline','时间线'],['applications','实践记录'],['decisions','决策与预测'],['insights','个人洞察'],['custom','更多记录']],
-  growth:[['overview','成长总览'],['learning-history','学习历史'],['knowledge','知识图谱'],['report','周期复盘']]
+  records:[['reviews','日常记录'],['timeline','时间线'],['applications','实践记录'],['decisions','决策与预测'],['insights','个人洞察'],['custom','专题记录']],
+  growth:[['overview','成长总览'],['learning-history','学习回顾'],['knowledge','知识图谱'],['report','周期复盘']]
 };
 const navParents={reader:'library',archive:'library',summary:'library',copilot:'library',errors:'applications',predictions:'decisions',stocks:'custom',progress:'learning-history',habits:'learning-history','ai-report':'report'};
 const contextGroups={
   applications:[['applications','应用记录'],['errors','错误记录']],
   decisions:[['decisions','决策日志'],['predictions','预测校准']],
   custom:[['custom','自定义记录'],['stocks','投资复盘']],
-  'learning-history':[['learning-history','学习日历'],['progress','学习足迹'],['habits','补记时长']],
+  'learning-history':[['learning-history','学习日历'],['progress','分类足迹'],['habits','时长趋势']],
   report:[['report','周／月汇总'],['ai-report','AI 报告']]
 };
 const lastGroupTab={};
@@ -2293,7 +2295,7 @@ init();
 <script src="/static/course-summary.js?v=20261021-background"></script>
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
-<script src="/static/plans.js?v=20261021-p1-navigation"></script>
+<script src="/static/plans.js?v=20261021-navigation-round3"></script>
 <script src="/static/study-generation.js?v=20261021-unified"></script>
 <script src="/static/daily-learning.js?v=20261021-p1-navigation"></script>
 <script src="/static/reading-growth.js?v=20261021-tasks"></script>
@@ -2310,7 +2312,7 @@ init();
 <script src="/static/action-plan-client.js?v=20261021-merge"></script>
 <script src="/static/action-reviews.js?v=20261021-merge"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>
-<script src="/static/daily-agenda.js?v=20261021-merge"></script>
+<script src="/static/daily-agenda.js?v=20261021-navigation-round3"></script>
 <script src="/static/action-quick-editor.js?v=20261021-merge"></script>
 <script src="/static/action-plans.js?v=20261021-merge"></script>
 </body>
