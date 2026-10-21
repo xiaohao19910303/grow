@@ -5,6 +5,7 @@
   const label={year:'年目标',month:'月计划',week:'周计划',day:'日行动'},statusLabel={active:'待推进',paused:'已暂停',completed:'已完成',archived:'已归档'};
   let initialized;
   let client,snapshot={plans:[],execution:null},offset=0,loading=null,loadTurn=0,lastSignature='',lastDays='',period='all',horizon='all',status='active',page=1,historyTurn=0,formDialog=null,viewMode='flat';
+  const expandedPlans=new Set(); // Persist tree node expansion state
   const n=(tag,text,cls)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el;};
   const now=()=>new Date(Date.now()+offset),day=zone=>ActionPlanClient.day(now(),zone||'Asia/Shanghai');
   const visible=()=>root.style.display!=='none';
@@ -18,7 +19,10 @@
     const turn=++loadTurn;
     const task=client.read('').then(data=>{if(turn!==loadTurn)return snapshot;snapshot=data;offset=new Date(data.server_time)-Date.now();
       const signature=JSON.stringify([data.plans,data.execution]),days=[...new Set(['Asia/Shanghai',...data.plans.map(p=>p.timezone)])].map(zone=>day(zone)).join(',');
-      if(signature!==lastSignature||days!==lastDays){lastSignature=signature;lastDays=days;renderHome();renderBar();if(visible())renderWorkspace();}remind().catch(()=>{});return data;});
+      if(signature!==lastSignature||days!==lastDays){lastSignature=signature;lastDays=days;renderHome();renderBar();if(visible())renderWorkspace();
+        // Emit event for cross-tab synchronization
+        window.EventBus?.emit('plans:loaded',{data});
+      }remind().catch(()=>{});return data;});
     loading=task;try{return await task;}finally{if(loading===task)loading=null;}
   }
   async function change(p,action,values={}){
@@ -27,6 +31,8 @@
       const old=planById(p.id);snapshot.plans=snapshot.plans.map(item=>item.id===p.id?{...old,...result.plan}:item);
       if(result.execution&&(result.execution.outcome==='running'||result.execution.id===snapshot.execution?.id))snapshot.execution=result.execution.outcome==='running'?result.execution:null;
       renderHome();renderBar();if(visible())renderWorkspace();remind().catch(()=>{});
+      // Emit event for cross-tab synchronization
+      window.EventBus?.emit('plans:changed',{planId:p.id,action,data:result});
       try{await load(true);}catch{toast('操作已保存，列表暂未刷新，请稍后点击刷新计划。');}return result;
     }catch(error){
       toast('操作失败：'+error.message);
@@ -87,7 +93,24 @@
     const kids=children.get(plan.id)||[];const hasKids=kids.length>0;
     const row=n('article',undefined,'action-tree-node');row.style.marginLeft=depth*24+'px';container.append(row);
     const header=n('div',undefined,'action-tree-header');row.append(header);
-    if(hasKids){const toggle=n('button','▶','btn action-tree-toggle');toggle.onclick=()=>{const body=row.querySelector('.action-tree-children');if(body){const open=body.style.display!=='none';body.style.display=open?'none':'';toggle.textContent=open?'▶':'▼';}};header.append(toggle);}
+    if(hasKids){
+      const isExpanded=expandedPlans.has(plan.id);
+      const toggle=n('button',isExpanded?'▼':'▶','btn action-tree-toggle');
+      toggle.onclick=()=>{
+        const body=row.querySelector('.action-tree-children');
+        if(body){
+          const open=body.style.display!=='none';
+          body.style.display=open?'none':'';
+          toggle.textContent=open?'▶':'▼';
+          if(open){
+            expandedPlans.delete(plan.id);
+          }else{
+            expandedPlans.add(plan.id);
+          }
+        }
+      };
+      header.append(toggle);
+    }
     const info=n('div',undefined,'action-tree-info');header.append(info);
     info.append(n('span',label[plan.period]+' · '+statusLabel[plan.status],'action-kicker'),n('h3',plan.title));
     info.append(n('p',dateTitle(plan),'desc'),n('p',progress(plan),'action-progress'));
@@ -102,7 +125,13 @@
       }
     }
     button(actions,'编辑',()=>editor(plan.period,plan));
-    if(hasKids){const body=n('div',undefined,'action-tree-children');body.style.display='none';row.append(body);for(const kid of kids)renderTreeNode(body,kid,children,byId,depth+1);}
+    if(hasKids){
+      const isExpanded=expandedPlans.has(plan.id);
+      const body=n('div',undefined,'action-tree-children');
+      body.style.display=isExpanded?'':'none';
+      row.append(body);
+      for(const kid of kids)renderTreeNode(body,kid,children,byId,depth+1);
+    }
   }
 
   function renderWorkspace(){
@@ -156,7 +185,18 @@
     if(!existing){
       const tplWrap=n('div',undefined,'action-field');tplWrap.append(n('label','从模板创建（可选）'));
       templateSelect=n('select');option(templateSelect,'','不使用模板');tplWrap.append(templateSelect);form.append(tplWrap);
-      client.read('/templates').then(data=>{if(!d.isConnected)return;for(const t of data.templates.filter(t=>t.period===kind))option(templateSelect,t.id,t.name);}).catch(()=>{});
+      client.read('/templates').then(data=>{
+        if(!d.isConnected)return;
+        const templates=data.templates.filter(t=>t.period===kind);
+        if(templates.length===0){
+          option(templateSelect,'','暂无可用模板');
+        }else{
+          for(const t of templates)option(templateSelect,t.id,t.name);
+        }
+      }).catch(error=>{
+        option(templateSelect,'','模板加载失败');
+        console.warn('模板加载失败:',error);
+      });
     }
     const fields={},grid=n('div',undefined,'action-form-grid');form.append(grid);
     fields.title=field(grid,'计划名称','text',seed.title);fields.title.required=true;fields.title.maxLength=160;

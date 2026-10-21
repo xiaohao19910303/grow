@@ -90,6 +90,16 @@
   }
   function renderSchedule(){
     const root=document.getElementById('view-action-schedule');if(!root)return;root.replaceChildren(node('h2','日程安排'),node('p','安排今天和未来，过去未完成的事项可改期或取消。','desc'));
+
+    // Show pending adjustment count at the top
+    const pendingCount=data().plans.filter(p=>p.period==='day'&&p.status==='active'&&p.start_date<ActionPlans.day(p.timezone)).length;
+    if(pendingCount>0&&scope!=='earlier'){
+      const pendingBox=node('div',undefined,'action-pending');
+      pendingBox.append(node('p',`有 ${pendingCount} 项过去的安排待调整`,'action-kicker'));
+      button(pendingBox,'查看待调整',()=>{scope='earlier';page=1;renderSchedule();},true);
+      root.append(pendingBox);
+    }
+
     const tabs=node('div',undefined,'action-buttons');root.append(tabs);
     for(const [key,text] of [['today','今日'],['tomorrow','明日'],['future','未来'],['earlier','待调整'],['all','全部日程']]){const b=button(tabs,text,()=>{scope=key;page=1;renderSchedule();},scope===key);b.setAttribute('aria-pressed',String(scope===key));}
     button(tabs,'新建日行动',()=>ActionPlans.newDay());button(tabs,'刷新',()=>ActionPlans.refresh());
@@ -119,4 +129,17 @@
   window.DailyAgenda={mount,render,row,reschedule,cancel,refreshControls,renderGrowth,shift,same,
     isScheduled:target=>matching(target).some(p=>!!p.start_date),
     enter:async()=>{try{await ActionPlans.refresh();renderSchedule();}catch(e){const root=document.getElementById('view-action-schedule');root.replaceChildren(node('p',e.message));button(root,'重试',()=>DailyAgenda.enter());}}};
+
+  // Listen for plan changes to refresh agenda
+  window.EventBus?.on('plans:changed',()=>{
+    if(document.getElementById('view-personal')?.style.display!=='none'){
+      render();
+    }
+  });
+
+  window.EventBus?.on('plans:loaded',()=>{
+    if(document.getElementById('view-personal')?.style.display!=='none'){
+      render();
+    }
+  });
 })();

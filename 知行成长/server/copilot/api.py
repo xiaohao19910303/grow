@@ -77,7 +77,7 @@ class FeedbackSubmission(Key):
     next_direction: str = Field(default='', max_length=1000)
 
 
-class SummaryGeneration(Input):
+class SummaryGeneration(Key):
     scope: Literal['full_course', 'single_lesson'] = 'full_course'
     key: str = Field(default_factory=lambda:str(uuid.uuid4()),min_length=8,max_length=160)
     ai_config: dict | None = Field(default=None,repr=False)
@@ -199,6 +199,10 @@ def register(app: FastAPI, root, db):
         offset, limit = max(0, offset), min(168, max(1, limit))
         return {'total': len(data), 'items': data[offset:offset + limit]}
 
+    @router.get('/lessons/archived')
+    def archived_lessons(module: Literal['renzhi'] = 'renzhi'):
+        return {'items': store.list_archived()}
+
     @router.get('/lessons/{number}')
     def lesson(number: int, module: Literal['renzhi'] = 'renzhi'):
         return store.lesson(number)
@@ -255,10 +259,6 @@ def register(app: FastAPI, root, db):
     @router.post('/lessons/{number}/unarchive')
     def unarchive(number: int, body: ArchiveRequest):
         return store.unarchive_lesson(number, body.key)
-
-    @router.get('/lessons/archived')
-    def archived_lessons(module: Literal['renzhi'] = 'renzhi'):
-        return {'items': store.list_archived()}
 
     @router.post('/summaries/generate')
     async def generate_summary(body: SummaryGeneration,request:Request):

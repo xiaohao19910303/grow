@@ -335,7 +335,7 @@
       <div id="predictionAnalysisTrend" style="margin-top:20px"></div>
     </div>
     <div class="section">
-      <h2>预测校准</h2><p class="desc">记录预测 + 自报概率 + 结果，长期校准「我觉得」与「实际发生」的偏差。</p>
+      <h2>预测记录</h2><p class="desc">记录预测 + 自报概率 + 结果，长期校准「我觉得」与「实际发生」的偏差。</p>
       <div class="cards" id="predictionStats" style="margin-bottom:16px"></div>
       <button class="btn primary" onclick="openPredictionForm()">新增预测</button>
       <div style="height:14px"></div>
@@ -2098,7 +2098,16 @@ function goTab(name, options={}){
   if(name==='ai-report') renderAIReports();
   if(name==='knowledge') renderKnowledgeGraph();
   if(name==='timeline') window.Timeline?.load();
-  if(name==='overview'){ window.ActionPlans?.refresh().then(()=>window.DailyAgenda?.renderGrowth()).catch(()=>{}); renderBehaviorStats(); renderErrorStats(); renderPredictionCalibration(); renderAIReportLatest(); }
+  if(name==='overview'){
+    // Use Promise.allSettled to ensure all operations complete independently
+    Promise.allSettled([
+      window.ActionPlans?.refresh().then(()=>window.DailyAgenda?.renderGrowth()).catch(()=>{}),
+      Promise.resolve().then(()=>renderBehaviorStats()),
+      Promise.resolve().then(()=>renderErrorStats()),
+      Promise.resolve().then(()=>renderPredictionCalibration()),
+      Promise.resolve().then(()=>renderAIReportLatest())
+    ]);
+  }
   if(name==='settings') { loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='progress' || name==='overview')refreshAutoCheckins();

@@ -636,3 +636,7 @@ def prepare_user(user):
 
 from accounts import install as install_accounts
 accounts = install_accounts(app, STATIC_DIR, prepare_user)
+
+# Install last so authentication and module initialization share the same limit.
+from request_limit import RequestConcurrencyLimit
+app.add_middleware(RequestConcurrencyLimit)

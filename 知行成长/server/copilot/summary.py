@@ -2,7 +2,7 @@
 import json
 import uuid
 from .core import now, encoded, fail, MODULE, TZ
-from .generation import config, event
+from .generation import event
 from .ai_config import generation_config
 
 
@@ -91,7 +91,8 @@ class SummaryGenerator:
         self.store = store
         self.transport = transport
 
-    def generate(self, module_id, round_id, scope='full_course', *, ai_config=None, persist=True):
+    def generate(self, module_id, round_id, scope='full_course', ai_config=None, *, persist=True):
+        cfg = generation_config(ai_config, self.transport)
         lessons_data = self.store._scan()
         completed = [l for l in lessons_data['lessons'] if l['learning_state'] == 'completed']
         if not completed:
@@ -127,8 +128,6 @@ class SummaryGenerator:
             {'role': 'user', 'content': prompt}
         ]
 
-        cfg = generation_config(ai_config,self.transport)
-
         full_content = ''
         if self.transport:
             stream = self.transport.stream(messages, cfg)
@@ -157,8 +156,9 @@ class SummaryGenerator:
 
         return _generate()
 
-    def generate_advanced(self, summary_content, *, ai_config=None, persist=True):
+    def generate_advanced(self, summary_content, ai_config=None, *, persist=True):
         """Generate advanced courses based on summary and feedback."""
+        cfg = generation_config(ai_config, self.transport)
         feedback = self.store.list_feedback()
         if not feedback:
             fail('no_feedback_data', '没有反馈数据，无法生成进阶课程。')
@@ -186,8 +186,6 @@ class SummaryGenerator:
             {'role': 'system', 'content': '你是一个个人学习助手，擅长根据学生学习情况生成进阶课程内容。'},
             {'role': 'user', 'content': prompt}
         ]
-
-        cfg = generation_config(ai_config,self.transport)
 
         if self.transport:
             stream = self.transport.stream(messages, cfg)

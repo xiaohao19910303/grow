@@ -899,7 +899,10 @@ class Store:
                     VALUES (?, ?, ?, ?, ?, ?)
                 ''', (module_id, round_id, scope, content,
                       encoded(feedback_snapshot), now()))
-            # Also write to Markdown file
+            # Cloud summaries contain personal feedback and stay in the database.
+            if getattr(self, 'remote', False):
+                return True
+            # Also write to Markdown file for local workspaces.
             round_num = round_id
             summary_dir = self.module / '课程总结'
             summary_dir.mkdir(parents=True, exist_ok=True)
