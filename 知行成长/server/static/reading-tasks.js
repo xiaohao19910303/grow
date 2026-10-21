@@ -14,11 +14,8 @@
   function action(parent,label,run){const b=node('button',label,'btn');b.type='button';b.onclick=()=>Promise.resolve(run()).catch(e=>{notice.textContent=e.message;});parent.append(b);return b;}
   function mount(){if(box)return;box=node('aside',undefined,'reading-task-center');box.id='readingTaskCenter';box.setAttribute('aria-label','生成任务中心');
     const details=node('details');toggle=node('summary','生成任务','btn reading-task-toggle');toggle.setAttribute('aria-controls','readingTaskList');details.append(toggle);box.append(details);
-    notice=node('p','','reading-task-notice');notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');box.append(notice);
-    list=node('div',undefined,'reading-task-list');list.id='readingTaskList';details.append(list);document.body.append(box);
-    function position(){const execution=document.getElementById?.('actionExecution');if(box.style)box.style.bottom=(execution&&!execution.hidden?execution.getBoundingClientRect().height+32:(window.innerWidth<=600?80:88))+'px';}
-    function observePosition(){position();const execution=document.getElementById?.('actionExecution');if(execution&&typeof ResizeObserver!=='undefined')new ResizeObserver(position).observe(execution);}
-    window.addEventListener?.('load',observePosition,{once:true});observePosition();
+    notice=node('p','','reading-task-notice');notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');details.append(notice);
+    list=node('div',undefined,'reading-task-list');list.id='readingTaskList';details.append(list);const dock=document.getElementById?.('floatingPanels');if(dock)dock.prepend(box);else document.body.append(box);
   }
   function render(){mount();box.hidden=!jobs.size;const running=[...jobs.values()].filter(active).length,unread=[...jobs.values()].filter(j=>success(j)&&!j.seen).length;
     toggle.textContent=`生成任务${running?' · '+running+' 项进行中':unread?' · '+unread+' 项已完成':''}`;

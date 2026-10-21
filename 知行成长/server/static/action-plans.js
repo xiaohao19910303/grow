@@ -337,10 +337,17 @@
   }
   async function start(p,variant){const result=await change(p,'start',{variant});try{await openTarget(result.plan.target,p.id);}catch(e){toast('执行已保留，学习内容暂未打开：'+e.message);}}
   function renderBar(){
-    bar.replaceChildren();bar.hidden=!snapshot.execution;document.body.classList.toggle('action-running',!!snapshot.execution);if(!snapshot.execution)return;
-    const execution=snapshot.execution,p=planById(execution.plan_id),text=n('div');text.append(n('strong','正在执行：'+execution.title),n('span',' 计时中 · 计划 '+execution.planned_minutes+' 分钟','action-clock'));bar.append(text);
-    const actions=n('div',undefined,'action-buttons');bar.append(actions);button(actions,'继续执行',()=>openTarget(execution.target,execution.plan_id));button(actions,p?.completion_mode==='content'?'记录投入':'记录完成',()=>finish(p,execution,'completed'),true);button(actions,'中断并保留记录',()=>finish(p,execution,'interrupted'));
+    const previous=bar.querySelector('details'),expanded=previous?.open&&bar.dataset.executionId===snapshot.execution?.id;
+    bar.replaceChildren();bar.hidden=!snapshot.execution;if(!snapshot.execution){delete bar.dataset.executionId;return;}
+    const execution=snapshot.execution,p=planById(execution.plan_id),details=n('details'),summary=n('summary');
+    bar.dataset.executionId=execution.id;details.open=!!expanded;
+    const hint=n('span',expanded?' · 收起操作':' · 展开操作','action-execution-hint');
+    summary.append(n('strong','正在执行：'+execution.title),hint);
+    details.addEventListener('toggle',()=>{hint.textContent=details.open?' · 收起操作':' · 展开操作';});
+    details.append(summary,n('p','计时中 · 计划 '+execution.planned_minutes+' 分钟','action-clock'));bar.append(details);
+    const actions=n('div',undefined,'action-buttons');details.append(actions);button(actions,'继续执行',()=>openTarget(execution.target,execution.plan_id));button(actions,p?.completion_mode==='content'?'记录投入':'记录完成',()=>finish(p,execution,'completed'),true);button(actions,'中断并保留记录',()=>finish(p,execution,'interrupted'));
   }
+
   function finish(p,execution,outcome){const draftKey='finish.'+execution.id,draft=client.get(draftKey)||{};const d=dialog(outcome==='completed'?'确认本次执行':'保存中断记录'),form=n('form');d.append(form);form.append(n('p',execution.title),n('p',p.completion_mode==='content'?'计时只作参考，请确认实际投入。读完／学完请在原内容中确认，这里仅保存投入。':'计时只作参考，请确认实际投入。课程完成与学习笔记保持独立。','desc'));
     const minutes=field(form,'实际执行分钟','number',draft.minutes??Math.max(0,Math.floor((now()-new Date(execution.started_at))/60000)));minutes.min=outcome==='completed'?1:0;minutes.max=1440;minutes.required=true;
     const note=field(form,'收获或中断原因（可选）','textarea',draft.note||'');note.maxLength=2000;form.addEventListener('input',()=>client.put(draftKey,{minutes:minutes.value,note:note.value}));const error=n('p','','action-error');error.setAttribute('role','alert');form.append(error);

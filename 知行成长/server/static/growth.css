@@ -77,3 +77,12 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var
 .completion-row>span:first-child{overflow-wrap:anywhere}
 .completion-row>span:last-child{text-align:right;font-variant-numeric:tabular-nums}
 .completion-row progress{width:100%;min-width:0;height:12px}
+
+/* Both panels share one stack; ResizeObserver reserves their measured height. */
+body{padding-bottom:var(--floating-panels-height,0px)}
+html{scroll-padding-bottom:calc(var(--floating-panels-height,0px) + 32px)}
+.floating-panels{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:55;width:min(1100px,calc(100% - 32px));display:flex;flex-direction:column;gap:8px;align-items:stretch;max-height:65dvh;overflow-y:auto;pointer-events:none}
+.floating-panels>*{pointer-events:auto}
+.floating-panels:has(> :not([hidden])){padding-top:2px}
+.toast{bottom:calc(var(--floating-panels-height,0px) + 32px);max-width:calc(100% - 32px)}
+#knowledgeList{overflow-wrap:anywhere}

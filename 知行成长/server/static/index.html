@@ -140,9 +140,9 @@
   @media (max-width:680px){.wrap{padding:16px 14px 48px}.topbar{padding:12px 18px}.modal .form-grid{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
-<link rel="stylesheet" href="/static/growth.css?v=20261021-p1-navigation">
+<link rel="stylesheet" href="/static/growth.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
-<link rel="stylesheet" href="/static/reading.css?v=20261021-unified">
+<link rel="stylesheet" href="/static/reading.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
 <link rel="stylesheet" href="/static/stocks.css?v=1">
 <link rel="stylesheet" href="/static/learning-history.css?v=20261021-p1-navigation">
@@ -151,7 +151,7 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
-<link rel="stylesheet" href="/static/action-plans.css?v=20261021-merge">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261021-audit">
 </head>
 <body>
 
@@ -439,26 +439,25 @@
 
   <div id="view-knowledge" style="display:none">
     <div class="section">
-      <h2>知识图谱可视化</h2>
-      <p class="desc">交互式力导向图，展示知识点之间的关联。</p>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <button class="btn primary" onclick="scanKnowledgeLinks()">扫描关系</button>
-        <select id="graphCategoryFilter" onchange="renderKnowledgeGraph()" style="max-width:160px">
-          <option value="">全部分类</option>
-        </select>
-        <input id="graphSearch" placeholder="搜索节点..." style="max-width:200px" oninput="filterGraphNodes()">
+      <h2>知识图谱</h2>
+      <p class="desc">概念、教程与课程来源索引。分类和搜索同时筛选下方图谱与节点列表。</p>
+      <div class="field-row">
+        <label>节点分类<select id="graphCategoryFilter" onchange="renderKnowledgeList();renderKnowledgeGraph()"><option value="">全部分类</option></select></label>
+        <label>搜索节点<input id="knowledgeSearch" type="search" placeholder="名称或摘要" oninput="applyKnowledgeFilters()"></label>
       </div>
+      <div class="action-buttons">
+        <button class="btn" onclick="scanKnowledge(this)">扫描内容</button>
+        <button class="btn" onclick="scanKnowledgeLinks(this)">扫描关系</button>
+      </div>
+      <p class="desc">扫描内容：收录工作区的知识节点；扫描关系：分析已有节点之间的关联。</p>
+      <p id="knowledgeMeta" class="desc" role="status"></p>
+      <p id="knowledgeFilterStatus" class="desc" role="status"></p>
       <div class="cards" id="graphStats"></div>
       <div id="graphContainer" style="border:1px solid var(--border);border-radius:8px;background:#fafbfd;margin-top:16px;min-height:400px"></div>
     </div>
     <div class="section">
-      <h2>知识图谱</h2>
-      <p class="desc">自动扫描工作区的 Markdown（知识索引 + 思维工具教程 + 课程/文章/练习足迹），节点点击可回查来源。</p>
-      <button class="btn primary" onclick="scanKnowledge()">重新扫描</button>
-      <span id="knowledgeMeta" style="margin-left:12px;font-size:12px;color:var(--muted)"></span>
-      <div style="height:14px"></div>
+      <h2>节点与来源</h2>
       <div class="cards" id="knowledgeStats"></div>
-      <input id="knowledgeSearch" placeholder="搜索节点…" style="width:100%;max-width:340px;margin-bottom:14px" oninput="renderKnowledgeList()">
       <div id="knowledgeList"></div>
     </div>
   </div>
@@ -1804,8 +1803,8 @@ class ForceGraph {
     this.nodes.forEach(n => {
       const color = categoryColors[n.category] || categoryColors['默认'];
       const r = n.size || 8;
-      svg += `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${color}" stroke="#fff" stroke-width="1.5" style="cursor:pointer" data-id="${n.id}">`;
-      svg += `<title>${n.name}\n分类: ${n.category || '未分类'}\n${n.summary || ''}</title>`;
+      svg += `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${color}" stroke="#fff" stroke-width="1.5" style="cursor:pointer" data-id="${esc(n.id)}">`;
+      svg += `<title>${esc(n.name)}\n分类: ${esc(n.category || '未分类')}\n${esc(n.summary || '')}</title>`;
       svg += `</circle>`;
     });
 
@@ -1847,91 +1846,63 @@ class ForceGraph {
   }
 }
 
+let knowledgeGraphRequest=0;
+function stopKnowledgeGraph(){
+  ++knowledgeGraphRequest;
+  forceGraphInstance?.stop();
+  forceGraphInstance=null;
+  graphData=null;
+}
+function knowledgeMatches(node){
+  const category=document.getElementById('graphCategoryFilter').value;
+  const query=document.getElementById('knowledgeSearch').value.trim().toLowerCase();
+  return (!category||(node.category||'未分类')===category)&&(!query||[node.name,node.summary].some(value=>(value||'').toLowerCase().includes(query)));
+}
 async function renderKnowledgeGraph(){
-  const container = document.getElementById('graphContainer');
-  const statsEl = document.getElementById('graphStats');
-  const filterEl = document.getElementById('graphCategoryFilter');
-  if(!container) return;
-
-  const category = filterEl ? filterEl.value : '';
-
-  try {
-    const r = await fetch('/api/knowledge/graph' + (category ? `?category=${encodeURIComponent(category)}` : ''));
-    if(!r.ok) throw new Error('fetch failed');
-    graphData = await r.json();
-
-    // 统计
-    if(statsEl){
-      statsEl.innerHTML = `
-        <div class="card"><div class="k">节点数</div><div class="v">${graphData.stats.total_nodes}</div></div>
-        <div class="card"><div class="k">关系数</div><div class="v">${graphData.stats.total_links}</div></div>
-        <div class="card"><div class="k">分类数</div><div class="v">${Object.keys(graphData.stats.categories).length}</div></div>
-      `;
+  stopKnowledgeGraph();
+  const request=knowledgeGraphRequest,container=document.getElementById('graphContainer');
+  const category=document.getElementById('graphCategoryFilter').value;
+  document.getElementById('knowledgeFilterStatus').textContent='正在更新图谱筛选…';
+  document.getElementById('graphStats').replaceChildren();
+  container.textContent='正在读取图谱…';
+  try{
+    const response=await fetch('/api/knowledge/graph?limit=1000'+(category&&category!=='未分类'?'&category='+encodeURIComponent(category):''));
+    if(!response.ok)throw new Error('加载失败');
+    const data=await response.json();
+    if(request!==knowledgeGraphRequest)return;
+    graphData=data;
+    applyKnowledgeFilters();
+  }catch(error){
+    if(request===knowledgeGraphRequest){
+      document.getElementById('knowledgeFilterStatus').textContent='图谱暂时不可用，仍可在下方列表查看匹配节点。';
+      container.innerHTML='<p class="empty">图谱加载失败。<button class="btn" onclick="renderKnowledgeGraph()">重试图谱</button></p>';
     }
-
-    // 分类过滤
-    if(filterEl && filterEl.options.length <= 1){
-      Object.keys(graphData.stats.categories).forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat; opt.textContent = cat;
-        filterEl.appendChild(opt);
-      });
-    }
-
-    // 渲染图谱
-    if(graphData.nodes.length === 0){
-      container.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px">暂无知识节点。请先扫描知识。</p>';
-      return;
-    }
-
-    if(graphData.nodes.length > 500){
-      container.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">节点过多（>500），请使用分类过滤减少节点数。</p>';
-      return;
-    }
-
-    if(forceGraphInstance) forceGraphInstance.stop();
-    forceGraphInstance = new ForceGraph(container, graphData.nodes, graphData.links);
-  } catch(e) {
-    container.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px">加载失败</p>';
   }
 }
-
-function filterGraphNodes(){
-  // 搜索过滤（简单实现：高亮匹配节点）
-  const search = (document.getElementById('graphSearch')?.value || '').toLowerCase();
-  if(!forceGraphInstance) return;
-
-  if(!search){
-    forceGraphInstance.nodes.forEach(n => n.dimmed = false);
-    forceGraphInstance.render();
-    return;
-  }
-
-  forceGraphInstance.nodes.forEach(n => {
-    n.dimmed = !n.name.toLowerCase().includes(search) && !(n.summary || '').toLowerCase().includes(search);
-  });
-  forceGraphInstance.render();
+function applyKnowledgeFilters(){
+  renderKnowledgeList();
+  if(!graphData)return;
+  forceGraphInstance?.stop();forceGraphInstance=null;
+  const container=document.getElementById('graphContainer'),nodes=graphData.nodes.filter(knowledgeMatches);
+  const ids=new Set(nodes.map(node=>node.id));
+  const links=graphData.links.filter(link=>ids.has(link.source_id??link.source)&&ids.has(link.target_id??link.target));
+  document.getElementById('graphStats').innerHTML=`<div class="card"><div class="k">图谱匹配节点</div><div class="v">${nodes.length}</div></div><div class="card"><div class="k">匹配节点间关系</div><div class="v">${links.length}</div></div>`;
+  const total=knowledgeData.nodes.filter(knowledgeMatches).length;
+  document.getElementById('knowledgeFilterStatus').textContent=`列表匹配 ${total} 个节点，图谱匹配 ${nodes.length} 个节点。`+(total>nodes.length?'图谱仅载入部分节点，请缩小分类范围；列表保留全部匹配结果。':'');
+  if(!nodes.length){container.innerHTML='<p class="empty">暂无匹配节点，可调整筛选或扫描内容。</p>';return;}
+  if(nodes.length>500){container.innerHTML='<p class="empty">匹配节点超过 500 个，请选择分类或搜索以缩小图谱范围。下方列表仍可查看全部匹配节点。</p>';return;}
+  forceGraphInstance=new ForceGraph(container,nodes,links);
 }
-
-async function scanKnowledgeLinks(){
-  const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = '正在扫描...';
-  try {
-    const r = await fetch('/api/knowledge/scan-links', {method:'POST'});
-    if(!r.ok){
-      const e = await r.json().catch(()=>({}));
-      throw new Error(e.detail || '扫描失败');
-    }
-    const result = await r.json();
+async function scanKnowledgeLinks(btn){
+  btn.disabled=true;btn.textContent='正在扫描关系…';
+  try{
+    const response=await fetch('/api/knowledge/scan-links',{method:'POST'});
+    const result=await response.json();
+    if(!response.ok)throw new Error(result.detail||'扫描失败');
     toast(`已创建 ${result.links_created} 条关系`);
-    renderKnowledgeGraph();
-  } catch(e) {
-    toast('扫描失败: '+e.message,'err');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '扫描关系';
-  }
+    if(currentTab==='knowledge')await renderKnowledgeGraph();
+  }catch(error){toast('扫描失败：'+error.message,'err');}
+  finally{btn.disabled=false;btn.textContent='扫描关系';}
 }
 
 function render(){
@@ -1948,19 +1919,21 @@ async function loadKnowledge(){
     if(r.ok) knowledgeData = await r.json();
   }catch(e){}
   renderKnowledge();
+  if(graphData)applyKnowledgeFilters();
 }
 function renderKnowledge(){
+  const filter=document.getElementById('graphCategoryFilter'),selected=filter.value;
+  const categories=[...new Set(knowledgeData.nodes.map(node=>node.category||'未分类'))];
+  filter.innerHTML='<option value="">全部分类</option>'+categories.map(category=>'<option value="'+esc(category)+'">'+esc(category)+'</option>').join('');
+  filter.value=categories.includes(selected)?selected:'';
   document.getElementById('knowledgeMeta').textContent = knowledgeData.total ? ('共 '+knowledgeData.total+' 个节点') : '';
-  document.getElementById('knowledgeStats').innerHTML = Object.entries(knowledgeData.categories).map(([k,v])=>
-    '<div class="card"><div class="k">'+esc(k)+'</div><div class="v">'+v+'</div></div>').join('');
   renderKnowledgeList();
 }
 function renderKnowledgeList(){
-  const q = (document.getElementById('knowledgeSearch')?document.getElementById('knowledgeSearch').value:'').trim().toLowerCase();
-  let nodes = knowledgeData.nodes;
-  if(q) nodes = nodes.filter(n => (n.name||'').toLowerCase().includes(q) || (n.summary||'').toLowerCase().includes(q));
+  const nodes=knowledgeData.nodes.filter(knowledgeMatches);
   const groups = {};
   nodes.forEach(n => { const c = n.category||'未分类'; (groups[c] = groups[c]||[]).push(n); });
+  document.getElementById('knowledgeStats').innerHTML=Object.entries(groups).map(([category,nodes])=>'<div class="card"><div class="k">'+esc(category)+'</div><div class="v">'+nodes.length+'</div></div>').join('');
   let html = '';
   Object.entries(groups).forEach(([cat, arr]) => {
     html += '<h3 style="font-size:13px;margin:18px 0 8px;color:var(--text)">'+esc(cat)+' <span style="color:var(--muted);font-weight:400">('+arr.length+')</span></h3>';
@@ -1973,15 +1946,19 @@ function renderKnowledgeList(){
   });
   document.getElementById('knowledgeList').innerHTML = html || '<div class="empty">暂无匹配节点</div>';
 }
-async function scanKnowledge(){
+async function scanKnowledge(btn){
+  btn.disabled=true;btn.textContent='正在扫描内容…';
   setStatus('扫描中…','');
   try{
     const r = await fetch('/api/knowledge/scan', {method:'POST'});
     const j = await r.json();
+    if(!r.ok)throw new Error(j.detail||'扫描失败');
     await loadKnowledge();
+    if(currentTab==='knowledge')await renderKnowledgeGraph();
     setStatus('已保存 · 个人数据库','on');
     toast('扫描完成，共 '+j.count+' 个节点');
-  }catch(e){ setStatus('扫描失败','err'); }
+  }catch(e){ setStatus('扫描失败','err'); toast(e.message,'err'); }
+  finally{btn.disabled=false;btn.textContent='扫描内容';}
 }
 
 /* ================= 周报 ================= */
@@ -2078,6 +2055,7 @@ function goTab(name, options={}){
   if(window.StudyNotes && !window.StudyNotes.beforeLeave())return false;
   window.studyReaderRequest=(window.studyReaderRequest||0)+1;
   if(window.leaveCopilot && currentTab==='copilot' && name!=='copilot') window.leaveCopilot();
+  if(currentTab==='knowledge'&&name!=='knowledge'&&typeof stopKnowledgeGraph==='function')stopKnowledgeGraph();
   currentTab=name;
   const parentTab=navParents[name] || name;
   const group=Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===parentTab));
@@ -2283,7 +2261,11 @@ async function init(){
 }
 init();
 </script>
-<script src="/static/reading-tasks.js?v=20261021-background"></script>
+<div id="floatingPanels" class="floating-panels">
+  <aside id="actionExecution" class="action-execution" aria-label="正在执行的行动" hidden></aside>
+</div>
+<script src="/static/floating-panels.js?v=20261021-audit"></script>
+<script src="/static/reading-tasks.js?v=20261021-audit"></script>
 <script src="/static/behavior-report.js?v=20261021-p1"></script>
 <script src="/static/learning-completion.js?v=20261021-p1"></script>
 <script src="/static/copilot.js?v=20261021-p1-navigation"></script>
@@ -2292,9 +2274,9 @@ init();
 <script src="/static/course-summary.js?v=20261021-background"></script>
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
-<script src="/static/plans.js?v=20261021-navigation-round3"></script>
+<script src="/static/plans.js?v=20261021-audit"></script>
 <script src="/static/study-generation.js?v=20261021-unified"></script>
-<script src="/static/daily-learning.js?v=20261021-p1-navigation"></script>
+<script src="/static/daily-learning.js?v=20261021-audit"></script>
 <script src="/static/reading-growth.js?v=20261021-tasks"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
 <script src="/static/reading-position.js?v=20261021-merge"></script>
@@ -2305,12 +2287,11 @@ init();
 <script src="/static/search.js?v=20261021-p1-navigation"></script>
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
-<aside id="actionExecution" class="action-execution" aria-label="正在执行的行动" hidden></aside>
 <script src="/static/action-plan-client.js?v=20261021-merge"></script>
 <script src="/static/action-reviews.js?v=20261021-merge"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>
 <script src="/static/daily-agenda.js?v=20261021-navigation-round3"></script>
 <script src="/static/action-quick-editor.js?v=20261021-merge"></script>
-<script src="/static/action-plans.js?v=20261021-merge"></script>
+<script src="/static/action-plans.js?v=20261021-audit"></script>
 </body>
 </html>
