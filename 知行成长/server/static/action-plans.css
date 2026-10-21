@@ -59,3 +59,8 @@
 
 
 .action-field[hidden],.action-dialog section[hidden]{display:none}
+
+/* Loading state styles */
+.loading-state{padding:12px 0;font-size:14px;color:var(--muted)}
+.loading-error{color:#d97706}
+.loading-success{color:#059669}

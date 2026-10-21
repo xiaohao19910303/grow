@@ -302,7 +302,7 @@
     })();
     return request.promise;
   }
-  async function watch(id,initialJob){const status=shell('搜集与导读结果','job',id);status.textContent='正在读取已保存的搜集结果…';status.classList.add('reading-loading');const turn=revision;watching.set(id,turn);button(root,'返回阅读',window.loadReading);const cancel=button(root,'取消任务',async()=>{await api('/jobs/'+id+'/cancel',{});await poll();});cancel.hidden=true;const content=node('section');root.append(content);let delay=1500;
+  async function watch(id,initialJob){const status=shell('搜集与导读结果','job',id);status.textContent='正在读取已保存的搜集结果…';status.classList.add('reading-loading');const turn=revision;watching.set(id,turn);button(root,'返回阅读',window.loadReading);const cancel=button(root,'取消任务',async()=>{try{await api('/jobs/'+id+'/cancel',{});toast('已取消任务');await poll();}catch(e){toast('取消失败：'+e.message);}});cancel.hidden=true;const content=node('section');root.append(content);let delay=1500;
     async function poll(initial){try{const j=initial||await api('/jobs/'+id);if(watching.get(id)!==turn)return;const current=turn===revision&&root.style.display!=='none';const active=['queued','running'].includes(j.state);
       window.ReadingTasks?.track(j);
       if(current){if(j.kind==='collect')root.querySelector('h2').textContent=active?'正在查找文章':j.state==='ready'?'查找完成':j.state==='cancelled'?'查找已取消':'查找未完成';status.classList.toggle('reading-loading',active);status.textContent=(active?(j.phase||state[j.state]):state[j.state])+(j.error?' · '+j.error:'');cancel.hidden=!active;content.replaceChildren();
