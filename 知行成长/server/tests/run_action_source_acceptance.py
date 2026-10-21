@@ -10,7 +10,7 @@ root=Path(__file__).resolve().parents[3]
 zook=Path(os.environ['TEST_ZOOK_WORKTREE']).resolve()
 if 'host=127.0.0.1' not in os.environ.get('TEST_LEGACY_PG_DSN','') or not (zook/'src/modules/lighttick/actions/action-source.service.ts').is_file():
     raise SystemExit('Requires explicit localhost PostgreSQL DSN and the C2 Zook worktree.')
-output=root/'openspec/changes/action-plans-p0-clarity/evidence/source-delivery';output.mkdir(parents=True,exist_ok=True)
+output=Path(os.environ.get('ACTION_SOURCE_EVIDENCE_DIR',root/'openspec/changes/action-plans-p0-clarity/evidence/source-delivery'));output.mkdir(parents=True,exist_ok=True)
 suites=[('grow-source-recovery',root,[sys.executable,'-m','unittest','test_action_source_delivery','test_action_source_http','-v']),
         ('zook-source-contract-runtime',zook,['node','--experimental-transform-types','--test',
             'test/unit/lighttick-action-source-contract.test.ts','test/unit/lighttick-action-source-delivery.test.ts','test/unit/lighttick-action-p0-gates.api.test.ts'])]

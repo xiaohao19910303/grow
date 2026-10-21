@@ -195,15 +195,35 @@ def register(app):
             if link.get('phase')=='local':return await call_next(request)
             source=identity()
             if request.method=='GET' and path.startswith('/api/action-plans/requests/'):
-                return await call_next(request)
+                key=path[len('/api/action-plans/requests/'):]
+                if not key or len(key)>160:fail(422,'请求编号无效。')
+                def local_receipt():
+                    with connection() as c:
+                        row=c.execute('SELECT result FROM action_operations WHERE key=?',(key,)).fetchone()
+                        return {'found':True,'result':json.loads(row[0])} if row else None
+                known=await run_in_threadpool(local_receipt)
+                if known is not None:
+                    return JSONResponse(known,headers={'Cache-Control':'no-store'})
+                if link.get('phase')!='active':
+                    fail(503,'接管尚未确认，未知请求的结果仍待核对，请保留原请求。')
+                result=await run_in_threadpool(call,source,dict(action='request',method='GET',path='/requests/'+key,body={},query={}))
+                if (not isinstance(result,dict) or type(result.get('found')) is not bool or 'result' not in result or
+                    result['found'] and not isinstance(result['result'],dict) or not result['found'] and result['result'] is not None):
+                    fail(503,'请求回执尚未通过核对，请保留原请求并重试。')
+                return JSONResponse(result,headers={'Cache-Control':'no-store'})
             if link.get('phase')!='active':fail(503,'计划正在接管，请在 LightTick 联动中点击重试；已保留本地输入。')
             if request.method not in ('GET','POST'):fail(405,'请求方式无效。')
             if request.method=='POST':
                 capability=await run_in_threadpool(call,source,dict(action='request',method='GET',path='',body={},query={}))
-                if not isinstance(capability,dict) or capability.get('action_schema_version')!=2:
+                caps=capability.get('capabilities',{}) if isinstance(capability,dict) else {}
+                if (not isinstance(capability,dict) or capability.get('action_schema_version')!=2 or
+                    not isinstance(caps,dict) or caps.get('connection_write_enabled') is not True or
+                    caps.get('nullable_schedule') is not True or caps.get('actual_fact_dates') is not True or
+                    not isinstance(caps.get('completion_modes'),list) or not all(mode in caps['completion_modes'] for mode in ('time','content','check')) or
+                    not isinstance(caps.get('content_receipts'),list) or not all(kind in caps['content_receipts'] for kind in ('article','plan'))):
                     fail(409,'连接服务尚未支持P0，输入已保留，请等待合同升级。','CONTRACT_UPGRADE_REQUIRED')
             body=await request.json() if request.method=='POST' else {}
-            result=await run_in_threadpool(call,source,dict(action='request',method=request.method,path=path[len('/api/action-plans'):],body=body,query=dict(request.query_params)))
+            result=await run_in_threadpool(call,source,dict(action='request',method=request.method,path=path[len('/api/action-plans'):],body=body,query=dict(request.query_params),**({'action_schema_version':2} if request.method=='POST' else {})))
             if path.endswith('/calendar.ics'):response=Response(result,media_type='text/calendar',headers={'Content-Disposition':'attachment; filename="grow-action.ics"'})
             else:response=JSONResponse(result)
             response.headers['Cache-Control']='no-store';return response

@@ -1,0 +1,55 @@
+test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors (test_action_p0_browser.P0BrowserAcceptance.test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors) ... ok
+test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery (test_action_p0_browser.P0BrowserAcceptance.test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery) ... FAIL
+test_R01_R02_multiple_drafts_account_switch_and_reload (test_action_p0_browser.P0BrowserAcceptance.test_R01_R02_multiple_drafts_account_switch_and_reload) ... ok
+test_S06_S07_past_running_paused_and_partial_arrange_feedback (test_action_p0_browser.P0BrowserAcceptance.test_S06_S07_past_running_paused_and_partial_arrange_feedback) ... ok
+test_T01_T03_K01_A05_timer_check_copy_and_stale_tabs (test_action_p0_browser.P0BrowserAcceptance.test_T01_T03_K01_A05_timer_check_copy_and_stale_tabs) ... ok
+test_article_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0BrowserAcceptance.test_article_source_schedule_cancel_timer_and_confirm) ... ok
+test_course_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0BrowserAcceptance.test_course_source_schedule_cancel_timer_and_confirm) ... ok
+test_first_create_waits_for_initial_action_capabilities (test_action_p0_browser.P0BrowserAcceptance.test_first_create_waits_for_initial_action_capabilities) ... ok
+
+======================================================================
+FAIL: test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery (test_action_p0_browser.P0BrowserAcceptance.test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/hao/.codex/worktrees/action-plans-p0/grow/知行成长/server/tests/test_action_p0_browser.py", line 131, in test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery
+    d.get_by_role('button',name='加入今日',exact=True).click();expect(d).to_have_count(0)
+                                                               ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/sync_api/_generated.py", line 15216, in to_have_count
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.to_have_count(count=count, timeout=to_milliseconds(timeout))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py", line 111, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 465, in to_have_count
+    await self._expect_impl(
+    ...<5 lines>...
+    )
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 128, in _expect_impl
+    _record_soft_or_raise(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        AssertionError(
+        ^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        self._is_soft,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 60, in _record_soft_or_raise
+    raise error
+AssertionError: Locator expected to have count '0'
+Actual value: 1
+Call log:
+  - Expect "to_have_count" get_by_role("dialog") with timeout 5000ms
+  - waiting for get_by_role("dialog")
+    11 × locator resolved to 1 element
+       - unexpected value "1"
+
+
+----------------------------------------------------------------------
+Ran 8 tests in 63.462s
+
+FAILED (failures=1)

@@ -94,7 +94,7 @@
     if(kind==='week'){const dt=new Date(selected+'T12:00:00Z'),shift=(dt.getUTCDay()+6)%7;dt.setUTCDate(dt.getUTCDate()-shift);const begin=dt.toISOString().slice(0,10);dt.setUTCDate(dt.getUTCDate()+6);return [begin,dt.toISOString().slice(0,10)];}
     return [selected,selected];
   }
-  function quick(existing=null,parent=null,options={}){requireP0();return ActionQuickEditor.open({client,snapshot,dialog,field,button,option,day,refresh:()=>load(true),change,existing,parent,...options});}
+  async function quick(existing=null,parent=null,options={}){await initialized;if(snapshot.action_schema_version===undefined)await load();requireP0();return ActionQuickEditor.open({client,snapshot,dialog,field,button,option,day,refresh:()=>load(true),change,existing,parent,...options});}
   function editor(kind,existing=null,parent=null){
     if(kind==='day')return quick(existing,parent);
     const draftName='form.'+(existing?.id||'new'),draft=client.get(draftName),anchor=parent?[parent.start_date,day(parent.timezone),parent.end_date].sort()[1]:day(),[begin,end]=range(kind,anchor).map(value=>parent?[parent.start_date,value,parent.end_date].sort()[1]:value),defaultDate=parent?anchor:begin;
@@ -194,7 +194,7 @@
     try{await initialized;await renderRecords(target,1);}catch(e){target.append(n('p',e.message));button(target,'重试',records);}
   }
   window.ActionPlans={enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','目标与计划'),n('p','正在读取计划与进度…'));try{await initialized;await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},
-    refresh:async()=>{await initialized;return load(true);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;quick(null,null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
+    refresh:async()=>{await initialized;return load(true);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;return quick(null,null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
     schedule,addTask,change,start,openTarget,records,review:p=>window.ActionReviews.open({client,plan:p,dialog,edit:()=>quick(p)}),
     reconcile:async p=>{const result=await change(p,'reconcile-content');toast('已核对保存的内容完成记录。');return result;}};
   document.querySelector('.topbar').after(document.getElementById('actionReminder'));

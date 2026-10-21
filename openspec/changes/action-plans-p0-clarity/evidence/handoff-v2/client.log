@@ -1,0 +1,2 @@
+Action client checks passed: lost-response retries, reload, account isolation and timezone-aware pending actions.
+P0 client acceptance passed: context/account isolation, stale-base version, immutable pending, forked edits and same-key recovery.

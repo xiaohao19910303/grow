@@ -1,0 +1,13 @@
+test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors (test_action_p0_browser.P0BrowserAcceptance.test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors) ... ok
+test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery (test_action_p0_browser.P0BrowserAcceptance.test_F08_saved_post_failed_refresh_and_R03_R04_original_key_recovery) ... ok
+test_R01_R02_multiple_drafts_account_switch_and_reload (test_action_p0_browser.P0BrowserAcceptance.test_R01_R02_multiple_drafts_account_switch_and_reload) ... ok
+test_S06_S07_past_running_paused_and_partial_arrange_feedback (test_action_p0_browser.P0BrowserAcceptance.test_S06_S07_past_running_paused_and_partial_arrange_feedback) ... ok
+test_T01_T03_K01_A05_timer_check_copy_and_stale_tabs (test_action_p0_browser.P0BrowserAcceptance.test_T01_T03_K01_A05_timer_check_copy_and_stale_tabs) ... ok
+test_article_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0BrowserAcceptance.test_article_source_schedule_cancel_timer_and_confirm) ... ok
+test_course_source_schedule_cancel_timer_and_confirm (test_action_p0_browser.P0BrowserAcceptance.test_course_source_schedule_cancel_timer_and_confirm) ... ok
+test_first_create_waits_for_initial_action_capabilities (test_action_p0_browser.P0BrowserAcceptance.test_first_create_waits_for_initial_action_capabilities) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 12.076s
+
+OK

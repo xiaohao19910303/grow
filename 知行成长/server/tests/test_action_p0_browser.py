@@ -10,7 +10,7 @@ import uuid
 
 from playwright.sync_api import sync_playwright, expect
 
-EVIDENCE=Path(__file__).resolve().parents[3]/'openspec/changes/action-plans-p0-clarity/evidence'
+EVIDENCE=Path(os.environ.get('ACTION_P0_EVIDENCE_DIR',Path(__file__).resolve().parents[3]/'openspec/changes/action-plans-p0-clarity/evidence'))
 
 
 @unittest.skipUnless(os.getenv('RUN_GITHUB_BROWSER')=='1','Opt in to isolated real Chrome')
@@ -72,6 +72,20 @@ class P0BrowserAcceptance(unittest.TestCase):
         d=self.page.get_by_role('dialog');d.get_by_label('实际执行分钟').fill(str(minutes))
         d.get_by_role('button',name='保存中断' if interrupted else '确认并记录',exact=True).click();expect(d).to_have_count(0)
 
+    def test_first_create_waits_for_initial_action_capabilities(self):
+        delayed=[]
+        def hold(route):delayed.append(route)
+        # A fresh page starts with no action snapshot. Click while the GET is delayed.
+        self.page.route('**/api/action-plans',hold)
+        self.page.reload(wait_until='domcontentloaded')
+        d=self.quick()
+        expect(d).to_have_count(0)
+        self.assertEqual(len(delayed),1)
+        delayed[0].continue_()
+        expect(d.get_by_label('做什么',exact=True)).to_be_focused()
+        self.page.unroute('**/api/action-plans',hold)
+        self.page.keyboard.press('Escape')
+
     def test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors(self):
         d=self.quick();name=d.get_by_label('做什么',exact=True)
         expect(name).to_be_focused();name.fill(self.prefix+'条件字段')
@@ -114,7 +128,10 @@ class P0BrowserAcceptance(unittest.TestCase):
             if route.request.method=='GET':failed.append(True);route.abort()
             else:route.continue_()
         self.page.route(self.base+'/api/action-plans',fail_refresh)
-        d.get_by_role('button',name='加入今日',exact=True).click();expect(d).to_have_count(0)
+        with self.page.expect_response(lambda r:r.url==self.base+'/api/action-plans' and r.request.method=='POST') as saved:
+            d.get_by_role('button',name='加入今日',exact=True).click()
+        self.assertEqual(saved.value.status,200)
+        expect(d).to_have_count(0)
         expect(self.page.locator('.toast').last).to_contain_text('已保存，列表暂未刷新')
         self.assertTrue(failed);self.assertEqual(sum(p['title']==title for p in self.plans()),1)
         self.page.unroute(self.base+'/api/action-plans',fail_refresh)

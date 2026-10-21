@@ -172,7 +172,7 @@ class ActionP0Tests(PostgreSQLFixture):
             c.execute('INSERT INTO action_link_state VALUES (1,?,NULL)',(json.dumps({'phase':'active'}),))
         token=current_user.set({'id':'synthetic-user'})
         try:
-            with patch('action_link.call',return_value={'plans':[]}) as bridge:
+            with patch('action_link.call',side_effect=lambda source,body: {'found':False,'result':None} if body.get('path','').startswith('/requests/') else {'plans':[]}) as bridge:
                 response=self.change(plan,'complete')
                 self.assertEqual(response.status_code,409,response.text)
                 self.assertEqual(response.json()['code'],'CONTRACT_UPGRADE_REQUIRED')
