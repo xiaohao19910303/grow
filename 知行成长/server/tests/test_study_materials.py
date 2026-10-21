@@ -215,7 +215,7 @@ class StudyMaterialTests(PostgreSQLFixture):
                     reader.get_by_role('heading', name='结构化表达第 2 课', exact=True).first.wait_for()
                     self.assertEqual(note.input_value(), '')
                     reader.get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
-                    expression.get_by_text('已完成课程 · 1 课', exact=True).click()
+                    expression.locator('.lesson-row.completed').wait_for()
                     with page.expect_response(lambda response: response.url == base + '/api/study-materials'):
                         page.get_by_role('button', name='刷新课程', exact=True).click()
                     expression.get_by_role('button', name='查看记录', exact=True).click()

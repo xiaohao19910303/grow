@@ -212,14 +212,16 @@ class P0BrowserAcceptance(unittest.TestCase):
             name=next(p['name'] for p in plans if p['id']==target['plan_id'])
             root=self.page.locator('#learningLibrary .learning-module').filter(has=self.page.get_by_role('heading',name=name+' · 20 分钟',exact=True))
             controls=root.locator('.agenda-content-controls').first
-        controls.get_by_role('button',name='加入明日',exact=True).click()
-        expect(controls.get_by_role('button',name='明日已安排',exact=True)).to_be_visible()
+        controls.get_by_role('button',name='安排到明日',exact=True).click()
+        expect(controls.get_by_text('已在明日安排',exact=True)).to_be_visible()
         matching=lambda:[p for p in self.plans() if p['completion_mode']=='content' and p['status']!='archived' and p['target'] and p['target']['kind']==kind]
         arranged=matching()[0]
-        controls.get_by_role('button',name='明日已安排',exact=True).click();self.assertEqual(matching()[0]['id'],arranged['id'])
+        repeated=self.context.request.post(self.base+'/api/action-plans/schedules',headers={'X-Copilot-Request':'1','X-Grow-Action-Schema':'2'},
+            data={'title':arranged['title'],'target':target,'date':arranged['start_date'],'key':str(uuid.uuid4())})
+        self.assertEqual(repeated.status,200,repeated.text());self.assertEqual(repeated.json()['plan']['id'],arranged['id'])
         controls.get_by_role('button',name='取消安排',exact=True).click()
-        expect(controls.get_by_role('button',name='加入明日',exact=True)).to_be_visible()
-        controls.get_by_role('button',name='加入明日',exact=True).click()
+        expect(controls.get_by_role('button',name='安排到明日',exact=True)).to_be_visible()
+        controls.get_by_role('button',name='安排到明日',exact=True).click()
         expect(controls.get_by_role('button',name='改期',exact=True)).to_be_visible()
         replacement=matching()[0];self.assertNotEqual(replacement['id'],arranged['id'])
         controls.get_by_role('button',name='改期',exact=True).click()
