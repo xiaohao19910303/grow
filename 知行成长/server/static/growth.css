@@ -63,3 +63,10 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var
  .cp-reader h2{font-size:20px}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Secondary destinations and view switches have distinct visual weight. */
+.context-nav{padding:8px 12px;border-left:3px solid var(--border);gap:6px;margin-top:-8px}
+.context-nav .btn{background:transparent;box-shadow:none;min-height:40px}
+.context-nav .btn.primary{background:var(--primary-soft);color:var(--primary);border-color:var(--primary)}
+.subnav[hidden],.context-nav[hidden]{display:none}
+@media(max-width:600px){.subnav{gap:6px}.subnav .btn{padding:8px 10px;flex:0 0 auto}.context-nav{padding:6px;margin-top:-6px}.context-nav .btn{font-size:12px}}

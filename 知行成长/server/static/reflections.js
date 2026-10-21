@@ -54,13 +54,47 @@
   /* ---------- 编辑器 ---------- */
   let editor = null; // { entryId, baseVersion, date, kind, raw, guided, answers }
 
-  function openEditor(date, entryId) {
+  const draftKey = e => 'grow.reflections.draft.' + (window.Account?.user?.id || 'local') + '.' + (e.entryId || e.date);
+  function preserveDraft() {
+    if (editor?.saving) { const status=document.getElementById('refDraftStatus'); if(status)status.textContent='正在保存记录，请稍候。'; return false; }
+    if (!editor || !document.getElementById('refRaw')) return true;
+    const previousKey=draftKey(editor);
+    editor.raw = document.getElementById('refRaw').value;
+    editor.date = document.getElementById('refDate').value || editor.date;
+    try {
+      if (!window.Account?.user?.id) throw Error('account unavailable');
+      localStorage.setItem(draftKey(editor), JSON.stringify(editor));
+      if(previousKey!==draftKey(editor))localStorage.removeItem(previousKey);
+      const status=document.getElementById('refDraftStatus');
+      if(status)status.textContent='草稿已保存在当前浏览器，尚未同步到账号。';
+      return true;
+    } catch (_) {
+      const status=document.getElementById('refDraftStatus');
+      if(status)status.textContent='本机草稿未能保存，请先保存记录或复制原文后再离开。';
+      return false;
+    }
+  }
+  function openEditor(date, entryId, options = {}) {
+    if(editor?.saving){window.toast('正在保存记录，请稍候。');return;}
+    if (entryId && !entryMap[entryId]) {
+      window.toast('这条记录暂未读取，请刷新记录后重试。');
+      return;
+    }
     editor = entryId ? {
       entryId, baseVersion: entryMap[entryId].version,
       date: entryMap[entryId].record_date, kind: entryMap[entryId].prompt_kind || '自由记录',
-      raw: entryMap[entryId].raw_text || '', guided: entryMap[entryId].guided_answers || {},
+      raw: entryMap[entryId].raw_text || '', guided: {...(entryMap[entryId].guided_answers || {})},
     } : { entryId: null, baseVersion: 0, date: date || today(), kind: '自由记录', raw: '', guided: {} };
 
+    try {
+      const saved = window.Account?.user?.id && JSON.parse(localStorage.getItem(draftKey(editor)) || 'null');
+      if (saved && saved.entryId === editor.entryId && typeof saved.raw === 'string') editor = {
+        ...editor, raw:saved.raw, guided:saved.guided || {}, kind:PROMPTS[saved.kind]?saved.kind:editor.kind,
+        date:saved.date || editor.date, four:!!saved.four, restored:true,
+        stale:saved.baseVersion !== editor.baseVersion, baseVersion:saved.baseVersion
+      };
+    } catch (_) {}
+    editor.four = options.four || editor.four;
     renderEditor();
   }
 
@@ -72,17 +106,18 @@
       const on = k === e.kind;
       return '<button type="button" class="chip' + (on ? ' on' : '') + '" onclick="Reflections.setKind(\'' + k + '\')">' + esc(k) + '</button>';
     }).join('');
-    const fourOpen = e.guided && (e.guided.expected || e.guided.observed || e.guided.causes || e.guided.adjustment);
+    const fourOpen = e.four || e.guided && (e.guided.expected || e.guided.observed || e.guided.causes || e.guided.adjustment);
 
     const html = `
       <h3>${isEdit ? '编辑记录' : '记下今天的一点收获'}</h3>
       <div class="ref-label">${fmtDateCN(e.date)} · 可修改日期</div>
+      <p class="desc">${e.stale ? '云端记录已更新，本机草稿仍保留。请先下载草稿并重新读取核对，保存不会覆盖较新记录。' : e.restored ? '已恢复当前账号在此浏览器暂存的草稿。' : '输入会在当前浏览器保留草稿，点击保存记录后同步到账号。'}</p>
       <div class="ref-field">
-        <input type="date" id="refDate" value="${esc(e.date)}">
+        <label for="refDate">记录日期</label><input type="date" id="refDate" value="${esc(e.date)}">
       </div>
       <div class="ref-field">
         <div class="ref-lead" id="refLead">${esc(kindPrompts.lead)}</div>
-        <textarea id="refRaw" rows="6" placeholder="一件做成的事、一个卡点、一次意外，或学习后冒出的疑问。写几句就好。">${esc(e.raw)}</textarea>
+        <label for="refRaw">我的记录</label><textarea id="refRaw" rows="6" maxlength="10000" placeholder="一件做成的事、一个卡点、一次意外，或学习后冒出的疑问。写几句就好。">${esc(e.raw)}</textarea>
         <div class="ref-limit" id="refLimit">${e.raw.length} / 10000</div>
       </div>
       <div class="ref-sec-label">找个切入点（可选）</div>
@@ -91,16 +126,17 @@
         <summary>想再想一步（可选）</summary>
         <div class="ref-guide-questions" id="refGuideQuestions"></div>
       </details>
-      <details class="ref-details" id="refFourDetails" ${fourOpen || !isEdit ? '' : ''}>
-        <summary>用四问深入复盘（折叠）</summary>
+      <details class="ref-details" id="refFourDetails" ${fourOpen ? 'open' : ''}>
+        <summary>用四问深入复盘</summary>
         <div class="ref-four" id="refFour"></div>
       </details>
       <div class="ref-err" id="refErr" role="alert"></div>
+      <p id="refDraftStatus" class="desc" role="status"></p>
       <div id="refConflict"></div>
       <div class="modal actions">
         ${isEdit ? '<button class="btn" onclick="Reflections.reloadEditor()">下载当前草稿并重新读取</button>' : ''}
         <button class="btn" onclick="Reflections.copyEditorText()">复制当前原文</button>
-        <button class="btn" onclick="Reflections.closeEditor()">取消</button>
+        <button class="btn" onclick="Reflections.closeEditor()">稍后继续</button>
         <button class="btn primary" id="refSaveBtn" onclick="Reflections.saveEntry()">保存记录</button>
       </div>`;
 
@@ -108,7 +144,9 @@
     const rawEl = document.getElementById('refRaw');
     rawEl.addEventListener('input', () => {
       document.getElementById('refLimit').textContent = rawEl.value.length + ' / 10000';
+      preserveDraft();
     });
+    document.getElementById('refDate').addEventListener('change', preserveDraft);
     renderGuideQuestions();
     renderFourQuestions();
   }
@@ -120,12 +158,12 @@
     if (!box) return;
     box.innerHTML = qs.map((q, i) => {
       const val = e.guided ? (e.guided[q] || '') : '';
-      return '<div class="ref-q"><div class="ref-q-text">' + esc(q) + '</div><textarea rows="2" data-guide="' + i + '" placeholder="可不填">' + esc(val) + '</textarea></div>';
+      return '<div class="ref-q"><div class="ref-q-text">' + esc(q) + '</div><textarea rows="2" aria-label="' + esc(q) + '" data-guide="' + i + '" placeholder="可不填">' + esc(val) + '</textarea></div>';
     }).join('') || '<div class="ref-empty">暂无引导问题，直接写就好。</div>';
     box.querySelectorAll('textarea[data-guide]').forEach(t => {
       const qi = parseInt(t.dataset.guide, 10);
       const q = qs[qi];
-      t.addEventListener('input', () => { if (!editor.guided) editor.guided = {}; editor.guided[q] = t.value; });
+      t.addEventListener('input', () => { if (!editor.guided) editor.guided = {}; editor.guided[q] = t.value; preserveDraft(); });
     });
   }
 
@@ -140,10 +178,10 @@
     if (!e.guided) e.guided = {};
     box.innerHTML = fields.map(([k, label]) => {
       const val = e.guided[k] || '';
-      return '<div class="ref-q"><div class="ref-q-text">' + label + '</div><textarea rows="2" data-four="' + k + '" placeholder="可不填">' + esc(val) + '</textarea></div>';
+      return '<div class="ref-q"><div class="ref-q-text">' + label + '</div><textarea rows="2" aria-label="' + esc(label) + '" data-four="' + k + '" placeholder="可不填">' + esc(val) + '</textarea></div>';
     }).join('');
     box.querySelectorAll('textarea[data-four]').forEach(t => {
-      t.addEventListener('input', () => { editor.guided[t.dataset.four] = t.value; });
+      t.addEventListener('input', () => { editor.guided[t.dataset.four] = t.value; preserveDraft(); });
     });
   }
 
@@ -151,22 +189,36 @@
   Object.assign(window.Reflections, {
     openEditor,
     setKind(kind) {
+      if(!editor || editor.saving)return;
       editor.kind = kind;
       const lead = document.getElementById('refLead');
       if (lead) lead.textContent = PROMPTS[kind].lead;
       // 切换提示只改问题，不清空已填正文与回答
       renderGuideQuestions();
+      preserveDraft();
     },
-    closeEditor() { editor = null; closeModal(); },
+    closeEditor() { if(!preserveDraft())return;editor = null; closeModal(); },
+    preserveDraft,
 
     async saveEntry() {
-      const raw = document.getElementById('refRaw').value;
+      if(!editor || editor.saving)return;
+      let raw = document.getElementById('refRaw').value;
       const date = document.getElementById('refDate').value;
       const errEl = document.getElementById('refErr');
-      if (!raw || !raw.trim()) { errEl.textContent = '记录正文不能为空。'; return; }
+      if (!raw.trim()) {
+        const labels={expected:'当时的预期',observed:'实际观察',causes:'可能原因',adjustment:'下次想试的调整'};
+        raw=Object.entries(editor.guided || {}).filter(([,answer])=>String(answer).trim()).map(([key,answer])=>(labels[key] || key)+'：'+answer).join('\n');
+      }
+      if (!raw.trim()) { errEl.textContent = '写几句正文，或至少回答一个复盘问题后保存。'; return; }
       if (!date) { errEl.textContent = '请选择日期。'; return; }
       if (raw.length > 10000) { errEl.textContent = '正文过长，请精简。'; return; }
 
+      preserveDraft();
+      editor.saving=true;
+      const controls=[...document.querySelectorAll('#modalBox input,#modalBox textarea,#modalBox select,#modalBox button')];
+      const disabled=controls.map(control=>!!control.disabled);
+      controls.forEach(control=>{control.disabled=true;});
+      const unlock=()=>{editor.saving=false;controls.forEach((control,index)=>{control.disabled=disabled[index];});};
       const btn = document.getElementById('refSaveBtn');
       btn.disabled = true; btn.textContent = '保存中…';
       const payload = {
@@ -184,6 +236,7 @@
         }
         if (r.ok) {
           const res = await r.json();
+          try { localStorage.removeItem(draftKey(editor)); } catch (_) {}
           await load();
           editor = null;
           closeModal();
@@ -194,12 +247,14 @@
         const d = await r.json().catch(() => ({}));
         const msg = d.message || (r.status === 409 ? '记录已被更新，请重新查看。' : '保存失败，请重试。');
         errEl.textContent = msg;
+        unlock();
         btn.disabled = false; btn.textContent = '保存记录';
         if (r.status === 409 && d.error === 'external_change') {
           await showFileConflict(editor.entryId);
         }
       } catch (e) {
         errEl.textContent = '保存失败 · 服务未连接，内容已保留。';
+        unlock();
         btn.disabled = false; btn.textContent = '保存记录';
       }
     },
@@ -208,7 +263,7 @@
   /* ---------- 今日卡片渲染 ---------- */
   function renderDay(container, date) {
     if (!container) return;
-    const list = entries.filter(e => e.record_date === date);
+    const list = entries.filter(e => e.record_date === date && !e.archived_at);
     container.innerHTML = list.map(e => {
       const preview = (e.raw_text || '').slice(0, 120) + ((e.raw_text && e.raw_text.length > 120) ? '…' : '');
       return '<article class="ref-card">'
@@ -241,7 +296,7 @@
             : '<button class="icon-btn del" onclick="Reflections.archiveEntry(\'' + e.id + '\')">归档</button>')
           + '</div></div>';
       }).join('');
-      return '<h3 class="ref-day">' + fmtDateCN(d) + ' <span class="ref-day-count">' + rows.length + ' 条</span></h3>' + rows;
+      return '<h3 class="ref-day">' + fmtDateCN(d) + ' <span class="ref-day-count">' + groups[d].length + ' 条</span></h3>' + rows;
     }).join('');
   }
 
@@ -323,6 +378,7 @@
         return;
       }
       assistState[id].attemptKey = d.id || st.key;
+      trackAssist(d,id);
       // 轮询等待完成
       await pollAttempt(id, d.id || st.key, st.kind, box);
     } catch (e) {
@@ -337,6 +393,7 @@
         const r = await fetch('/api/reflections/attempts/' + attemptKey);
         if (!r.ok) continue;
         const a = await r.json();
+        trackAssist(a,id);
         if (a.status === 'ready') { renderAssistResult(id, a); return; }
         if (a.status === 'failed' || a.status === 'cancelled') {
           box.innerHTML = '<div class="ref-err">' + esc(a.error || '生成未完成。') + '</div>';
@@ -423,6 +480,7 @@
   }
 
   async function reloadEditor() {
+    if(editor?.saving)return;
     const id = editor && editor.entryId;
     if (!id) return;
     const raw = document.getElementById('refRaw').value;
@@ -500,6 +558,7 @@
     // 供 index.html 的 renderPersonal / renderReviews 调用
     if (window.renderPersonal) window.renderPersonal();
     if (window.renderReviews) window.renderReviews();
+    if (window.renderOverview) window.renderOverview();
   }
 
   /* 暴露给 index.html 内联调用 */
@@ -507,11 +566,6 @@
     load, renderDay, renderList, viewEntry, showFileConflict, copyEditorText, reloadEditor,
     assistOpen, assistSend, saveAnswers, organizeFromAnswered, adoptSummary,
     archiveEntry, restoreEntry, exportOne, renderAll,
-    get entries() { return entries; },
-    get entryMap() { return entryMap; },
-    get today() { return today(); },
-    get showArchived() { return showArchived; },
-    get modelLabel() { return ''; },
     async toggleArchived() {
       showArchived = !showArchived;
       const btn = document.getElementById('btnShowArchived');
@@ -521,12 +575,25 @@
     },
     fmtDateCN,
   });
+  Object.defineProperties(window.Reflections, {
+    entries: {get: () => entries}, entryMap: {get: () => entryMap},
+    today: {get: today}, showArchived: {get: () => showArchived}, modelLabel: {get: () => ''}
+  });
 
   /* 首次进入即加载，加载后刷新今日与列表 */
   load().then(() => {
     if (window.renderPersonal) window.renderPersonal();
     if (window.renderReviews) window.renderReviews();
+    if (window.renderOverview) window.renderOverview();
   }).catch(() => {});
 
   window.ReflectionsLoaded = true;
+  function assistTask(a,id){return window.GenerationTasks?.external('reflection',a,{entry_id:a.entry_id||id,kind:'reflection-assist',label:a.kind==='clarify'?'复盘追问生成':'复盘整理生成',title:'日常记录 AI 辅助'});}
+  function trackAssist(a,id){if(window.GenerationTasks)window.GenerationTasks.track(assistTask(a,id));}
+  async function readAssist(job){const response=await fetch('/api/reflections/attempts/'+job.ref,{cache:'no-store'});if(!response.ok)throw new Error('暂时无法读取复盘生成结果。');return response.json();}
+  window.GenerationTasks?.register('reflection',{
+    read:async job=>assistTask(await readAssist(job),job.entry_id),
+    cancel:async job=>{const response=await fetch('/api/reflections/attempts/'+job.ref+'/cancel',{method:'POST',headers:h(),body:'{}'});if(!response.ok)throw new Error('取消未完成，请重试。');return assistTask(await response.json(),job.entry_id);},
+    open:async job=>{const a=await readAssist(job);if(!(await load(true)))throw new Error('暂时无法读取日常记录。');viewEntry(job.entry_id);assistState[job.entry_id]={kind:a.kind,key:job.ref,attemptKey:job.ref,snapshot:a.snapshot||{},answers:a.answers||[]};if(a.status==='ready')renderAssistResult(job.entry_id,a);else document.getElementById('refAssistBox').textContent=a.error||'任务仍在生成，进度保留在生成任务中心。';}
+  });
 })();

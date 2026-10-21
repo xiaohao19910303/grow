@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'../static/index.html'),'utf8');
+const nodes=new Map();const element=id=>{if(!nodes.has(id))nodes.set(id,{style:{},hidden:false,innerHTML:'',textContent:'',setAttribute(k,v){this[k]=v;},removeAttribute(k){delete this[k];}});return nodes.get(id);};
+const buttons=['personal','actions','learning','records','growth'].map(group=>({dataset:{group},classList:{toggle(){}},setAttribute(k,v){this[k]=v;},removeAttribute(k){delete this[k];}}));
+const context={window:{loadCopilot(){},addEventListener(){},scrollTo(){},studyReaderRequest:0},document:{getElementById:element,querySelectorAll:()=>buttons},currentTab:'personal',reportRange:'week',location:{hash:'',pathname:'/',search:''},history:{pushState(){},replaceState(){}},console};
+for(const name of ['renderErrors','renderApplications','renderPredictionAnalysis','loadReport','renderKnowledgeGraph','loadKnowledge','renderOverview','renderPersonal','renderBehaviorStats','renderErrorStats','renderPredictionCalibration','renderAIReportLatest','renderAIReports','refreshAutoCheckins','loadApiSettings'])context[name]=()=>{};
+context.Account={loadStorage(){},loadInvitations(){}};context.window.loadLearningHistory=()=>{};
+vm.createContext(context);vm.runInContext(html.slice(html.indexOf('const navGroups='),html.indexOf('/* ================= 学习进度 / 习惯')),context);
+assert.equal(vm.runInContext('navGroups.records.length',context),5);assert.equal(vm.runInContext('navGroups.growth.length',context),5);assert.equal(vm.runInContext('navGroups.learning.length',context),3);
+context.goTab('errors');assert(element('subnav').innerHTML.includes('实践记录'));assert(element('contextnav').innerHTML.includes('错误记录'));assert(element('contextnav').innerHTML.includes('aria-current="page"'));assert.equal(buttons[3]['aria-current'],'page');
+context.goTab('progress');assert(element('subnav').innerHTML.includes('学习历史'));assert.equal(element('view-progress').style.display,'');
+context.goTab('ai-report');assert(element('subnav').innerHTML.includes('阶段报告'));assert(element('contextnav').innerHTML.includes('AI 报告'));
+context.goTab('search');assert.equal(element('subnav').hidden,true,'global search is not owned by a growth subtab');
+context.goTab('copilot');assert.equal(buttons[2]['aria-current'],'page');assert(element('subnav').innerHTML.includes('我的课程'));
+context.location.hash='#view/habits';context.restoreNavigation();assert.equal(context.currentTab,'habits','refresh restores the exact nested view');
+context.location.hash='';context.restoreNavigation();assert.equal(context.currentTab,'personal','first back to an empty hash restores Today');
+context.goTab('reader',{reading:true});assert.equal(element('contextnav').hidden,true);
+console.log('Navigation grouping passed: five main tabs, reduced secondary groups, preserved legacy destinations and standalone global search.');

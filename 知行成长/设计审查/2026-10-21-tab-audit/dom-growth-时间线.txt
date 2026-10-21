@@ -1,0 +1,50 @@
+- generic: 知
+- heading "知行成长" [level=1]
+- generic: 个人学习与成长平台
+- generic: 2026年10月21日 · 周三
+- searchbox "全局搜索"
+- generic: ⌘K
+- generic "当前账号": 日程隔离验证
+- button "退出登录"
+- status: 已连接个人数据库
+- button "设置"
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "成长总览"
+  - button "学习足迹"
+  - button "学习时长"
+  - button "时间线"
+  - button "知识图谱"
+  - button "周报"
+  - button "AI 报告"
+  - button "搜索"
+- heading "时间线" [level=2]
+- paragraph: 跨模块的学习活动记录，按时间顺序展示
+- generic: 总记录数
+- generic: "0"
+- generic: 活跃天数
+- generic: "0"
+- generic: 模块数
+- generic: "0"
+- text: 开始日期
+- textbox "开始日期": 2026-10-01
+- text: 结束日期
+- textbox "结束日期": 2026-10-21
+- text: 模块类型
+- listbox "模块类型":
+  - option "全部模块"
+  - option "学习记录"
+  - option "反思日志"
+  - option "决策记录"
+  - option "预测记录"
+  - option "复盘记录"
+  - option "灵感记录"
+  - option "知识图谱"
+- button "刷新"
+- paragraph: 暂无学习记录
+- paragraph: 开始记录你的学习历程，这里将展示你的成长轨迹

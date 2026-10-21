@@ -1,0 +1,52 @@
+- generic: 知
+- heading "知行成长" [level=1]
+- generic: 个人学习与成长平台
+- generic: 2026年10月21日 · 周三
+- searchbox "全局搜索": 本轮体验验证
+- generic: ⌘K
+- generic "当前账号": 日程隔离验证
+- button "退出登录"
+- status: 已连接个人数据库
+- button "设置"
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "每日复盘"
+  - button "决策日志"
+  - button "预测校准"
+  - button "个人洞察"
+  - button "投资复盘"
+  - button "自定义记录"
+  - button "应用记录"
+  - button "错误记录"
+  - button "学习记录"
+- heading "错误记录" [level=2]
+- paragraph: 追踪重复出现的错误模式，聚焦改进方向。
+- combobox:
+  - option "全部模块" [selected]
+  - option "执行复盘"
+  - option "整合练习"
+  - option "每日认知与通识学习"
+  - option "深度写作"
+  - option "结构化表达"
+  - option "英文阅读"
+  - option "现代思维工具"
+  - option "高认知能力训练"
+- combobox:
+  - option "全部类型" [selected]
+  - option "其他"
+  - option "判断偏差"
+  - option "时间估算错误"
+  - option "概念混淆"
+  - option "步骤遗漏"
+  - option "沟通误解"
+  - option "注意力分散"
+  - option "过度自信"
+- checkbox "仅重复错误"
+- text: 仅重复错误
+- button "+ 记录错误"
+- paragraph: 加载失败

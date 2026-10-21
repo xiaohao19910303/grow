@@ -1,0 +1,44 @@
+- generic: 知
+- heading "知行成长" [level=1]
+- generic: 个人学习与成长平台
+- generic: 2026年10月21日 · 周三
+- searchbox "全局搜索"
+- generic: ⌘K
+- generic "当前账号": 日程隔离验证
+- button "退出登录"
+- status: 已连接个人数据库
+- button "设置"
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "成长总览"
+  - button "学习足迹"
+  - button "学习时长"
+  - button "时间线"
+  - button "知识图谱"
+  - button "周报"
+  - button "AI 报告"
+  - button "搜索"
+- heading "周报 / 月报" [level=2]
+- paragraph: 自动汇总打卡、时长、决策、预测、复盘、洞察与知识节点，可导出 Markdown。
+- button "本周"
+- button "本月"
+- button "导出 Markdown 报告"
+- generic: 记录天数
+- generic: undefined / undefined
+- generic: 学习时长
+- generic: NaNh NaNm 日均 undefinedm
+- generic: 连续打卡
+- generic: undefined 天
+- generic: 决策 / 预测
+- generic: undefined / undefined
+- generic: 复盘 / 洞察
+- generic: undefined / undefined
+- generic: 知识节点
+- generic: undefined 个
+- heading "模块完成度" [level=2]
+- paragraph: 统计区间：undefined ~ undefined

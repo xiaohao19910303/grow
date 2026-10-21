@@ -20,8 +20,11 @@
       error.status = response.status;
       throw error;
     }
+    if(data.id&&data.state)trackGeneration(module,data);
     return data;
   }
+  const task=(module,job)=>window.GenerationTasks?.external('study',job,{module,kind:'study-course',label:(module==='yingyu'?'英文':'表达')+'课程生成',title:'第 '+job.lesson_no+' 课草稿'});
+  function trackGeneration(module,job){if(window.GenerationTasks)window.GenerationTasks.track(task(module,job));}
   function observe(module, id, listener) {
     let observer = observers.get(id);
     if (observer) { observer.listeners.add(listener); return; }
@@ -65,6 +68,7 @@
     let status;
     function draw(job) {
       current = job;
+      if(job)trackGeneration(module.id,job);
       if (job) module.generation = job;
       panel.replaceChildren(node('h4', '生成下一课'));
       panel.append(node('p', '按课号和已学主题接续，不安排学习日期。使用你的 AI 配置，不发送个人学习笔记。', 'desc'));
@@ -88,6 +92,8 @@
           status.textContent = '课程已保存到 GitHub。';
           const visible = origin && origin.style.display !== 'none';
           await window.loadDailyLearning({force:true});
+          const dialog=panel.closest('dialog');
+          if(dialog){dialog.close();if(goTab('library')!==false)await window.openStudyCourse(module.id,course.filename);return;}
           if (visible && origin.style.display !== 'none') await window.openStudyCourse(module.id, course.filename);
         }, true);
         control(actions, '放弃草稿', async () => { draw(await api(module.id, '/' + job.id + '/cancel', {})); });
@@ -132,4 +138,20 @@
     draw(current);
     watch(current);
   };
+  window.GenerationTasks?.register('study',{
+    read:async job=>task(job.module,await api(job.module,'/'+job.ref)),
+    cancel:async job=>task(job.module,await api(job.module,'/'+job.ref+'/cancel',{})),
+    recover:async()=>{const response=await fetch('/api/study-materials',{cache:'no-store'});if(!response.ok)return [];const data=await response.json();return data.modules.filter(m=>m.generation).map(m=>task(m.id,m.generation));},
+    open:async job=>{
+      const [response,current]=await Promise.all([fetch('/api/study-materials',{cache:'no-store'}),api(job.module,'/'+job.ref)]);
+      if(!response.ok)throw new Error('暂时无法读取课程，请稍后重试。');
+      const data=await response.json(),module=data.modules.find(m=>m.id===job.module);
+      if(!module)throw new Error('课程模块暂不可用。');
+      if(current.state==='published'){if(goTab('library')===false)return false;await window.loadDailyLearning({force:true});return window.openStudyCourse(job.module,current.course.filename);}
+      const dialog=node('dialog',undefined,'action-dialog');dialog.setAttribute('aria-label','课程生成预览');
+      const close=node('button','关闭预览','btn');close.type='button';close.onclick=()=>dialog.close();dialog.append(close);
+      document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
+      window.renderStudyGeneration(dialog,{...module,generation:current});
+    }
+  });
 })();

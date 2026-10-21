@@ -143,7 +143,10 @@
     // Day cells
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const cell = node('div', String(day), 'calendar-cell');
+      const cell = node('button', String(day), 'calendar-cell');
+      cell.type = 'button';
+      cell.setAttribute('aria-label', date + ' 学习记录');
+      cell.setAttribute('aria-pressed', String(date === selectedDate));
       cell.dataset.date = date;
 
       // Highlight if has records

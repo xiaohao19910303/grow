@@ -1,0 +1,102 @@
+[
+  {
+    "tab": "今日",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "tab": "行动",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "tab": "学习",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "tab": "记录",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "tab": "成长",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "tab": "今日",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "tab": "行动",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "tab": "学习",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "tab": "记录",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "tab": "成长",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "tab": "今日",
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "tab": "行动",
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "tab": "学习",
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "tab": "记录",
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "tab": "成长",
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "tab": "今日",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "tab": "行动",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "tab": "学习",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "tab": "记录",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "tab": "成长",
+    "scrollWidth": 1440,
+    "width": 1440
+  }
+]

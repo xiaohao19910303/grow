@@ -1,3 +1,4 @@
+import re
 """Bundled course completion against disposable PostgreSQL and synthetic files."""
 from pathlib import Path
 import os
@@ -208,7 +209,7 @@ class StudyMaterialTests(PostgreSQLFixture):
                     reader.get_by_role('button', name='继续下一课', exact=True).click()
                     reader.get_by_role('heading', name='结构化表达第 2 课', exact=True).first.wait_for()
                     self.assertEqual(note.input_value(), '')
-                    reader.get_by_role('button', name='返回学习列表', exact=True).click()
+                    reader.get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
                     expression.get_by_text('已完成课程 · 1 课', exact=True).click()
                     with page.expect_response(lambda response: response.url == base + '/api/study-materials'):
                         page.locator('.learning-panel').get_by_role('button', name='刷新', exact=True).click()
@@ -220,7 +221,7 @@ class StudyMaterialTests(PostgreSQLFixture):
                     note.fill('Edited private note')
                     reader.get_by_role('button', name='保存学习记录', exact=True).click()
                     reader.get_by_role('status').filter(has_text='已学完，学习记录已保存').wait_for()
-                    reader.get_by_role('button', name='返回学习列表', exact=True).click()
+                    reader.get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
                     english = home.locator('.learning-module').filter(has=page.get_by_role('heading', name='英文阅读 · 35 分钟', exact=True))
                     english.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()
                     reader.get_by_role('heading', name='英文阅读第 2 课', exact=True).first.wait_for()
@@ -232,12 +233,13 @@ class StudyMaterialTests(PostgreSQLFixture):
                     reader.get_by_role('status').filter(has_text='已学完，学习记录已保存').wait_for()
                     reader.get_by_role('button', name='继续下一课', exact=True).click()
                     reader.get_by_role('heading', name='英文阅读第 10 课', exact=True).first.wait_for()
-                    reader.get_by_role('button', name='返回学习列表', exact=True).click()
+                    reader.get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
                     page.reload()
                     expression.get_by_text('已完成课程 · 1 课', exact=True).wait_for()
                     english.get_by_text('待学习 1 课 · 累计已完成 2 课', exact=True).wait_for()
                     page.get_by_role('button', name='记录', exact=True).click()
-                    page.get_by_role('button', name='学习记录', exact=True).click()
+                    page.locator('[data-group="growth"]').click()
+                    page.get_by_role('button', name='学习历史', exact=True).click()
                     history = page.locator('#view-learning-history')
                     history.get_by_text('Edited private note', exact=True).wait_for()
                     history.get_by_text('PRIVATE English learning note', exact=True).wait_for()

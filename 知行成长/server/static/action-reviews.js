@@ -32,7 +32,7 @@
     },true);generate.disabled=true;
     form.onsubmit=async event=>{event.preventDefault();save.disabled=true;remember();error.textContent='正在保存复盘…';try{await client.write('review:'+plan.id,'/reviews',{plan_id:plan.id,start_date:begin.value,end_date:end.value,worked:worked.value,obstacles:obstacles.value,next_action:next.value});worked.value='';obstacles.value='';next.value='';remember();error.textContent='复盘已保存。';await loadHistory();await loadPreview();consent.checked=false;}catch(e){error.textContent=e.message;}finally{save.disabled=false;}};
     async function loadHistory(){if(!d.isConnected)return;clearTimeout(pollTimer);try{const data=await client.read('/reviews?plan_id='+encodeURIComponent(plan.id)+'&page='+historyPage);if(!d.isConnected)return;history.replaceChildren(node('h3','历史复盘与建议'));for(const r of data.reviews){const row=node('article',undefined,'action-history-row');row.append(node('strong',r.start_date+' 至 '+r.end_date+' · 手动复盘'),node('p','保存于 '+new Date(r.created_at).toLocaleString()));for(const [name,key] of [['做得好的地方','worked'],['阻碍','obstacles'],['下一步','next_action']])if(r[key])row.append(node('p',name+'：'+r[key]));history.append(row);}
-        for(const r of data.reports){const row=node('article',undefined,'action-history-row');row.append(node('strong',r.start_date+' 至 '+r.end_date+' · AI 建议'),node('p','生成于 '+new Date(r.created_at).toLocaleString()+' · '+r.model));if(r.state==='ready')row.append(node('p',r.text,'action-ai-text'));else row.append(node('p',r.state==='generating'?'正在生成，可以关闭后再回来查看。':r.error));history.append(row);}
+        for(const r of data.reports){const row=node('article',undefined,'action-history-row');row.append(node('strong',r.start_date+' 至 '+r.end_date+' · AI 建议'),node('p','生成于 '+new Date(r.created_at).toLocaleString()+' · '+r.model));if(r.state==='ready'){row.append(node('p',r.text,'action-ai-text'));const adoptBtn=node('button','采纳为日行动草稿','btn');adoptBtn.onclick=()=>{d.close();const draft={title:plan.title+' - 改进',period:'day',start_date:new Date().toISOString().slice(0,10),end_date:new Date().toISOString().slice(0,10),reason:r.text.slice(0,1000),completion_mode:'time',target_minutes:20,minimum_minutes:5,target:{kind:'library'}};client.put('form.new',draft);window.ActionPlans.enter();};row.append(adoptBtn);}else row.append(node('p',r.state==='generating'?'正在生成，可以关闭后再回来查看。':r.error));history.append(row);}
         if(!data.reviews.length&&!data.reports.length)history.append(node('p','还没有保存复盘。可以先写下一件做得好的事。'));
         const pages=node('div',undefined,'action-buttons');history.append(pages);button(pages,'较新的复盘',async()=>{historyPage--;await loadHistory();}).disabled=historyPage===1;pages.append(node('span','第 '+historyPage+' 页'));button(pages,'更早的复盘',async()=>{historyPage++;await loadHistory();}).disabled=historyPage*20>=Math.max(data.review_total,data.report_total);
         if(data.reports.some(r=>r.state==='generating'))pollTimer=setTimeout(loadHistory,2500);
@@ -41,4 +41,15 @@
     d.addEventListener('close',()=>{clearTimeout(pollTimer);generation++;},{once:true});loadPreview();loadHistory();
   }
   window.ActionReviews={open};
+  async function readTask(job){
+    for(let page=1;page<=100;page++){
+      const response=await fetch('/api/action-plans/reviews?plan_id='+encodeURIComponent(job.plan_id)+'&page='+page,{cache:'no-store'});if(!response.ok)throw new Error('暂时无法读取行动复盘结果。');
+      const data=await response.json(),report=data.reports.find(item=>item.id===job.ref);if(report)return report;if(page*20>=data.report_total)break;
+    }
+    throw new Error('未找到这份复盘建议，请在行动计划中核对。');
+  }
+  window.GenerationTasks?.register('action-review',{
+    read:async job=>window.GenerationTasks.external('action-review',await readTask(job),{kind:'action-review',label:'行动复盘建议生成',plan_id:job.plan_id,title:job.title}),
+    open:async job=>{const report=await readTask(job),dialog=node('dialog',undefined,'action-dialog');dialog.setAttribute('aria-label','行动复盘生成结果');dialog.append(node('h2',job.title),node('p',report.text||report.error||'正在生成，任务中心会继续显示进度。','action-ai-text'));button(dialog,'关闭',()=>dialog.close());document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();}
+  });
 })();

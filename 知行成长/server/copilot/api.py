@@ -3,6 +3,8 @@ from tenancy import scoped, learning_root, runtime_root
 import json
 import secrets
 import os
+import asyncio
+import uuid
 from typing import Literal
 
 from fastapi import APIRouter, FastAPI, Request
@@ -15,6 +17,8 @@ from .cloud_store import make_store
 from .ai_config import require_config
 from .generation import Generator, availability
 from .backup import snapshot
+from .background import BackgroundGenerations
+from .generation import event
 
 
 class Input(BaseModel):
@@ -75,10 +79,13 @@ class FeedbackSubmission(Key):
 
 class SummaryGeneration(Input):
     scope: Literal['full_course', 'single_lesson'] = 'full_course'
+    key: str = Field(default_factory=lambda:str(uuid.uuid4()),min_length=8,max_length=160)
+    ai_config: dict | None = Field(default=None,repr=False)
 
 
 class AdvancedGeneration(Key):
     summary_content: str = Field(max_length=100000)
+    ai_config: dict | None = Field(default=None,repr=False)
 
 
 class ArchiveRequest(Key):
@@ -99,7 +106,33 @@ def register(app: FastAPI, root, db):
     register_ai(app)
     store = scoped(app, lambda: make_store(learning_root(root), runtime_root(db)), initialize=True)
     generator = scoped(app, lambda: Generator(store))
+    background = scoped(app, lambda: BackgroundGenerations(store))
     router = APIRouter(prefix='/api/copilot')
+
+    async def summary_events(id):
+        offset=0
+        while True:
+            job=await run_in_threadpool(background.get,id)
+            raw=job['raw']
+            if len(raw)>offset:yield event('content',{'text':raw[offset:]});offset=len(raw)
+            if job['state'] not in ('queued','generating'):
+                yield event('complete',{'content':raw,'summary_id':job['result_id'],'draft_id':job['draft_id']}) if job['state']=='ready' else event('error',{'message':job['error']})
+                return
+            await asyncio.sleep(1.5)
+
+    def summary_response(job,request):
+        if 'application/json' in request.headers.get('accept',''):
+            return JSONResponse(job,status_code=202)
+        return StreamingResponse(summary_events(job['id']),media_type='text/event-stream',headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
+
+    @router.get('/background-jobs')
+    def background_jobs():return {'items':background.listing()}
+
+    @router.get('/background-jobs/{id}')
+    def background_job(id:str):return background.get(id)
+
+    @router.post('/background-jobs/{id}/cancel')
+    async def cancel_background_job(id:str):return await background.cancel(id)
 
     @app.middleware('http')
     async def local_access(request: Request, call_next):
@@ -228,31 +261,24 @@ def register(app: FastAPI, root, db):
         return {'items': store.list_archived()}
 
     @router.post('/summaries/generate')
-    def generate_summary(body: SummaryGeneration):
-        from .summary import SummaryGenerator
-        gen = SummaryGenerator(store)
-        round_id = 1
-        if hasattr(body, 'round_id'):
-            round_id = body.round_id
-        return StreamingResponse(gen.generate(body.module, round_id, body.scope),
-                                 media_type='text/event-stream',
-                                 headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+    async def generate_summary(body: SummaryGeneration,request:Request):
+        job=await asyncio.shield(background.submit('summary',body.key,{'scope':body.scope},body.ai_config))
+        return summary_response(job,request)
 
     @router.get('/summaries')
     def summaries(module: Literal['renzhi'] = 'renzhi'):
+        background.initialize()
         return {'items': store.list_summaries(module)}
 
     @router.get('/summaries/{summary_id}')
     def summary(summary_id: int, module: Literal['renzhi'] = 'renzhi'):
+        background.initialize()
         return store.get_summary(summary_id)
 
     @router.post('/summaries/generate-advanced')
-    def generate_advanced(body: AdvancedGeneration):
-        from .summary import SummaryGenerator
-        gen = SummaryGenerator(store)
-        return StreamingResponse(gen.generate_advanced(body.summary_content),
-                                 media_type='text/event-stream',
-                                 headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+    async def generate_advanced(body: AdvancedGeneration,request:Request):
+        job=await asyncio.shield(background.submit('advanced',body.key,{'summary_content':body.summary_content},body.ai_config))
+        return summary_response(job,request)
 
     @router.get('/learning-history/by-date')
     def learning_history_by_date(date: str, module: Literal['renzhi'] = 'renzhi'):
@@ -283,10 +309,25 @@ def register(app: FastAPI, root, db):
         return store.writer_session(body.confirmed)
 
     @router.post('/generations')
-    def generate(body: Generation):
+    async def generate(body: Generation,request:Request):
         cfg = require_config(body.ai_config)
-        draft_id, fresh = generator.begin(body.lesson_no, body.key, body.ai_config)
-        return StreamingResponse(generator.stream(draft_id, fresh, cfg), media_type='text/event-stream',
+        async def submit():
+            draft_id,fresh=await run_in_threadpool(generator.begin,body.lesson_no,body.key,body.ai_config)
+            generator.launch(draft_id,fresh,cfg)
+            return draft_id
+        draft_id=await asyncio.shield(submit())
+        if 'application/json' in request.headers.get('accept',''):
+            return JSONResponse(await run_in_threadpool(store.draft,draft_id),status_code=202)
+        async def observe():
+            offset=0;yield event('started',{'id':draft_id})
+            while True:
+                draft=await run_in_threadpool(store.draft,draft_id);raw=draft.get('raw','')
+                if len(raw)>offset:yield event('delta',{'text':raw[offset:]});offset=len(raw)
+                if draft['status']!='generating':
+                    yield event('completed',draft) if draft['status'] in ('ready','published') else event('failed',{'id':draft_id,'message':'生成未完成；进度已保留。'})
+                    return
+                await asyncio.sleep(1.5)
+        return StreamingResponse(observe(), media_type='text/event-stream',
                                  headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
     @router.post('/generations/{draft_id}/cancel')

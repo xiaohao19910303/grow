@@ -1,0 +1,75 @@
+- generic: 知
+- heading "知行成长" [level=1]
+- generic: 个人学习与成长平台
+- generic: 2026年10月21日 · 周三
+- searchbox "全局搜索": 本轮体验验证
+- generic: ⌘K
+- generic "当前账号": 日程隔离验证
+- button "退出登录"
+- status: 已连接个人数据库
+- button "设置"
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "每日复盘"
+  - button "决策日志"
+  - button "预测校准"
+  - button "个人洞察"
+  - button "投资复盘"
+  - button "自定义记录"
+  - button "应用记录"
+  - button "错误记录"
+  - button "学习记录"
+- heading "学习记录" [level=2]
+- paragraph: 通过日历查看每天的学习记录。
+- heading "2026年10月21日 学习记录" [level=3]
+- button "◀ 上月"
+- generic: 2026年10月
+- button "下月 ▶"
+- generic: 日
+- generic: 一
+- generic: 二
+- generic: 三
+- generic: 四
+- generic: 五
+- generic: 六
+- generic: "1"
+- generic: "2"
+- generic: "3"
+- generic: "4"
+- generic: "5"
+- generic: "6"
+- generic: "7"
+- generic: "8"
+- generic: "9"
+- generic: "10"
+- generic: "11"
+- generic: "12"
+- generic: "13"
+- generic: "14"
+- generic: "15"
+- generic: "16"
+- generic: "17"
+- generic: "18"
+- generic: "19"
+- generic: "20"
+- generic "1 条学习记录": "21"
+- generic: "22"
+- generic: "23"
+- generic: "24"
+- generic: "25"
+- generic: "26"
+- generic: "27"
+- generic: "28"
+- generic: "29"
+- generic: "30"
+- generic: "31"
+- generic: 共 1 课 · 0 分钟
+- heading "结构化表达 · 第001课 · 测试课程：从事实到结论" [level=4]
+- generic: 00:22 · 0分钟
+- heading "核心收获" [level=5]
+- paragraph: 本轮体验验证：保留中途笔记。

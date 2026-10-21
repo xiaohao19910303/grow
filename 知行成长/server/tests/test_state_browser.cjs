@@ -82,11 +82,13 @@ async function response(page,status){
       await p.locator('#reflectionList .ref-row').waitFor();
     }
     const before=await (await fetch(base+'/api/data')).json();
+    await first.getByText('旧版四问记录',{exact:false}).click();
     await first.locator('#reviewTable').getByRole('button',{name:'编辑',exact:true}).click();
     await first.locator('#gf_thought').fill('first page saved');
     let saved=response(first,200);await first.locator('#gfSaveBtn').click();await saved;
     const after=await (await fetch(base+'/api/data')).json();
     assert.equal(after.reviews[0].id,before.reviews[0].id);
+    await second.getByText('旧版四问记录',{exact:false}).click();
     await second.locator('#reviewTable').getByRole('button',{name:'编辑',exact:true}).click();
     await second.locator('#gf_thought').fill('second page unsaved');
     let conflict=response(second,409);await second.locator('#gfSaveBtn').click();await conflict;

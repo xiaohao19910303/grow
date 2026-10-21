@@ -2,43 +2,25 @@
 from __future__ import annotations
 
 import json
+import asyncio
 import db
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 
 def collect_data_summary(db_path: Path, period_days: int = 30) -> dict:
     """收集近 N 天的数据摘要。"""
-    today = date.today()
+    from growth_statistics import collect_activity, count_reflections, shanghai_today
+    today = shanghai_today()
     start = today - timedelta(days=period_days - 1)
     start_str = start.isoformat()
     end_str = today.isoformat()
 
     conn = db.connect()
-    # 打卡数据
-    total_days = conn.execute(
-        "SELECT COUNT(DISTINCT date) FROM checkins WHERE date >= ? AND date <= ?",
-        (start_str, end_str),
-    ).fetchone()[0]
-
-    module_stats = {}
-    for r in conn.execute(
-        "SELECT module_id, COUNT(DISTINCT date) as days FROM checkins "
-        "WHERE date >= ? AND date <= ? GROUP BY module_id",
-        (start_str, end_str),
-    ):
-        module_stats[r["module_id"]] = r["days"]
-
+    activity = collect_activity(conn, start_str, end_str)
+    total_days = activity['total_days']
+    module_stats = activity['module_stats']
     completion_rate = round(total_days / period_days, 2) if period_days > 0 else 0
-
-    # 习惯数据
-    habit_data = conn.execute(
-        "SELECT SUM(minutes) as total, AVG(minutes) as avg FROM habits "
-        "WHERE date >= ? AND date <= ?",
-        (start_str, end_str),
-    ).fetchone()
-    total_minutes = habit_data["total"] or 0
-    avg_minutes = round(habit_data["avg"] or 0)
 
     # 行为应用数据
     behavior_total = conn.execute(
@@ -93,10 +75,7 @@ def collect_data_summary(db_path: Path, period_days: int = 30) -> dict:
     pred_accuracy = round(pred_correct / pred_resolved, 2) if pred_resolved > 0 else 0
 
     # 复盘数据
-    review_total = conn.execute(
-        "SELECT COUNT(*) FROM reviews WHERE date >= ? AND date <= ?",
-        (start_str, end_str),
-    ).fetchone()[0]
+    review_total = count_reflections(conn, start_str, end_str)
 
     conn.close()
 
@@ -108,9 +87,11 @@ def collect_data_summary(db_path: Path, period_days: int = 30) -> dict:
             "completion_rate": completion_rate,
         },
         "habits": {
-            "total_minutes": total_minutes,
-            "avg_minutes_per_day": avg_minutes,
+            "total_minutes": activity['total_minutes'],
+            "avg_minutes_per_day": activity['avg_habit_minutes'],
+            "source": "manual_habits",
         },
+        "duration_sources": activity['duration_sources'],
         "behavior_applications": {
             "total": behavior_total,
             "top_concepts": behavior_concepts,
@@ -141,6 +122,7 @@ def build_prompt(data_summary: dict) -> str:
 {data_json}
 
 **要求**：
+数据中的手工习惯补记、课程学习计时和行动确认投入是可能重叠的独立来源，禁止相加或混称为总学习时长。
 1. **行为模式总结**（2-3句）：哪些习惯在坚持，哪些在下滑？
 2. **知识应用分析**（2-3句）：学到的概念应用得怎么样？有什么模式？
 3. **错误模式分析**（2-3句）：哪些错误在重复？哪些在改善？
@@ -155,17 +137,25 @@ def build_prompt(data_summary: dict) -> str:
 - 语气：鼓励但直接，指出问题但不批评"""
 
 
-async def generate_report_content(db_path: Path, period_days: int = 30) -> tuple[str, str]:
+async def generate_report_content(db_path: Path, period_days: int, config: dict) -> tuple[str, str]:
     """生成报告内容。返回 (content, data_summary_json)。"""
-    data_summary = collect_data_summary(db_path, period_days)
+    from starlette.concurrency import run_in_threadpool
+    from copilot.transport import qwen_stream
+    data_summary = await run_in_threadpool(collect_data_summary, db_path, period_days)
     data_summary_json = json.dumps(data_summary, ensure_ascii=False)
     prompt = build_prompt(data_summary)
 
-    # 调用 AI
-    try:
-        from copilot.core import call_ai
-        content = await call_ai(prompt)
-    except Exception as e:
-        content = f"# AI 分析失败\n\n无法生成报告：{e}\n\n请稍后重试。"
+    content = ''
+    complete = False
+    async with asyncio.timeout(180):
+        async for packet in qwen_stream([{'role': 'user', 'content': prompt}], config):
+            content += packet.get('text', '')
+            if len(content) > 40000:
+                raise ValueError('Report exceeds size limit')
+            if packet.get('done'):
+                complete = True
+                break
+    if not complete or not content.strip():
+        raise ValueError('Incomplete report')
 
-    return content, data_summary_json
+    return content.strip(), data_summary_json

@@ -112,10 +112,10 @@ def get_conn():
 
 
 def init_db():
-    conn = get_conn()
-    conn.executescript(SCHEMA)
-    conn.commit()
-    conn.close()
+    from rhythm.schema import initialize as initialize_rhythm
+    with get_conn() as conn:
+        conn.executescript(SCHEMA)
+        initialize_rhythm(conn)
     from legacy_schema import migrate
     migrate()
     initialize_materials()
@@ -376,64 +376,44 @@ def _ds(d: date) -> str:
 
 
 def current_streak():
-    conn = get_conn()
-    dates = set()
-    for r in conn.execute("SELECT DISTINCT date FROM checkins"):
-        dates.add(r["date"])
-    for r in conn.execute("SELECT date, minutes, note FROM habits"):
-        if (r["minutes"] and r["minutes"] > 0) or (r["note"] and r["note"].strip()):
-            dates.add(r["date"])
-    conn.close()
-    today = date.today()
-    d = today
-    if _ds(d) not in dates:
-        d -= timedelta(days=1)
-    streak = 0
-    while _ds(d) in dates:
-        streak += 1
-        d -= timedelta(days=1)
-    return streak
+    from growth_statistics import collect_activity
+    with get_conn() as conn:
+        return collect_activity(conn)['streak']
 
 
 def build_report(days: int):
-    start = date.today() - timedelta(days=days - 1)
+    from growth_statistics import collect_activity, count_reflections, shanghai_today
+    end = shanghai_today()
+    start = end - timedelta(days=days - 1)
     dates = [_ds(start + timedelta(i)) for i in range(days)]
-    conn = get_conn()
-    mods = [dict(r) for r in conn.execute("SELECT id,name,color,ord FROM modules ORDER BY ord")]
-    active = set()
-    total_minutes = 0
-    for d in dates:
-        if conn.execute("SELECT COUNT(*) FROM checkins WHERE date=?", (d,)).fetchone()[0] > 0:
-            active.add(d)
-        h = conn.execute("SELECT minutes,note FROM habits WHERE date=?", (d,)).fetchone()
-        if h and ((h["minutes"] or 0) > 0 or (h["note"] and h["note"].strip())):
-            active.add(d)
-            total_minutes += h["minutes"] or 0
-    comp = []
-    for m in mods:
-        done = conn.execute("SELECT COUNT(*) FROM checkins WHERE module_id=? AND date>=? AND date<=? AND level>0",
-                            (m["id"], dates[0], dates[-1])).fetchone()[0]
-        comp.append({"name": m["name"], "color": m["color"], "days": done,
-                     "pct": round(done / days * 100)})
-    def cnt(table):
-        return conn.execute(f"SELECT COUNT(*) FROM {table} WHERE date>=? AND date<=?",
-                            (dates[0], dates[-1])).fetchone()[0]
-    result = {
-        "range": "week" if days == 7 else "month",
-        "start": dates[0], "end": dates[-1], "days": days,
-        "active_days": len(active),
-        "total_minutes": total_minutes,
-        "avg_minutes": round(total_minutes / days),
-        "modules": comp,
-        "decisions": cnt("decisions"),
-        "predictions": cnt("predictions"),
-        "reviews": cnt("reviews"),
-        "insights": cnt("insights"),
-        "knowledge_count": conn.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0],
-        "streak": current_streak(),
-    }
-    conn.close()
-    return result
+    with get_conn() as conn:
+        facts = collect_activity(conn, dates[0], dates[-1], today=end)
+        mods = [dict(r) for r in conn.execute("SELECT id,name,color,ord FROM modules ORDER BY ord")]
+        known = {m['id'] for m in mods}
+        mods.extend(m for m in facts['modules'] if m['id'] not in known)
+        comp = []
+        for m in mods:
+            done = facts['module_stats'].get(m['id'], 0)
+            comp.append({"name": m["name"], "color": m["color"], "days": done,
+                         "pct": round(done / days * 100)})
+        def cnt(table):
+            return conn.execute(f"SELECT COUNT(*) FROM {table} WHERE date>=? AND date<=?",
+                                (dates[0], dates[-1])).fetchone()[0]
+        return {
+            "range": "week" if days == 7 else "month",
+            "start": dates[0], "end": dates[-1], "days": days,
+            "active_days": facts['active_days'],
+            "total_minutes": facts['total_minutes'],
+            "avg_minutes": round(facts['total_minutes'] / days),
+            "duration_sources": facts['duration_sources'],
+            "modules": comp,
+            "decisions": cnt("decisions"),
+            "predictions": cnt("predictions"),
+            "reviews": count_reflections(conn, dates[0], dates[-1]),
+            "insights": cnt("insights"),
+            "knowledge_count": conn.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0],
+            "streak": facts['streak'],
+        }
 
 
 @asynccontextmanager

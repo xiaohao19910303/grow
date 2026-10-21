@@ -88,6 +88,9 @@
     const response = await fetch('/api/copilot' + path, {method, headers, body: body === undefined ? undefined : JSON.stringify(body)});
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || data.detail || '请求失败，请检查服务。');
+    if (method !== 'GET' && /\/lessons\/\d+\/(complete|review|summary|learning-state)$/.test(path)) {
+      await window.refreshLearningCompletion?.(data);
+    }
     return data;
   }
   function button(label, action, parent, cls = 'btn') {
@@ -131,6 +134,7 @@
   management.append(histories); histories.classList.remove('section');
 
   function showDraft(d) {
+    delete editor.dataset.generation;
     currentDraft = d; publicationKey = uid(); dirty = false; editor.hidden = false;
     editor.replaceChildren(el('h3', `第${d.lesson_no}课草稿 · ${d.status}`));
     bodyInput.value = d.content; sourceInput.value = d.sources;
@@ -352,52 +356,46 @@
     } catch (e) { message(String(e.message)); }
   }
   async function generate(number) {
-    if (aborter) return;
-    if (dirty && !confirm('当前有未保存编辑，确定放弃并生成新草稿？')) return;
-    const n = number || currentTask.next_generation_lesson;
-    // Retain key until a concrete attempt ID is received; uncertain retries must not bill twice.
-    const keyName = 'copilot-generation-' + n;
-    const key = sessionStorage.getItem(keyName) || uid(); sessionStorage.setItem(keyName, key);
-    aborter = new AbortController(); generatingId = null; generateButton.disabled = true;
-    const live = el('pre', '', 'cp-stream'); editor.hidden = false; editor.replaceChildren(el('h3', '正在生成草稿'), live);
-    const cancel = button('取消生成', async () => {
-      if (generatingId) await request('/generations/' + generatingId + '/cancel', 'POST', {});
-      aborter?.abort();
-    }, editor);
-    let terminal = false;
-    try {
-      const response = await fetch('/api/copilot/generations', {method: 'POST', signal: aborter.signal,
-        headers: {'Content-Type': 'application/json', 'X-Copilot-Request': '1'},
-        body: JSON.stringify({lesson_no: n, key, ai_config: AIConfig.require()})});
-      if (!response.ok) {
-        const error = await response.json(); sessionStorage.removeItem(keyName);
-        throw new Error(error.message || '无法开始生成。');
-      }
-      const stream = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
-      function parse() {
-        let boundary;
-        while ((boundary = buffer.indexOf('\n\n')) >= 0) {
-          const block = buffer.slice(0, boundary); buffer = buffer.slice(boundary + 2);
-          const lines = block.split('\n'); const name = lines.find(s => s.startsWith('event:'))?.slice(6).trim();
-          const payload = lines.filter(s => s.startsWith('data:')).map(s => s.slice(5).trimStart()).join('\n');
-          if (!payload) continue;
-          const data = JSON.parse(payload);
-          if (name === 'started') { generatingId = data.id; sessionStorage.removeItem(keyName); }
-          if (name === 'delta') live.append(document.createTextNode(data.text));
-          if (name === 'completed') { terminal = true; showDraft(data); message('草稿生成完成，请检查后确认保存。'); }
-          if (name === 'failed' || name === 'cancelled') { terminal = true; message(data.message || '生成已取消；未完成草稿不能发布。'); }
-        }
-      }
-      for (;;) {
-        const {done, value} = await stream.read();
-        buffer += done ? decoder.decode() : decoder.decode(value, {stream: true});
-        buffer = buffer.replace(/\r\n/g, '\n'); parse(); if (done) break;
-      }
-      if (!terminal) message('连接中断，请从草稿列表恢复查看。');
-    } catch (e) { message(e.name === 'AbortError' ? '已取消；可从草稿列表查看。' : String(e.message)); }
-    finally { aborter = null; cancel.disabled = true; await load(false); }
+    if(aborter)return;
+    if(dirty&&!confirm('当前有未保存编辑，确定放弃并生成新草稿？'))return;
+    const n=number||currentTask.next_generation_lesson,keyName='copilot-generation-'+n;
+    const key=sessionStorage.getItem(keyName)||uid();sessionStorage.setItem(keyName,key);
+    aborter=new AbortController();generatingId=null;generateButton.disabled=true;
+    const live=el('pre','','cp-stream');editor.hidden=false;editor.replaceChildren(el('h3','正在生成草稿'),live);
+    const cancel=button('取消生成',async()=>{if(generatingId)await request('/generations/'+generatingId+'/cancel','POST',{});else message('正在确认任务，请取得任务编号后再取消。');},editor);
+    try{
+      const response=await fetch('/api/copilot/generations',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Copilot-Request':'1'},body:JSON.stringify({lesson_no:n,key,ai_config:AIConfig.require()})});
+      const job=await response.json();if(!response.ok){if(response.status<500)sessionStorage.removeItem(keyName);throw new Error(job.message||'无法提交生成。');}
+      generatingId=job.id;editor.dataset.generation=job.id;sessionStorage.removeItem(keyName);trackGeneration(job);
+      await window.GenerationTasks.wait(courseTask(job),progress=>{if(editor.dataset.generation===job.id&&!dirty)live.textContent=progress.raw||'已提交后台，可切换页面或刷新，任务会继续。';});
+      const draft=await request('/drafts/'+job.id);
+      if(root.style.display!=='none'&&editor.dataset.generation===job.id&&!dirty){showDraft(draft);message('草稿生成完成，请检查后确认保存。');}
+    }catch(error){message(error.message+' 可在生成任务中心恢复查看，重试提交会复用原任务。');}
+    finally{aborter=null;cancel.disabled=true;await load(false);}
   }
   window.loadCopilot = load;
+  window.openGeneratedCopilotDraft=async id=>{
+    if(dirty&&!confirm('当前草稿有未保存修改，确定读取这个生成结果？'))return false;
+    const draft=await request('/drafts/'+id);
+    if(draft.status==='published')return window.openCopilotLesson(draft.lesson_no);
+    if(goTab('copilot')===false)return false;
+    if(draft.status==='generating'){
+      const live=el('pre',draft.raw||'正在等待模型响应…','cp-stream');editor.hidden=false;editor.dataset.generation=id;editor.replaceChildren(el('h3','后台生成进度'),live);
+      button('取消生成',()=>request('/generations/'+id+'/cancel','POST',{}),editor);
+      try{
+        await window.GenerationTasks.wait(courseTask(draft),progress=>{if(editor.dataset.generation===id&&!dirty)live.textContent=progress.raw||'后台任务继续生成中，可切换页面或刷新。';});
+        if(root.style.display!=='none'&&editor.dataset.generation===id&&!dirty)showDraft(await request('/drafts/'+id));
+      }catch(error){if(editor.dataset.generation===id)message(error.message);}
+    }else showDraft(draft);
+  };
+  function courseTask(d){return window.GenerationTasks?.external('copilot',d,{kind:'renzhi-course',label:'认知课程生成',title:'第 '+d.lesson_no+' 课草稿',state:d.status==='draft'?'ready':d.status,error:d.errors?.join('；')||undefined});}
+  function trackGeneration(d){if(d.id&&window.GenerationTasks)window.GenerationTasks.track(courseTask(d));}
+  window.GenerationTasks?.register('copilot',{
+    read:async job=>courseTask(await request('/drafts/'+job.ref)),
+    cancel:async job=>{await request('/generations/'+job.ref+'/cancel','POST',{});return courseTask(await request('/drafts/'+job.ref));},
+    recover:async()=>{const data=await request('/drafts');return data.items.filter((d,index)=>d.status==='generating'||index<5).map(courseTask);},
+    open:job=>window.openGeneratedCopilotDraft(job.ref)
+  });
   window.renderLearningMarkdown = markdown;
   window.leaveCopilot = () => {++readingRequest;stopReading();};
   window.showCopilotManagement = () => { ++readingRequest;stopReading();root.classList.remove('reading-mode');management.open=true; };

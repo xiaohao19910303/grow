@@ -12,11 +12,13 @@
   let currentPageSize = 20;
   let searchResults = [];
   let totalResults = 0;
+  let warnings = [];
   let requestNumber = 0, activeRequest = null;
 
   const moduleLabels = {
     learning: '学习记录',
-    reflection: '反思日志',
+    reflection: '日常记录',
+    review: '四问复盘', insight: '灵感记录', action: '行动记录',
     decision: '决策记录',
     prediction: '预测记录',
     knowledge: '知识图谱',
@@ -141,6 +143,7 @@
       if (request !== requestNumber) return;
       searchResults = data.results || [];
       totalResults = data.total_count || 0;
+      warnings = data.warnings || [];
 
       renderResults();
       renderPagination();
@@ -200,7 +203,7 @@
       return;
     }
 
-    const html = searchResults.map(result => {
+    const html = searchResults.map((result, index) => {
       const moduleLabel = moduleLabels[result.module] || result.module;
       const moduleColor = moduleColors[result.module] || '#6B7280';
       const title = highlightText(result.title || '无标题', currentQuery);
@@ -208,7 +211,7 @@
       const date = result.date ? (typeof fmtDateCN === 'function' ? fmtDateCN(result.date) : result.date) : '';
 
       return `
-        <div class="search-result-item" data-module="${esc(result.module)}" data-id="${esc(result.id)}">
+        <div class="search-result-item" role="button" tabindex="0" data-index="${index}" data-module="${esc(result.module)}" data-id="${esc(result.id)}">
           <div class="search-result-header">
             <div class="search-result-title">${title}</div>
             <span class="search-result-module" style="background:${hexRgba(moduleColor, 0.12)};color:${moduleColor}">
@@ -228,9 +231,10 @@
     // 添加点击事件
     container.querySelectorAll('.search-result-item').forEach(item => {
       item.addEventListener('click', () => {
-        const module = item.dataset.module;
-        const id = item.dataset.id;
-        navigateToResult(module, id);
+        navigateToResult(searchResults[Number(item.dataset.index)]);
+      });
+      item.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); item.click(); }
       });
     });
   }
@@ -272,11 +276,11 @@
     if (!container) return;
 
     if (totalResults === 0) {
-      container.textContent = '未找到相关结果';
+      container.textContent = warnings.length ? '部分内容暂时无法读取，当前范围内未找到结果；可重试。' : '未找到相关结果';
     } else {
       const start = (currentPage - 1) * currentPageSize + 1;
       const end = Math.min(currentPage * currentPageSize, totalResults);
-      container.textContent = `找到 ${totalResults} 条结果，显示 ${start}-${end}`;
+      container.textContent = `找到 ${totalResults} 条结果，显示 ${start}-${end}` + (warnings.length ? ' · 部分内容暂时无法读取，可重试以补齐结果。' : '');
     }
   }
 
@@ -290,28 +294,61 @@
   }
 
   /* ---------- 导航到结果 ---------- */
-  function navigateToResult(module, id) {
-    // 根据模块类型导航到对应视图
-    const moduleToTab = {
-      learning: 'library',
-      reflection: 'reviews',
-      decision: 'decisions',
-      prediction: 'predictions',
-      knowledge: 'knowledge',
-    };
-
-    const tab = moduleToTab[module];
-    if (tab && typeof goTab === 'function') {
-      goTab(tab);
-      // TODO: 可以在目标视图中滚动到对应记录
-    }
+  async function navigateToResult(result) {
+    if (!result) return;
+    const target = result.target || {kind: 'legacy', module: result.module, id: result.id};
+    try {
+      if (target.kind === 'study') {
+        if (target.module === 'plan') {
+          const split = target.course.lastIndexOf('/');
+          return await window.openPlanCourse(target.course.slice(0, split), Number(target.course.slice(split + 1)));
+        }
+        if (target.module === 'renzhi') return await window.openCopilotLesson(Number(target.course));
+        window.rememberLearningOrigin?.();
+        if (goTab('library') === false) return;
+        await window.loadDailyLearning();
+        return await window.openStudyCourse(target.module, target.course, {preserveOrigin: true});
+      }
+      if (target.kind === 'copilot') return await window.openCopilotLesson(target.lesson_no);
+      if (target.kind === 'article') {
+        if (goTab('reading') === false) return;
+        return await window.openActionArticle(target.id);
+      }
+      if (target.kind === 'reflection') {
+        if (goTab('reviews') === false) return;
+        if (await window.Reflections.load() === false) throw new Error('日常记录暂时无法读取。');
+        return window.Reflections.viewEntry(target.id);
+      }
+      if (target.kind === 'action') {
+        if (goTab('action-plans') === false) return;
+        if (window.ActionPlans.openRecord) return await window.ActionPlans.openRecord(target.id);
+        return await window.ActionPlans.enter();
+      }
+      const tabs = {learning: 'custom', reflection: 'reviews', decision: 'decisions', prediction: 'predictions', review: 'reviews', insight: 'insights', knowledge: 'knowledge'};
+      if (goTab(tabs[target.module] || 'custom') === false) return;
+      const forms = {decision: ['decisions', 'openDecisionForm'], prediction: ['predictions', 'openPredictionForm'], review: ['reviews', 'openReviewForm'], insight: ['insights', 'openInsightForm'], learning: ['customRecords', 'openRecordForm']};
+      const form = forms[target.module];
+      if (form && typeof state !== 'undefined') {
+        const index = state[form[0]].findIndex(row => String(row.id ?? row._record_id) === String(target.id));
+        if (index < 0) throw new Error('原记录已变更，请刷新后重试。');
+        return window[form[1]](index);
+      }
+      if (target.module === 'knowledge') {
+        await window.loadKnowledge();
+        const filter = document.getElementById('knowledgeSearch');
+        if (filter) filter.value = result.title;
+        window.renderKnowledgeList();
+      }
+    } catch (error) { if (typeof toast === 'function') toast('打开记录失败：' + error.message); }
   }
+  window.RecordDiscovery = {open: navigateToResult};
 
   /* ---------- 清空结果 ---------- */
   function clearResults() {
     ++requestNumber; activeRequest?.abort();
     searchResults = [];
     totalResults = 0;
+    warnings = [];
     currentQuery = '';
 
     const container = document.getElementById('searchResults');

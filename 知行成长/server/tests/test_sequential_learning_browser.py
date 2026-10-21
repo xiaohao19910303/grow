@@ -1,3 +1,4 @@
+import re
 """Actual homepage in Chrome with synthetic courses; no personal data or network."""
 import functools
 import os
@@ -93,7 +94,7 @@ class SequentialLearningBrowser(unittest.TestCase):
                     home.locator('.learning-module').nth(1).locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()
                     page.locator('#dailyReader').get_by_role('heading', name='表达第一课', exact=True).wait_for()
                     expression[1]['learning_state'] = 'completed'
-                    page.locator('#dailyReader').get_by_role('button', name='返回学习列表', exact=True).click()
+                    page.locator('#dailyReader').get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
                     home.locator('.learning-module').nth(1).get_by_text('下一课', exact=True).wait_for()
                     home.locator('.learning-module').nth(1).locator(':scope > .lesson-row .lesson-title').get_by_text('表达第十课', exact=True).wait_for()
                     self.assertIn('第 10 课', home.locator('.learning-module').nth(1).inner_text())

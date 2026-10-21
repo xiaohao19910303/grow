@@ -1,0 +1,34 @@
+test_action_plan_client.cjs 0
+Action client checks passed: lost-response retries, reload, account isolation and timezone-aware pending actions.
+test_background_client.cjs 0
+Background client checks passed: retry-safe submission and GET-only view recovery.
+test_behavior_report_client.cjs 0
+AI report checks passed: browser config, same-origin header, duplicate start, cancel, explicit retry, period preservation and refresh recovery.
+test_completion_producers.cjs 0
+Completion producers passed: actual course-save handler, double click, sync warnings/recovery, return navigation and copilot/plan/article/legacy completion producers.
+test_learning_completion_sync.cjs 0
+Completion synchronization passed: immediate refresh, warning, retry and server reconciliation failure.
+test_learning_loading.cjs 0
+Learning loading checks passed: partial modules, shared requests, mutation refresh and stale-response protection.
+Optional learning checks passed: date filtering, cancellation, source identity, agenda and library visibility.
+test_legacy_state_client.cjs 0
+Legacy client checks passed: IDs, serialized PUTs, edits during save, conflicts, export-before-reload and failure retention.
+test_login_loading.cjs 0
+Login loading checks passed: immediate progress, duplicate-submit protection, failed-request recovery and successful navigation.
+test_navigation_layout.cjs 0
+Navigation grouping passed: five main tabs, reduced secondary groups, preserved legacy destinations and standalone global search.
+test_plan_observer.cjs 0
+Observer checks passed: reconnect, deduplication, terminal stop, foreground-only preview and background notification.
+test_reading_navigation.cjs 0
+Reading navigation checks passed: zero-request entry, cached history, explicit refresh, latest search, navigation and account isolation.
+test_reading_tasks.cjs 0
+Unified generation checks passed: concurrent producers, terminal notifications, no automatic navigation, exact results and recovery.
+Reading task checks passed: duplicate start, background completion, retry, refresh recovery, result link and account isolation.
+test_reflection_entrypoints.cjs 0
+Reflection entry points passed: today, record list, historical date, edit, missing record and save.
+test_search_loading.cjs 0
+Search loading checks passed: immediate visible progress, abort older queries, no late navigation and leave-guard support.
+test_search_timeline_navigation.cjs 0
+Discovery navigation checks passed: exact saved targets, keyboard, partial warnings and leave guards.
+test_study_note_session.cjs 0
+Study draft session checks passed: recovery, offline, accounts, concurrent edits, conflicts, uncertain saves.

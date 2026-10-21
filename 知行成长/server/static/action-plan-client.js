@@ -14,6 +14,7 @@
         const detail = typeof result.detail === 'string' ? result.detail : typeof result.message === 'string' ? result.message : '请检查填写内容，或刷新计划后重试。';
         const error = new Error(detail);error.status=response.status;throw error;
       }
+      if(window.GenerationTasks){const reports=result.reports||[result.report].filter(Boolean);for(const report of reports)window.GenerationTasks.track(window.GenerationTasks.external('action-review',report,{kind:'action-review',label:'行动复盘建议生成',title:report.plan_title||'行动计划复盘',plan_id:report.plan_id}));}
       return result;
     }
     async function write(identity, path, payload, ephemeral = {}) {

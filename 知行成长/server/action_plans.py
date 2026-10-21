@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS action_link_state (id INTEGER PRIMARY KEY CHECK(id=1)
 CREATE TABLE IF NOT EXISTS action_reviews (id TEXT PRIMARY KEY,data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_reports (id TEXT PRIMARY KEY,state TEXT NOT NULL,data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_reminder_claims (key TEXT PRIMARY KEY,claimed_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS action_templates (id TEXT PRIMARY KEY,name TEXT NOT NULL,data TEXT NOT NULL,created_at TEXT NOT NULL);
 '''
 
 
@@ -131,9 +132,25 @@ class PlanFields(Input):
         return self
 
 
+class Recurrence(Input):
+    freq: Literal['daily', 'weekly'] = 'weekly'
+    interval: int = Field(default=1, ge=1, le=52)
+    byday: list[int] = Field(default_factory=list)
+
+    @model_validator(mode='after')
+    def valid(self):
+        if any(d < 1 or d > 7 for d in self.byday):
+            raise ValueError('星期需在 1 到 7 之间。')
+        if self.freq == 'daily' and self.byday:
+            raise ValueError('按天重复无需指定星期。')
+        return self
+
+
 class NewPlan(PlanFields):
     key: str = Field(min_length=8, max_length=160)
     repeat_dates: list[date] = Field(default_factory=list, max_length=7)
+    recurrence: Recurrence | None = None
+    until: date | None = None
 
 
 class Mutation(Input):
@@ -187,9 +204,9 @@ def get(c, pid):
 def get_descendants(c, pid):
     """Get all descendant plans using recursive SQL query instead of loading all plans."""
     query = '''WITH RECURSIVE descendants AS (
-                 SELECT id, data FROM action_plans WHERE id = ?
+                 SELECT id, data, revision FROM action_plans WHERE id = ?
                  UNION ALL
-                 SELECT p.id, p.data FROM action_plans p
+                 SELECT p.id, p.data, p.revision FROM action_plans p
                  INNER JOIN descendants d ON p.data::jsonb->>'parent_id' = d.id
                )
                SELECT * FROM descendants WHERE id != ?'''
@@ -250,18 +267,59 @@ def validate_parent(c, fields, existing=None):
         fail(409, '这份内容在该日期已有安排，请查看或调整已有安排。')
 
 
+def expand_dates(start, until, recurrence):
+    """Bound a recurrence into concrete dates, start and until inclusive."""
+    freq = recurrence.freq
+    interval = recurrence.interval
+    byday = set(recurrence.byday) if recurrence.byday else {start.isoweekday()}
+    dates = []
+    if freq == 'daily':
+        step = 0
+        day = start
+        while day <= until and len(dates) < 120:
+            if step % interval == 0:
+                dates.append(day)
+            step += 1
+            day = start + timedelta(days=step)
+    else:
+        monday = start - timedelta(days=start.isoweekday() - 1)
+        week = 0
+        while monday + timedelta(weeks=week) <= until and len(dates) < 120:
+            if week % interval == 0:
+                for wd in sorted(byday):
+                    candidate = monday + timedelta(weeks=week, days=wd - 1)
+                    if start <= candidate <= until:
+                        dates.append(candidate)
+            week += 1
+    return sorted(set(dates))
+
+
 def create(body):
     with connection(True) as c:
         def work():
-            if c.execute('SELECT count(*) FROM action_plans').fetchone()[0] + max(1, len(body.repeat_dates)) > 1000:
+            repeat = bool(body.repeat_dates)
+            if body.recurrence:
+                if body.period != 'day':
+                    fail(422, '只有日行动可以设置重复。')
+                if not body.until or body.until < body.start_date:
+                    fail(422, '请选择有效的重复结束日期。')
+                if (body.until - body.start_date).days > 366:
+                    fail(422, '重复范围最多一年。')
+                dates = expand_dates(body.start_date, body.until, body.recurrence)
+                if not dates:
+                    fail(422, '这个范围内没有匹配的重复日期，请调整星期或结束日期。')
+            elif repeat:
+                dates = body.repeat_dates
+                if body.period != 'day' or len(set(dates)) != len(dates) or (max(dates) - min(dates)).days > 6 or body.start_date not in dates:
+                    fail(422, '重复日行动请选择同一七天内不重复的日期，并包含首日。')
+            else:
+                dates = [body.start_date]
+            if c.execute('SELECT count(*) FROM action_plans').fetchone()[0] + len(dates) > 1000:
                 fail(422, '计划数量已达首版上限，请先整理历史计划。')
-            dates = body.repeat_dates or [body.start_date]
-            if body.repeat_dates and (body.period != 'day' or len(set(dates)) != len(dates) or (max(dates) - min(dates)).days > 6 or body.start_date not in dates):
-                fail(422, '重复日行动请选择同一七天内不重复的日期，并包含首日。')
             result = []
             for day in sorted(dates):
-                fields = body.model_dump(mode='json', exclude={'key', 'repeat_dates'})
-                if body.repeat_dates:
+                fields = body.model_dump(mode='json', exclude={'key', 'repeat_dates', 'recurrence', 'until'})
+                if len(dates) > 1 or day != body.start_date:
                     fields.update(start_date=day.isoformat(), end_date=day.isoformat())
                 validate_parent(c, fields)
                 pid = 'action-' + uuid.uuid4().hex
@@ -540,6 +598,11 @@ def listing():
             if ancestor is None or ancestor['status'] != 'active':
                 plan['blocked'] = True
                 break
+        # Auto-complete long plans when target_count is reached
+        if plan['period'] != 'day' and plan['status'] == 'active' and plan['progress']['completed'] >= plan['target_count']:
+            plan['auto_completed'] = True
+        else:
+            plan['auto_completed'] = False
     return {'plans': sorted(plans, key=lambda p: (p['start_date'], p['at'], p['id'])), 'execution': running,
             'server_time': clock().isoformat(), 'reminder_delivery': 'foreground-and-calendar'}
 
@@ -582,6 +645,56 @@ class Claim(Input):
     reminder_at: str = Field(max_length=80)
 
 
+class TemplateBody(Input):
+    name: str = Field(min_length=1, max_length=80)
+    period: Literal['year', 'month', 'week', 'day']
+    horizon: Literal['short', 'long'] = 'short'
+    target_minutes: int = Field(default=20, ge=1, le=1440, strict=True)
+    minimum_minutes: int = Field(default=5, ge=1, le=1440, strict=True)
+    target_count: int = Field(default=1, ge=1, le=1000, strict=True)
+    at: str = Field(default='21:00', pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
+    reminder: bool = False
+    reason: str = Field(default='', max_length=1000)
+    if_then: str = Field(default='', max_length=1000)
+    target: StudyTarget = Field(default_factory=StudyTarget)
+    completion_mode: Literal['time', 'content', 'check'] = 'time'
+
+    @model_validator(mode='after')
+    def valid(self):
+        if self.minimum_minutes > self.target_minutes:
+            raise ValueError('起步时长不能超过标准时长。')
+        if self.completion_mode == 'content' and self.target.kind in ('library', 'book'):
+            raise ValueError('内容确认请选择具体文章或课程。')
+        return self
+
+
+def list_templates():
+    with connection() as c:
+        if c.execute("SELECT to_regclass('action_templates')").fetchone()[0] is None:
+            return {'templates': []}
+        rows = c.execute('SELECT id, name, data, created_at FROM action_templates ORDER BY created_at DESC').fetchall()
+        return {'templates': [{'id': r[0], 'name': r[1], **json.loads(r[2]), 'created_at': r[3]} for r in rows]}
+
+
+def save_template(body):
+    with connection(True) as c:
+        if c.execute('SELECT count(*) FROM action_templates').fetchone()[0] >= 50:
+            fail(422, '模板数量已达上限，请先清理不用的模板。')
+        tid = 'tpl-' + uuid.uuid4().hex
+        data = body.model_dump(mode='json')
+        c.execute('INSERT INTO action_templates VALUES (?,?,?,?)', (tid, body.name, encoded(data), clock().isoformat()))
+        return {'id': tid, 'name': body.name, **data}
+
+
+def delete_template(tid):
+    with connection(True) as c:
+        row = c.execute('SELECT 1 FROM action_templates WHERE id=?', (tid,)).fetchone()
+        if not row:
+            fail(404, '模板不存在。')
+        c.execute('DELETE FROM action_templates WHERE id=?', (tid,))
+        return {'deleted': True}
+
+
 def register(app):
     router = APIRouter(prefix='/api/action-plans')
 
@@ -619,6 +732,18 @@ def register(app):
         with connection(True) as c:
             row = c.execute('SELECT result FROM action_operations WHERE key=?', (key,)).fetchone()
             return {'found': bool(row), 'result': json.loads(row[0]) if row else None}
+
+    @router.get('/templates')
+    def read_templates():
+        return list_templates()
+
+    @router.post('/templates')
+    def add_template(body: TemplateBody):
+        return save_template(body)
+
+    @router.delete('/templates/{tid}')
+    def remove_template(tid: str):
+        return delete_template(tid)
 
     @router.get('/{pid}/calendar.ics')
     def export(pid: str):

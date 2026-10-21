@@ -29,8 +29,10 @@
     const controls=node('div',undefined,'action-buttons');parent.append(controls);
     const current=matching(target).sort((a,b)=>a.start_date.localeCompare(b.start_date));
     const today=current.find(p=>p.start_date===day()),tomorrow=current.find(p=>p.start_date===shift(day(),1));
-    button(controls,today?'今日已安排':'加入今日',()=>arrange(target,title,day(),minutes));
-    button(controls,tomorrow?'明日已安排':'加入明日',()=>arrange(target,title,shift(day(),1),minutes));
+    if(today)controls.append(node('span','已在今日安排','desc'));
+    else button(controls,'安排到今日',()=>arrange(target,title,day(),minutes));
+    if(tomorrow)controls.append(node('span','已在明日安排','desc'));
+    else button(controls,'安排到明日',()=>arrange(target,title,shift(day(),1),minutes));
     button(controls,'选择日期',()=>dateDialog('安排学习日期',shift(day(),1),date=>arrange(target,title,date,minutes)));
     for(const p of current.filter(p=>p.status!=='completed').slice(0,4)){
       const row=node('div',undefined,'agenda-scheduled');row.append(node('span','已安排 '+p.start_date+(p.status==='paused'?' · 已暂停':''),'desc'));
@@ -82,7 +84,7 @@
     forDate(document.getElementById('agendaTomorrowList'),shift(selected,1));
     const pending=document.getElementById('agendaPending');if(pending){pending.replaceChildren();const count=data().plans.filter(p=>p.period==='day'&&p.status==='active'&&p.start_date<ActionPlans.day(p.timezone)).length;
       if(count)button(pending,count+' 项过去的安排待调整',()=>{scope='earlier';page=1;goTab('action-schedule');});}
-    window.updateDaySummary?.();refreshControls();
+    window.updateDaySummary?.();refreshControls();window.renderOptionalLearning?.();
     if(document.getElementById('view-action-schedule')?.style.display!=='none')renderSchedule();
     renderGrowth();
   }
@@ -115,5 +117,6 @@
     button(root,'查看执行记录',()=>goTab('action-records'));
   }
   window.DailyAgenda={mount,render,row,reschedule,cancel,refreshControls,renderGrowth,shift,same,
+    isScheduled:target=>matching(target).some(p=>!!p.start_date),
     enter:async()=>{try{await ActionPlans.refresh();renderSchedule();}catch(e){const root=document.getElementById('view-action-schedule');root.replaceChildren(node('p',e.message));button(root,'重试',()=>DailyAgenda.enter());}}};
 })();

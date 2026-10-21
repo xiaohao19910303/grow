@@ -46,10 +46,10 @@ def register(app: FastAPI, db_path: Path) -> TimelineService:
             raise HTTPException(status_code=500, detail=f"获取时间线失败: {e}")
 
     @router.get("/stats")
-    def get_stats():
+    def get_stats(start_date: Optional[str] = None, end_date: Optional[str] = None, types: Optional[str] = None):
         """获取各模块的时间线统计信息"""
         try:
-            return timeline_service.get_timeline_stats()
+            return timeline_service.get_timeline_stats(start_date, end_date, [t.strip() for t in types.split(',') if t.strip()] if types else None)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"获取统计失败: {e}")
 

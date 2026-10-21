@@ -11,10 +11,12 @@
   let currentPageSize = 50;
   let timelineData = [];
   let totalRecords = 0;
+  let warnings = [];
+  let requestNumber = 0, activeRequest = null;
 
   const moduleLabels = {
     learning: '学习记录',
-    reflection: '反思日志',
+    reflection: '日常记录', action: '行动记录',
     decision: '决策记录',
     prediction: '预测记录',
     review: '复盘记录',
@@ -65,7 +67,8 @@
   /* ---------- 加载时间线 ---------- */
   async function load() {
     const container = document.getElementById('timelineList');
-    const statsContainer = document.getElementById('timelineStats');
+    const request = ++requestNumber;
+    activeRequest?.abort(); activeRequest = new AbortController();
 
     // 显示加载状态
     if (container) {
@@ -88,20 +91,23 @@
         params.set('types', currentFilters.types.join(','));
       }
 
-      const response = await fetch(`/api/timeline?${params}`);
+      const response = await fetch(`/api/timeline?${params}`, {signal: activeRequest.signal});
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.detail || error.message || '加载时间线失败');
       }
 
       const data = await response.json();
+      if (request !== requestNumber) return;
       timelineData = data.records || [];
+      warnings = data.warnings || [];
       totalRecords = data.total_count || 0;
 
       renderTimeline();
       renderPagination();
-      loadStats();
+      loadStats(params, request);
     } catch (error) {
+      if (error.name === 'AbortError' || request !== requestNumber) return;
       console.error('Timeline error:', error);
       if (container) {
         container.innerHTML = `
@@ -118,13 +124,13 @@
   }
 
   /* ---------- 加载统计 ---------- */
-  async function loadStats() {
+  async function loadStats(params, request) {
     try {
-      const response = await fetch('/api/timeline/stats');
+      const response = await fetch('/api/timeline/stats?' + params);
       if (!response.ok) throw new Error('加载统计失败');
 
       const stats = await response.json();
-      renderStats(stats);
+      if (request === requestNumber) renderStats(stats);
     } catch (error) {
       console.error('Timeline stats error:', error);
     }
@@ -142,7 +148,7 @@
 
     if (stats.by_module) {
       // 如果 API 返回了按模块统计
-      moduleCount = Object.keys(stats.by_module).length;
+      moduleCount = Object.values(stats.by_module).filter(module => module.count > 0).length;
       totalRecords = Object.values(stats.by_module).reduce((sum, m) => sum + (m.count || 0), 0);
     } else if (stats.total_records !== undefined) {
       totalRecords = stats.total_records;
@@ -192,6 +198,7 @@
     const container = document.getElementById('timelineList');
     if (!container) return;
 
+    const warning = warnings.length ? '<p role="status" class="error-state">部分内容暂时无法读取，当前时间线可能不完整。<button class="btn" onclick="Timeline.load()">重试读取</button></p>' : '';
     if (timelineData.length === 0) {
       const hasFilters = currentFilters.start_date || currentFilters.end_date || currentFilters.types.length > 0;
       if (hasFilters) {
@@ -210,6 +217,7 @@
           </div>
         `;
       }
+      container.innerHTML = warning + container.innerHTML;
       return;
     }
 
@@ -236,7 +244,13 @@
         `;
       }).join('');
 
-    container.innerHTML = html;
+    container.innerHTML = warning + html;
+    container.querySelectorAll('.timeline-item').forEach(item => {
+      item.addEventListener('click', () => window.RecordDiscovery?.open(timelineData[Number(item.dataset.index)]));
+      item.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); item.click(); }
+      });
+    });
   }
 
   // 清除筛选条件
@@ -255,6 +269,7 @@
       types: [],
     };
 
+    currentPage = 1;
     load();
   }
 
@@ -267,7 +282,7 @@
     const date = record.date ? formatDateCN(record.date) : '';
 
     return `
-      <div class="timeline-item" data-module="${esc(record.module)}" data-id="${esc(record.id)}">
+      <div class="timeline-item" role="button" tabindex="0" data-index="${timelineData.indexOf(record)}" data-module="${esc(record.module)}" data-id="${esc(record.id)}">
         <div class="timeline-item-header">
           <div class="timeline-item-title">${title}</div>
           <span class="timeline-item-module" style="background:${hexRgba(moduleColor, 0.12)};color:${moduleColor}">

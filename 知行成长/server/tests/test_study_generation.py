@@ -1,3 +1,4 @@
+import re
 """Progress-based module generation with real PostgreSQL and simulated model/GitHub."""
 import json
 import os
@@ -264,7 +265,7 @@ class StudyGenerationTests(PostgreSQLFixture):
                     self.assertEqual(json.loads(self.calls[-1]['messages'][1]['content'])['lesson_no'], 3)
                     self.assertNotIn('PRIVATE', json.dumps(self.calls))
                     reader.get_by_role('button', name='放弃草稿', exact=True).click()
-                    reader.get_by_role('button', name='返回学习列表', exact=True).click()
+                    reader.get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
                     expression = home.locator('.learning-module').filter(has=page.get_by_role('heading', name='结构化表达 · 15 分钟', exact=True))
                     self.assertEqual(expression.get_by_role('button', name='生成下一课', exact=True).count(), 0)
                     expression.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()

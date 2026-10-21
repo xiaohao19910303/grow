@@ -1,0 +1,40 @@
+- generic: 知
+- heading "知行成长" [level=1]
+- generic: 个人学习与成长平台
+- generic: 2026年10月21日 · 周三
+- searchbox "全局搜索": 本轮体验验证
+- generic: ⌘K
+- generic "当前账号": 日程隔离验证
+- button "退出登录"
+- status: 已连接个人数据库
+- button "设置"
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "每日复盘"
+  - button "决策日志"
+  - button "预测校准"
+  - button "个人洞察"
+  - button "投资复盘"
+  - button "自定义记录"
+  - button "应用记录"
+  - button "错误记录"
+  - button "学习记录"
+- heading "预测校准分析" [level=2]
+- paragraph: 可视化你的预测准确度，识别校准偏差。
+- paragraph: 至少需要 10 条已判定预测才能生成校准分析
+- heading "预测校准" [level=2]
+- paragraph: 记录预测 + 自报概率 + 结果，长期校准「我觉得」与「实际发生」的偏差。
+- generic: 预测总数
+- generic: "0"
+- generic: 已结算
+- generic: "0"
+- generic: 未结算
+- generic: "0"
+- button "新增预测"
+- table:
+  - generic: 尚未记录预测

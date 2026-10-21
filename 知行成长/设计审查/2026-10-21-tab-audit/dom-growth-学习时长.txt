@@ -1,0 +1,41 @@
+- generic: 知
+- heading "知行成长" [level=1]
+- generic: 个人学习与成长平台
+- generic: 2026年10月21日 · 周三
+- searchbox "全局搜索"
+- generic: ⌘K
+- generic "当前账号": 日程隔离验证
+- button "退出登录"
+- status: 已连接个人数据库
+- button "设置"
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "成长总览"
+  - button "学习足迹"
+  - button "学习时长"
+  - button "时间线"
+  - button "知识图谱"
+  - button "周报"
+  - button "AI 报告"
+  - button "搜索"
+- heading "每日学习记录" [level=2]
+- text: 日期
+- textbox "日期": 2026-10-21
+- text: 学习时长（分钟）
+- spinbutton "学习时长（分钟）"
+- text: 备注
+- textbox "备注"
+- button "保存当天记录"
+- text: 当前连续 1 天 · 最长 1 天
+- heading "近 30 天学习时长趋势" [level=2]
+- heading "时长热力图（近 4 个月）" [level=2]
+- generic: "0"
+- generic: ≤30
+- generic: ≤60
+- generic: ≤120
+- generic: ">120 分钟"

@@ -10,8 +10,14 @@
     if(data!==undefined && (path==='/generate'||/^\/drafts\/[^/]+\/refine$/.test(path))) data={...data,ai_config:AIConfig.require()};
     const r=await fetch('/api/plans'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});
     let d;try{d=await r.json();}catch{throw new Error(r.ok?'返回的数据暂时无法读取，请重试。':`服务暂时无法完成请求（${r.status}），请稍后重试。`);}
-    if(!r.ok)throw new Error(typeof d.message==='string'?d.message:'请求未完成，请检查输入或重新读取。');return d;
+    if(!r.ok)throw new Error(typeof d.message==='string'?d.message:'请求未完成，请检查输入或重新读取。');
+    if(data!==undefined && /\/lessons\/\d+\/feedback$/.test(path))await window.refreshLearningCompletion?.(d);
+    if(d.id&&d.state&&['plan','course'].includes(d.kind)&&(path==='/generate'||path.startsWith('/attempts/')||/^\/drafts\/[^/]+\/refine$/.test(path)))trackGeneration(d);
+    if(/^\/drafts\/[^/]+$/.test(path)&&d.id)window.GenerationTasks?.forget('plans:'+d.id);
+    return d;
   }
+  function planTask(a){const context=a.context;return window.GenerationTasks?.external('plans',a,{label:a.kind==='plan'?'学习计划生成':'计划课程生成',...(context?.brief?.title?{title:context.brief.title+(context.lesson?' · 第 '+context.lesson.number+' 课':' · 规划草稿')}:{})});}
+  function trackGeneration(a){if(window.GenerationTasks)window.GenerationTasks.track(planTask(a));}
   function button(parent,label,action,primary=false) {
     const b=node('button',label,'btn'+(primary?' primary':''));b.type='button';
     b.onclick=async()=>{b.disabled=true;try{await action();}catch(e){toast(e.message);const status=root.querySelector('[role="status"]');if(status)status.textContent=e.message;}finally{b.disabled=false;}};
@@ -254,6 +260,7 @@
   window.addEventListener('hashchange',()=>{if(location.hash.startsWith('#plans/'))goTab('plans');});
   function foreground(id){return page?.kind==='attempt'&&page.id===id&&root.style.display!=='none'&&!document.hidden;}
   function notifyResult(a){
+    if(window.GenerationTasks){trackGeneration(a);return;}
     const box=node('aside',undefined,'plan-notice');box.setAttribute('role','status');
     box.append(node('span',a.state==='ready'?'你的学习草稿已生成，可以查看预览。':(a.error||stateLabel[a.state])));
     button(box,a.draft_id?'查看草稿':'查看生成记录',async()=>{if(!leave())return;route(a.draft_id?'draft':'attempt',a.draft_id||a.id);goTab('plans');box.remove();});
@@ -284,7 +291,19 @@
   async function watch(id){
     const status=shell('正在准备你的学习内容');route('attempt',id);page={kind:'attempt',id};
     button(root,'返回计划列表',window.loadPlans);
-    const cancel=button(root,'取消生成',async()=>{await api('/attempts/'+id+'/cancel',{});});
+    const cancel=button(root,'取消生成',async()=>{
+      try{
+        await api('/attempts/'+id+'/cancel',{});
+        toast('已取消生成');
+        status.textContent='已取消生成';
+        cancel.disabled=true;
+        cancel.textContent='已取消';
+        cancel.hidden=false;
+        setTimeout(()=>window.loadPlans(),1500);
+      }catch(e){
+        toast('取消失败：'+e.message);
+      }
+    });
     const clock=node('p','','desc');root.append(clock);
     const note=node('p','内容会逐步显示。完整生成并通过检查后才能正式保存。','desc');root.append(note);
     const content=node('div',undefined,'plan-stream');content.setAttribute('aria-label','生成中的内容');root.append(content);
@@ -399,14 +418,19 @@
     dirtyCheck=()=>content.value!==d.content||sources.value!==d.sources;
     button(root,'保存修改并预览',async()=>{const turn=navigation;const saved=await api('/drafts/'+d.id+'/edit-course',{content:content.value,sources:sources.value,parent_hash:d.content_hash});if(turn===navigation){dirtyCheck=null;await previewDraft(saved.id);}else toast('草稿已保存，可从计划列表查看。');},true);
   }
-  window.addEventListener('load',async()=>{if(location.hash.startsWith('#plans/'))goTab('plans');else try{const data=await api('');for(const a of data.attempts)if(['queued','generating'].includes(a.state))observe(a.id);}catch(_){/* The plans page offers a manual retry. */}});
+  window.GenerationTasks?.register('plans',{
+    read:async job=>planTask(await api('/attempts/'+job.ref+'/progress')),
+    cancel:async job=>planTask(await api('/attempts/'+job.ref+'/cancel',{})),
+    open:async job=>{if(goTab('plans')===false)return false;return job.draft_id?previewDraft(job.draft_id):watch(job.ref);}
+  });
+  window.addEventListener('load',async()=>{if(location.hash.startsWith('#plans/'))goTab('plans');else try{const data=await api('');for(const a of data.attempts){trackGeneration(a);if(['queued','generating'].includes(a.state))observe(a.id);}}catch(_){/* The plans page offers a manual retry. */}});
   window.openPlanCourse=async(pid,n)=>{
     rememberLearningOrigin();if(goTab('reader',{reading:true})===false)return;const turn=window.studyReaderRequest;const reader=document.getElementById('dailyReader');reader.hidden=false;reader.replaceChildren();const loading=window.LoadingState?.start(reader,'正在读取课程计划课程…','正在读取课程正文与个人反馈。');
-    try{const [d,detail]=await Promise.all([api('/'+pid+'/lessons/'+n),api('/'+pid)]);const version=await window.StudyNotes.contentVersion(d.content);if(turn!==window.studyReaderRequest)return;reader.replaceChildren();button(reader,'返回学习列表',returnFromLesson);githubLink(reader,'在 GitHub 打开课程',d.github_url);const content=markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);githubLink(source,'在 GitHub 打开参考资料',d.sources_github_url);markdown(source,d.sources);
+    try{const [d,detail]=await Promise.all([api('/'+pid+'/lessons/'+n),api('/'+pid)]);const version=await window.StudyNotes.contentVersion(d.content);if(turn!==window.studyReaderRequest)return;reader.replaceChildren();button(reader,(window.lessonReturnLabel?.() || '返回我的课程'),returnFromLesson);githubLink(reader,'在 GitHub 打开课程',d.github_url);const content=markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);githubLink(source,'在 GitHub 打开参考资料',d.sources_github_url);markdown(source,d.sources);
       const feedback=detail.feedback.find(item=>item.lesson_no===n);
       const notes=window.StudyNotes.mount({parent:reader,content,kind:'plan',course:pid+'/'+n,version,seedNotes:feedback?.comment||''});
       const status=node('p',d.lesson.learning_state==='completed'?'本课已完成；修改笔记不会改变完成状态。':'本课尚未完成；笔记与答案可先暂存。','desc');notes.form.insertBefore(status,notes.status);
       button(notes.actions,'本人确认学完',async()=>{await notes.flush();await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:feedback?.comment||''});d.lesson.learning_state='completed';status.textContent='本课已完成，笔记与练习答案已独立暂存。';refresh();},true);
-    }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,'返回学习列表',returnFromLesson);button(reader,'重试读取课程',()=>window.openPlanCourse(pid,n));}finally{loading?.finish();}
+    }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,(window.lessonReturnLabel?.() || '返回我的课程'),returnFromLesson);button(reader,'重试读取课程',()=>window.openPlanCourse(pid,n));}finally{loading?.finish();}
   };
 })();

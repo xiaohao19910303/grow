@@ -168,7 +168,7 @@
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.5rem;
 }
 
@@ -361,56 +361,16 @@
   background: var(--primary);
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .learning-calendar {
-    background: var(--card);
-  }
-
-  .calendar-cell {
-    background: #2a2a2e;
-    color: #e0e0e0;
-  }
-
-  .calendar-cell:hover:not(.empty):not(.weekday-header) {
-    background: #3a3a3e;
-  }
-
-  .calendar-cell.has-records {
-    background: #1e4d2b;
-    border-color: var(--green);
-  }
-
-  .calendar-cell.has-records:hover {
-    background: var(--green);
-  }
-
-  .history-card {
-    background: var(--card);
-    border-color: var(--border);
-  }
-
-  .history-stats {
-    background: #2a2a2e;
-  }
-
-  .heatmap-cell.level-0 {
-    background: #2a2a2e;
-  }
-
-  .heatmap-cell.level-1 {
-    background: #2d3561;
-  }
-
-  .heatmap-cell.level-2 {
-    background: #3d4a8f;
-  }
-
-  .heatmap-cell.level-3 {
-    background: #5a6bc7;
-  }
-
-  .heatmap-cell.level-4 {
-    background: var(--primary);
-  }
+/* Keep the calendar on the same theme as the rest of the application. */
+.calendar-cell { font-family:inherit; }
+.calendar-cell:focus-visible { outline:3px solid var(--primary); outline-offset:2px; }
+.calendar-cell.empty,.calendar-cell.weekday-header { aspect-ratio:auto; min-height:24px; padding:0; min-width:0; }
+.calendar-cell { min-height:40px; max-height:64px; aspect-ratio:auto; }
+.history-stats { color:var(--text); background:var(--primary-soft); }
+@media(max-width:600px){
+  .learning-calendar{padding:12px;}
+  .calendar-grid{gap:4px;}
+  .calendar-cell{min-height:36px;padding:0;font-size:12px;}
+  .history-card-header{display:block;}
+  .history-card-header .desc{margin-top:6px;}
 }

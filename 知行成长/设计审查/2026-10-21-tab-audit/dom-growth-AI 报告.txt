@@ -1,0 +1,29 @@
+- generic: 知
+- heading "知行成长" [level=1]
+- generic: 个人学习与成长平台
+- generic: 2026年10月21日 · 周三
+- searchbox "全局搜索"
+- generic: ⌘K
+- generic "当前账号": 日程隔离验证
+- button "退出登录"
+- status: 已连接个人数据库
+- button "设置"
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "成长总览"
+  - button "学习足迹"
+  - button "学习时长"
+  - button "时间线"
+  - button "知识图谱"
+  - button "周报"
+  - button "AI 报告"
+  - button "搜索"
+- heading "AI 行为分析报告" [level=2]
+- paragraph: AI 分析你的行为数据，提供个性化洞察和建议。
+- button "生成新报告"
+- paragraph: 尚无报告。点击"生成新报告"开始。

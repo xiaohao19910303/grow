@@ -121,6 +121,43 @@ class ActionPlansTests(PostgreSQLFixture):
         body.update(key='foreign-source-key', repeat_dates=[], target={'kind': 'plan', 'plan_id': 'plan-foreign', 'lesson_no': 1})
         self.assertEqual(self.client.post('/api/action-plans', json=body, headers=self.headers).status_code, 404)
 
+    def test_recurrence_expands_daily_and_weekly_dates(self):
+        daily = self.client.post('/api/action-plans', json=dict(
+            title='每天阅读', period='day', start_date='2026-10-19', end_date='2026-10-19', key=str(uuid.uuid4()),
+            recurrence={'freq': 'daily', 'interval': 1}, until='2026-10-22'), headers=self.headers).json()['plans']
+        self.assertEqual([p['start_date'] for p in daily], ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22'])
+        weekly = self.client.post('/api/action-plans', json=dict(
+            title='隔天阅读', period='day', start_date='2026-10-19', end_date='2026-10-19', key=str(uuid.uuid4()),
+            recurrence={'freq': 'weekly', 'interval': 1, 'byday': [1, 3, 5]}, until='2026-10-30'), headers=self.headers).json()['plans']
+        self.assertEqual([p['start_date'] for p in weekly], ['2026-10-19', '2026-10-21', '2026-10-23', '2026-10-26', '2026-10-28', '2026-10-30'])
+        self.assertEqual(self.client.get('/api/action-plans').json()['plans'][0]['horizon'], 'short')
+
+    def test_recurrence_validation_and_no_matching_dates(self):
+        for updates in [dict(recurrence={'freq': 'daily', 'byday': [1]}),
+                        dict(recurrence={'freq': 'daily'}),
+                        dict(recurrence={'freq': 'weekly', 'byday': [1]}, until='2026-10-25'),
+                        dict(recurrence={'freq': 'weekly'}, period='week')]:
+            body = dict(title='阅读', period='day', start_date='2026-10-20', end_date='2026-10-20', key=str(uuid.uuid4())) | updates
+            self.assertEqual(self.client.post('/api/action-plans', json=body, headers=self.headers).status_code, 422)
+
+    def test_template_crud(self):
+        # Create template
+        body = dict(name='每日阅读', period='day', completion_mode='time', target_minutes=30, minimum_minutes=10)
+        result = self.client.post('/api/action-plans/templates', json=body, headers=self.headers)
+        self.assertEqual(result.status_code, 200)
+        tid = result.json()['id']
+
+        # List templates
+        templates = self.client.get('/api/action-plans/templates', headers=self.headers).json()['templates']
+        self.assertEqual(len(templates), 1)
+        self.assertEqual(templates[0]['name'], '每日阅读')
+        self.assertEqual(templates[0]['target_minutes'], 30)
+
+        # Delete template
+        self.assertEqual(self.client.delete('/api/action-plans/templates/' + tid, headers=self.headers).status_code, 200)
+        templates = self.client.get('/api/action-plans/templates', headers=self.headers).json()['templates']
+        self.assertEqual(len(templates), 0)
+
     def test_another_tenant_cannot_read_or_mutate_original_plan(self):
         plan = self.create()
         other = 'action_other_' + uuid.uuid4().hex

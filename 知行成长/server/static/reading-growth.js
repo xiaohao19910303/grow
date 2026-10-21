@@ -44,13 +44,14 @@
     const generate=button(actions,ready?'更新中文导读':'生成中文导读',()=>start(false),true);
     const cancel=button(actions,'取消生成',async()=>{if(jobId)await api('/jobs/'+jobId+'/cancel',{});});cancel.hidden=true;
     parent.append(node('p','仅将本篇文章资料发送给你配置的模型，可能产生费用。生成结果保存后可直接复用；个人笔记和反馈不会发送。','desc'));
-    async function start(automatic){
+    async function start(automatic,existing){
       if(running)return;
-      const missing=AIConfig.status();if(missing){status.textContent=missing;return;}
+      const missing=existing?null:AIConfig.status();if(missing){status.textContent=missing;return;}
       running=true;generate.disabled=true;cancel.hidden=false;status.textContent='正在生成中文导读与核心观点…';
       try{const sourceHash=a.hashes?.['认知阅读/文章资料/'+a.id+'/原文.md']?.slice(0,16)||'summary';
         const key=automatic?'auto-guide-v2-'+a.id+'-'+sourceHash:crypto.randomUUID();
-        let job=await api('/articles/'+a.id+'/guide',{key,guide_format:'reading-v2'});jobId=job.id;
+        let job=existing||await (window.ReadingTasks?window.ReadingTasks.start(a.id,'guide',{key,guide_format:'reading-v2'},a.zh_title||a.title):api('/articles/'+a.id+'/guide',{key,guide_format:'reading-v2'}));jobId=job.id;
+        if(window.ReadingTasks)job=await window.ReadingTasks.wait(job,j=>{if(isCurrent())status.textContent=(j.phase||'正在生成中文导读…')+' 可切换页面，右下角生成任务会保留进度。';});
         while(['queued','running'].includes(job.state)){
           if(!isCurrent())return;
           status.textContent=job.phase||'正在生成中文导读…';
@@ -65,7 +66,9 @@
       }catch(e){if(isCurrent())status.textContent=e.message+' 原有文章和输入仍保留，可点击按钮重试。';}
       finally{running=false;generate.disabled=false;cancel.hidden=true;}
     }
-    if(a.language==='en'&&!ready&&data.reading_preferences?.auto_guide){
+    const existing=window.ReadingTasks?.find(a.id,'guide');
+    if(existing)start(false,existing);
+    else if(a.language==='en'&&!ready&&data.reading_preferences?.auto_guide){
       if(AIConfig.status()){
         status.textContent='配置个人模型后，再次打开英文文章即可自动生成中文导读。';
         button(actions,'配置个人模型',()=>goTab('settings'));

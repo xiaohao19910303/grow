@@ -3,6 +3,7 @@ import json
 import uuid
 from .core import now, encoded, fail, MODULE, TZ
 from .generation import config, event
+from .ai_config import generation_config
 
 
 ADVANCED_PROMPT_TEMPLATE = """你是一个个人学习助手，负责基于用户的学习反馈和总结，生成进阶课程内容。
@@ -90,7 +91,7 @@ class SummaryGenerator:
         self.store = store
         self.transport = transport
 
-    def generate(self, module_id, round_id, scope='full_course'):
+    def generate(self, module_id, round_id, scope='full_course', *, ai_config=None, persist=True):
         lessons_data = self.store._scan()
         completed = [l for l in lessons_data['lessons'] if l['learning_state'] == 'completed']
         if not completed:
@@ -126,9 +127,7 @@ class SummaryGenerator:
             {'role': 'user', 'content': prompt}
         ]
 
-        cfg = config(self.store)
-        if not cfg['key'] or not cfg['url']:
-            fail('ai_not_configured', '请先在设置页面配置AI API。')
+        cfg = generation_config(ai_config,self.transport)
 
         full_content = ''
         if self.transport:
@@ -140,22 +139,25 @@ class SummaryGenerator:
         async def _generate():
             nonlocal full_content
             try:
+                finished=False
                 async for packet in stream:
                     if packet.get('done'):
+                        finished=True
                         break
                     text = packet.get('text', '')
                     if text:
                         full_content += text
                         yield event('content', {'text': text})
                 # Save to DB and file
-                self.store.save_summary(module_id, round_id, scope, full_content, feedback)
+                if not finished or not full_content.strip():raise ValueError('Incomplete output')
+                if persist:self.store.save_summary(module_id, round_id, scope, full_content, feedback)
                 yield event('complete', {'content': full_content})
             except Exception as e:
                 yield event('error', {'message': str(e)})
 
         return _generate()
 
-    def generate_advanced(self, summary_content):
+    def generate_advanced(self, summary_content, *, ai_config=None, persist=True):
         """Generate advanced courses based on summary and feedback."""
         feedback = self.store.list_feedback()
         if not feedback:
@@ -185,9 +187,7 @@ class SummaryGenerator:
             {'role': 'user', 'content': prompt}
         ]
 
-        cfg = config(self.store)
-        if not cfg['key'] or not cfg['url']:
-            fail('ai_not_configured', '请先在设置页面配置AI API。')
+        cfg = generation_config(ai_config,self.transport)
 
         if self.transport:
             stream = self.transport.stream(messages, cfg)
@@ -198,14 +198,17 @@ class SummaryGenerator:
         async def _generate_advanced():
             full_content = ''
             try:
+                finished=False
                 async for packet in stream:
                     if packet.get('done'):
+                        finished=True
                         break
                     text = packet.get('text', '')
                     if text:
                         full_content += text
                         yield event('content', {'text': text})
                 # Save as a draft for user review
+                if not finished or not full_content.strip():raise ValueError('Incomplete output')
                 draft_id = str(uuid.uuid4())
                 lesson_no = self._get_next_lesson_no()
                 data = {
@@ -221,11 +224,12 @@ class SummaryGenerator:
                     'context': [],
                     'is_advanced': True
                 }
-                with self.store.lock():
-                    with self.store.conn() as c:
-                        c.execute('INSERT INTO copilot_drafts VALUES (?,?,1,?,?,?)',
-                                  (draft_id, lesson_no, 'draft', encoded(data), now()))
-                yield event('complete', {'content': full_content, 'draft_id': draft_id, 'lesson_no': lesson_no})
+                if persist:
+                    with self.store.lock():
+                        with self.store.conn() as c:
+                            c.execute('INSERT INTO copilot_drafts VALUES (?,?,1,?,?,?)',
+                                      (draft_id, lesson_no, 'draft', encoded(data), now()))
+                yield event('complete', {'content': full_content, 'draft_id': draft_id if persist else None, 'lesson_no': lesson_no,'draft':data} if not persist else {'content':full_content,'draft_id':draft_id,'lesson_no':lesson_no})
             except Exception as e:
                 yield event('error', {'message': str(e)})
 

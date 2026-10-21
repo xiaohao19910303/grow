@@ -105,3 +105,14 @@
   #view-reading .reading-body-panel .cp-reader :is(h1,h2){font-size:1.25em}
   #view-reading .reading-body-panel>.desc{margin-bottom:24px}
 }
+/* Available across the app, without covering the main reader. */
+.reading-task-center{position:fixed;right:20px;bottom:88px;z-index:90;width:min(360px,calc(100vw - 32px));padding:12px;background:var(--card,#fff);border:1px solid var(--border,#dfe3ec);border-radius:12px;box-shadow:0 4px 18px #16213c18}
+.reading-task-center[hidden],.reading-task-list[hidden]{display:none}
+.reading-task-toggle{width:100%;text-align:left;cursor:pointer;box-sizing:border-box}
+.reading-task-notice{font-size:13px;margin:8px 0 0;line-height:1.5}
+.reading-task-notice:empty{display:none}
+.reading-task-list{max-height:min(55vh,480px);overflow:auto;margin-top:8px}
+.reading-task-item{padding:12px 0;border-top:1px solid var(--border,#dfe3ec);overflow-wrap:anywhere}
+.reading-task-item p{margin:6px 0}
+.reading-task-item button{margin:4px 8px 0 0}
+@media(max-width:600px){.reading-task-center{right:12px;bottom:80px}}

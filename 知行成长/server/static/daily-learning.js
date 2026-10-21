@@ -227,7 +227,7 @@
       // 开始自动追踪学习时间
       startLearningTimer(module.id + ':' + lesson.lesson_no);
 
-      button(reader, '返回学习列表', () => returnFromLesson());
+      button(reader, (window.lessonReturnLabel?.() || '返回我的课程'), () => returnFromLesson());
       reader.append(node('h2', lesson.topic));
       reader.append(node('p', '笔记与练习答案可随时暂存；只有主动确认学完才会更新完成记录。', 'desc'));
       const content = node('div'); reader.append(content);
@@ -242,7 +242,7 @@
       if (request !== reading || turn !== window.studyReaderRequest) return;
       stopLearningTimer();
       reader.replaceChildren(node('p', error.message));
-      button(reader, '返回学习列表', () => { ++reading; returnFromLesson(); });
+      button(reader, (window.lessonReturnLabel?.() || '返回我的课程'), () => { ++reading; returnFromLesson(); });
       button(reader, '重试', () => read(module, lesson));
     } finally { loading?.finish(); }
   }
@@ -286,6 +286,7 @@
           throw new Error(result.message || result.detail || '保存失败，请重试。');
         }
         record = result; pendingSave = null; draft.saved = sent.summary_text;
+        await window.refreshLearningCompletion?.(result);
         save.textContent = '保存学习记录';
         await window.loadDailyLearning({force:true});
         const current = modules.find(item => item.id === module.id);
@@ -305,14 +306,17 @@
     if (module.lessons.every(item => item.learning_state === 'completed')) window.renderStudyGeneration?.(generationPanel, module);
     reader.append(form);
   }
-  window.openStudyCourse = async (moduleId, filename) => {
+  window.openStudyCourse = async (moduleId, filename, options = {}) => {
     const module = modules.find(item => item.id === moduleId);
     const lesson = module?.lessons.find(item => item.filename === filename);
     if (!lesson) throw new Error('课程列表尚未更新，请刷新后重试。');
     const continuing = !!studyDraft;
     if (continuing && !window.beforeStudyLeave()) return;
-    await read(module, lesson, continuing);
+    await read(module, lesson, continuing || !!options.preserveOrigin);
   };
+  function lessonTarget(module, lesson) {
+    return module.kind==='plan'?{kind:'plan',plan_id:module.id,lesson_no:lesson.lesson_no}:module.id==='renzhi'?{kind:'renzhi',lesson_no:lesson.lesson_no}:{kind:module.id,course:lesson.filename};
+  }
   function lessonRow(parent, module, lesson) {
     const row = node('div', undefined, 'todo-row lesson-row' + (lesson.learning_state === 'completed' ? ' completed' : ''));
     const text = node('div'); text.style.flex = '1'; text.style.minWidth = '0'; text.style.overflowWrap = 'anywhere';
@@ -328,15 +332,15 @@
       button(row, '查看记录', () => viewLearningRecord(module, lesson));
     }
     parent.append(row);
-    const scheduleControls=node('div');parent.append(scheduleControls);window.DailyAgenda?.mount(scheduleControls,module.kind==='plan'?{kind:'plan',plan_id:module.id,lesson_no:lesson.lesson_no}:module.id==='renzhi'?{kind:'renzhi',lesson_no:lesson.lesson_no}:{kind:module.id,course:lesson.filename},lesson.topic,parseInt(module.duration,10)||20);
+    const scheduleControls=node('div');parent.append(scheduleControls);window.DailyAgenda?.mount(scheduleControls,lessonTarget(module,lesson),lesson.topic,parseInt(module.duration,10)||20);
   }
   window.renderDailyLearning = () => {
     document.getElementById('dailyLearningTitle').textContent='继续学习';root.replaceChildren();
     if(!loaded){root.append(node('p','正在读取学习内容…'));return;}
     errors.forEach(error=>root.append(node('p',error)));
-    const available=modules.map(module=>({module,lesson:[...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).find(l=>l.learning_state!=='completed')})).filter(x=>x.lesson).slice(0,3);
+    const available=modules.map(module=>({module,lesson:[...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).find(l=>l.learning_state!=='completed')})).filter(({module,lesson})=>lesson&&!window.DailyAgenda?.isScheduled(lessonTarget(module,lesson))).slice(0,3);
     for(const {module,lesson} of available){const section=node('section',undefined,'learning-module');section.append(node('h3',module.name));lessonRow(section,module,lesson);root.append(section);}
-    if(!available.length)root.append(node('p',pendingModules.length?'正在读取可继续的课程…':'暂无未完成课程，可到学习查看历史内容。','desc'));
+    if(!available.length)root.append(node('p',pendingModules.length?'正在读取可继续的课程…':'暂无未安排的可继续课程。已安排课程请在今日安排或日程中查看，全部课程在「学习」中查看。','desc'));
     button(root,'查看全部课程',()=>goTab('library'));
   };
 
@@ -352,6 +356,7 @@
         const data = await response.json();
         throw new Error(data.message || '请求失败');
       }
+      await window.refreshLearningCompletion?.(await response.json());
       stopLearningTimer();
       showCompletionCelebration(lesson.lesson_no);
       await window.loadDailyLearning({force:true});
@@ -433,6 +438,15 @@
     modules.forEach(module=>{
       const section=node('section',undefined,'learning-module');
       section.append(node('h3',module.name+' · '+module.duration));
+      if(module.id==='renzhi'){
+        const actions=node('div',undefined,'cp-actions');
+        actions.setAttribute('role','group');
+        actions.setAttribute('aria-label',module.name+'课程工具');
+        button(actions,'认知课程管理',()=>goTab('copilot'));
+        button(actions,'课程归档',()=>goTab('archive'));
+        button(actions,'课程总结',()=>goTab('summary'));
+        section.append(actions);
+      }
       [...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).forEach(lesson=>lessonRow(section,module,lesson));
       if(!module.lessons.length)section.append(node('p','尚无已保存课程。','desc'));
       if(module.lessons.every(lesson=>lesson.learning_state==='completed'))window.renderStudyGeneration?.(section,module);
@@ -440,6 +454,7 @@
     });
   }
   const renderHome=window.renderDailyLearning;
+  window.renderOptionalLearning=renderHome;
   window.renderDailyLearning=()=>{renderHome();renderLibrary();};
   window.loadDailyLearning = (options = {}) => {
     if(listRequest && !options.force)return listRequest;

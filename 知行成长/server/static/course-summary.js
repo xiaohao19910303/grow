@@ -200,6 +200,15 @@
   };
 
   let currentSummaryContent = '';
+  let summaryTask=null,advancedTask=null;
+  let selectedSummaryResult=null,summaryDisplayRequest=0;
+  let backgroundReady=Promise.resolve();
+  const activeTask=task=>task&&['queued','generating'].includes(task.state);
+  const backgroundTask=job=>window.GenerationTasks.external('course-background',job,{label:job.kind==='advanced'?'进阶课程生成':'整课总结生成',title:'认知与通识课程'});
+  async function jobAPI(path,body){
+    const response=await fetch('/api/copilot'+path,{method:body===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/json','X-Copilot-Request':'1'},body:body===undefined?undefined:JSON.stringify(body)});
+    const data=await response.json();if(!response.ok)throw new Error(data.message||'生成任务暂不可用。');return data;
+  }
 
   async function loadSummaryPage() {
     const root = document.getElementById('summaryRoot');
@@ -324,7 +333,12 @@
     loadSummaryList();
 
     // Bind generate button
-    document.getElementById('btnGenerateSummary').onclick = generateSummary;
+    const generateButton = document.getElementById('btnGenerateSummary');
+    if (generateButton) generateButton.onclick = generateSummary;
+    const advancedButton=document.getElementById('btnGenerateAdvanced');if(advancedButton)advancedButton.onclick=generateAdvanced;
+    if(activeTask(summaryTask)&&generateButton){generateButton.disabled=true;generateButton.textContent='总结生成中，请在任务中心查看';}
+    if(activeTask(advancedTask)){const button=document.getElementById('btnGenerateAdvanced');if(button){button.disabled=true;button.textContent='进阶课程生成中';}}
+    (selectedSummaryResult?viewSummary(selectedSummaryResult):resumeBackground()).catch(error=>showToast(error.message));
   }
 
   async function loadSummaryList() {
@@ -393,96 +407,55 @@
     }
   }
 
-  async function generateSummary() {
-    const btn = document.getElementById('btnGenerateSummary');
-    const output = document.getElementById('summaryOutput');
-    const postActions = document.getElementById('summaryPostActions');
-    const outputActions = document.getElementById('outputActions');
-    const outputContent = document.getElementById('outputContent');
-
-    btn.disabled = true;
-    btn.textContent = '生成中...';
-    output.style.display = '';
-    outputActions.style.display = 'none';
-    outputContent.innerHTML = `
-      <div class="cp-summary-thinking">
-        <span>AI正在思考</span>
-        <div class="cp-summary-thinking-dots">
-          <span></span><span></span><span></span>
-        </div>
-      </div>
-    `;
-    postActions.style.display = 'none';
-    currentSummaryContent = '';
-
-    try {
-      const response = await fetch('/api/copilot/summaries/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-copilot-request': '1' },
-        body: JSON.stringify({ module: 'renzhi', scope: 'full_course', key: crypto.randomUUID() })
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || '生成失败');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      outputContent.innerHTML = '<div class="cp-summary-streaming" id="streamingContent"></div>';
-      const streamingEl = document.getElementById('streamingContent');
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // Parse SSE
-        const lines = buffer.split('\n');
-        buffer = lines.pop(); // Keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.text) {
-                currentSummaryContent += data.text;
-                streamingEl.textContent = currentSummaryContent;
-              }
-              if (data.content) {
-                currentSummaryContent = data.content;
-                streamingEl.textContent = currentSummaryContent;
-              }
-              if (data.error) {
-                throw new Error(data.error);
-              }
-            } catch (e) {
-              if (e.message !== '生成失败') console.error('SSE parse error:', e);
-            }
-          }
-        }
-      }
-
-      // Generation complete
-      outputContent.innerHTML = `<div class="cp-summary-result">${currentSummaryContent.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>`;
-      outputActions.style.display = '';
-      postActions.style.display = '';
-      document.getElementById('btnGenerateAdvanced').onclick = generateAdvanced;
-      showToast('总结已自动生成并保存');
-      loadSummaryList();  // Refresh the list
-
-    } catch (e) {
-      outputContent.innerHTML = `<div class="cp-summary-error">⚠️ 生成失败：${e.message}</div>`;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '生成整课总结';
-    }
+  async function observeBackground(job){
+    const kind=job.kind,output=document.getElementById('outputContent');
+    if(kind==='advanced')advancedTask=job;else summaryTask=job;
+    const root=document.getElementById('view-summary');
+    const displayRequest=summaryDisplayRequest;
+    if(!selectedSummaryResult)output.dataset.backgroundJob=job.id;
+    const current=()=>!selectedSummaryResult&&displayRequest===summaryDisplayRequest&&root.style.display!=='none'&&document.getElementById('outputContent')===output&&output.dataset.backgroundJob===job.id;
+    const draw=progress=>{
+      if(kind==='advanced')advancedTask=progress;else summaryTask=progress;
+      if(!current())return;
+      document.getElementById('summaryOutput').style.display='';
+      const body=document.createElement('pre');body.className='cp-summary-streaming';body.textContent=progress.raw||'已提交后台，可切换页面或刷新，任务会继续。';output.replaceChildren(body);
+    };
+    try{
+      await window.GenerationTasks.wait(backgroundTask(job),draw);
+      const done=await jobAPI('/background-jobs/'+job.id);
+      if(kind==='advanced')advancedTask=done;else summaryTask=done;
+      if(!current())return;
+      if(kind==='summary')await viewSummary(done.result_id);
+      else{const note=document.createElement('p');note.textContent='进阶课程已保存为草稿。';const button=document.createElement('button');button.className='btn primary';button.textContent='打开进阶课程草稿';button.onclick=()=>window.openGeneratedCopilotDraft(done.draft_id);output.replaceChildren(note,button);}
+      loadSummaryList();
+    }catch(error){if(current())output.textContent=error.message+' 已保留进度，可在任务中心查看。';}
+    finally{if(current()){const button=document.getElementById(kind==='summary'?'btnGenerateSummary':'btnGenerateAdvanced');if(button){button.disabled=false;button.textContent=kind==='summary'?'生成整课总结':'基于总结生成进阶课程';}}}
+  }
+  async function startBackground(kind,values){
+    await backgroundReady;
+    if(activeTask(kind==='summary'?summaryTask:advancedTask))return;
+    selectedSummaryResult=null;++summaryDisplayRequest;
+    const config=window.AIConfig.require(),keyName='background-summary:'+window.Account.user.id+':'+kind;
+    let key=sessionStorage.getItem(keyName);if(!key){key=crypto.randomUUID();sessionStorage.setItem(keyName,key);}
+    const button=document.getElementById(kind==='summary'?'btnGenerateSummary':'btnGenerateAdvanced');if(button)button.disabled=true;
+    try{
+      const job=await jobAPI(kind==='summary'?'/summaries/generate':'/summaries/generate-advanced',{module:'renzhi',key,ai_config:config,...values});
+      sessionStorage.removeItem(keyName);window.GenerationTasks.track(backgroundTask(job));
+      return observeBackground(job);
+    }catch(error){showToast(error.message+' 原请求编号已保留，重试不会重复生成。');if(button)button.disabled=false;}
+  }
+  async function generateSummary(){try{return await startBackground('summary',{scope:'full_course'});}catch(error){showToast(error.message);}}
+  async function resumeBackground(){
+    const target=document.getElementById('outputContent');await backgroundReady;
+    const data=await jobAPI('/background-jobs');if(selectedSummaryResult||target!==document.getElementById('outputContent'))return;
+    const job=data.items.find(item=>['queued','generating'].includes(item.state));if(job)observeBackground(job);
   }
 
   async function viewSummary(summaryId) {
+    selectedSummaryResult=summaryId;const turn=++summaryDisplayRequest;
     try {
       const data = await request(`/api/copilot/summaries/${summaryId}`, 'GET');
+      if(turn!==summaryDisplayRequest||selectedSummaryResult!==summaryId)return;
       const output = document.getElementById('summaryOutput');
       const outputActions = document.getElementById('outputActions');
       const outputContent = document.getElementById('outputContent');
@@ -490,90 +463,14 @@
       outputContent.innerHTML = `<div class="cp-summary-result">${data.content.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>`;
       outputActions.style.display = '';
       currentSummaryContent = data.content;
+      const generate=document.getElementById('btnGenerateSummary');if(generate&&!activeTask(summaryTask)){generate.disabled=false;generate.textContent='生成整课总结';}
       document.getElementById('summaryPostActions').style.display = '';
     } catch (e) {
       alert('加载失败：' + e.message);
     }
   }
 
-  async function generateAdvanced() {
-    if (!currentSummaryContent) return;
-    const btn = document.getElementById('btnGenerateAdvanced');
-    const origText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = '生成中...';
-
-    try {
-      const response = await fetch('/api/copilot/summaries/generate-advanced', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-copilot-request': '1' },
-        body: JSON.stringify({
-          module: 'renzhi',
-          key: crypto.randomUUID(),
-          summary_content: currentSummaryContent
-        })
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || '生成失败');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let advancedContent = '';
-      let draftId = null;
-
-      // Show output area
-      const output = document.getElementById('summaryOutput');
-      const outputContent = document.getElementById('outputContent');
-      output.style.display = '';
-      outputContent.innerHTML = '<div class="cp-summary-streaming" id="advancedStreaming">正在生成进阶课程...</div>';
-      const streamingEl = document.getElementById('advancedStreaming');
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.text) {
-                advancedContent += data.text;
-                streamingEl.textContent = advancedContent;
-              }
-              if (data.content) {
-                advancedContent = data.content;
-                streamingEl.textContent = advancedContent;
-                if (data.draft_id) draftId = data.draft_id;
-              }
-              if (data.error) {
-                throw new Error(data.error);
-              }
-            } catch (e) {
-              if (e.message !== '生成失败') console.error('SSE parse error:', e);
-            }
-          }
-        }
-      }
-
-      // Done
-      showToast('进阶课程已生成为草稿，请在"课程管理"页面查看和编辑');
-      document.getElementById('summaryPostActions').style.display = 'none';
-
-    } catch (e) {
-      showToast('生成失败：' + e.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = origText;
-    }
-  }
+  async function generateAdvanced(){try{if(currentSummaryContent)return await startBackground('advanced',{summary_content:currentSummaryContent});}catch(error){showToast(error.message);}}
 
   // Helper functions for copy and export
   function copyToClipboard(text) {
@@ -637,4 +534,21 @@
   }
 
   window.loadSummaryPage = loadSummaryPage;
+  backgroundReady=window.GenerationTasks?.register('course-background',{
+    read:async job=>backgroundTask(await jobAPI('/background-jobs/'+job.ref)),
+    cancel:async job=>backgroundTask(await jobAPI('/background-jobs/'+job.ref+'/cancel',{})),
+    recover:async()=>{const data=await jobAPI('/background-jobs');return data.items.filter((job,index)=>['queued','generating'].includes(job.state)||index<5).map(backgroundTask);},
+    open:async job=>{
+      if(job.draft_id)return window.openGeneratedCopilotDraft(job.draft_id);
+      selectedSummaryResult=job.result_id||null;++summaryDisplayRequest;
+      if(goTab('summary')===false)return false;await loadSummaryPage();
+      if(job.result_id)return viewSummary(job.result_id);
+      return observeBackground(await jobAPI('/background-jobs/'+job.ref));
+    }
+  })||Promise.resolve();
+  // Keep links to results created before durable background jobs were introduced.
+  window.GenerationTasks?.register('summary-stream',{
+    read:async job=>({...job,state:'interrupted',error:'这是旧连接记录，请在历史总结或课程管理核对结果。'}),
+    open:async job=>{if(job.draft_id)return window.openGeneratedCopilotDraft(job.draft_id);if(goTab('summary')===false)return false;await loadSummaryPage();if(job.result_id)return viewSummary(job.result_id);}
+  });
 })();

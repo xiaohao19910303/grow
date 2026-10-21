@@ -64,6 +64,19 @@ class Generator:
         self.store = store
         self.transport = transport
         self.active = {}
+        self.workers = {}
+
+    def launch(self,draft_id,fresh,cfg):
+        if not fresh or draft_id in self.workers:return
+        async def consume():
+            async for _ in self.stream(draft_id,True,cfg):pass
+        task=asyncio.create_task(consume());self.workers[draft_id]=task
+        task.add_done_callback(lambda _:self.workers.pop(draft_id,None))
+
+    async def shutdown(self):
+        tasks=list(self.workers.values())
+        for task in tasks:task.cancel()
+        if tasks:await asyncio.gather(*tasks,return_exceptions=True)
 
     def begin(self, number, key, ai_config=None):
         cfg = generation_config(ai_config, self.transport)
@@ -98,13 +111,12 @@ class Generator:
         return draft_id, True
 
     def cancel(self, draft_id):
-        task = self.active.get(draft_id)
+        task = self.workers.get(draft_id) or self.active.get(draft_id)
         if task:
             task.cancel()
-        else:
-            with self.store.conn() as c:
-                c.execute("UPDATE copilot_drafts SET status='cancelled' WHERE id=? AND status='generating'", (draft_id,))
-                c.execute("UPDATE copilot_generation_attempts SET status='cancelled' WHERE id=? AND status='generating'", (draft_id,))
+        with self.store.conn() as c:
+            c.execute("UPDATE copilot_drafts SET status='cancelled' WHERE id=? AND status='generating'", (draft_id,))
+            c.execute("UPDATE copilot_generation_attempts SET status='cancelled' WHERE id=? AND status='generating'", (draft_id,))
         return {'id': draft_id, 'cancel_requested': True}
 
     def persist(self, draft_id, d, status, metrics):

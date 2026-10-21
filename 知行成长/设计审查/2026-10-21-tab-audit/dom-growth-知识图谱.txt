@@ -1,0 +1,42 @@
+- generic: 知
+- heading "知行成长" [level=1]
+- generic: 个人学习与成长平台
+- generic: 2026年10月21日 · 周三
+- searchbox "全局搜索"
+- generic: ⌘K
+- generic "当前账号": 日程隔离验证
+- button "退出登录"
+- status: 已连接个人数据库
+- button "设置"
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "成长总览"
+  - button "学习足迹"
+  - button "学习时长"
+  - button "时间线"
+  - button "知识图谱"
+  - button "周报"
+  - button "AI 报告"
+  - button "搜索"
+- heading "知识图谱可视化" [level=2]
+- paragraph: 交互式力导向图，展示知识点之间的关联。
+- button "扫描关系"
+- combobox:
+  - option "全部分类" [selected]
+- textbox "搜索节点..."
+- generic: 节点数
+- generic: "0"
+- generic: 关系数
+- generic: "0"
+- generic: 分类数
+- generic: "0"
+- paragraph: 暂无知识节点。请先扫描知识。
+- heading "知识图谱" [level=2]
+- paragraph: 自动扫描工作区的 Markdown（知识索引 + 思维工具教程 + 课程/文章/练习足迹），节点点击可回查来源。
+- button "重新扫描"
+- textbox "搜索节点…"

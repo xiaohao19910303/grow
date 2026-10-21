@@ -1,0 +1,148 @@
+{
+  "automatic_checkins": {
+    "checkins": {
+      "2026-10-21": {
+        "biaoda": 3
+      }
+    },
+    "modules": []
+  },
+  "weekly_report": {
+    "range": "week",
+    "start": "2026-10-15",
+    "end": "2026-10-21",
+    "days": 7,
+    "active_days": 0,
+    "total_minutes": 0,
+    "avg_minutes": 0,
+    "modules": [
+      {
+        "name": "执行复盘",
+        "color": "#4F6EF7",
+        "days": 0,
+        "pct": 0
+      },
+      {
+        "name": "整合练习",
+        "color": "#7C5CF0",
+        "days": 0,
+        "pct": 0
+      },
+      {
+        "name": "每日认知与通识学习",
+        "color": "#00A6A6",
+        "days": 0,
+        "pct": 0
+      },
+      {
+        "name": "深度写作",
+        "color": "#E07B39",
+        "days": 0,
+        "pct": 0
+      },
+      {
+        "name": "结构化表达",
+        "color": "#D64580",
+        "days": 0,
+        "pct": 0
+      },
+      {
+        "name": "英文阅读",
+        "color": "#2FA84F",
+        "days": 0,
+        "pct": 0
+      },
+      {
+        "name": "现代思维工具",
+        "color": "#6B7280",
+        "days": 0,
+        "pct": 0
+      },
+      {
+        "name": "高认知能力训练",
+        "color": "#C0362C",
+        "days": 0,
+        "pct": 0
+      }
+    ],
+    "decisions": 1,
+    "predictions": 0,
+    "reviews": 1,
+    "insights": 0,
+    "knowledge_count": 0,
+    "streak": 0
+  },
+  "course_note_search": {
+    "results": [],
+    "total_count": 0,
+    "page": 1,
+    "page_size": 20
+  },
+  "decision_search_all": {
+    "results": [],
+    "total_count": 0,
+    "page": 1,
+    "page_size": 20
+  },
+  "decision_search_filtered": {
+    "results": [
+      {
+        "id": 1,
+        "module": "decision",
+        "module_label": "决策记录",
+        "title": "审查决策唯一词",
+        "content": "审查决策唯一词 | 隔离测试记录",
+        "date": "2026-10-21",
+        "data": {
+          "id": 1,
+          "date": "2026-10-21",
+          "title": "审查决策唯一词",
+          "context": "隔离测试记录",
+          "options": null,
+          "reason": null,
+          "expected": null,
+          "probability": null,
+          "emotion": null,
+          "actual": null,
+          "bias": null
+        }
+      }
+    ],
+    "total_count": 1,
+    "page": 1,
+    "page_size": 20
+  },
+  "timeline_all": {
+    "records": [],
+    "total_count": 0,
+    "start_date": "2026-10-01",
+    "end_date": "2026-10-21",
+    "page": 1,
+    "page_size": 50
+  },
+  "timeline_review_only": {
+    "records": [
+      {
+        "id": 1,
+        "module": "review",
+        "module_label": "复盘记录",
+        "title": "测试复盘：预计完成课程后记录一次实践。",
+        "summary": "明天将事实与推断分开写。",
+        "date": "2026-10-21",
+        "data": {
+          "id": 1,
+          "date": "2026-10-21",
+          "thought": "测试复盘：预计完成课程后记录一次实践。",
+          "actual": "",
+          "gap": "",
+          "action": "明天将事实与推断分开写。"
+        }
+      }
+    ],
+    "total_count": 1,
+    "start_date": "2026-10-01",
+    "end_date": "2026-10-21",
+    "page": 1,
+    "page_size": 50
+  }
+}
