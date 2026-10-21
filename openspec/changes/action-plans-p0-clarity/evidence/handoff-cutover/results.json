@@ -172,5 +172,9 @@
     "Production rollout, migrations and public entrypoints",
     "Unified whole-backend strict typecheck"
   ],
-  "failed_attempts": "Historical interrupted low-space full run retained; seven isolated cases passed then current complete 1508 passed. Incorrect article test publisher hook fixed. Receipt phase/unknown-field acceptance reproduced red, corrected and full 37 C3 checks passed."
+  "failed_attempts": "Historical interrupted low-space full run retained; seven isolated cases passed then current complete 1508 passed. Incorrect article test publisher hook fixed. Receipt phase/unknown-field acceptance reproduced red, corrected and full 37 C3 checks passed.",
+  "verified_implementation_commits": {
+    "grow": "f4ec0b97518699da4c41af36adfdec57daecf5f0",
+    "zook": "e0d9807abec161f7294c2ac723311703a729b286"
+  }
 }
