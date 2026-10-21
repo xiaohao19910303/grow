@@ -70,3 +70,10 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var
 .context-nav .btn.primary{background:var(--primary-soft);color:var(--primary);border-color:var(--primary)}
 .subnav[hidden],.context-nav[hidden]{display:none}
 @media(max-width:600px){.subnav{gap:6px}.subnav .btn{padding:8px 10px;flex:0 0 auto}.context-nav{padding:6px;margin-top:-6px}.context-nav .btn{font-size:12px}}
+
+/* Full category names stay readable at small viewport widths. */
+.completion-chart{display:grid;gap:12px;margin:16px 0}
+.completion-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr) 3em;gap:12px;align-items:center}
+.completion-row>span:first-child{overflow-wrap:anywhere}
+.completion-row>span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.completion-row progress{width:100%;min-width:0;height:12px}

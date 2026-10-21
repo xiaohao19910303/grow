@@ -463,7 +463,7 @@
     const groups=[modules.filter(m=>m.id==='renzhi'),modules.filter(m=>['yingyu','biaoda'].includes(m.id)),modules.filter(m=>m.kind==='plan')];
     const sources=[['认知课程','/api/copilot/today-task',data=>[{id:'renzhi',name:'认知与通识',duration:'15–20 分钟',lessons:data.lessons}]],
       ['英文阅读与结构化表达','/api/study-materials',data=>data.modules],
-      ['课程计划','/api/plans',data=>data.plans.map(p=>({id:p.id,kind:'plan',name:p.name,duration:p.brief.minutes+' 分钟',lessons:p.lessons}))]];
+      ['课程规划','/api/plans',data=>data.plans.map(p=>({id:p.id,kind:'plan',name:p.name,duration:p.brief.minutes+' 分钟',lessons:p.lessons}))]];
     pendingModules=sources.map(s=>s[0]);errors=[];loaded=true;window.renderDailyLearning();
     const task=Promise.all(sources.map(async([name,path,decode],index)=>{
       try{const data=await get(path);if(request!==generation)return;groups[index]=decode(data);}

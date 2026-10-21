@@ -24,7 +24,7 @@ const courseModule=(title)=>({id:'biaoda',name:title,duration:'15 分钟',lesson
   assert.equal(requests.length,3);const shared=context.window.loadDailyLearning();assert.equal(requests.length,3,'navigation shares the pending request');
   requests[1].resolve({modules:[courseModule('结构化表达')]});await flush();
   assert(element('dailyLearning').textContent.includes('结构化表达'),'available courses render while plans are pending');
-  assert(element('learningLibrary').textContent.includes('正在读取课程计划'));
+  assert(element('learningLibrary').textContent.includes('正在读取课程规划'));
   const newer=context.window.loadDailyLearning({force:true});assert.equal(requests.length,6);
   requests[4].resolve({modules:[courseModule('更新后的课程')]});await flush();
   requests[0].resolve({lessons:[]});requests[2].resolve({plans:[]});await shared;
