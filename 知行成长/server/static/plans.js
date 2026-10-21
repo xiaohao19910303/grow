@@ -347,7 +347,10 @@
     root.querySelector('h2').textContent=d.kind==='plan'?d.brief.title:'课程阅读预览';
     const actions=node('div',undefined,'plan-actions');root.append(actions);button(actions,'返回计划列表',window.loadPlans);
     const editable=!d.family_published&&d.state!=='published';
-    if(editable){button(actions,'直接编辑',()=>d.kind==='plan'?editPlan(d):courseEditor(d));if(d.state==='ready')button(actions,'告诉 AI 如何调整',()=>refineEditor(d));}
+    if(editable){
+      button(actions,'编辑草稿',()=>d.kind==='plan'?editPlan(d):courseEditor(d),true);
+      if(d.state==='ready')button(actions,'告诉 AI 如何调整',()=>refineEditor(d));
+    }
     if(d.kind==='plan'){
       root.append(node('p',`${d.brief.weeks}周 · 每周${d.brief.sessions}次 · 每次${d.brief.minutes}分钟 · 共${d.document.lessons.length}课`,'plan-summary'));
       if(d.budget)root.append(node('p',`每周已知总投入（含本规划）：${d.budget.known_minutes}分钟；预算：${d.budget.weekly??'未设置'}${d.budget.over?'；超出'+d.budget.over+'分钟':''}${d.budget.legacy_unknown?'；旧模块投入尚未登记':''}`,'desc'));

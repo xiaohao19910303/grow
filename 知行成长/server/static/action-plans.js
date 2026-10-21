@@ -303,11 +303,26 @@
       }catch(e){error.textContent='保存模板失败：'+e.message;}
     });
     if(existing||draft)button(actions,'放弃表单修改',async()=>{if(confirm('放弃当前表单的未提交修改？已保存的计划和执行记录会保留。')){client.remove(draftName);d.close();}});
-    form.onsubmit=async event=>{event.preventDefault();save.disabled=true;error.textContent='正在保存计划…';saveDraft();try{const values=payload();
-      if(existing)await change({...existing,revision:seed.revision||existing.revision},'edit',{fields:values});
-      else{const saved=await client.write('create','',values);snapshot.plans.push(...saved.plans.map(p=>({...p,progress:{completed:0,minimum:0,minutes:0,interrupted:0},blocked:false})));}
-      client.remove(draftName);d.close();renderHome();if(visible())renderWorkspace();toast(existing?'计划已更新':'计划已保存，可以开始行动了。');try{await load(true);}catch{toast('计划已保存，列表暂未刷新，可以稍后再刷新。');}
-    }catch(e){error.textContent=e.message;}finally{save.disabled=false;}};
+    form.onsubmit=async event=>{event.preventDefault();
+      // Validate required fields
+      const values=payload();
+      if(!values.title||!values.title.trim()){error.textContent='请填写计划名称';fields.title.focus();return;}
+      if(!values.start_date){error.textContent='请选择开始日期';fields.start_date.focus();return;}
+      if(!modeIsDay&&!values.end_date){error.textContent='请选择结束日期';fields.end_date.focus();return;}
+      if(values.end_date&&values.end_date<values.start_date){error.textContent='结束日期不能早于开始日期';fields.end_date.focus();return;}
+      if(modeIsDay&&values.completion_mode==='time'){
+        if(!values.target_minutes||values.target_minutes<1){error.textContent='请填写每次标准分钟';fields.target_minutes.focus();return;}
+        if(!values.minimum_minutes||values.minimum_minutes<1){error.textContent='请填写起步分钟';fields.minimum_minutes.focus();return;}
+        if(values.minimum_minutes>values.target_minutes){error.textContent='起步分钟不能大于标准分钟';fields.minimum_minutes.focus();return;}
+      }
+      if(!modeIsDay&&(!values.target_count||values.target_count<1)){error.textContent='请填写目标达标次数';fields.target_count.focus();return;}
+      save.disabled=true;error.textContent='正在保存计划…';saveDraft();
+      try{
+        if(existing)await change({...existing,revision:seed.revision||existing.revision},'edit',{fields:values});
+        else{const saved=await client.write('create','',values);snapshot.plans.push(...saved.plans.map(p=>({...p,progress:{completed:0,minimum:0,minutes:0,interrupted:0},blocked:false})));}
+        client.remove(draftName);d.close();renderHome();if(visible())renderWorkspace();toast(existing?'计划已更新':'计划已保存，可以开始行动了。');try{await load(true);}catch{toast('计划已保存，列表暂未刷新，可以稍后再刷新。');}
+      }catch(e){error.textContent=e.message;}finally{save.disabled=false;}
+    };
     fields.title.focus();
   }
   async function openTarget(target,actionId=null){
