@@ -1,6 +1,8 @@
 # 知行成长 · 个人学习与成长平台
 
-「有思考 · 有执行 · 判断准确」的本地个人学习与成长平台。
+「有思考 · 有执行 · 判断准确」的网页学习与成长平台。网页优先独立交付；App 与 Zook 的后续完善保留现有接口边界。
+
+独立安装、配置预检、备份恢复请按[网页独立部署手册](docs/deployment/standalone-web.md)。当前候选尚需以本批验收报告核对外部发布阻塞。
 
 ## 入口导航
 
@@ -18,8 +20,12 @@
 
 ## 快速开始
 
-```bash
-cd 知行成长 && ./start.sh   # 一键启动，自动打开 http://localhost:8756
+先按部署手册安装根 requirements.txt、准备 PostgreSQL 和自己的 server/.env，再运行：
+
+```sh
+cd 知行成长/server
+../../.venv/bin/python deployment.py check
+../../.venv/bin/python deployment.py serve --port 8756
 ```
 
 ## 七大模块

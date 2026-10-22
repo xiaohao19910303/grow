@@ -3,7 +3,7 @@ services:
     name: zhixingchengzhang
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: cd 知行成长/server && uvicorn app:app --host 0.0.0.0 --port $PORT
+    startCommand: cd 知行成长/server && python deployment.py serve --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -16,7 +16,7 @@ services:
       - key: PLAN_CONTENT_BACKEND
         value: github
       - key: GITHUB_CONTENT_REPO
-        value: xiaohao19910303/zhixing
+        sync: false
       - key: GITHUB_CONTENT_BRANCH
         value: main
       - key: GITHUB_CONTENT_TOKEN
@@ -27,5 +27,9 @@ services:
         sync: false
       - key: ACCOUNT_ENCRYPTION_KEY
         sync: false
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: GROW_SCHEDULED_READING_ENABLED
+        value: "0"
     healthCheckPath: /api/health
     autoDeploy: true

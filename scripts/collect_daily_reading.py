@@ -4,10 +4,16 @@ import os
 import time
 import urllib.error
 import urllib.request
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
-BASE = 'https://zhixingchengzhang.onrender.com'
+BASE = os.getenv('GROW_PUBLIC_URL', '').rstrip('/')
 URL = BASE + '/api/reading/scheduled-run'
+
+def validate_target():
+    parsed = urlsplit(BASE)
+    if (parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password
+            or parsed.path or parsed.query or parsed.fragment):
+        raise RuntimeError('Configure GROW_PUBLIC_URL as the HTTPS origin of this installation')
 
 
 def identity_token():
@@ -31,6 +37,7 @@ def wait_for_deploy():
 
 
 def main():
+    validate_target()
     wait_for_deploy()
     token, refreshed = '', 0
     method = 'POST'
@@ -56,7 +63,7 @@ def main():
         state = result['state']
         if state == 'ready' and result['saved_count'] > 0:
             return
-        if state in ('scheduled', 'paused'):
+        if state in ('scheduled', 'paused', 'disabled'):
             return
         if state in ('failed', 'cancelled'):
             raise RuntimeError('Daily collection did not finish; inspect the saved job')

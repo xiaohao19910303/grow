@@ -1,5 +1,7 @@
 # 知行成长 - 云端应用
 
+当前开发方向为网页优先。独立部署不依赖 App/Zook，正式内容首版使用 PostgreSQL + 自有 GitHub 仓库，AI 按需启用；安装与恢复统一见[网页部署手册](../docs/deployment/standalone-web.md)。历史在线地址不代表当前候选已发布。
+
 ## 🌐 在线访问
 
 **应用地址**: https://zhixingchengzhang.onrender.com
