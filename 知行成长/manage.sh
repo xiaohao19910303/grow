@@ -7,7 +7,10 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 PID_FILE="$PROJECT_ROOT/.server.pid"
 LOG_FILE="$PROJECT_ROOT/.server.log"
-VENV_PYTHON="${GROW_PYTHON:-$PROJECT_ROOT/.venv/bin/python}"
+VENV_PYTHON="${GROW_PYTHON:-$PROJECT_ROOT/../.venv/bin/python}"
+if [ -z "${GROW_PYTHON:-}" ] && [ ! -x "$VENV_PYTHON" ] && [ -x "$PROJECT_ROOT/.venv/bin/python" ]; then
+    VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+fi
 
 # 颜色定义
 RED='\033[0;31m'
@@ -38,10 +41,10 @@ check_venv() {
         log_error "缺少项目虚拟环境"
         echo ""
         echo "请先按 README.md 完成环境配置："
-        echo "  1. cd $PROJECT_ROOT"
+        echo "  1. cd $PROJECT_ROOT/.."
         echo "  2. python3 -m venv .venv"
         echo "  3. source .venv/bin/activate"
-        echo "  4. pip install -r ../requirements.txt"
+        echo "  4. pip install -r requirements.txt"
         echo "  5. 使用同一锁定依赖；配置 server/.env 后运行 deployment.py check"
         echo ""
         exit 1
@@ -56,7 +59,7 @@ check_deps() {
         echo ""
         echo "请激活虚拟环境后安装依赖："
         echo "  source .venv/bin/activate"
-        echo "  pip install -r ../requirements.txt"
+        echo "  pip install -r requirements.txt"
         echo ""
         exit 1
     fi

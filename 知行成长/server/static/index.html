@@ -678,7 +678,7 @@ async function doReset(){
   const generation=editGeneration;
   const empty={_revision:state._revision,modules:[],checkins:{},habits:{},customFields:[],customRecords:[],decisions:[],predictions:[],reviews:[],insights:[],todos:[]};
   saveInFlight=true;
-  const buttons=document.querySelectorAll('#modal button');buttons.forEach(b=>b.disabled=true);
+  const buttons=document.querySelectorAll('#modalBox button');buttons.forEach(b=>b.disabled=true);
   const result=document.getElementById('resetResult');if(result)result.textContent='正在确认清空结果…';
   try{
     const response=await fetch('/api/data',{method:'PUT',headers:{'Content-Type':'application/json','X-Legacy-State-Protocol':'1'},body:JSON.stringify(empty)});
