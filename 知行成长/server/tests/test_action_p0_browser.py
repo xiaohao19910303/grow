@@ -68,6 +68,7 @@ class P0BrowserAcceptance(unittest.TestCase):
 
     def finish(self,minutes,interrupted=False):
         bar=self.page.locator('#actionExecution')
+        if not bar.locator('details').evaluate('(element)=>element.open'):bar.locator('summary').click()
         bar.get_by_role('button',name='中断并保留记录' if interrupted else '记录完成',exact=True).click()
         d=self.page.get_by_role('dialog');d.get_by_label('实际执行分钟').fill(str(minutes))
         d.get_by_role('button',name='保存中断' if interrupted else '确认并记录',exact=True).click();expect(d).to_have_count(0)
@@ -248,6 +249,7 @@ class P0BrowserAcceptance(unittest.TestCase):
         expect(reader).to_contain_text('本次读完' if kind=='article' else '本课已完成')
         bar=self.page.locator('#actionExecution');expect(bar).to_be_visible()
         self.assertEqual(matching()[0]['status'],'active')
+        if not bar.locator('details').evaluate('(element)=>element.open'):bar.locator('summary').click()
         bar.get_by_role('button',name='记录投入',exact=True).click()
         d=self.page.get_by_role('dialog');d.get_by_label('实际执行分钟').fill('8')
         d.get_by_role('button',name='确认并记录',exact=True).click();expect(d).to_have_count(0)

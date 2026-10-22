@@ -246,7 +246,7 @@ class StudyMaterialTests(PostgreSQLFixture):
                     self.assertEqual(english.get_by_role('button', name='开始学习', exact=True).count(), 1)
                     page.get_by_role('button', name='记录', exact=True).click()
                     page.locator('[data-group="growth"]').click()
-                    page.get_by_role('button', name='学习历史', exact=True).click()
+                    page.get_by_role('button', name='学习回顾', exact=True).click()
                     history = page.locator('#view-learning-history')
                     history.get_by_text('Edited private note', exact=True).wait_for()
                     history.get_by_text('PRIVATE English learning note', exact=True).wait_for()

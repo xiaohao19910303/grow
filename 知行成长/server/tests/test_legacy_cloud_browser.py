@@ -19,6 +19,14 @@ class LegacyCloudBrowser(CloudHTTPFixture):
         from playwright.sync_api import sync_playwright
         static=Path(__file__).resolve().parents[1]/'static'
         self.reader.save_full_text(self.aid,'Public saved article body. '*20)
+        from study_notes import register as register_notes
+        from test_reading_growth_browser import GUIDE
+        register_notes(self.app)
+        async def reading_model(messages,cfg):
+            self.assertEqual(cfg['key'],OWN['api_key'])
+            yield {'text':GUIDE+'\n\nPublic generated reading guide.'}
+            yield {'done':True}
+        self.service.transport=reading_model
         self.app.mount('/static',StaticFiles(directory=static))
         @self.app.get('/')
         def home():
@@ -34,7 +42,7 @@ class LegacyCloudBrowser(CloudHTTPFixture):
             window.rememberLearningOrigin=()=>{};window.returnFromLesson=()=>{document.querySelector('#view-copilot .cp-reader').hidden=true;document.querySelector('.cp-management').open=true;loadCopilot();};
             window.goTab=name=>{document.getElementById('view-copilot').style.display=name==='copilot'?'block':'none';document.getElementById('view-reading').style.display=name==='reading'?'block':'none';if(name==='reading')enterReading();else loadCopilot();};
             window.renderArticleTranslation=(parent,a,text,markdown)=>{const box=document.createElement('div');markdown(box,text);parent.append(box);return box;};
-            </script>'''+language+'''<script src="/static/ai-config.js"></script><script src="/static/copilot.js"></script><script src="/static/reading-growth.js"></script><script src="/static/reading-body.js"></script><script src="/static/reading.js"></script>
+            </script>'''+language+'''<script src="/static/ai-config.js"></script><script src="/static/loading-state.js"></script><script src="/static/reading-tasks.js"></script><script src="/static/study-note-session.js"></script><script src="/static/study-notes.js"></script><script src="/static/copilot.js"></script><script src="/static/reading-growth.js"></script><script src="/static/reading-body.js"></script><script src="/static/reading.js"></script>
             </body></html>''')
         sock=socket.socket();sock.bind(('127.0.0.1',0));base='http://127.0.0.1:'+str(sock.getsockname()[1])
         server=uvicorn.Server(uvicorn.Config(self.app,log_level='error'))
@@ -62,16 +70,19 @@ class LegacyCloudBrowser(CloudHTTPFixture):
                     page.get_by_role('button',name='撤销本人完成记录',exact=True).wait_for()
                     page.screenshot(path='/tmp/grow-legacy-course-browser.png')
                     page.get_by_role('button',name='认知阅读',exact=True).click()
+                    page.get_by_role('button',name='查看历史文章',exact=True).click()
                     page.get_by_role('button',name='本站阅读',exact=True).click()
                     page.get_by_role('button',name='我的笔记',exact=True).click()
                     notes=page.get_by_placeholder('哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...')
                     notes.fill('PRIVATE BROWSER NOTE')
                     page.get_by_role('button',name='保存笔记',exact=True).click()
                     page.get_by_text('笔记已保存',exact=True).wait_for()
-                    page.get_by_role('button',name='生成/更新AI导读',exact=True).click()
-                    page.get_by_role('button',name='阅读中文导读',exact=True).click()
+                    page.get_by_role('button',name='中文导读',exact=True).click()
+                    page.get_by_role('button',name='生成中文导读',exact=True).click()
+                    page.get_by_text('中文导读已保存，下次打开可直接阅读。',exact=True).wait_for()
                     page.get_by_role('button',name='我的笔记',exact=True).click()
                     self.assertEqual(page.get_by_placeholder('哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...').input_value(),'PRIVATE BROWSER NOTE')
+                    page.get_by_role('button',name='中文导读',exact=True).click()
                     page.get_by_text('Public generated reading guide.',exact=True).filter(visible=True).wait_for()
                     page.reload()
                     page.get_by_role('button',name='我的笔记',exact=True).click()

@@ -184,7 +184,7 @@ class AccountIntegrationTests(unittest.TestCase):
 
     def test_daily_schedule_identity_is_scoped_to_owner_schedule_only(self):
         headers={**self.headers,'Authorization':'Bearer fixture-oidc-token'}
-        with patch('reading.scheduled.authorized',return_value=True):
+        with patch('reading.scheduled.authorized',return_value=True), patch.dict(os.environ,{'GROW_SCHEDULED_READING_ENABLED':'1','GROW_PUBLIC_URL':'https://fixture.example','GROW_SCHEDULE_REPOSITORY':'owner/fixture','GROW_SCHEDULE_REPOSITORY_ID':'1234','GROW_SCHEDULE_REF':'refs/heads/main'}):
             response=self.client.get('/api/reading/scheduled-run',headers=headers)
             self.assertEqual(response.status_code,200,response.text)
             self.assertEqual(response.json()['state'],'paused')
@@ -489,7 +489,7 @@ class AccountBrowserTests(AccountIntegrationTests):
         import socket
         import threading
         import uvicorn
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, expect
         sock = socket.socket()
         sock.bind(('127.0.0.1',0))
         port = sock.getsockname()[1]
@@ -531,9 +531,12 @@ class AccountBrowserTests(AccountIntegrationTests):
                     page.get_by_role('button',name='注册并开始学习').click()
                     page.wait_for_url(url + '/')
                     page.get_by_text('browser_alice',exact=True).wait_for()
+                    expect(page.locator('#storageStatus')).to_have_text('已连接个人数据库')
                     page.locator('#todoInput0').fill('ALICE PRIVATE TODO')
-                    page.locator('#todayTodos').get_by_role('button',name='添加',exact=True).click()
-                    page.get_by_text('已保存 · 个人数据库',exact=True).wait_for()
+                    with page.expect_response(lambda response: response.request.method=='POST' and response.url==url+'/api/action-plans') as saved:
+                        page.locator('#todoInput0').press('Enter')
+                    self.assertEqual(saved.value.status,200,saved.value.text())
+                    page.get_by_text('ALICE PRIVATE TODO',exact=True).wait_for()
                     page.get_by_role('button',name='设置',exact=True).click()
                     page.get_by_text('当前：owner/courses',exact=False).wait_for()
                     page.locator('#apiBaseUrl').fill('https://model.example/v1')
@@ -554,6 +557,7 @@ class AccountBrowserTests(AccountIntegrationTests):
                     old_tab = context.new_page()
                     old_tab.goto(url)
                     old_tab.locator('#todoInput0').wait_for()
+                    expect(old_tab.locator('#storageStatus')).to_have_text('已连接个人数据库')
                     page.get_by_role('button',name='退出登录',exact=True).click()
                     page.wait_for_url('**/login')
                     self.assertFalse(page.locator('#registerTab').is_visible())
@@ -566,7 +570,7 @@ class AccountBrowserTests(AccountIntegrationTests):
                     page.get_by_text('browser_bob',exact=True).wait_for()
                     self.assertEqual(page.get_by_text('ALICE PRIVATE TODO',exact=True).count(),0)
                     old_tab.locator('#todoInput0').fill('STALE ALICE TODO')
-                    old_tab.locator('#todayTodos').get_by_role('button',name='添加',exact=True).click()
+                    old_tab.locator('#todoInput0').press('Enter')
                     old_tab.get_by_text('当前账号已变更',exact=True).wait_for()
                     page.get_by_role('button',name='设置',exact=True).click()
                     self.assertEqual(page.locator('#apiKey').input_value(),'')

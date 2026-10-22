@@ -33,6 +33,8 @@ class BrowserLifecycle(PostgreSQLFixture):
             store = GitHubPlans('/no-content-directory', '/no-runtime-directory', storage)
             store.initialize()
             app = FastAPI()
+            from study_notes import register as register_notes
+            register_notes(app)
             @app.exception_handler(Problem)
             async def problem(request, exc):return JSONResponse({'message':exc.message}, status_code=exc.status)
             with patch('plans.api.make_store', return_value=store):
@@ -58,7 +60,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                 window.toast=t=>document.getElementById('notices').textContent=t;
                 window.goTab=name=>{document.getElementById('view-plans').style.display=name==='plans'?'block':'none';if(name==='plans')window.enterPlans();};
                 window.rememberLearningOrigin=()=>{};window.returnFromLesson=()=>goTab('plans');
-                </script><script src="/static/ai-config.js"></script><script>SETTINGS_SCRIPT</script><script src="/static/copilot.js"></script><script src="/static/plans.js"></script>
+                </script><script src="/static/ai-config.js"></script><script>SETTINGS_SCRIPT</script><script src="/static/loading-state.js"></script><script src="/static/study-note-session.js"></script><script src="/static/study-notes.js"></script><script src="/static/copilot.js"></script><script src="/static/plans.js"></script>
                 <script>window.addEventListener('load',()=>window.loadPlans());</script></body></html>''').replace('SETTINGS_FORM',settings).replace('SETTINGS_SCRIPT',settings_script))
             sock = socket.socket(); sock.bind(('127.0.0.1', 0))
             base = 'http://127.0.0.1:'+str(sock.getsockname()[1])
@@ -101,7 +103,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                         page.get_by_label('模型名称', exact=True).fill('browser-test-model')
                         page.get_by_role('button', name='保存配置', exact=True).click()
                         page.screenshot(path='/tmp/grow-browser-ai-settings.png')
-                        page.get_by_role('button', name='创建学习计划', exact=True).click()
+                        page.get_by_role('button', name='创建课程规划', exact=True).click()
                         for name, value in [('学习方向','经济学'),('希望学会什么','理解经济新闻'),('周期（周）','2'),('每周学习次数','1'),('每次分钟数','20')]:
                             page.get_by_label(name, exact=True).fill(value)
                         page.get_by_role('button', name='让AI生成规划草稿').click()
@@ -121,11 +123,12 @@ class BrowserLifecycle(PostgreSQLFixture):
                         self.assertTrue(link.get_attribute('href').startswith('https://github.com/owner/courses/blob/'))
                         page.get_by_text('参考资料与边界', exact=True).click()
                         reader.get_by_role('link', name='在 GitHub 打开参考资料', exact=True).wait_for()
-                        page.get_by_label('本课反馈（可选，填写后保存；不会自动发送给AI）').fill('PRIVATE BROWSER NOTE')
+                        page.get_by_label('学习笔记（可选）').fill('PRIVATE BROWSER NOTE')
                         page.get_by_role('button', name='本人确认学完', exact=True).click()
-                        page.get_by_text('已记录本人反馈', exact=True).wait_for()
+                        page.get_by_text('本课已完成，笔记与练习答案已独立暂存。', exact=True).wait_for()
                         self.assertNotIn('PRIVATE BROWSER NOTE', json.dumps(repository.commits[repository.head]['files']))
                         pid = store.rows('learning_plans')[0]['id']
+                        self.assertIn('PRIVATE BROWSER NOTE',page.request.get(base+'/api/study-notes/plan/'+pid+'/1').text())
                         # Fresh storage instance has no cache or content directory.
                         fresh = GitHubContent('owner/courses', 'main', 'TEST_ONLY_TOKEN', transport=httpx.MockTransport(repository))
                         store.content = fresh

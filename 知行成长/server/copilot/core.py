@@ -209,7 +209,8 @@ class Store:
                         UNIQUE(module_id, round_id, lesson_no))''')
                     c.execute("UPDATE copilot_meta SET value='2' WHERE key='schema_version'")
                 if schema_ver < '3':
-                    columns = {row[1] for row in c.execute("PRAGMA table_info(copilot_learning_records)").fetchall()}
+                    columns = ({row[1] for row in c.execute("PRAGMA table_info(copilot_learning_records)").fetchall()} if sqlite else
+                               {row[0] for row in c.execute("SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='copilot_learning_records'")})
                     if 'archived' not in columns:
                         c.execute("ALTER TABLE copilot_learning_records ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
                     if 'archived_at' not in columns:
@@ -330,7 +331,7 @@ class Store:
                     lesson['completed_at'] = db_record['completed_at']
                     lesson['time_spent_seconds'] = db_record['time_spent_seconds']
                     lesson['archived'] = bool(db_record['archived'])
-                    if not status:
+                    if not completed:
                         lesson['learning_label'] = '已学习'
                     fb = c.execute('''
                         SELECT mastery_level FROM copilot_feedback

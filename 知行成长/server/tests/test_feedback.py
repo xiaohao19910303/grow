@@ -3,6 +3,7 @@ import json
 import shutil
 import tempfile
 import unittest
+from test_legacy_cloud_schema import PostgreSQLFixture
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,8 +13,9 @@ ROOT = Path(__file__).resolve().parents[3]
 DATE = '2026-10-14T10:00:00+08:00'
 
 
-class FeedbackSchemaTest(unittest.TestCase):
+class FeedbackSchemaTest(PostgreSQLFixture):
     def setUp(self):
+        super().setUp()
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         shutil.copytree(Path(__file__).parent / 'fixtures/renzhi', self.root / '每日认知与通识学习')
@@ -29,23 +31,24 @@ class FeedbackSchemaTest(unittest.TestCase):
 
     def test_feedback_table_created_on_initialize(self):
         with self.store.conn() as c:
-            row = c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_feedback'").fetchone()
+            row = c.execute("SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='copilot_feedback'").fetchone()
         self.assertIsNotNone(row)
 
     def test_summaries_table_created_on_initialize(self):
         with self.store.conn() as c:
-            row = c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_summaries'").fetchone()
+            row = c.execute("SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='copilot_summaries'").fetchone()
         self.assertIsNotNone(row)
 
     def test_learning_records_has_archived_column(self):
         with self.store.conn() as c:
-            columns = {row[1] for row in c.execute("PRAGMA table_info(copilot_learning_records)").fetchall()}
+            columns = {row[0] for row in c.execute("SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='copilot_learning_records'")}
         self.assertIn('archived', columns)
         self.assertIn('archived_at', columns)
 
 
-class FeedbackCrudTest(unittest.TestCase):
+class FeedbackCrudTest(PostgreSQLFixture):
     def setUp(self):
+        super().setUp()
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         shutil.copytree(Path(__file__).parent / 'fixtures/renzhi', self.root / '每日认知与通识学习')

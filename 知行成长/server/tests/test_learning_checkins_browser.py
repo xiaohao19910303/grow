@@ -74,8 +74,8 @@ class LearningCheckinsBrowser(unittest.TestCase):
 
         def progress(page):
             page.locator('[data-group="growth"]').click()
-            page.get_by_role('button', name='学习历史', exact=True).click()
-            page.get_by_role('button', name='学习足迹', exact=True).click()
+            page.locator('#subnav').get_by_role('button', name='学习回顾', exact=True).click()
+            page.locator('#contextnav').get_by_role('button', name='分类足迹', exact=True).click()
             expect(page.locator('#checkinStatus')).to_contain_text('已按课程完成日期自动汇总')
 
         try:
