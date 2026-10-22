@@ -8,7 +8,7 @@ class DeploymentConfigurationTests(unittest.TestCase):
     def config(self):
         return dict(DATABASE_URL='postgresql://test:PRIVATE_DB_PASSWORD@127.0.0.1/grow_test',
                     APP_USERNAME='owner',APP_PASSWORD='TEST_ONLY_ADMIN_PASSWORD_123456',
-                    ACCOUNT_ENCRYPTION_KEY=Fernet.generate_key().decode(),PLAN_CONTENT_BACKEND='github')
+                    ACCOUNT_ENCRYPTION_KEY=Fernet.generate_key().decode(),PLAN_CONTENT_BACKEND='github',LEARN_ROOT='/tmp/prepared-teaching-fixture')
 
     def test_core_web_works_without_ai_github_or_bridge_credentials(self):
         report=validate_config(self.config())
@@ -18,7 +18,7 @@ class DeploymentConfigurationTests(unittest.TestCase):
     def test_invalid_values_are_rejected_with_names_but_no_secrets(self):
         for key,value in [('DATABASE_URL',''),('DATABASE_URL','sqlite:///tmp/private'),('APP_PASSWORD','short'),
                           ('ACCOUNT_ENCRYPTION_KEY','PRIVATE_INVALID_KEY'),('WEB_CONCURRENCY','2'),
-                          ('PLAN_CONTENT_BACKEND','local')]:
+                          ('PLAN_CONTENT_BACKEND','local'),('LEARN_ROOT',''),('LEARN_ROOT','relative/materials')]:
             with self.subTest(key=key):
                 data=self.config();data[key]=value
                 with self.assertRaises(ConfigurationError) as error:validate_config(data)

@@ -33,6 +33,9 @@ class DeploymentBoot(unittest.TestCase):
                  'ACCOUNT_ENCRYPTION_KEY':Fernet.generate_key().decode(),'APP_PASSWORD':'SYNTHETIC-BOOT-PASSWORD-OVER-24-CHARS','APP_USERNAME':'owner',
                  'PLAN_CONTENT_BACKEND':'github','CLOUD_DEPLOY':'0','WEB_CONCURRENCY':'1','GROW_SCHEDULED_READING_ENABLED':'0',
                  'RUNTIME_ROOT':temp+'/runtime','LEARN_ROOT':temp+'/materials'}
+            from prepare_materials import prepare
+            prepare(SERVER.parent/'学习资料',env['LEARN_ROOT'])
+            self.assertFalse((Path(env['LEARN_ROOT'])/'英文阅读/学习记录.md').exists())
             checked=subprocess.run([sys.executable,'-B',str(SERVER/'deployment.py'),'check'],env=env,capture_output=True,text=True,timeout=20)
             self.assertEqual(checked.returncode,0,checked.stderr);self.assertIn('github_content_unconfigured',checked.stdout)
             broken=subprocess.run([sys.executable,'-B',str(SERVER/'deployment.py'),'check'],env={**env,'DATABASE_URL':'postgresql://SENSITIVE_USER:SENSITIVE_PASSWORD@127.0.0.1:1/unreachable'},capture_output=True,text=True,timeout=15)
@@ -52,6 +55,9 @@ class DeploymentBoot(unittest.TestCase):
                             h={'X-Copilot-Request':'1','X-Grow-Action-Schema':'2'}
                             login=client.post('/api/auth/login',json={'username':'owner','password':env['APP_PASSWORD']},headers=h)
                             self.assertEqual(login.status_code,200,login.text)
+                            modules=client.get('/api/study-materials');self.assertEqual(modules.status_code,200,modules.text)
+                            english=next(module for module in modules.json()['modules'] if module['id']=='yingyu')
+                            self.assertTrue(english['lessons']);self.assertTrue(all(lesson['learning_state']=='unknown' for lesson in english['lessons']))
                             if index==0:
                                 state=client.get('/api/data').json();state['todos']=[{'id':'boot-todo','date':'2026-10-22','title':'Synthetic restart proof','done':0}]
                                 saved=client.put('/api/data',json=state,headers={**h,'X-Legacy-State-Protocol':'1'});self.assertEqual(saved.status_code,200,saved.text)

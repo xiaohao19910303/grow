@@ -33,6 +33,9 @@ def validate_config(env):
         Fernet(env.get('ACCOUNT_ENCRYPTION_KEY', '').encode())
     except (ValueError, TypeError):
         errors.append('ACCOUNT_ENCRYPTION_KEY')
+    learn=env.get('LEARN_ROOT','')
+    if not learn or not Path(learn).is_absolute() or 'REPLACE_WITH' in learn:
+        errors.append('LEARN_ROOT (use a prepared teaching directory)')
     if env.get('PLAN_CONTENT_BACKEND') != 'github':
         errors.append('PLAN_CONTENT_BACKEND (standalone requires github)')
     if env.get('WEB_CONCURRENCY', '1') != '1':
@@ -70,6 +73,10 @@ def preflight(env=None, database=True):
             probe.write(b'grow-preflight')
     except OSError:
         raise ConfigurationError('RUNTIME_ROOT 不可写，请核对目录权限。') from None
+    materials=Path(env['LEARN_ROOT'])
+    if not materials.is_dir():raise ConfigurationError('LEARN_ROOT 不存在，请先用 prepare_materials.py 导出正式教材到新目录。')
+    if any(materials.glob('*/学习记录.md')) or (materials/'执行复盘').exists():
+        report['warnings'].append('legacy_materials_root_owner_may_inherit_old_progress')
     if database:
         import psycopg2
         try:
