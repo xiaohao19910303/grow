@@ -1,0 +1,7 @@
+.action-recovery{max-width:1200px;margin:8px auto;padding:8px 14px;font-size:.88rem;color:var(--text-secondary,#666)}
+.action-recovery summary{cursor:pointer}
+.action-recovery p{margin:6px 0;overflow-wrap:anywhere}
+.action-recovery-warning{border:1px solid #c58818;border-radius:10px;background:var(--card-bg,#fff9e8);color:var(--text,#342700)}
+.action-recovery-warning>p{font-weight:600}
+.action-recovery .action-buttons{flex-wrap:wrap}
+@media(max-width:600px){.action-recovery{margin:8px 10px}.action-recovery button{white-space:normal}}

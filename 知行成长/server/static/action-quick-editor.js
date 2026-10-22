@@ -20,6 +20,7 @@
       target_minutes:20,minimum_minutes:5,at:null,reminder:false,reason:'',if_then:'',horizon:'short',...seedValues,...existing};
     let draft=(!fresh&&(draftId?candidates.find(d=>d.draft_id===draftId):candidates[0]))||client.newDraft(context,base);
     const seed={...base,...draft.values},d=dialog(existing?'编辑行动':'新建行动'),form=node('form');d.append(form);
+    window.ActionRecovery?.attach(client,form);
     if(candidates.length)form.append(node('p','已恢复未提交的填写。'));
     const name=field(form,'做什么','text',seed.title);name.required=true;name.maxLength=160;
     const dateInput=field(form,'行动日期（可暂不安排）','date',seed.start_date||'');

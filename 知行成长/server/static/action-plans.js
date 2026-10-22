@@ -385,7 +385,7 @@
     openRecord:async id=>{await initialized;await load(true);const plan=planById(id);if(!plan)throw Error('这项行动暂不可用，请刷新后重试。');if(goTab('action-plans')===false)return false;period='all';horizon='all';status='all';viewMode='flat';page=Math.floor(snapshot.plans.findIndex(p=>p.id===id)/15)+1;renderWorkspace();const row=[...root.querySelectorAll('[data-plan-id]')].find(el=>el.dataset.planId===id);row?.scrollIntoView({block:'center'});return true;},
   };
   document.querySelector('.topbar').after(document.getElementById('actionReminder'));
-  initialized=(window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{client=ActionPlanClient.create({request:window.fetch.bind(window),storage:localStorage,account:user.id});
+  initialized=(window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{let storage;try{storage=window.localStorage;}catch{/* The browser may deny even the storage getter. */}client=ActionPlanClient.create({request:window.fetch.bind(window),storage,account:user.id});window.ActionRecovery?.mount(client);
     load().then(remind).catch(e=>{const list=document.getElementById('agendaList');list.replaceChildren(n('p',e.message));button(list,'重新读取安排',()=>load(true));});
     setInterval(()=>{const el=bar.querySelector('.action-clock');if(el&&snapshot.execution){const seconds=Math.max(0,Math.floor((now()-new Date(snapshot.execution.started_at))/1000));el.textContent=` · 已开始 ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} · 请确认实际投入`; }},1000);
     setInterval(()=>{if(!document.hidden)load().then(remind).catch(()=>{});},30000);

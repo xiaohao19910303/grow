@@ -2,7 +2,33 @@
 (() => {
   'use strict';
 
+  const requests = new WeakMap();
   const LoadingState = {
+    // Each request owns its indicator; late completions cannot hide newer work.
+    start(container, message = '正在加载…', detail = '') {
+      if (!container) return {finish() {}};
+      const previous = requests.get(container);
+      const busy = previous ? previous.busy : container.getAttribute('aria-busy');
+      container.querySelector('.loading-state')?.remove();
+      const el = document.createElement('div');
+      el.className = 'loading-state page-loading';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      const spinner = document.createElement('span');
+      spinner.className = 'page-loading-spinner';spinner.setAttribute('aria-hidden', 'true');
+      const text = document.createElement('div'), title = document.createElement('strong');
+      title.textContent = message;text.append(title);
+      if (detail) { const description = document.createElement('p');description.textContent = detail;text.append(description); }
+      el.append(spinner, text);container.prepend(el);container.setAttribute('aria-busy', 'true');
+      const owner = {busy};requests.set(container, owner);
+      return {finish() {
+        el.remove();
+        if (requests.get(container) !== owner) return;
+        requests.delete(container);
+        if (busy === null) container.removeAttribute('aria-busy');else container.setAttribute('aria-busy', busy);
+      }};
+    },
+
     // Show loading message in a container
     show(container, message = '正在加载…') {
       if (!container) return;

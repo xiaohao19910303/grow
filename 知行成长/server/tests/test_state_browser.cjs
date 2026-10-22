@@ -9,6 +9,7 @@ const server = path.resolve(__dirname, '..');
 const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'grow-state-browser-')));
 const fixture = String.raw`
 import json,os,socket,sys,signal
+from datetime import datetime,timezone
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse,JSONResponse
@@ -39,6 +40,8 @@ api.mount('/static',StaticFiles(directory=server/'static'),name='static')
 def index():return FileResponse(server/'static/index.html')
 @api.get('/api/auth/me')
 def identity():return {'user':{'id':'state-browser-owner','username':'owner','is_owner':True}}
+@api.get('/api/action-plans')
+def actions():return {'plans':[],'execution':None,'server_time':datetime.now(timezone.utc).isoformat(),'action_schema_version':2,'capabilities':{'nullable_schedule':True}}
 @api.get('/api/{rest:path}')
 def empty(rest:str):return {'modules':[],'lessons':[],'plans':[],'records':[],'items':[],'reports':[],'daily':[],'stats':{},'total':0,'trend':[],'top_concepts':[],'module_distribution':[],'types':[]}
 sock=socket.socket();sock.bind(('127.0.0.1',0))
@@ -77,7 +80,9 @@ async function response(page,status){
     for(const p of [first,second]){
       p.on('pageerror',e=>errors.push(e.message));
       await p.goto(base);
-      await p.waitForFunction(()=>document.getElementById('storageStatus').textContent.includes('已连接'));
+      await p.waitForFunction(()=>/已连接|读取失败|请重启/.test(document.getElementById('storageStatus').textContent));
+      const status=await p.locator('#storageStatus').textContent();
+      if(!status.includes('已连接'))assert.fail('Initial personal state did not load: '+status+'; render: '+await p.evaluate(()=>{try{render();return '';}catch(error){return error.stack;}})+'; console: '+errors.join('; '));
       await p.getByRole('button',{name:'记录',exact:true}).click();
       await p.locator('#reflectionList .ref-row').waitFor();
     }
@@ -110,9 +115,26 @@ async function response(page,status){
     assert.equal(await first.locator('#refRaw').inputValue(),'unsaved reflection draft');
     assert.equal((await (await fetch(base+'/api/reflections/'+meta.id)).json()).entry.raw_text,external);
     assert.equal(fs.existsSync(meta.mirror),false);
+    // Failed reads must keep the exact local draft available for recovery.
+    await first.route(base+'/api/reflections',route=>route.fulfill({status:503,json:{message:'synthetic read failure'}}));
+    download=first.waitForEvent('download');await first.getByRole('button',{name:'下载当前草稿并重新读取'}).click();await download;
+    await first.waitForFunction(()=>document.getElementById('toast').textContent.includes('读取失败，当前编辑内容仍保留'));
+    assert.equal(await first.locator('#refRaw').inputValue(),'unsaved reflection draft');
+    assert.equal(await first.evaluate(id=>JSON.parse(localStorage.getItem('grow.reflections.draft.state-browser-owner.'+id)).raw,meta.id),'unsaved reflection draft');
+    await first.unroute(base+'/api/reflections');
+    // A deliberately held read proves that newer typing wins over reload.
+    let started,release;
+    const readStarted=new Promise(resolve=>started=resolve),holdRead=new Promise(resolve=>release=resolve);
+    await first.route(base+'/api/reflections',async route=>{started();await holdRead;await route.continue();});
+    download=first.waitForEvent('download');await first.getByRole('button',{name:'下载当前草稿并重新读取'}).click();await download;await readStarted;
+    await first.locator('#refRaw').fill('newer draft while cloud reloads');release();
+    await first.waitForFunction(()=>document.getElementById('toast').textContent.includes('读取期间有新编辑，已保留'));
+    assert.equal(await first.locator('#refRaw').inputValue(),'newer draft while cloud reloads');
+    assert.equal(await first.evaluate(id=>JSON.parse(localStorage.getItem('grow.reflections.draft.state-browser-owner.'+id)).raw,meta.id),'newer draft while cloud reloads');
+    await first.unroute(base+'/api/reflections');
     download=first.waitForEvent('download');await first.getByRole('button',{name:'下载当前草稿并重新读取'}).click();
     const draft=await download;await draft.saveAs(path.join(temp,'reflection-draft.txt'));
-    assert.equal(fs.readFileSync(path.join(temp,'reflection-draft.txt'),'utf8'),'unsaved reflection draft');
+    assert.equal(fs.readFileSync(path.join(temp,'reflection-draft.txt'),'utf8'),'newer draft while cloud reloads');
     await first.waitForFunction(value=>document.getElementById('refRaw').value===value,external);
     assert.deepEqual(errors,[],'unexpected browser errors');
     console.log('Browser checks passed: actual UI/API stable ID, two-page conflict, unsaved copy, remote-record version protection, escaped text and draft reload.');
