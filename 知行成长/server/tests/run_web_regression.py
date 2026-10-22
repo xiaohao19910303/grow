@@ -10,6 +10,7 @@ import tempfile
 
 SERVER = Path(__file__).resolve().parents[1]
 TESTS = SERVER / 'tests'
+PYTHON_TIMEOUTS = {'test_accounts.py':600}
 PYTHON_GROUPS = {'test_accounts.py': ('PasswordTests','AccountIntegrationTests','AccountBrowserTests')}
 CONNECTION_TESTS = {'test_action_source_http.py': 'Requires the separate Zook HTTP/PG fixture; deferred connection profile.'}
 
@@ -17,7 +18,7 @@ CONNECTION_TESTS = {'test_action_source_http.py': 'Requires the separate Zook HT
 def inventory():
     python = sorted(p.relative_to(TESTS).as_posix() for p in TESTS.rglob('test_*.py'))
     return {'profile': 'standalone-web', 'python': [p for p in python if p not in CONNECTION_TESTS],
-            'python_groups':PYTHON_GROUPS, 'javascript': sorted(p.name for p in TESTS.glob('test_*.cjs')),
+            'python_groups':PYTHON_GROUPS, 'python_timeout_seconds':PYTHON_TIMEOUTS, 'javascript': sorted(p.name for p in TESTS.glob('test_*.cjs')),
             'deferred_connection': [{'file': p, 'reason': why} for p, why in CONNECTION_TESTS.items() if p in python]}
 
 
@@ -53,6 +54,7 @@ def child(filename, case_group=None):
                 items[:]=selected
             def pytest_collection_finish(self, session): self.collected = len(session.items)
             def pytest_runtest_logreport(self, report):
+                if case_group and report.when=='call':print('WEB_CASE_RESULT '+json.dumps({'node_id':report.nodeid,'outcome':report.outcome,'seconds':round(report.duration,3)}),flush=True)
                 if report.failed: self.failed += 1
                 if report.skipped: self.skipped += 1
         counts = Counts()
@@ -103,7 +105,7 @@ def main():
         for group in PYTHON_GROUPS.get(name,(None,)):
             command=[sys.executable,'-B',str(Path(__file__).resolve()),'--child',name]
             if group:command+=['--case-group',group]
-            result=execute(command,env,300)
+            result=execute(command,env,PYTHON_TIMEOUTS.get(name,300))
             log='\n'.join(line.rstrip() for line in (result.stdout+result.stderr).splitlines()).rstrip()+'\n'
             label=name.replace('/','_')+('::'+group if group else '')
             (output/(label+'.log')).write_text(log)
