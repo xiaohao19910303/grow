@@ -3,6 +3,7 @@
   "python": [
     "copilot/test_feedback_schema.py",
     "test_accounts.py",
+    "test_action_cold_start_browser.py",
     "test_action_link.py",
     "test_action_p0.py",
     "test_action_p0_browser.py",
@@ -13,6 +14,7 @@
     "test_action_reviews.py",
     "test_action_source_delivery.py",
     "test_action_storage_recovery_browser.py",
+    "test_action_storage_recovery_ui.py",
     "test_archive.py",
     "test_arrangement_sources.py",
     "test_background_generations.py",
@@ -27,6 +29,7 @@
     "test_cycle_review_browser.py",
     "test_daily_arrangements.py",
     "test_daily_reading_schedule.py",
+    "test_deployment_boot.py",
     "test_deployment_config.py",
     "test_feedback.py",
     "test_generation_responsiveness.py",
@@ -49,6 +52,8 @@
     "test_navigation_audit_browser.py",
     "test_navigation_organization_browser.py",
     "test_offline_backup_boundary.py",
+    "test_packaged_materials.py",
+    "test_partial_records_browser.py",
     "test_plan_read_errors.py",
     "test_plan_refinement.py",
     "test_plans.py",
@@ -76,11 +81,24 @@
     "test_search_timeline.py",
     "test_sequential_learning_browser.py",
     "test_settings_independence.py",
+    "test_standalone_backup.py",
+    "test_standalone_recovery.py",
     "test_study_generation.py",
     "test_study_materials.py",
     "test_study_notes.py",
-    "test_summary.py"
+    "test_summary.py",
+    "test_web_regression_profile.py"
   ],
+  "python_groups": {
+    "test_accounts.py": [
+      "PasswordTests",
+      "AccountIntegrationTests",
+      "AccountBrowserTests"
+    ]
+  },
+  "python_timeout_seconds": {
+    "test_accounts.py": 600
+  },
   "javascript": [
     "test_action_p0_client.cjs",
     "test_action_plan_client.cjs",
@@ -91,8 +109,10 @@
     "test_learning_completion_sync.cjs",
     "test_learning_loading.cjs",
     "test_legacy_state_client.cjs",
+    "test_loading_state.cjs",
     "test_login_loading.cjs",
     "test_navigation_layout.cjs",
+    "test_partial_records.cjs",
     "test_plan_observer.cjs",
     "test_reading_navigation.cjs",
     "test_reading_startup_browser.cjs",

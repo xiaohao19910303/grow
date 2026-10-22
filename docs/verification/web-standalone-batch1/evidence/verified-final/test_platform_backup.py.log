@@ -1,0 +1,9 @@
+............                                                    [100%]
+============================= slowest 5 durations ==============================
+0.11s call     tests/test_platform_backup.py::PlatformBackupTests::test_independent_copy_restores_files_versions_tags_and_all_tables
+0.04s call     tests/test_platform_backup.py::PlatformBackupTests::test_corrupted_missing_database_and_file_are_rejected
+0.03s call     tests/test_platform_backup.py::PlatformBackupTests::test_interrupted_restore_keeps_journal_before_snapshot_and_blocks_restart
+0.02s call     tests/test_platform_backup.py::PlatformBackupTests::test_v1_restore_preserves_new_scope_files
+0.02s call     tests/test_platform_backup.py::PlatformBackupTests::test_root_documents_and_new_attachment_formats_are_backed_up
+12 passed, 9 subtests passed in 0.42s
+WEB_MODULE_RESULT {"tests": 12, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 234, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

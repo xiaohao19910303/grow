@@ -1,0 +1,15 @@
+...                                                                      [100%]
+=============================== warnings summary ===============================
+../../../../../../../../tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 5 durations ==============================
+1.85s call     tests/test_course_review_cloud_api.py::CourseReviewCloudAPITests::test_summary_generation_uses_browser_config_and_saves_to_database
+0.46s call     tests/test_course_review_cloud_api.py::CourseReviewCloudAPITests::test_archive_literal_route_and_feedback_survive_unarchive
+0.31s call     tests/test_course_review_cloud_api.py::CourseReviewCloudAPITests::test_summary_table_upgrade_preserves_history_and_stays_private
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+3 passed, 1 warning in 3.17s
+WEB_MODULE_RESULT {"tests": 3, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

@@ -1,0 +1,15 @@
+......                                                                   [100%]
+=============================== warnings summary ===============================
+../../../../../../../../tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 5 durations ==============================
+0.40s call     tests/test_action_source_delivery.py::SourceDeliveryTests::test_delivery_inspection_is_tenant_scoped_and_manual_retry_cannot_bypass_missing_proof
+0.39s call     tests/test_action_source_delivery.py::FirstSourceReceiptTests::test_first_source_confirmation_initializes_schema_without_nested_ddl_lock
+0.34s call     tests/test_action_source_delivery.py::SourceDeliveryTests::test_offline_confirmation_has_atomic_outbox_and_recovers_after_restart
+0.33s call     tests/test_action_source_delivery.py::SourceDeliveryTests::test_invalid_receipt_never_marks_delivered_and_source_failure_has_no_outbox
+0.30s call     tests/test_action_source_delivery.py::SourceDeliveryTests::test_unproved_origin_keeps_source_success_and_blocks_unsafe_completion
+6 passed, 1 warning in 2.62s
+WEB_MODULE_RESULT {"tests": 6, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

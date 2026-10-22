@@ -1,0 +1,7 @@
+.                                                                        [100%]
+============================= slowest 5 durations ==============================
+4.51s call     tests/test_sequential_learning_browser.py::SequentialLearningBrowser::test_resume_by_course_number_independent_of_calendar
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+1 passed in 4.52s
+WEB_MODULE_RESULT {"tests": 1, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

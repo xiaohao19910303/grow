@@ -1,0 +1,9 @@
+.....                                                                    [100%]
+============================= slowest 5 durations ==============================
+0.06s call     tests/test_background_generations.py::BackgroundTests::test_reload_and_lost_response_replay_do_not_restart_model
+0.05s call     tests/test_background_generations.py::BackgroundTests::test_advanced_result_and_incomplete_output
+0.04s call     tests/test_background_generations.py::BackgroundTests::test_cancellation_during_result_commit_keeps_successful_result
+0.02s call     tests/test_background_generations.py::BackgroundTests::test_task_lookup_is_scoped_to_its_account_store
+0.02s call     tests/test_background_generations.py::BackgroundTests::test_cancel_is_explicit_and_replay_never_regenerates
+5 passed in 0.25s
+WEB_MODULE_RESULT {"tests": 5, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 75, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

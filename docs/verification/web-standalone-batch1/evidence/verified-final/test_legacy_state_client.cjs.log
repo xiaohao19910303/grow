@@ -1,0 +1,1 @@
+Legacy client checks passed: IDs, serialized PUTs, edits during save, conflicts, export-before-reload and failure retention.

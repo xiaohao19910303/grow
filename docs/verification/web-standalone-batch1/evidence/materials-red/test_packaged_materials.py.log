@@ -1,0 +1,14 @@
+
+==================================== ERRORS ====================================
+______________ ERROR collecting tests/test_packaged_materials.py _______________
+ImportError while importing test module '/Users/hao/.codex/worktrees/web-standalone-batch1/grow/知行成长/server/tests/test_packaged_materials.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+tests/test_packaged_materials.py:6: in <module>
+    from prepare_materials import prepare, MaterialError
+E   ModuleNotFoundError: No module named 'prepare_materials'
+=========================== short test summary info ============================
+ERROR tests/test_packaged_materials.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.08s
+WEB_MODULE_RESULT {"tests": 0, "failed": 0, "skipped": 0, "exit_code": 2, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

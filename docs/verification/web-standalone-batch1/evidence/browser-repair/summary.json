@@ -1,0 +1,277 @@
+{
+  "profile": "targeted-browser-repair",
+  "full_profile": false,
+  "results": [
+    {
+      "tests": 38,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_accounts.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after4/test_accounts.py/test_accounts.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_github_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after1/test_github_browser.py/test_github_browser.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_learning_checkins_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after1/test_learning_checkins_browser.py/test_learning_checkins_browser.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_sequential_learning_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after3/test_sequential_learning_browser.py/test_sequential_learning_browser.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_cycle_review_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/before/test_cycle_review_browser.py/test_cycle_review_browser.py.log"
+    },
+    {
+      "file": "test_state_browser.cjs",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/final-state/test_state_browser.cjs.log"
+    },
+    {
+      "tests": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_p0_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/final-p0/test_action_p0_browser.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_legacy_cloud_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after2/test_legacy_cloud_browser.py/test_legacy_cloud_browser.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_navigation_audit_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/current/test_navigation_audit_browser.py/test_navigation_audit_browser.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_navigation_organization_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/current/test_navigation_organization_browser.py/test_navigation_organization_browser.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_readable_collection_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after2/test_readable_collection_browser.py/test_readable_collection_browser.py.log"
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_reading_growth_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after2/test_reading_growth_browser.py/test_reading_growth_browser.py.log"
+    },
+    {
+      "tests": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_reading_site_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after4/test_reading_site_browser.py/test_reading_site_browser.py.log"
+    },
+    {
+      "file": "test_reading_startup_browser.cjs",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/current/test_reading_startup_browser.cjs/test_reading_startup_browser.cjs.log"
+    },
+    {
+      "tests": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_study_generation.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after3/test_study_generation.py/test_study_generation.py.log"
+    },
+    {
+      "tests": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_study_materials.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after2/test_study_materials.py/test_study_materials.py.log"
+    },
+    {
+      "tests": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_storage_recovery_browser.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after4/test_action_storage_recovery_browser.py/test_action_storage_recovery_browser.py.log"
+    },
+    {
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_storage_recovery_ui.py",
+      "returncode": 0,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/after4/test_action_storage_recovery_ui.py/test_action_storage_recovery_ui.py.log"
+    },
+    {
+      "file": "test_action_storage_recovery.cjs",
+      "returncode": 0,
+      "tests": 12,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/final-clients/test_action_storage_recovery.cjs.log"
+    },
+    {
+      "file": "test_loading_state.cjs",
+      "returncode": 0,
+      "tests": 4,
+      "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/final-clients/test_loading_state.cjs.log"
+    }
+  ],
+  "python_tests": 74,
+  "javascript_entries": 4,
+  "skipped": 0,
+  "failed_modules": [],
+  "environment_failure": {
+    "log": "/tmp/grow-web-batch1-evidence/browser-repair/after1/test_accounts.py/test_accounts.py.log",
+    "reason": "Disposable PostgreSQL DiskFull; host cleanup and a rebuilt localhost instance preceded the green rerun."
+  },
+  "remaining_product_gap": "Reading collectForm /setup preference response updates query only; count/topics still use defaults. Discovery acceptance explicitly selects requested count. Deferred as directed."
+}

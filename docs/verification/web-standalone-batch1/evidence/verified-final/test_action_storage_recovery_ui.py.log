@@ -1,0 +1,10 @@
+..                                                                       [100%]
+============================= slowest 5 durations ==============================
+1.55s call     tests/test_action_storage_recovery_ui.py::ActionStorageRecoveryUI::test_form_warning_download_import_and_same_key_recovery_after_reload
+1.50s setup    tests/test_action_storage_recovery_ui.py::ActionStorageRecoveryUI::test_form_warning_download_import_and_same_key_recovery_after_reload
+0.59s call     tests/test_action_storage_recovery_ui.py::ActionStorageRecoveryUI::test_storage_getter_security_error_still_initializes_action_editor
+0.46s teardown tests/test_action_storage_recovery_ui.py::ActionStorageRecoveryUI::test_storage_getter_security_error_still_initializes_action_editor
+
+(1 durations < 0.005s hidden.  Use -vv to show these durations.)
+2 passed in 4.20s
+WEB_MODULE_RESULT {"tests": 2, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

@@ -1,0 +1,1 @@
+{"result":"PASS","click_to_form_ms":196,"click_to_progress_ms":28,"cases":["immediate conditions","preserve edits during preference loading","stale home response","slow admission","single submission","safe navigation","failure feedback","idempotent retry","normal polling and cancel"]}

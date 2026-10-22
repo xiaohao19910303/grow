@@ -1,0 +1,86 @@
+.....................F................                                   [100%]
+=================================== FAILURES ===================================
+_ AccountBrowserTests.test_browser_register_records_storage_logout_and_mobile __
+
+self = <tests.test_accounts.AccountBrowserTests testMethod=test_browser_register_records_storage_logout_and_mobile>
+
+    def test_browser_register_records_storage_logout_and_mobile(self):
+        import socket
+        import threading
+        import uvicorn
+        from playwright.sync_api import sync_playwright, expect
+        sock = socket.socket()
+        sock.bind(('127.0.0.1',0))
+        port = sock.getsockname()[1]
+        config = uvicorn.Config(self.dashboard.app, host='127.0.0.1', port=port, lifespan='off', log_level='error')
+        server = uvicorn.Server(config)
+        thread = threading.Thread(target=lambda: server.run(sockets=[sock]), daemon=True)
+        with patch.dict(os.environ, {'CLOUD_DEPLOY':'0'}):
+            thread.start()
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True, executable_path=os.getenv('CHROME_EXECUTABLE', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'))
+                    context = browser.new_context(viewport={'width':1360,'height':1000})
+                    page = context.new_page()
+                    errors = []
+                    page.on('pageerror',lambda error: errors.append(str(error)))
+                    url = f'http://127.0.0.1:{port}'
+                    page.goto(url)
+                    page.wait_for_url('**/login')
+                    page.screenshot(path='/tmp/grow-accounts-login.png',full_page=True)
+                    self.assertFalse(page.locator('#registerTab').is_visible())
+                    page.get_by_label('用户名',exact=True).fill('owner')
+                    page.get_by_label('密码',exact=True).fill(os.environ['APP_PASSWORD'])
+                    page.get_by_role('button',name='登录',exact=True).last.click()
+                    page.wait_for_url(url + '/')
+                    page.get_by_role('button',name='设置',exact=True).click()
+                    page.get_by_role('button',name='生成邀请链接',exact=True).click()
+                    page.locator('#invitationResult:not([hidden])').wait_for()
+                    alice_invite = page.locator('#invitationLink').input_value()
+                    page.get_by_role('button',name='退出登录',exact=True).click()
+                    page.wait_for_url('**/login')
+                    page.goto(alice_invite)
+                    page.get_by_role('button',name='受邀注册',exact=True).wait_for()
+                    page.get_by_label('用户名',exact=True).fill('browser_alice')
+                    page.get_by_label('密码',exact=True).fill('browser-password-123')
+                    page.get_by_label('确认密码',exact=True).fill('different-password')
+                    page.get_by_role('button',name='注册并开始学习').click()
+                    page.get_by_text('两次密码不一致，请重新填写。').wait_for()
+                    page.get_by_label('确认密码',exact=True).fill('browser-password-123')
+                    page.get_by_role('button',name='注册并开始学习').click()
+                    page.wait_for_url(url + '/')
+                    page.get_by_text('browser_alice',exact=True).wait_for()
+                    expect(page.locator('#storageStatus')).to_have_text('已连接个人数据库')
+                    page.locator('#todoInput0').fill('ALICE PRIVATE TODO')
+>                   with page.expect_response(lambda response: response.request.method=='POST' and response.url==url+'/api/action-plans') as saved:
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_accounts.py:536:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_sync_base.py:82: in __exit__
+    self._event.value
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <playwright._impl._sync_base.EventInfo object at 0x117b1a120>
+
+    @property
+    def value(self) -> T:
+        wait_for_future(
+            self._sync_base._loop, self._sync_base._dispatcher_fiber, self._future
+        )
+        exception = self._future.exception()
+        if exception:
+>           raise exception
+E           playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event "response"
+
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_sync_base.py:56: TimeoutError
+=============================== warnings summary ===============================
+../../../../../../../../tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_accounts.py::AccountBrowserTests::test_browser_register_records_storage_logout_and_mobile
+1 failed, 37 passed, 1 warning in 223.54s (0:03:43)
+WEB_MODULE_RESULT {"tests": 38, "failed": 1, "skipped": 0, "exit_code": 1, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

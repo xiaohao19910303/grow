@@ -1,0 +1,9 @@
+...                                                                      [100%]
+============================= slowest 5 durations ==============================
+0.09s call     tests/test_summary.py::SummaryTest::test_get_summary_not_found
+0.08s call     tests/test_summary.py::SummaryTest::test_summary_prompt_includes_feedback
+0.07s call     tests/test_summary.py::SummaryTest::test_save_and_list_summaries
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+3 passed in 0.28s
+WEB_MODULE_RESULT {"tests": 3, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

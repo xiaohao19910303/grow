@@ -1,0 +1,10 @@
+....                                                                     [100%]
+============================= slowest 5 durations ==============================
+0.23s call     tests/test_legacy_cloud_schema.py::LegacySchemaTests::test_invalid_rows_are_preserved_and_reported_without_partial_ddl
+0.16s call     tests/test_legacy_cloud_schema.py::LegacySchemaTests::test_old_bootstrap_schemas_are_archived_and_imported_once
+0.13s call     tests/test_legacy_cloud_schema.py::LegacySchemaTests::test_learning_archive_upgrade_is_additive_after_completed_migration
+0.11s call     tests/test_legacy_cloud_schema.py::LegacySchemaTests::test_relations_and_nonserial_ids_survive_schema_conversion
+
+(1 durations < 0.005s hidden.  Use -vv to show these durations.)
+4 passed in 0.66s
+WEB_MODULE_RESULT {"tests": 4, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

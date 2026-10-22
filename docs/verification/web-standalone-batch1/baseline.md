@@ -10,9 +10,9 @@
 | 学习 | 课程/文章正文、笔记/练习、明确完成、生成草稿与正式发布恢复 | PG私有元数据/反馈，GitHub正式内容固定SHA；cloud/reading/study/plans测试 |
 | 记录 | 自由记录、旧四问、实践/错误、决策预测、专题记录 | PG账号schema；legacy_state/reflections/behavior/errors/stocks测试 |
 | 成长/搜索 | 时间线、搜索、学习回顾、周月报、知识图谱及用户确认AI报告 | 原事实/快照，模块独立分钟口径；search/timeline/checkins/knowledge/review测试 |
-| 设置 | 登录/邀请、个人GitHub配置、浏览器AI配置、局部导出 | auth public schema与账号私有schema，AI凭据不进备份；accounts/auth/config测试 |
+| 设置 | 登录/邀请、个人GitHub配置、浏览器AI配置、局部导出 | auth public schema与账号私有schema，浏览器个人AI配置不属于服务器备份；accounts/auth/config测试 |
 
-执行入口：`server/tests/run_web_regression.py`。自动发现tests目录所有Python测试（包含原遗漏的pytest函数测试）和全部顶层test_*.cjs；每个Python模块在独立进程中应用原隔离审计。网页集合测试跳过/隔离阻断/失败均为失败，不允许靠成功子集放行。
+执行入口：`server/tests/run_web_regression.py`。自动发现tests目录所有Python测试（包含原遗漏的pytest函数测试）和全部顶层test_*.cjs；每个Python模块在独立进程中应用原隔离审计；38项账号文件按三个既有测试类分组，每组600秒，并核对整文件收集节点与分组并集，遗漏/重复/漂移即失败。网页集合测试跳过/隔离阻断/失败均为失败，不允许靠成功子集放行。
 
 唯一另列的跨仓测试为test_action_source_http.py（Zook HTTP/PG依赖），见test-profile.json。其余闭门禁/签名/拒绝回退的本地测试保留。此边界是交付形态，不把延后连接集合记为已通过，也不重开连接写入。
 

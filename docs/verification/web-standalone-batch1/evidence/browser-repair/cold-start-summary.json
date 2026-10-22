@@ -1,0 +1,28 @@
+{
+  "scope": "Frontend-only cold-start regression; actual index, ActionPlans, addTodo, real Chrome, in-memory localhost HTTP API; no PostgreSQL acceptance claim.",
+  "test": "test_action_cold_start_browser.py",
+  "production_files_modified_by_this_subtask": [],
+  "old_source_red": "/tmp/grow-web-batch1-evidence/browser-repair/cold-contract-final-red/test_action_cold_start_browser.py.log",
+  "old_source_replay": "Only addTask readiness source is replaced in HTTP responses via ACTION_COLD_START_REPLAY_OLD_CLIENT=1; disk production source stays unchanged.",
+  "current_green": "/tmp/grow-web-batch1-evidence/browser-repair/cold-contract-final-green/test_action_cold_start_browser.py.log",
+  "current_results": "/tmp/grow-web-batch1-evidence/browser-repair/cold-contract-final-green/results.json",
+  "green_tests": 1,
+  "green_failed": 0,
+  "green_skipped": 0,
+  "assertions": [
+    "All initial action snapshots held while general state is ready",
+    "Real Enter submit observed before schema arrival",
+    "Original input retained until release",
+    "Exactly one POST and one fake-server action after release",
+    "Current DOM input clears after save",
+    "Page exceptions and console errors both empty"
+  ],
+  "original_postgresql_red": "/tmp/grow-web-batch1-evidence/browser-repair/cold-start-before/test_action_p0_browser.py.log",
+  "account_postgresql_rerun": {
+    "status": "unverified; module watchdog timeout under host CPU/swap pressure",
+    "returncode": 124,
+    "collected_tests": 0,
+    "evidence": "/tmp/grow-web-batch1-evidence/browser-repair/cold-start-accounts-after/results.json"
+  },
+  "heavy_p0_file": "A00 moved out; original seven tests unchanged."
+}

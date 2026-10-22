@@ -1,0 +1,85 @@
+{
+  "checked_at": "2026-10-22T17:15:35.906304+00:00",
+  "recorded_files": 16,
+  "fingerprints_unchanged": false,
+  "changed_since_baseline": [
+    "知行成长/docs/daily-rhythm-v1-plan.md",
+    "知行成长/server/action_plans.py",
+    "知行成长/server/rhythm/contracts.py",
+    "知行成长/server/rhythm/store.py",
+    "知行成长/server/rhythm/api.py",
+    "知行成长/server/rhythm/service.py"
+  ],
+  "primary_head": "0039de5991b43a2337e398daf1bcd5ed0c12774b",
+  "head_unchanged": true,
+  "primary_worktree_writes_by_this_batch": false,
+  "concurrent_workspace_changes_detected": true,
+  "action": "No restore, reset, copy, merge or overwrite of primary workspace; concurrent work excluded from tested candidate.",
+  "current_fingerprints": [
+    {
+      "path": "知行成长/docs/daily-rhythm-foundation.md",
+      "sha256": "4f40feafbb107b8f3574e3bbb3002e2db7c59d8109ab2cff013ddbe6251cd7cb"
+    },
+    {
+      "path": "知行成长/docs/daily-rhythm-v1-plan.md",
+      "sha256": "66a7f2c55513401cc53b8db62f77d3b7c1f0f1c75869cf448a02d284b220d014"
+    },
+    {
+      "path": "知行成长/server/action_content.py",
+      "sha256": "499ea16772a7c1cdea262e50285a68a3659bb151f394df6c2d18330a589b8b75"
+    },
+    {
+      "path": "知行成长/server/action_link.py",
+      "sha256": "5e9eb029a7032620d0dc7605cc1193ee8642b1f03594014efe411cd65fcc8a89"
+    },
+    {
+      "path": "知行成长/server/action_plans.py",
+      "sha256": "54928f2217c5bd5503f38344ebe27126ccc9c634c15cb421100bc68952615b62"
+    },
+    {
+      "path": "知行成长/server/rhythm/contracts.py",
+      "sha256": "d1b8d2cfa45f0667816f25dd8c76443c6d21feb699b5212c6706cca66d08e819"
+    },
+    {
+      "path": "知行成长/server/rhythm/store.py",
+      "sha256": "82184d8ebb8200e6b6025e91b8aba08d1efb1cd2752a5a2adb86c75c30a397b7"
+    },
+    {
+      "path": "知行成长/server/tests/test_rhythm_initialization.py",
+      "sha256": "c23193add68e0fda7906ce8ced26940549015a4db88d95e0919042772c6e9b18"
+    },
+    {
+      "path": "知行成长/docs/daily-rhythm-r03-r04.md",
+      "sha256": "75540f85202e0155c72beabab26cfc18266ef9d0c145329679938931bbf27b5a"
+    },
+    {
+      "path": "知行成长/server/rhythm/api.py",
+      "sha256": "589029a7326a98cc75cc9c80ef18241e71e358a31892ae8a5faefe7be5fe7c0b"
+    },
+    {
+      "path": "知行成长/server/rhythm/facts.py",
+      "sha256": "4c5b8aa11ea9483481c7506189782549ed8324461fcefc55cecff1cbdfff2be1"
+    },
+    {
+      "path": "知行成长/server/rhythm/service.py",
+      "sha256": "d08eae0a1b44dbda4a9ec20650afb2d94b0d0ac26d5609dcd0465bc9e5380d47"
+    },
+    {
+      "path": "知行成长/server/tests/test_rhythm_accounts.py",
+      "sha256": "d14b458b9f74d26d03fdd0c7f253c7ce138504a128efb59e5cc4dd72d1938103"
+    },
+    {
+      "path": "知行成长/server/tests/test_rhythm_facts.py",
+      "sha256": "e33a635e00663907a95e1f9f4176390a9a154686d12a3c91f7f78fc4aad2b7c5"
+    },
+    {
+      "path": "知行成长/server/tests/test_rhythm_focus.py",
+      "sha256": "b876ed739fd77d3bbda0e34f4ddf9213eaaec2943eb8f430c6aa786a09891b96"
+    },
+    {
+      "path": "知行成长/server/tests/test_rhythm_sources.py",
+      "sha256": "8c30f97e8d9720937f5d24cb4df246539112e1ad50fbbe2db2e7687230e16505"
+    }
+  ],
+  "current_status": " M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/docs/daily-rhythm-foundation.md\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/docs/daily-rhythm-v1-plan.md\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/action_content.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/action_link.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/action_plans.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/copilot/core.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/contracts.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/store.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/action-plans.js\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/index.html\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/learning-completion.js\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/loading-state.js\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/README.md\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/run_isolated_checks.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/serve_daily_arrangements_fixture.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_accounts.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_action_link.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_action_p0_browser.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_action_source_http.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_archive.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_daily_reading_schedule.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_feedback.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_isolation_boundary.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_initialization.py\"\n M \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_summary.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/docs/daily-rhythm-r03-r04.md\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/docs/daily-rhythm-v1-delivery.md\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/api.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/events.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/export.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/facts.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/metrics.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/recap.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/reminders.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/service.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/trial.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/rhythm/weekly.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/daily-rhythm.css\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/daily-rhythm.js\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/rhythm-client.js\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/rhythm-trial.js\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/static/weekly-rhythm.js\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/serve_rhythm_fixture.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_loading_state_contract.cjs\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_accounts.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_browser.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_client.cjs\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_events.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_export.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_facts.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_focus.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_link_boundary.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_metrics.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_private_data.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_recap.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_reminders.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_sources.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_trial_report.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tests/test_rhythm_weekly.py\"\n?? \"\\347\\237\\245\\350\\241\\214\\346\\210\\220\\351\\225\\277/server/tools/rhythm_trial_report.py\"\n"
+}

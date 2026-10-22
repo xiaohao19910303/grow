@@ -1,0 +1,15 @@
+.....                                                                    [100%]
+=============================== warnings summary ===============================
+tests/test_reading_library.py::ReadingLibraryTests::test_api_history_remains_readable_during_document_storage_failure
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 5 durations ==============================
+0.18s call     tests/test_reading_library.py::ReadingLibraryTests::test_api_history_remains_readable_during_document_storage_failure
+0.03s call     tests/test_reading_library.py::ReadingLibraryTests::test_history_is_paginated_searchable_and_excludes_full_documents
+0.02s call     tests/test_reading_library.py::ReadingLibraryTests::test_filters_and_empty_later_pages_preserve_totals
+0.02s call     tests/test_reading_library.py::ReadingLibraryTests::test_legacy_nul_does_not_break_listing_or_modify_source
+0.02s call     tests/test_reading_library.py::ReadingLibraryTests::test_job_history_returns_counts_and_links_without_candidate_bodies
+5 passed, 1 warning in 0.53s
+WEB_MODULE_RESULT {"tests": 5, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

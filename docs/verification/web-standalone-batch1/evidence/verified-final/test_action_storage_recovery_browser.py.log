@@ -1,0 +1,9 @@
+...                                                                      [100%]
+============================= slowest 5 durations ==============================
+1.23s setup    tests/test_action_storage_recovery_browser.py::ActionStorageRecoveryBrowser::test_quota_recovery_download_reload_and_same_key_retry
+0.91s call     tests/test_action_storage_recovery_browser.py::ActionStorageRecoveryBrowser::test_quota_recovery_download_reload_and_same_key_retry
+0.74s call     tests/test_action_storage_recovery_browser.py::ActionStorageRecoveryBrowser::test_security_recovery_download_reload_and_same_key_retry
+0.66s call     tests/test_action_storage_recovery_browser.py::ActionStorageRecoveryBrowser::test_shared_browser_storage_observes_other_page_edits_and_deletions
+0.05s teardown tests/test_action_storage_recovery_browser.py::ActionStorageRecoveryBrowser::test_shared_browser_storage_observes_other_page_edits_and_deletions
+3 passed in 3.71s
+WEB_MODULE_RESULT {"tests": 3, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

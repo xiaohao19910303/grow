@@ -1,0 +1,15 @@
+........                                                                 [100%]
+=============================== warnings summary ===============================
+tests/test_growth_statistics.py::GrowthStatisticsTests::test_real_draft_completion_replay_history_and_week_month_reports_share_facts
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 5 durations ==============================
+1.88s call     tests/test_growth_statistics.py::GrowthStatisticsTests::test_duration_sources_are_separate_and_running_actions_do_not_invent_time
+0.20s call     tests/test_growth_statistics.py::GrowthStatisticsTests::test_week_and_ai_report_include_new_free_and_guided_reflections_with_legacy_reviews
+0.20s call     tests/test_growth_statistics.py::GrowthStatisticsTests::test_real_draft_completion_replay_history_and_week_month_reports_share_facts
+0.09s call     tests/test_growth_statistics.py::GrowthStatisticsTests::test_uninitialized_optional_tables_and_incomplete_feedback_do_not_create_learning
+0.09s call     tests/test_growth_statistics.py::GrowthStatisticsTests::test_manual_and_automatic_same_module_day_are_counted_once_and_retraction_updates_reports
+8 passed, 1 warning in 2.74s
+WEB_MODULE_RESULT {"tests": 8, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

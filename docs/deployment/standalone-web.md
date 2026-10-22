@@ -1,6 +1,6 @@
 # Grow 网页独立部署与恢复
 
-第一批支持：单实例、单 worker，Python 3.11–3.13、PostgreSQL 15，正式内容使用自己的 GitHub 私有仓库。App、Zook、桥接密钥和 AI 均不是网页核心操作的前提。本手册不授权生产发布或连接写入。候选与验收状态见 `docs/verification/web-standalone-batch1/`。
+第一批支持：单实例、单 worker，Python 3.11–3.13、PostgreSQL 15，正式内容使用自己的 GitHub 私有仓库。App、Zook、桥接密钥和 AI 均不是网页核心操作的前提。独立读写验收针对 solo/未联动账号；既有 pending/active 联动状态恢复后继续受原有冻结和写入归属门禁保护，不自动解绑或让 Grow 接管连接侧行动。本手册不授权生产发布或连接写入。候选与验收状态见 `docs/verification/web-standalone-batch1/`。
 
 ## 唯一主路径：安装、预检、启动
 
@@ -12,8 +12,10 @@ python3.12 -m venv .venv
 .venv/bin/python -m pip check
 cp 知行成长/server/.env.example 知行成长/server/.env
 chmod 600 知行成长/server/.env
-# 编辑占位值，创建 /var/lib/grow/runtime 并授予运行用户写权限。
+# 编辑占位值，创建 /var/lib/grow（或自己的目录）并授予运行用户写权限。
+# LEARN_ROOT 设为下一步新导出的绝对路径，例如 /var/lib/grow/materials。
 cd 知行成长/server
+../../.venv/bin/python prepare_materials.py /var/lib/grow/materials
 ../../.venv/bin/python deployment.py check
 ../../.venv/bin/python deployment.py serve --host 127.0.0.1 --port 8756
 ```
@@ -29,8 +31,9 @@ deployment.py 只读取进程环境、server/.env 和根 .env.local 中白名单
 | ACCOUNT_ENCRYPTION_KEY | 必填，Fernet 密钥；单独安全备份，不能每次启动重新生成。自定义 GitHub token 用它加密 |
 | PLAN_CONTENT_BACKEND | 固定 github；本批不交付新的本地内容引擎 |
 | GITHUB_CONTENT_REPO / BRANCH / TOKEN | 正式内容仓库 owner/repo、分支及最小权限 token；token 不进浏览器、不带入 Git URL。不配置时警告，可登录/安排/写个人记录，正式课程、文章发布等模块降级 |
+| GROW_REVISION / RENDER_GIT_COMMIT | 完整候选SHA。GROW_REVISION供备份识别；现有health.revision沿用RENDER_GIT_COMMIT字段，非Render部署启用push唤醒时也设置为同一SHA，供工作流核对部署版本 |
 | RUNTIME_ROOT | 可写临时运行目录；任务进度和个人事实以 PG 为准，不能靠临时磁盘保留已确认数据 |
-| LEARN_ROOT | 发行包内置教学资料目录，保留随候选发布的版本；不得指向个人资料目录 |
+| LEARN_ROOT | 必填绝对路径，先由prepare_materials.py创建新的正式教材目录；白名单仅含英文每日文章、表达每日练习、思维工具教程，不带学习记录/复盘/个人计划。已有明确配置的旧根目录会提示继承旧状态风险，不删除原资料 |
 | CLOUD_DEPLOY / WEB_CONCURRENCY / PORT | 本机 HTTP 使用0，HTTPS代理部署使用1 / 1 / 8756；不运行多副本，不使用 uvicorn --workers>1 |
 | GROW_SCHEDULED_READING_ENABLED | 默认0。仅启用后台定时阅读，不改变用户原有阅读偏好 |
 | GROW_PUBLIC_URL / GROW_SCHEDULE_REPOSITORY / GROW_SCHEDULE_REPOSITORY_ID / GROW_SCHEDULE_REF | 外部唤醒启用时必填：本部署 HTTPS origin、工作流仓库、数字仓库ID、refs/heads/main 等准确分支 |
@@ -43,7 +46,11 @@ Fernet 密钥可在受信任终端生成：`.venv/bin/python -c 'from cryptograp
 
 本地端口8756，HTTP 本机测试须 CLOUD_DEPLOY=0；CLOUD_DEPLOY=1 会强制 Secure Cookie，必须经 HTTPS 代理访问。公网需由 HTTPS 反向代理终止 TLS，转发 Host/协议且只信任受控代理；在受控网络绑定后端，防止直接绕过代理。认证 Cookie 在 HTTPS 请求使用 Secure，不能把 HTTP localhost 成功当作公网会话验收。/api/health 是存活和部分模块初始化状态；登录后的存储状态接口才展示具体模块错误，仍不等同实时完整就绪探针。公网放行前需完成后续 O01 诊断与实际 HTTPS 验证。
 
-Dockerfile 使用相同入口；构建时用 --build-arg GROW_REVISION=完整候选SHA 写入版本，部署时经受控 HTTPS 代理访问并配置原密钥/数据库。当前 Linux 镜像验收结果须查阅报告，文件存在不代表已通过构建。
+prepare_materials.py 只读原目录、拒绝链接和覆盖既有目标，生成教材文件哈希清单。新管理账号不继承仓库里的历史学习进度；旧实例若显式保留旧资料根目录，原兼容行为继续保留。
+
+Render build会导出至/opt/render/project/src/.grow-public-materials；新实例将LEARN_ROOT显式设为此路径。已有实例先保留原LEARN_ROOT，核对/迁移仅存于旧文件的进度与记录后再切换；蓝图不自动改写该值。导出目标已存在时明确失败，确认是可重建发行副本后改用新目录，不能清理旧个人根目录绕过。
+
+Dockerfile 仅复制同一正式教材白名单，构建上下文也排除历史个人资料与秘密，使用相同入口；构建时用 --build-arg GROW_REVISION=完整候选SHA 写入版本，部署时经受控 HTTPS 代理访问并配置原密钥/数据库。当前 Linux 镜像验收结果须查阅报告，文件存在不代表已通过构建。
 
 内置正式教材随代码包恢复。PG 保留所有账号、隔离 schema、行动/执行事实、笔记、自由记录、文章元数据、草稿、发布日志；正式新增内容在 GitHub。浏览器未同步草稿及个人 AI 配置不在服务器备份内，行动草稿可在页面下载局部恢复副本。设置里的“局部记录副本”只涵盖旧版表单，不是全站备份。
 
@@ -93,10 +100,24 @@ Git bundles 恢复为本地 bare 仓库，不自动推送、强推或替换绑�
 
 ```sh
 .venv/bin/python -m pip install -r 知行成长/server/requirements-test.txt
-# JS 浏览器测试另需 Node 与 playwright；Chrome 可用时使用本机安装，否则按测试依赖安装浏览器。
+npm install --prefix /tmp/grow-web-test-node --no-save --package-lock=false playwright@1.64.0
+# 安装本机 Chrome；其他平台按测试的 CHROME_EXECUTABLE 指定 Chrome 路径。
 TEST_POSTGRES_DSN='host=127.0.0.1 port=YOUR_TEST_PORT user=YOUR_TEST_ROLE dbname=postgres' \
-NODE_PATH=/safe/test-node/node_modules \
+NODE_PATH=/tmp/grow-web-test-node/node_modules \
 .venv/bin/python -B 知行成长/server/tests/run_web_regression.py --output /tmp/grow-web-regression
 ```
 
-runner 按模块隔离，自动开启浏览器用例，失败、跳过和阻止真实访问均使其失败；依赖独立 Zook 仓库的一个合同模块在清单明确列入延后连接集合。完整结果、命令与当前外部阻塞以验收报告为准，不能用历史报告替代当前候选。
+如需自建一次性测试PG，用普通非root用户执行（先将PostgreSQL15的bin加入PATH，不连接业务库）：
+
+```sh
+GROW_TEST_ROOT=$(mktemp -d /tmp/grow-web-pg.XXXXXX)
+GROW_TEST_PORT=$(.venv/bin/python -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
+initdb -D "$GROW_TEST_ROOT/data" -U grow_web_test --auth=trust --no-locale --encoding=UTF8
+pg_ctl -D "$GROW_TEST_ROOT/data" -l "$GROW_TEST_ROOT/postgres.log" \
+  -o "-h 127.0.0.1 -p $GROW_TEST_PORT -c max_wal_size=64MB -c min_wal_size=32MB" start
+export TEST_POSTGRES_DSN="host=127.0.0.1 port=$GROW_TEST_PORT user=grow_web_test dbname=postgres"
+# 在同一shell运行上方runner命令（使用这个TEST_POSTGRES_DSN），完成后停止：
+pg_ctl -D "$GROW_TEST_ROOT/data" -m fast stop
+```
+
+runner 按模块隔离；38项账号文件按三个既有测试类分别隔离，每类600秒看门狗，并核对整文件收集节点与分组节点的并集完全一致（无遗漏/重复/漂移）。这把原整文件300秒总时限改为各组600秒，浏览器单步时限不变。runner 自动开启浏览器用例，失败、跳过和阻止真实访问均使其失败；依赖独立 Zook 仓库的一个合同模块在清单明确列入延后连接集合。完整结果、命令与当前外部阻塞以验收报告为准，不能用历史报告替代当前候选。

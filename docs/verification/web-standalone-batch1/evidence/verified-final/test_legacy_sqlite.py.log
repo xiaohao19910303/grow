@@ -1,0 +1,10 @@
+....                                                                     [100%]
+============================= slowest 5 durations ==============================
+0.24s call     tests/test_legacy_sqlite.py::SQLiteImportTests::test_changed_source_rejects_stale_preview
+0.14s call     tests/test_legacy_sqlite.py::SQLiteImportTests::test_colliding_knowledge_and_link_ids_preserve_graph_relations
+0.13s call     tests/test_legacy_sqlite.py::SQLiteImportTests::test_existing_remote_records_win_and_local_variant_remains_archived
+0.13s call     tests/test_legacy_sqlite.py::SQLiteImportTests::test_missing_records_import_and_original_source_is_unchanged
+
+(1 durations < 0.005s hidden.  Use -vv to show these durations.)
+4 passed in 0.68s
+WEB_MODULE_RESULT {"tests": 4, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 16, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

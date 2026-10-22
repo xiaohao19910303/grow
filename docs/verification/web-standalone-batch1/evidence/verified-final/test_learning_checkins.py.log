@@ -1,0 +1,9 @@
+......                                                                   [100%]
+============================= slowest 5 durations ==============================
+0.34s call     tests/test_learning_checkins.py::LearningCheckinIntegrationTests::test_actual_course_completion_retry_and_retraction_drive_checkins
+0.04s call     tests/test_learning_checkins.py::LearningCheckinTests::test_classifies_completions_deduplicates_and_uses_shanghai_date
+0.03s call     tests/test_learning_checkins.py::LearningCheckinTests::test_retracting_completion_removes_only_its_automatic_checkin
+0.02s call     tests/test_learning_checkins.py::LearningCheckinTests::test_empty_or_invalid_dates_and_other_rounds_do_not_invent_checkins
+0.02s call     tests/test_learning_checkins.py::LearningCheckinTests::test_plans_use_their_own_category_and_pending_feedback_does_not_check_in
+6 passed in 0.52s
+WEB_MODULE_RESULT {"tests": 6, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}
