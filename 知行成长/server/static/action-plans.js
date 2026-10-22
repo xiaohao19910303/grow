@@ -367,11 +367,11 @@
     for(const p of due.slice(0,3)){const claim=await client.read('/'+p.id+'/reminder-claim',{device_id:client.device,reminder_at:p.reminder_at});if(claim.notify){try{const notice=new Notification('留一点时间给自己',{body:p.title+(p.minimum_minutes?' · 先开始 '+p.minimum_minutes+' 分钟也可以':' · 按本人确认记录完成'),tag:p.id});notice.onclick=()=>{window.focus();openWorkspace();notice.close();};}catch{client.put('notifications',false);}}}
   }
   async function schedule(values){
-    await initialized;requireP0();const result=await client.write('schedule:'+JSON.stringify(values.target)+':'+values.date,'/schedules',values);
+    await initialized;await load();requireP0();const result=await client.write('schedule:'+JSON.stringify(values.target)+':'+values.date,'/schedules',values);
     await load(true);return result;
   }
   async function addTask(title,date){
-    await initialized;requireP0();const values={title,period:'day',start_date:date,end_date:date,completion_mode:'check',target:{kind:'book'}};
+    await initialized;await load();requireP0();const values={title,period:'day',start_date:date,end_date:date,completion_mode:'check',target:{kind:'book'}};
     await client.write('todo:'+date,'',values);await load(true);
   }
   async function records(){

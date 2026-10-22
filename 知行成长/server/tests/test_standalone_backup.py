@@ -70,6 +70,14 @@ class StandaloneBackupTests(unittest.TestCase):
         with self.assertRaises(BackupError):create(self.source,self.backup,{'other-owner/content':self.git},env=self.env,writers_stopped=False)
         with psycopg2.connect(self.source) as c:
             cur=c.cursor();cur.execute('SELECT count(*) FROM auth_users');self.assertEqual(cur.fetchone()[0],2)
+    def test_incomplete_manifest_is_rejected_before_target_mutation(self):
+        from standalone_backup import restore,BackupError
+        self.create();path=self.backup/'manifest.json';manifest=json.loads(path.read_text());del manifest['row_hashes'];path.write_text(json.dumps(manifest))
+        with self.assertRaises(BackupError):restore(self.target,self.backup,self.root/'invalid-manifest',env=self.env,writers_stopped=True)
+        self.assertFalse((self.root/'invalid-manifest').exists())
+        with psycopg2.connect(self.target) as c:
+            cur=c.cursor();cur.execute("SELECT count(*) FROM pg_tables WHERE schemaname='public'");self.assertEqual(cur.fetchone()[0],0)
+
     def test_unavailable_historical_commit_refuses_incomplete_backup(self):
         from standalone_backup import BackupError
         with psycopg2.connect(self.source) as c:

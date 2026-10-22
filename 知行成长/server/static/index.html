@@ -563,7 +563,7 @@
 <div class="overlay" id="overlay"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="/static/loading-state.js?v=20261022-web"></script>
+<script src="/static/loading-state.js?v=web-batch1-20261023"></script>
 <script src="/static/event-bus.js?v=20261021-1"></script>
 <script src="/static/account.js?v=20261018-loading"></script>
 <script src="/static/ai-config.js?v=20261017"></script>
@@ -780,7 +780,10 @@ async function addTodo(event,date,day){
   const input=document.getElementById('todoInput'+day), title=input.value.trim();
   if(!title)return;
   const submit=event.target.querySelector('button');submit.disabled=true;
-  try{await window.ActionPlans.addTask(title,date);input.value='';renderPersonal();document.getElementById('todoInput'+day)?.focus();}
+  try{await window.ActionPlans.addTask(title,date);
+    const current=document.getElementById('todoInput'+day);
+    if(current?.dataset.date===date && current.value.trim()===title)current.value='';
+    renderPersonal();document.getElementById('todoInput'+day)?.focus();}
   catch(error){toast(error.message);}
   finally{submit.disabled=false;}
 }
@@ -2308,19 +2311,19 @@ init();
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
 <script src="/static/reading-position.js?v=20261021-merge"></script>
 <script src="/static/reading.js?v=20261021-p1-navigation"></script>
-<script src="/static/reflections.js?v=20261022-web"></script>
+<script src="/static/reflections.js?v=web-batch1-20261023"></script>
 <script src="/static/learning-history.js?v=20261021-p1-navigation"></script>
 <script src="/static/stocks.js?v=20261021-merge"></script>
 <script src="/static/search.js?v=20261021-p1-navigation"></script>
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
 <link rel="stylesheet" href="/static/action-recovery.css?v=20261022-web">
-<script src="/static/action-plan-client.js?v=20261022-web"></script>
-<script src="/static/action-recovery.js?v=20261022-web"></script>
+<script src="/static/action-plan-client.js?v=web-batch1-20261023"></script>
+<script src="/static/action-recovery.js?v=web-batch1-20261023"></script>
 <script src="/static/action-reviews.js?v=20261021-merge"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>
 <script src="/static/daily-agenda.js?v=20261021-navigation-round3"></script>
-<script src="/static/action-quick-editor.js?v=20261022-web"></script>
-<script src="/static/action-plans.js?v=20261022-web"></script>
+<script src="/static/action-quick-editor.js?v=web-batch1-20261023"></script>
+<script src="/static/action-plans.js?v=web-batch1-20261023"></script>
 </body>
 </html>

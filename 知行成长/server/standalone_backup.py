@@ -156,8 +156,25 @@ def create(dsn, destination, mirrors, *, env=None, writers_stopped=False):
 def verify(directory):
     directory=Path(directory)
     try:
+        if (directory/'manifest.json').is_symlink():raise ValueError()
         manifest=json.loads((directory/'manifest.json').read_text())
-        if manifest['version']!=1 or 'database.dump' not in manifest['files']:raise ValueError()
+        if not isinstance(manifest,dict) or not isinstance(manifest.get('files'),dict):raise ValueError()
+        if type(manifest.get('version')) is not int or manifest['version']!=1 or 'database.dump' not in manifest['files']:raise ValueError()
+        hexadecimal=lambda value,size:isinstance(value,str) and re.fullmatch('[0-9a-f]{'+str(size)+'}',value)
+        if not hexadecimal(manifest['application_revision'],40) or not hexadecimal(manifest['encryption_key_sha256'],64):raise ValueError()
+        if not isinstance(manifest['tables'],dict) or not isinstance(manifest['row_hashes'],dict):raise ValueError()
+        if set(manifest['tables'])!=set(manifest['row_hashes']):raise ValueError()
+        if any(not isinstance(name,str) or type(count) is not int or count<0 for name,count in manifest['tables'].items()):raise ValueError()
+        if any(not hexadecimal(value,64) for value in manifest['row_hashes'].values()):raise ValueError()
+        if not isinstance(manifest['default_content'],dict) or set(manifest['default_content'])!={'repository','branch'}:raise ValueError()
+        if any(not isinstance(value,str) for value in manifest['default_content'].values()):raise ValueError()
+        if not isinstance(manifest['repositories'],dict):raise ValueError()
+        for repo,item in manifest['repositories'].items():
+            if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',repo) or not isinstance(item,dict):raise ValueError()
+            if any(not isinstance(item[key],list) or any(not isinstance(value,str) for value in item[key]) for key in ('branches','commits','schemas')):raise ValueError()
+            if any(not hexadecimal(value,40) for value in item['commits']):raise ValueError()
+            if not isinstance(item['bundle'],str):raise ValueError()
+        if any(not hexadecimal(value,64) for value in manifest['files'].values()):raise ValueError()
         expected={'database.dump',*(r['bundle'] for r in manifest['repositories'].values())}
         if set(manifest['files'])!=expected:raise ValueError()
         for name,checksum in manifest['files'].items():
@@ -195,7 +212,8 @@ def restore(dsn, directory, content_directory, *, env=None, writers_stopped=Fals
         for sha in item['commits']:command(['git','--git-dir',str(mirror),'cat-file','-e',sha+'^{commit}'])
     command(['pg_restore','--single-transaction','--exit-on-error','--no-owner','--no-acl','--dbname='+subprocess_env['PGDATABASE'],str(directory/'database.dump')],subprocess_env)
     with psycopg2.connect(dsn,connect_timeout=10) as connection:actual=inventory(connection,env)
-    if actual['tables']!=manifest['tables'] or actual['row_hashes']!=manifest['row_hashes']:raise BackupError('恢复后数据核对未通过；不要启动写入，请保留现场检查。')
+    expected_repositories={repo:{key:value for key,value in item.items() if key!='bundle'} for repo,item in manifest['repositories'].items()}
+    if actual['tables']!=manifest['tables'] or actual['row_hashes']!=manifest['row_hashes'] or actual['repositories']!=expected_repositories:raise BackupError('恢复后数据核对未通过；不要启动写入，请保留现场检查。')
     return {'ok':True,'tables':len(actual['tables']),'repositories':len(manifest['repositories'])}
 
 
