@@ -1,0 +1,104 @@
+{
+  "base_commit": "0039de5991b43a2337e398daf1bcd5ed0c12774b",
+  "primary_workspace": "/Users/hao/Documents/grow",
+  "preserved_uncommitted": [
+    {
+      "status": " M",
+      "path": "知行成长/docs/daily-rhythm-foundation.md",
+      "sha256": "4f40feafbb107b8f3574e3bbb3002e2db7c59d8109ab2cff013ddbe6251cd7cb"
+    },
+    {
+      "status": " M",
+      "path": "知行成长/docs/daily-rhythm-v1-plan.md",
+      "sha256": "123d18788ebfcbdd11779c014f551d13ac4e33977011beb6c4f4b46c14c7feba"
+    },
+    {
+      "status": " M",
+      "path": "知行成长/server/action_content.py",
+      "sha256": "499ea16772a7c1cdea262e50285a68a3659bb151f394df6c2d18330a589b8b75"
+    },
+    {
+      "status": " M",
+      "path": "知行成长/server/action_link.py",
+      "sha256": "5e9eb029a7032620d0dc7605cc1193ee8642b1f03594014efe411cd65fcc8a89"
+    },
+    {
+      "status": " M",
+      "path": "知行成长/server/action_plans.py",
+      "sha256": "409196ce618e3bcf476667b7da72262ca28b097ecc805a4e209ee48aa3e4ea9e"
+    },
+    {
+      "status": " M",
+      "path": "知行成长/server/rhythm/contracts.py",
+      "sha256": "285d5fb22e3389114bbf6abaf84cff4a4ae403048dfd17cc5b6323a54c06fe4a"
+    },
+    {
+      "status": " M",
+      "path": "知行成长/server/rhythm/store.py",
+      "sha256": "510dbaa0bc04ee099157e3194690fd5e6fc08778112a6bff496fa780a356150f"
+    },
+    {
+      "status": " M",
+      "path": "知行成长/server/tests/test_rhythm_initialization.py",
+      "sha256": "c23193add68e0fda7906ce8ced26940549015a4db88d95e0919042772c6e9b18"
+    },
+    {
+      "status": "??",
+      "path": "知行成长/docs/daily-rhythm-r03-r04.md",
+      "sha256": "75540f85202e0155c72beabab26cfc18266ef9d0c145329679938931bbf27b5a"
+    },
+    {
+      "status": "??",
+      "path": "知行成长/server/rhythm/api.py",
+      "sha256": "a43288b65612da79794f92a8bbe083f490ede1d0470f5181c21f6cf84024e89e"
+    },
+    {
+      "status": "??",
+      "path": "知行成长/server/rhythm/facts.py",
+      "sha256": "4c5b8aa11ea9483481c7506189782549ed8324461fcefc55cecff1cbdfff2be1"
+    },
+    {
+      "status": "??",
+      "path": "知行成长/server/rhythm/service.py",
+      "sha256": "8a8e7b4e280cf6b02a75001dab881d889ea203add694bef7da49ac83c1728c4a"
+    },
+    {
+      "status": "??",
+      "path": "知行成长/server/tests/test_rhythm_accounts.py",
+      "sha256": "d14b458b9f74d26d03fdd0c7f253c7ce138504a128efb59e5cc4dd72d1938103"
+    },
+    {
+      "status": "??",
+      "path": "知行成长/server/tests/test_rhythm_facts.py",
+      "sha256": "e33a635e00663907a95e1f9f4176390a9a154686d12a3c91f7f78fc4aad2b7c5"
+    },
+    {
+      "status": "??",
+      "path": "知行成长/server/tests/test_rhythm_focus.py",
+      "sha256": "b876ed739fd77d3bbda0e34f4ddf9213eaaec2943eb8f430c6aa786a09891b96"
+    },
+    {
+      "status": "??",
+      "path": "知行成长/server/tests/test_rhythm_sources.py",
+      "sha256": "8c30f97e8d9720937f5d24cb4df246539112e1ad50fbbe2db2e7687230e16505"
+    }
+  ],
+  "excluded": [
+    "primary uncommitted rhythm work",
+    "full-suite-repair worktree uncommitted work",
+    "C3 connection branch runtime changes",
+    "App and Zook implementation"
+  ],
+  "scope": [
+    "B00",
+    "D01",
+    "D02",
+    "D03",
+    "W01",
+    "W02",
+    "D04",
+    "D05",
+    "D06",
+    "V01"
+  ]
+}
