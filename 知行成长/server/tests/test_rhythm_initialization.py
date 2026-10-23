@@ -36,7 +36,9 @@ class RhythmInitializationTests(unittest.TestCase):
         for table in BUSINESS_TABLES:
             self.assertEqual(self.in_schema(self.schema, f'SELECT count(*) FROM {table}')[0][0], 0)
         self.login('owner', os.environ['APP_PASSWORD'])
-        self.assertEqual(self.client.get('/api/action-plans/rhythm/capabilities').status_code, 404)
+        capability = self.client.get('/api/action-plans/rhythm/capabilities')
+        self.assertEqual(capability.status_code, 200)
+        self.assertFalse(capability.json()['supported'])
 
     def test_new_accounts_initialize_on_first_access_and_keep_their_rows_private(self):
         schemas = []

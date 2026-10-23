@@ -1,7 +1,16 @@
-"""R02 storage bootstrap; business CRUD and event ingestion belong to later tasks."""
+"""Private rhythm bootstrap and handoff data-preservation guard."""
 import db
 
 from .schema import initialize
+
+
+def has_data(connection):
+    from .schema import BUSINESS_TABLES
+    for table in BUSINESS_TABLES:
+        if (connection.execute('SELECT to_regclass(?)', (table,)).fetchone()[0] is not None
+                and connection.execute(f'SELECT 1 FROM {table} LIMIT 1').fetchone()):
+            return True
+    return False
 
 
 class RhythmStore:

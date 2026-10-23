@@ -1,0 +1,20 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const context={window:{},Intl,Date,Map,JSON,Error,encodeURIComponent,crypto:require('node:crypto').webcrypto};vm.createContext(context);
+for(const f of ['action-plan-client.js','rhythm-client.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../static',f),'utf8'),context);
+(async()=>{
+ const data=new Map(),storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
+ let calls=[],offline=true;
+ const request=async(url,o)=>{calls.push({url,body:JSON.parse(o.body||'null')});if(offline)throw Error('offline');return {ok:true,json:async()=>({saved:true})};};
+ let c=context.window.RhythmClient.create({account:'alice',storage,request});
+ await assert.rejects(c.write('focus','/focus',{date:'2026-10-21'}));const key=calls[0].body.key;
+ c=context.window.RhythmClient.create({account:'alice',storage,request});offline=false;
+ await c.write('focus','/focus',{date:'2026-10-21'});assert.equal(calls.at(-1).body.key,key);
+ assert.equal(calls.at(-1).url,'/api/action-plans/rhythm/focus');
+ c.put('form',{note:'private'});const bob=context.window.RhythmClient.create({account:'bob',storage,request});assert.equal(bob.get('form'),null);
+ offline=true;await assert.rejects(c.write('recap:a','/executions/a/recap',{note:'original'}));
+ await assert.rejects(c.write('recap:a','/executions/a/recap',{note:'changed'}));
+ assert.equal(c.pending('recap:a').note,'original');
+ for(let i=0;i<25;i++)c.queue({event_id:'e'+i,event_name:'form_finished'});
+ assert.equal(c.get('events.queue').length,20);
+ console.log('Rhythm client: shared transport, durable retries, isolated drafts and bounded event queue passed.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

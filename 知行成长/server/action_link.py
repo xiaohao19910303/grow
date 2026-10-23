@@ -66,6 +66,9 @@ def put(c,data,backup=None):
 
 
 def snapshot(c):
+    from rhythm.store import has_data
+    if has_data(c):
+        fail(409,'当前接管合同不包含日常节奏数据，原数据保留；请等待连接端升级。','CONTRACT_UPGRADE_REQUIRED')
     # Source tables remain retained; this exact immutable package is the recovery backup.
     result={}
     for name,table in [('plans','action_plans'),('records','action_executions'),('reviews','action_reviews'),('reports','action_reports')]:
@@ -148,7 +151,8 @@ def register(app):
     def preview(body:Preview):
         source=identity()
         with connection() as c:
-            if c.execute('SELECT count(*) FROM action_content_events').fetchone()[0] or any(json.loads(r[0]).get('schema_version')==2 for r in c.execute('SELECT data FROM action_plans')):
+            from rhythm.store import has_data
+            if has_data(c) or c.execute('SELECT count(*) FROM action_content_events').fetchone()[0] or any(json.loads(r[0]).get('schema_version')==2 for r in c.execute('SELECT data FROM action_plans')):
                 fail(409,'P0接管合同尚待双端验证；计划继续保存在当前唯一写入方。','CONTRACT_UPGRADE_REQUIRED')
         target=call(source,{'action':'preview','code':body.code})
         with connection(True,allow_link=True) as c:
@@ -167,6 +171,9 @@ def register(app):
         if link.get('phase')=='active':return public(link)
         if link.get('phase')=='pending':return finish_import(source)
         if proposal.get('preview_id')!=body.preview_id or proposal.get('code_hash')!=fingerprint(body.code):fail(409,'请重新预览并确认连接。')
+        with connection() as c:
+            from rhythm.store import has_data
+            if has_data(c):fail(409,'接管预览后新增了日常节奏数据，请等待连接端合同升级。','CONTRACT_UPGRADE_REQUIRED')
         target=call(source,dict(action='claim',code=body.code))
         if target['target_user_id']!=proposal['target_user_id']:fail(409,'目标账号已变化，请重新确认。')
         with connection(True,allow_link=True) as c:
@@ -194,6 +201,11 @@ def register(app):
             def read_state():
                 with connection() as c:return state(c)[0]
             link=await run_in_threadpool(read_state)
+            if path.startswith('/api/action-plans/rhythm/') and link.get('phase') != 'local':
+                if request.method == 'GET' and path == '/api/action-plans/rhythm/capabilities':
+                    from rhythm.contracts import rhythm_capability
+                    return JSONResponse(rhythm_capability(link.get('phase')), headers={'Cache-Control':'no-store'})
+                fail(409,'连接服务尚未支持日常节奏；不会读取旧数据或回落本地写入。','CONTRACT_UPGRADE_REQUIRED')
             if link.get('phase')=='local':return await call_next(request)
             source=identity()
             if request.method=='GET' and path.startswith('/api/action-plans/requests/'):

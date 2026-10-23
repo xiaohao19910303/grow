@@ -32,6 +32,8 @@ class ReadableCollectionBrowser(CloudHTTPFixture):
         with patch('reading.service.fetch_article_content',fetch),self.browser() as (page,base):
             page.goto(base);page.evaluate('enterReading()')
             page.get_by_role('button',name='帮我找文章',exact=True).click()
+            page.get_by_text('已载入你的阅读偏好。',exact=True).wait_for()
+            self.assertEqual(page.get_by_label('推荐数量（1—8篇）',exact=True).input_value(),'2')
             page.get_by_role('button',name=re.compile(r'^(开始搜集并预览|开始查找)$')).click()
             page.get_by_role('button',name='保存选中的文章与资料',exact=True).wait_for()
             self.assertEqual(page.locator('.reading-card').count(),2)

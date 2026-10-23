@@ -7,6 +7,7 @@ import select
 import subprocess
 import sys
 import uuid
+from urllib.parse import quote
 from unittest.mock import patch
 import httpx
 import psycopg2
@@ -22,9 +23,14 @@ from fastapi.testclient import TestClient
 
 class HTTPDeliveryContract:
     def start_zook(self):
+        config=psycopg2.extensions.parse_dsn(self.dsn)
+        if config.get('host')!='127.0.0.1':raise RuntimeError('Dedicated localhost PostgreSQL required')
+        auth=quote(config.get('user',''),safe='')
+        if config.get('password'):auth+=':'+quote(config['password'],safe='')
+        test_url='postgresql://'+auth+'@127.0.0.1:'+config.get('port','5432')+'/'+quote(config.get('dbname','postgres'),safe='')
         self.proc=subprocess.Popen(['node','--experimental-transform-types','test/support/lighttick-source-http-fixture.ts'],
             cwd=self.zook,env={**os.environ,'SOURCE_TEST_SCHEMA':self.zschema,'SOURCE_TEST_TOKEN':self.control_token,
-                'LIGHTTICK_ACTION_TEST_DATABASE_URL':'postgresql://hao@127.0.0.1/postgres'},stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True)
+                'LIGHTTICK_ACTION_TEST_DATABASE_URL':test_url},stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True)
         if not select.select([self.proc.stdout],[],[],15)[0]:raise RuntimeError('Zook fixture did not start')
         self.url='http://127.0.0.1:'+str(json.loads(self.proc.stdout.readline())['port'])
         os.environ['LIGHTTICK_BRIDGE_URL']=self.url

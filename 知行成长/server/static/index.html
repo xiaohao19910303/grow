@@ -147,6 +147,7 @@
 <link rel="stylesheet" href="/static/stocks.css?v=1">
 <link rel="stylesheet" href="/static/learning-history.css?v=20261021-p1-navigation">
 <link rel="stylesheet" href="/static/account.css">
+<link rel="stylesheet" href="/static/daily-rhythm.css">
 <link rel="stylesheet" href="/static/search.css?v=1">
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
@@ -197,6 +198,7 @@
     <button class="btn" onclick="goTab('action-schedule')">查看日程并核对完成</button>
   </div>
   <div id="view-settings" style="display:none" class="section">
+    <section id="rhythmSettings" class="account-settings" aria-label="日常节奏设置"><h2>日常节奏</h2><p>正在读取节奏设置…</p></section>
     <section id="actionLinkSettings" class="account-settings" aria-label="LightTick 客户端联动"><h2>LightTick 客户端联动</h2><p>正在读取联动状态…</p></section>
     <h2>设置与数据</h2><p class="desc">记录会自动保存。需要时可手动重试保存或导出备份。</p>
     <section class="account-settings" aria-labelledby="invitationsTitle">
@@ -265,6 +267,7 @@
       <div><h2 id="dayHeading">今天，稳步向前</h2><p id="daySummary" class="desc">正在读取今日安排…</p></div>
       <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
     </div>
+    <section id="dailyRhythm" class="section daily-rhythm" aria-label="今日一件事" aria-live="polite" hidden></section>
     <section id="actionHome" class="section action-home" aria-label="当日安排">
       <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay({date:document.getElementById('personalDate').value||today()})">新建行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
       <div id="agendaList" aria-live="polite"><p class="desc" role="status">正在读取安排…</p></div>
@@ -464,6 +467,7 @@
 
   <div id="view-cycle-review" style="display:none">
   <div id="view-report" style="display:none">
+    <section id="weeklyRhythm" class="section daily-rhythm" aria-label="本周行动成果" hidden></section>
     <div class="section">
       <h2>周期复盘 · 周／月汇总</h2>
       <p class="desc">自动汇总打卡、时长、决策、预测、复盘、洞察与知识节点，可导出 Markdown。</p>
@@ -731,6 +735,7 @@ function renderPersonal(){
     <details class="section tomorrow-plan" id="tomorrowPlan"${tomorrowOpen?' open':''}><summary>${selected===today()?'明日':'次日'}预览 · ${esc(fmtDateCN(dates[1]))}</summary><div class="tomorrow-content"><div id="agendaTomorrowList"></div>${tasks(dates[1],1)}</div></details>`;
   window.Reflections?.renderDay?.(document.getElementById('refToday_0'), selected);
   window.DailyAgenda?.render();
+  window.DailyRhythm?.refresh(selected);
   updateDaySummary();
 }
 function updateDaySummary(){
@@ -2076,6 +2081,7 @@ function goTab(name, options={}){
   contextnav.innerHTML=contexts.map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('');
   ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
+  if(name==='report') window.WeeklyRhythm?.load();
   if(name==='personal' && !options.restore){ window.ActionPlans?.refresh().catch(()=>{}); renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
   if(name==='action-plans')window.ActionPlans?.enter();
@@ -2102,7 +2108,7 @@ function goTab(name, options={}){
       Promise.resolve().then(()=>renderAIReportLatest())
     ]);
   }
-  if(name==='settings') { loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
+  if(name==='settings') { window.DailyRhythm?.settings(); loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='progress' || name==='overview')refreshAutoCheckins();
   if(name==='stocks') window.initStocksModule?.();
@@ -2291,9 +2297,13 @@ init();
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
 <script src="/static/action-plan-client.js?v=20261021-merge"></script>
+<script src="/static/rhythm-client.js?v=20261023"></script>
 <script src="/static/action-reviews.js?v=20261021-merge"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>
 <script src="/static/daily-agenda.js?v=20261021-navigation-round3"></script>
+<script src="/static/daily-rhythm.js?v=20261023"></script>
+<script src="/static/weekly-rhythm.js?v=20261023"></script>
+<script src="/static/rhythm-trial.js?v=20261023"></script>
 <script src="/static/action-quick-editor.js?v=20261021-merge"></script>
 <script src="/static/action-plans.js?v=20261021-audit"></script>
 </body>

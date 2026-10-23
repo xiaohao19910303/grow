@@ -61,6 +61,8 @@ class StudyGenerationTests(PostgreSQLFixture):
         async def problem(request, error):
             return JSONResponse({'message': error.message}, status_code=error.status)
         self.materials = register(app, self.root)
+        from study_notes import register as register_notes
+        register_notes(app)
         self.app = app
         self.client = TestClient(app)
         self.client.__enter__(); self.addCleanup(lambda: self.client.__exit__(None, None, None))
@@ -214,7 +216,7 @@ class StudyGenerationTests(PostgreSQLFixture):
             time.sleep(.02)
         def unrelated(route):
             endpoint = route.request.url.split(base)[-1].split('?')[0]
-            if endpoint.startswith('/api/study-materials'): return route.continue_()
+            if endpoint.startswith(('/api/study-materials', '/api/study-notes/')): return route.continue_()
             if endpoint == '/api/auth/me': result = {'user': {'id': 'fixture', 'username': 'tester', 'is_owner': True}}
             elif endpoint == '/api/data': result = dict(modules=[], checkins={}, habits={}, customFields=[], customRecords=[], decisions=[], predictions=[], reviews=[], insights=[], todos=[], _revision='fixture')
             else: result = dict(modules=[], lessons=[], plans=[], records=[], items=[], articles=[], jobs=[], entries=[], reports=[], stats={}, preferences={}, budget={}, attempts=[], legacy=[], drafts=[])
@@ -231,17 +233,20 @@ class StudyGenerationTests(PostgreSQLFixture):
                     for selector, value in [('#apiBaseUrl', AI['api_base_url']), ('#apiKey', AI['api_key']), ('#modelName', AI['model_name'])]:
                         page.locator(selector).fill(value)
                     page.get_by_role('button', name='保存配置', exact=True).click()
-                    page.locator('[data-group="personal"]').click()
-                    home = page.locator('#dailyLearning')
+                    page.locator('[data-group="learning"]').click()
+                    home = page.locator('#learningLibrary')
                     english = home.locator('.learning-module').filter(has=page.get_by_role('heading', name='英文阅读 · 35 分钟', exact=True))
                     english.get_by_role('button', name='生成下一课', exact=True).click()
                     english.get_by_role('button', name='保存课程并开始学习', exact=True).wait_for()
                     self.assertEqual(len(self.calls), 1)
+                    page.locator('[data-group="personal"]').click()
                     page.locator('#personalDate').fill('2035-01-01')
                     page.locator('#personalDate').dispatch_event('change')
+                    page.locator('[data-group="learning"]').click()
                     english.get_by_role('button', name='保存课程并开始学习', exact=True).wait_for()
                     self.assertEqual(len(self.calls), 1, 'Calendar changes must preserve the same progress-based draft')
                     page.reload()
+                    page.locator('[data-group="learning"]').click()
                     english.get_by_role('button', name='保存课程并开始学习', exact=True).wait_for()
                     self.assertEqual(len(self.calls), 1, 'Reloading must reuse the existing draft without another model call')
                     page.set_viewport_size({'width': 390, 'height': 844})
@@ -253,7 +258,7 @@ class StudyGenerationTests(PostgreSQLFixture):
                     self.repo.fail_update = False
                     english.get_by_role('button', name='保存课程并开始学习', exact=True).click()
                     reader = page.locator('#dailyReader')
-                    reader.get_by_role('heading', name='我的学习记录', exact=True).wait_for()
+                    reader.get_by_role('heading', name='学习笔记与练习', exact=True).wait_for()
                     reader.get_by_role('link', name='在 GitHub 查看课程', exact=True).wait_for()
                     self.assertEqual(self.repo.ref_updates, 1)
                     self.assertEqual(len(self.calls), 1)
@@ -274,7 +279,7 @@ class StudyGenerationTests(PostgreSQLFixture):
                     reader.get_by_role('button', name='生成下一课', exact=True).click()
                     reader.get_by_role('button', name='保存课程并开始学习', exact=True).wait_for()
                     reader.get_by_role('button', name='保存课程并开始学习', exact=True).click()
-                    reader.get_by_role('heading', name='我的学习记录', exact=True).wait_for()
+                    reader.get_by_role('heading', name='学习笔记与练习', exact=True).wait_for()
                     reader.get_by_role('link', name='在 GitHub 查看课程', exact=True).wait_for()
                     self.assertEqual(self.repo.ref_updates, 2)
                     self.assertEqual(len(self.calls), 3)

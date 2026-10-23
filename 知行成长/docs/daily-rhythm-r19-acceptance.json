@@ -1,0 +1,149 @@
+{
+  "completed_at": "2026-10-23T10:09:38.187159+08:00",
+  "status": "passed",
+  "command": [
+    "/tmp/grow-web-batch1-env/bin/python",
+    "-B",
+    "知行成长/server/tests/run_isolated_checks.py",
+    "--full"
+  ],
+  "execution_note": "The full entry point was run through a temporary runpy wrapper that prints errors immediately; discovery, full flags and pass criteria were unchanged.",
+  "environment": {
+    "TEST_POSTGRES_DSN": "host=127.0.0.1 port=58584 user=grow_test dbname=postgres",
+    "TEST_ZOOK_WORKTREE": "/Users/hao/Documents/project/Zook/.worktrees/lighttick-p0-v2-backend",
+    "NODE_PATH": "/tmp/grow-web-batch1-node/node_modules",
+    "CHROME_EXECUTABLE": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  },
+  "regression": {
+    "python_tests": 577,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "javascript": [
+      {
+        "file": "test_action_p0_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_action_plan_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_background_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_behavior_report_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_completion_producers.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_daily_agenda_capabilities.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_learning_completion_sync.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_learning_loading.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_legacy_state_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_loading_state_contract.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_login_loading.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_navigation_layout.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_plan_observer.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_reading_navigation.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_reading_startup_browser.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_reading_tasks.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_reflection_entrypoints.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_rhythm_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_search_loading.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_search_timeline_navigation.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_state_browser.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_study_note_session.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_weekly_rhythm_requests.cjs",
+        "returncode": 0
+      }
+    ]
+  },
+  "isolation": {
+    "blocked_network_access": 0,
+    "blocked_real_database_access": 0,
+    "blocked_workspace_writes": 0,
+    "sqlite_connections": 402
+  },
+  "full_log": "/tmp/grow-r19-full-green.log",
+  "full_log_sha256": "4d4fbbbed1e8087a1ae25351b750fe291b2c1b9fcb54d6d02c7ded8105e25ca7",
+  "python_seconds": 449.816,
+  "supplementary_browser_tests": {
+    "tests": 5,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "log": "/tmp/grow-r19-final-rhythm-browser.log"
+  },
+  "source_verification": {
+    "production_source_unchanged_during_full": true,
+    "manifest": "/tmp/grow-r19-final-source-manifest.json",
+    "test_files_changed_during_full_and_rechecked": [
+      "知行成长/server/tests/test_rhythm_browser.py"
+    ]
+  },
+  "preservation": {
+    "snapshot": "/var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-r19-before-906ffcv1",
+    "staged_entries_unchanged": true,
+    "preexisting_files_deleted": 0,
+    "commit_stash_reset_used": false
+  },
+  "disposable_postgresql_stopped": true,
+  "business_database_accessed": false,
+  "feature_enabled": false
+}

@@ -5,12 +5,13 @@ from pathlib import Path
 import select
 import subprocess
 import sys
+import tempfile
 import unittest
 import uuid
 
 from playwright.sync_api import sync_playwright, expect
 
-EVIDENCE=Path(__file__).resolve().parents[3]/'openspec/changes/action-plans-p0-clarity/evidence'
+EVIDENCE=Path(tempfile.mkdtemp(prefix='grow-action-p0-browser-'))
 
 
 @unittest.skipUnless(os.getenv('RUN_GITHUB_BROWSER')=='1','Opt in to isolated real Chrome')
@@ -20,7 +21,7 @@ class P0BrowserAcceptance(unittest.TestCase):
         cls.fixture=subprocess.Popen([sys.executable,str(Path(__file__).with_name('serve_daily_arrangements_fixture.py'))],
             stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,env=os.environ.copy())
         cls.addClassCleanup(cls.stop_fixture)
-        if not select.select([cls.fixture.stdout],[],[],30)[0]:raise RuntimeError('Fixture startup timed out')
+        if not select.select([cls.fixture.stdout],[],[],60)[0]:raise RuntimeError('Fixture startup timed out')
         line=cls.fixture.stdout.readline()
         if not line:raise RuntimeError(cls.fixture.stderr.read())
         cls.info=json.loads(line);cls.base=cls.info['url']
@@ -68,6 +69,7 @@ class P0BrowserAcceptance(unittest.TestCase):
 
     def finish(self,minutes,interrupted=False):
         bar=self.page.locator('#actionExecution')
+        if bar.locator('details').get_attribute('open') is None:bar.locator('summary').click()
         bar.get_by_role('button',name='中断并保留记录' if interrupted else '记录完成',exact=True).click()
         d=self.page.get_by_role('dialog');d.get_by_label('实际执行分钟').fill(str(minutes))
         d.get_by_role('button',name='保存中断' if interrupted else '确认并记录',exact=True).click();expect(d).to_have_count(0)
@@ -248,6 +250,7 @@ class P0BrowserAcceptance(unittest.TestCase):
         expect(reader).to_contain_text('本次读完' if kind=='article' else '本课已完成')
         bar=self.page.locator('#actionExecution');expect(bar).to_be_visible()
         self.assertEqual(matching()[0]['status'],'active')
+        if bar.locator('details').get_attribute('open') is None:bar.locator('summary').click()
         bar.get_by_role('button',name='记录投入',exact=True).click()
         d=self.page.get_by_role('dialog');d.get_by_label('实际执行分钟').fill('8')
         d.get_by_role('button',name='确认并记录',exact=True).click();expect(d).to_have_count(0)

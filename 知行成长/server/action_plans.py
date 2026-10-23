@@ -191,6 +191,8 @@ class Mutation(Input):
     outcome: Literal['completed', 'interrupted'] = 'completed'
     actual_minutes: int = Field(default=0, ge=0, le=1440, strict=True)
     note: str = Field(default='', max_length=2000)
+    next_step: str = Field(default='', max_length=500)
+    recap_kind: Literal['gain', 'blocker', 'result'] = 'gain'
     snooze_minutes: int = Field(default=15, ge=5, le=120, strict=True)
 
 
@@ -475,7 +477,11 @@ def make_fact(plan,kind='session',stamp=None):
 
 
 def save_fact(c,record):
+    from rhythm.recap import initial
+    initial(record)
     c.execute('INSERT INTO action_executions VALUES (?,?,?,?)',(record['id'],record['plan_id'],record['outcome'],encoded(record)))
+    from rhythm.events import execution_events
+    execution_events(c,record)
 
 
 def mark_complete(plan,record):
@@ -491,6 +497,8 @@ def complete_fact(c,plan,source_event=None):
             record['planned_date']=source_event.get('planned_date_at_confirmation')
             record['timezone']=source_event.get('timezone_at_confirmation') or plan['timezone']
             record['business_date']=datetime.fromisoformat(source_event['confirmed_at']).astimezone(ZoneInfo(record['timezone'])).date().isoformat()
+    from rhythm.facts import instant
+    instant(c,plan,record,source_event)
     mark_complete(plan,record);save_fact(c,record)
     return record
 
@@ -544,7 +552,11 @@ def with_content_completion(result,target,event_id=None):
         remote=completion(event_id)
         if remote is not None:return {**result,**remote}
         completed=content_completed(target,event_id)
+        from rhythm.facts import completion_receipts
+        with connection() as c:
+            receipts=completion_receipts(c,event_id)
         return {**result,'source_event_id':event_id,'completed_arrangements':completed,
+                'action_completion_receipts':receipts,
                 **({'arrangement_sync_error':'本次确认已保存；尚未匹配完成安排，可先保存投入后核对。'} if not completed else {})}
     except Exception:
         return {**result,'source_event_id':event_id,'arrangement_sync_error':'内容已保存，安排同步待核对，请稍后重试。'}
@@ -583,6 +595,8 @@ def mutate(pid,body):
                 if plan['status']!='completed':fail(409,'事项尚未完成。')
                 old=plan.get('completion_record_id') or next((r['id'] for r in reversed(facts(c,pid)) if r['outcome']=='completed'),None)
                 record=make_fact(plan,'reversal');record.update(outcome='reopened',completion_effect='reopen',reverses_record_id=old)
+                from rhythm.facts import instant
+                instant(c,plan,record)
                 save_fact(c,record);result['execution']=record
                 plan.update(status='active',completed_at=None,completion_record_id=None)
             elif action in ('pause','resume','archive','cancel','complete'):
@@ -599,9 +613,14 @@ def mutate(pid,body):
             elif action=='start':
                 if plan['period']!='day' or plan['completion_mode']=='check':fail(422,'勾选事项无需计时。')
                 if running:fail(409,'已有行动正在执行，请先保存。','RUNNING_CONFLICT')
-                if body.variant=='minimum' and not plan.get('minimum_minutes'):fail(422,'该行动未设置起步时长。')
                 record=make_fact(plan);record['variant']=body.variant
-                if body.variant=='minimum':record['planned_minutes']=plan['minimum_minutes']
+                from rhythm.facts import start as rhythm_start
+                rhythm_start(c,plan,record,body.variant)
+                if body.variant=='minimum':
+                    if plan['completion_mode']=='time':
+                        if not plan.get('minimum_minutes'):fail(422,'该行动未设置起步时长。')
+                        record['planned_minutes']=plan['minimum_minutes']
+                    elif not record['minimum_step_snapshot']:fail(422,'请先在今日一件事确认具体的最小步骤。')
                 save_fact(c,record);result['execution']=record
             elif action=='finish':
                 if not own or body.execution_id!=running['id']:fail(409,'该次执行已经结束或发生变化。')
@@ -612,9 +631,15 @@ def mutate(pid,body):
                     else:
                         total=sum(r['actual_minutes'] for r in facts(c,pid) if r['outcome']!='running' and r['record_kind']=='session')+body.actual_minutes
                         outcome='completed' if total>=plan['target_minutes'] else ('minimum' if plan.get('minimum_minutes') and body.actual_minutes>=plan['minimum_minutes'] else 'partial')
-                record.update(ended_at=clock().isoformat(),actual_minutes=body.actual_minutes,note=body.note,outcome=outcome)
+                record.update(ended_at=clock().isoformat(),actual_minutes=body.actual_minutes,note=body.note,next_step=body.next_step,recap_kind=body.recap_kind,outcome=outcome)
+                from rhythm.facts import confirm
+                confirm(record)
+                from rhythm.recap import initial
+                initial(record)
                 if outcome=='completed':mark_complete(plan,record);plan['reminder_at']=None
                 c.execute('UPDATE action_executions SET state=?,data=? WHERE id=?',(outcome,encoded(record),record['id']))
+                from rhythm.events import execution_events
+                execution_events(c,record)
                 result['execution']=record
             elif action=='complete-time':
                 if plan['completion_mode']!='time' or plan['period']!='day':fail(422,'请选择计时行动。')
@@ -629,6 +654,9 @@ def mutate(pid,body):
                 plan['reminder_at']=(max(clock(),datetime.fromisoformat(plan['reminder_at']))+timedelta(minutes=body.snooze_minutes)).isoformat()
             else:fail(422,'不支持的操作。')
             plan.update(revision=plan['revision']+1,updated_at=clock().isoformat());write(c,plan)
+            if result.get('execution',{}).get('source_event_id'):
+                from rhythm.facts import completion_receipts
+                result['action_completion_receipts']=completion_receipts(c,result['execution']['source_event_id'])
             return {**result,'plan':plan}
         return operation(c,body.key,{'pid':pid,**body.model_dump(mode='json')},work)
 
@@ -757,6 +785,8 @@ def register(app):
         return JSONResponse({'detail':'请检查填写字段。','code':'VALIDATION_ERROR','errors':[{k:v for k,v in e.items() if k in ('loc','msg','type')} for e in exc.errors()]},status_code=422)
 
     router = APIRouter(prefix='/api/action-plans')
+    from rhythm.api import register as register_rhythm
+    register_rhythm(router)
 
     @router.get('')
     def read():

@@ -145,6 +145,21 @@ async function main(){
     for(let i=0;i<100&&!pendingSaves.length;i++)await page.waitForTimeout(10);
     assert(pendingSaves.length);pendingSaves.shift()();
     await page.getByRole('button',{name:'本站阅读',exact:true}).waitFor();
+    // Unedited forms must hydrate every saved condition, not only the keyword.
+    const hydrated=await browser.newPage();hydrated.on('pageerror',error=>errors.push(error.message));
+    preferences.count=2;
+    await hydrated.goto('http://127.0.0.1:'+server.address().port);
+    await hydrated.getByRole('button',{name:'帮我找文章',exact:true}).click();
+    for(let i=0;i<100&&!heldSetups.length;i++)await page.waitForTimeout(10);
+    assert(heldSetups.length);heldSetups.shift()();
+    await hydrated.getByText('已载入你的阅读偏好。',{exact:true}).waitFor();
+    assert.equal(await hydrated.getByLabel('推荐数量（1—8篇）',{exact:true}).inputValue(),'2');
+    assert.equal(await hydrated.getByRole('textbox',{name:/主题或关键词/}).inputValue(),'AI');
+    assert(await hydrated.getByLabel('科技',{exact:true}).isChecked());
+    assert(!await hydrated.getByLabel('认知',{exact:true}).isChecked());
+    assert(await hydrated.getByLabel('英文（可生成中文导读）',{exact:true}).isChecked());
+    assert(!await hydrated.getByLabel('中文',{exact:true}).isChecked());
+    await hydrated.close();
     // A fresh page must remain usable even when preferences fail to load.
     const cold=await browser.newPage();cold.on('pageerror',error=>errors.push(error.message));
     holdListing=true;rejectSetup=true;

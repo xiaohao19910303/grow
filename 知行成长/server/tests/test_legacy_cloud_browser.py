@@ -16,8 +16,10 @@ from test_legacy_cloud_api import CloudHTTPFixture, OWN
 @unittest.skipUnless(os.getenv('RUN_LEGACY_BROWSER')=='1','Opt in to Chromium acceptance')
 class LegacyCloudBrowser(CloudHTTPFixture):
     def test_course_and_reading_complete_browser_flow(self):
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, expect
         static=Path(__file__).resolve().parents[1]/'static'
+        from study_notes import register as register_notes
+        register_notes(self.app)
         self.reader.save_full_text(self.aid,'Public saved article body. '*20)
         self.app.mount('/static',StaticFiles(directory=static))
         @self.app.get('/')
@@ -29,12 +31,13 @@ class LegacyCloudBrowser(CloudHTTPFixture):
             <body><input id="autoTranslateArticles" type="checkbox" hidden><nav><button onclick="goTab('copilot')">旧认知课程</button><button onclick="goTab('reading')">认知阅读</button></nav>
             <p id="notice" role="status"></p><main><div id="view-copilot"></div><div id="view-reading" style="display:none"></div></main>
             <script>
+            let currentTab='copilot';
             window.Account={user:{id:'migration-test-owner',username:'owner',is_owner:true}};
             window.toast=text=>document.getElementById('notice').textContent=text;
             window.rememberLearningOrigin=()=>{};window.returnFromLesson=()=>{document.querySelector('#view-copilot .cp-reader').hidden=true;document.querySelector('.cp-management').open=true;loadCopilot();};
-            window.goTab=name=>{document.getElementById('view-copilot').style.display=name==='copilot'?'block':'none';document.getElementById('view-reading').style.display=name==='reading'?'block':'none';if(name==='reading')enterReading();else loadCopilot();};
+            window.goTab=name=>{if(currentTab==='copilot'&&name!=='copilot')window.leaveCopilot?.();currentTab=name;document.getElementById('view-copilot').style.display=name==='copilot'?'block':'none';document.getElementById('view-reading').style.display=name==='reading'?'block':'none';if(name==='reading')enterReading();else loadCopilot();};
             window.renderArticleTranslation=(parent,a,text,markdown)=>{const box=document.createElement('div');markdown(box,text);parent.append(box);return box;};
-            </script>'''+language+'''<script src="/static/ai-config.js"></script><script src="/static/copilot.js"></script><script src="/static/reading-growth.js"></script><script src="/static/reading-body.js"></script><script src="/static/reading.js"></script>
+            </script>'''+language+'''<script src="/static/ai-config.js"></script><script src="/static/reading-tasks.js"></script><script src="/static/study-note-session.js"></script><script src="/static/study-notes.js"></script><script src="/static/copilot.js"></script><script src="/static/reading-growth.js"></script><script src="/static/reading-body.js"></script><script src="/static/reading.js"></script>
             </body></html>''')
         sock=socket.socket();sock.bind(('127.0.0.1',0));base='http://127.0.0.1:'+str(sock.getsockname()[1])
         server=uvicorn.Server(uvicorn.Config(self.app,log_level='error'))
@@ -58,10 +61,14 @@ class LegacyCloudBrowser(CloudHTTPFixture):
                     page.get_by_role('button',name='确认保存为正式课程',exact=True).click()
                     course=page.locator('.cp-row').filter(has_text='第003课').first
                     course.get_by_role('button',name='阅读',exact=True).click()
+                    # Exercise the actual timer callback before completing, so
+                    # missing navigation globals cannot pass on fast machines.
+                    expect(page.locator('.cp-reading-info')).not_to_contain_text('0:00 / 3:00')
                     page.get_by_role('button',name='本人确认学完',exact=True).click()
                     page.get_by_role('button',name='撤销本人完成记录',exact=True).wait_for()
                     page.screenshot(path='/tmp/grow-legacy-course-browser.png')
                     page.get_by_role('button',name='认知阅读',exact=True).click()
+                    page.get_by_role('button',name='查看历史文章',exact=True).click()
                     page.get_by_role('button',name='本站阅读',exact=True).click()
                     page.get_by_role('button',name='我的笔记',exact=True).click()
                     notes=page.get_by_placeholder('哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...')
@@ -69,8 +76,7 @@ class LegacyCloudBrowser(CloudHTTPFixture):
                     page.get_by_role('button',name='保存笔记',exact=True).click()
                     page.get_by_text('笔记已保存',exact=True).wait_for()
                     page.get_by_role('button',name='生成/更新AI导读',exact=True).click()
-                    page.get_by_role('button',name='阅读中文导读',exact=True).click()
-                    page.get_by_role('button',name='我的笔记',exact=True).click()
+                    page.get_by_text('Public generated reading guide.',exact=True).filter(visible=True).wait_for()
                     self.assertEqual(page.get_by_placeholder('哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...').input_value(),'PRIVATE BROWSER NOTE')
                     page.get_by_text('Public generated reading guide.',exact=True).filter(visible=True).wait_for()
                     page.reload()

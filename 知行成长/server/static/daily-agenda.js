@@ -20,6 +20,7 @@
     form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{await run(input.value);d.close();}catch(e){error.textContent=e.message;}finally{save.disabled=false;}};
   }
   async function arrange(target,title,date,minutes){
+    await ActionPlans.refresh();
     if(!data().capabilities?.content_receipts?.includes(target.kind))return ActionPlans.newDay({date,target,seedValues:{title,completion_mode:'time',target,target_minutes:minutes||20}});
     const result=await ActionPlans.schedule({target,title:title.slice(0,160),date,target_minutes:minutes||20});
     toast(result.existing?(result.plan.status==='completed'?'该日期的安排已完成。':'该日期已有安排，可改期或取消。'):'已安排 '+date+'，可在今日的日期视图或明日预览查看。');

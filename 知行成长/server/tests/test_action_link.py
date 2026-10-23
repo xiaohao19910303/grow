@@ -16,7 +16,7 @@ class ActionLinkTests(PostgreSQLFixture):
         super().setUp();app=FastAPI();actions.register(app);self.client=TestClient(app,base_url='http://localhost');self.addCleanup(self.client.close)
         token=current_user.set({'id':'grow-test-alice','is_owner':False});self.addCleanup(current_user.reset,token)
         env=patch.dict('os.environ',{'LIGHTTICK_BRIDGE_URL':'http://127.0.0.1:9876','GROW_ACTION_BRIDGE_SECRET':'TEST_ONLY_BRIDGE_SECRET_01234567890123456789'});env.start();self.addCleanup(env.stop)
-        self.headers={'X-Copilot-Request':'1'};self.code='a'*36;self.imports=[];self.sources=[];self.drop_response=False;self.bad_receipt=False
+        self.headers={'X-Copilot-Request':'1','X-Grow-Action-Schema':'2'};self.code='a'*36;self.imports=[];self.sources=[];self.drop_response=False;self.bad_receipt=False
         mock=patch('action_link.call',self.remote);mock.start();self.addCleanup(mock.stop)
     def remote(self,source,body):
         self.sources.append(source)
@@ -31,7 +31,14 @@ class ActionLinkTests(PostgreSQLFixture):
         if body['action']=='request':return {'from':'zook','path':body['path'],'method':body['method']}
     def post(self,path,body):return self.client.post('/api/action-link'+path,json=body,headers=self.headers)
     def create(self,title='先读书'):
-        response=self.client.post('/api/action-plans',json=dict(title=title,period='day',start_date='2026-10-20',end_date='2026-10-20',key=str(uuid.uuid4())),headers=self.headers);self.assertEqual(response.status_code,200,response.text);return response.json()['plans'][0]
+        response=self.client.post('/api/action-plans',json=dict(title=title,period='day',start_date='2026-10-20',end_date='2026-10-20',key=str(uuid.uuid4())),headers=self.headers);self.assertEqual(response.status_code,200,response.text)
+        # This suite exercises the legacy import protocol, not P0 eligibility.
+        # New P0/rhythm data is rejected in the separate boundary tests.
+        plan=response.json()['plans'][0];plan['schema_version']=1
+        with actions.connection(True) as c:
+            actions.write(c,plan)
+            c.execute('DELETE FROM action_operations')
+        return plan
     def preview(self):
         response=self.post('/preview',{'code':self.code});self.assertEqual(response.status_code,200,response.text);return response.json()
     def confirm(self,preview,**extra):return self.post('/confirm',{'code':self.code,'preview_id':preview['preview_id'],'consent':True}|extra)

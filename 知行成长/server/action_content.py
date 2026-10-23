@@ -43,6 +43,11 @@ def confirm_source(store, target, data, save):
                 with connection() as c:plan=get(c,event['origin_action_id'])
                 if plan['completion_mode']!='content' or not same_target(plan['target'],target):fail(422,'来源与行动不匹配。')
                 event.update(planned_date_at_confirmation=plan['start_date'],timezone_at_confirmation=plan['timezone'])
+            if not delivery:
+                from datetime import datetime
+                from rhythm.facts import source_context
+                with connection(True,allow_link=True) as c:
+                    event['rhythm_snapshot']=source_context(c,target,event['origin_action_id'],datetime.fromisoformat(event['confirmed_at']))
         if row:
             return with_content_completion({**event.get('source_result',{}),'source_event_id':event['event_id'],'replayed':True},target,event['event_id'])
         token=pending_event.set(event)

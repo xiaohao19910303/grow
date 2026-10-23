@@ -19,6 +19,7 @@ export GROW_TEST_PGDATA="$(mktemp -d)"
 initdb -D "$GROW_TEST_PGDATA" -U grow_test -A trust
 pg_ctl -D "$GROW_TEST_PGDATA" -l /tmp/grow-regression-pg.log -o '-p 55441 -h 127.0.0.1' start
 export TEST_POSTGRES_DSN='host=127.0.0.1 port=55441 user=grow_test dbname=postgres'
+export TEST_ZOOK_WORKTREE='/Users/hao/Documents/project/Zook/.worktrees/lighttick-p0-v2-backend'
 export NODE_PATH=/tmp/grow-regression-node/node_modules
 # macOS 使用已有 Chrome；其他系统设置为自己的 Chromium/Chrome 可执行文件。
 export CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
@@ -48,3 +49,22 @@ pg_ctl -D "$GROW_TEST_PGDATA" stop -m fast
 测试入口在导入应用前清空 `DATABASE_URL`、分配临时运行目录，阻止写入真实工作区、访问工作区 SQLite、连接非 localhost PostgreSQL 和外部网络。`test_isolation_boundary.py` 在子进程中验证这些拦截。GitHub 模拟器与合成正文避免访问真实仓库、网站或付费模型。
 
 成功运行的 `ISOLATION_AUDIT` 中三个 `blocked_*` 值应为 0；允许的 `sqlite_connections` 来自离线归档、迁移来源和配置兼容测试。
+
+
+## 日常节奏专项与发布门槛
+
+专项使用同一个隔离入口；浏览器夹具读取实际首页及JS，使用临时PostgreSQL、合成文章与课程，不访问真实模型或GitHub。不要将TEST_POSTGRES_DSN设为业务库或业务转发端口。
+
+```sh
+RUN_GITHUB_BROWSER=1 python -B 知行成长/server/tests/run_isolated_checks.py --pattern 'test_rhythm_*.py'
+```
+
+`test_rhythm_export.py`需要本机pg_dump和pg_restore；只备份、删除并恢复测试自己创建的临时schema，核对完整个人JSON、总结历史、周卡、事件和统计。不能将此结果表述为旧SQLite备份已覆盖生产PG。
+
+浏览器证据位于测试打印的 `RHYTHM_BROWSER_EVIDENCE` 临时目录。P0浏览器截图也改为独立临时目录，避免完整隔离入口拒绝向真实工作区写截图。
+
+节奏专项通过不替代 `--full`。2026-10-23完整验收为577项Python、23组JavaScript全部通过，0失败、0跳过，R19已关闭；证据与保留项见 `知行成长/docs/daily-rhythm-v1-delivery.md`。不要跳过失败或连接默认本机数据库来获得绿色结果。
+
+跨端来源HTTP回归还需要显式设置 `TEST_ZOOK_WORKTREE`，指向含 `test/support/lighttick-source-http-fixture.ts` 的独立测试工作树。测试节点现在从专用测试DSN构造连接地址，不再使用写死的默认本机数据库。该原协议回归不代表节奏R20跨端合同已经开放。
+
+R19回归覆盖课程状态历史表的首次/旧账号初始化与历史保留、旧页面真实笔记依赖、认知课程计时回调、按课号继续学习、首次搜集偏好完整载入和编辑保护、账号切换保护。临时实例已停止，复现时请新建实例并使用自己的端口。

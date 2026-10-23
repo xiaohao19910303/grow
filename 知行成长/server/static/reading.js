@@ -187,12 +187,14 @@
     form.addEventListener('input',()=>{edited=true;});form.addEventListener('change',()=>{edited=true;});
 
     // 先渲染基础表单，使用默认值或缓存
-    const initialData={...defaultPreferences,...(preset||cached?.preferences)};
-    const query=field(form,'主题或关键词（可留空，例如：科技、心理、社会、decision）',initialData.query||'');
-    form.append(node('p','在已配置来源的标题与摘要中筛选，中文主题会扩展为英文关键词。复杂问题建议提取核心关键词。','desc'));
-    let getFn;
-    const tempGet=preferenceFields(form,initialData,false,cached?.topics||defaultTopics);
-    button(form,'开始查找',()=>start({...tempGet(),query:query.value}),true);
+    function renderConditions(preferences,topics){
+      form.replaceChildren();
+      const query=field(form,'主题或关键词（可留空，例如：科技、心理、社会、decision）',preferences.query||'');
+      form.append(node('p','在已配置来源的标题与摘要中筛选，中文主题会扩展为英文关键词。复杂问题建议提取核心关键词。','desc'));
+      const getPreferences=preferenceFields(form,preferences,false,topics);
+      button(form,'开始查找',()=>start({...getPreferences(),query:query.value}),true);
+    }
+    renderConditions({...defaultPreferences,...(preset||cached?.preferences)},cached?.topics||defaultTopics);
 
     if(preset||cached){status.textContent='调整条件后即可开始查找。';return;}
 
@@ -202,8 +204,7 @@
     async function refresh(){try{const data=await api('/setup');if(turn!==revision||account!==accountKey())return;
       preferenceCache={account,preferences:data.preferences,topics:data.topics};
       if(!edited){
-        // 更新表单值而不重建
-        query.value=data.preferences.query||'';
+        renderConditions({...defaultPreferences,...data.preferences},data.topics||defaultTopics);
       }
       status.textContent=edited?'已保留你正在调整的条件。':'已载入你的阅读偏好。';
     }catch(error){if(turn!==revision)return;status.textContent='偏好暂未载入，可继续使用当前条件查找。';

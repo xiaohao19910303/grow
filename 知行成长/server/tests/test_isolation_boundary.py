@@ -51,3 +51,10 @@ finally:runtime.cleanup()
         result=subprocess.run([sys.executable,'-B',str(SERVER/'tests/run_isolated_checks.py'),'--full','--pattern','none.py'],capture_output=True,text=True)
         self.assertEqual(result.returncode,2)
         self.assertIn('cannot restrict test patterns',result.stderr)
+
+    def test_child_fixtures_import_the_workspace_course_package(self):
+        env = os.environ.copy()
+        result = subprocess.run([sys.executable, '-B', '-c', 'import sys,copilot.api;assert sys.dont_write_bytecode;print(copilot.api.__file__)'],
+                                cwd='/tmp',env=env,capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(Path(result.stdout.strip()).resolve(),(SERVER/'copilot/api.py').resolve())

@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from test_legacy_cloud_schema import PostgreSQLFixture
 from unittest.mock import patch
 
 from copilot.core import Store
@@ -11,8 +12,11 @@ ROOT = Path(__file__).resolve().parents[3]
 DATE = '2026-10-14T10:00:00+08:00'
 
 
-class ArchiveTest(unittest.TestCase):
+class ArchiveTest(PostgreSQLFixture):
     def setUp(self):
+        super().setUp()
+        backend=patch.dict('os.environ', {'PLAN_CONTENT_BACKEND':'local'})
+        backend.start();self.addCleanup(backend.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         shutil.copytree(Path(__file__).parent / 'fixtures/renzhi', self.root / '每日认知与通识学习')

@@ -29,6 +29,13 @@ CREATE TABLE IF NOT EXISTS learning_feedback (plan_id TEXT, lesson_no INTEGER, d
 CREATE TABLE IF NOT EXISTS learning_publications (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS learning_draft_families (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS learning_settings (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS plan_status_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id TEXT NOT NULL REFERENCES learning_plans(id) ON DELETE CASCADE,
+    from_status TEXT, to_status TEXT NOT NULL, changed_at TEXT NOT NULL, reason TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_plan_status_plan_id ON plan_status_history(plan_id);
+CREATE INDEX IF NOT EXISTS idx_plan_status_changed_at ON plan_status_history(changed_at);
 '''
 
 

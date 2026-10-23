@@ -14,7 +14,10 @@ def setup_isolation():
     server = Path(__file__).resolve().parents[1]
     workspace = server.parent.parent
     sys.path.insert(0, str(server))
+    # Subprocess browser fixtures need the same local package precedence.
+    os.environ['PYTHONPATH'] = str(server) + (os.pathsep + os.environ['PYTHONPATH'] if os.environ.get('PYTHONPATH') else '')
     sys.dont_write_bytecode = True
+    os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
     runtime = tempfile.TemporaryDirectory(prefix='grow-test-runtime-')
     os.environ['RUNTIME_ROOT'] = runtime.name
     os.environ['LEARN_ROOT'] = runtime.name

@@ -13,7 +13,7 @@ from study_materials import initialize,register as materials
 from study_notes import register as notes
 
 
-def main():
+def main(customize=None):
     fixture=CloudHTTPFixture();fixture.setUp()
     try:
         app=fixture.app;actions(app);initialize();materials(app,fixture.root);notes(app)
@@ -63,6 +63,8 @@ def main():
         def identity():return {'user':{'id':'agenda-fixture','username':'日程隔离验证','is_owner':True}}
         @app.get('/api/data')
         def data():return dict(modules=[],checkins={},habits={},customFields=[],customRecords=[],decisions=[],predictions=[],reviews=[],insights=[],todos=[],_revision='fixture')
+        if customize:
+            customize(app,fixture)
         @app.get('/api/{rest:path}')
         def empty(rest:str):return dict(invitations=[],modules=[],lessons=[],plans=[],records=[],items=[],articles=[],jobs=[],entries=[],reports=[],stats={},preferences={},budget={},attempts=[],legacy=[],drafts=[])
         sock=socket.socket();sock.bind(('127.0.0.1',0))

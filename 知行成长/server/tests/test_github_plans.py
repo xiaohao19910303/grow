@@ -152,6 +152,30 @@ class GitHubPlanTests(PostgreSQLFixture):
         ctx = self.s.course_context(pid)
         return self.s.course_draft(ctx, content(ctx), '摘要 [来源](https://example.org/lesson)')
 
+    def test_status_history_is_initialized_and_existing_rows_survive_reinitialization(self):
+        pid = self.adopt()
+        app = FastAPI()
+        with patch('plans.api.make_store', return_value=self.s):
+            register(app, '/missing', '/missing')
+        with TestClient(app) as client:
+            response = client.get('/api/plans/' + pid + '/status-history')
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()['history'], [])
+            with self.s.conn() as c:
+                c.execute('DROP TABLE plan_status_history')
+            # Simulate an older account with plans but no status-history table.
+            self.s.initialize()
+            with self.s.conn() as c:
+                c.execute("INSERT INTO plan_status_history(plan_id,from_status,to_status,changed_at,reason) VALUES (?,?,?,?,?)",
+                          (pid, 'active', 'paused', '2026-10-23T09:00:00', 'PRIVATE REASON'))
+            self.s.initialize()
+            response = client.get('/api/plans/' + pid + '/status-history')
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()['history'], [{'from_status': 'active', 'to_status': 'paused',
+                'changed_at': '2026-10-23T09:00:00', 'reason': 'PRIVATE REASON'}])
+            self.assertEqual(self.s.plan(pid)['id'], pid)
+            self.assertNotIn('PRIVATE REASON', json.dumps(self.repo.commits))
+
     def test_publish_and_read_without_any_content_directory(self):
         pid = self.adopt(); d = self.draft_course(pid)
         before = self.repo.ref_updates
@@ -326,6 +350,25 @@ class GitHubPlanTests(PostgreSQLFixture):
             self.assertIn('核心概念', r.json()['content'])
             self.assertIn('github_url', r.json())
             post('/'+pid+'/lessons/1/feedback', {'key': 'f', 'state': 'completed', 'comment': '已练习'})
+
+    def test_fresh_store_supports_plan_status_history(self):
+        pid = self.adopt()
+        app = FastAPI()
+        with patch('plans.api.make_store', return_value=self.s):
+            register(app, '/missing', '/missing')
+        with TestClient(app) as client:
+            path = '/api/plans/' + pid
+            initial = client.get(path + '/status-history')
+            self.assertEqual(initial.status_code, 200, initial.text)
+            self.assertEqual(initial.json()['history'], [])
+            for action, expected in [('pause', 'paused'), ('resume', 'active'), ('archive', 'archived')]:
+                response = client.post(path + '/' + action,
+                    json={'data': {'key': 'status-' + action, 'reason': action}},
+                    headers={'X-Copilot-Request': '1'})
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(self.s.plan(pid)['status'], expected)
+            history = client.get(path + '/status-history').json()['history']
+            self.assertEqual([row['to_status'] for row in history], ['archived', 'active', 'paused'])
 
 
 if __name__ == '__main__': unittest.main()

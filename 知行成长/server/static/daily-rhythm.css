@@ -1,0 +1,9 @@
+.daily-rhythm{border:1px solid var(--border);padding:20px;margin-bottom:20px;overflow-wrap:anywhere}
+.daily-rhythm h2{margin-top:0}.daily-rhythm h3{margin:12px 0 8px}.daily-rhythm .btn{margin:4px 8px 4px 0}
+.rhythm-progress{font-variant-numeric:tabular-nums;font-weight:600}
+.rhythm-record{border-top:1px solid var(--border);margin-top:12px;padding-top:8px}
+.rhythm-dialog{max-width:620px;width:calc(100% - 32px);box-sizing:border-box}.rhythm-dialog form{display:grid;gap:12px}
+.rhythm-dialog input,.rhythm-dialog select,.rhythm-dialog textarea,#rhythmSettings input{max-width:100%;box-sizing:border-box}
+.rhythm-dialog textarea{min-height:88px}.rhythm-dialog .action-error:empty{display:none}
+.rhythm-week-facts{display:grid;gap:12px;max-height:420px;overflow:auto}.rhythm-week-facts label{display:flex;align-items:flex-start;gap:8px}
+@media(max-width:480px){.daily-rhythm{padding:16px}.daily-rhythm .btn{min-height:44px;max-width:100%;white-space:normal}.rhythm-dialog{padding:16px}}

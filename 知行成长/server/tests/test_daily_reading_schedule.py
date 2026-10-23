@@ -101,7 +101,7 @@ class CloudDailyReadingTests(CloudFixture):
         dt = datetime.fromisoformat(DATE)
         async def run():
             with patch('reading.service.now', return_value=DATE), \
-                 patch('reading.service.fetch_article_content', return_value='Public full article text'):
+                 patch('reading.service.fetch_article_content', return_value='\n\n'.join('Synthetic public article paragraph about evidence, learning and reasoning. '*30 for _ in range(4))):
                 job = service.daily_tick(dt)
                 self.assertIsNotNone(job)
                 await asyncio.gather(*list(service.tasks.values()))

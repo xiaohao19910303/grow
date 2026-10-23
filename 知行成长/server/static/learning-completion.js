@@ -14,6 +14,7 @@
       status.hidden = !warning;
       document.getElementById('learningSyncMessage').textContent = warning;
     }
+    try{await window.DailyRhythm?.sourceSaved(result);}catch{}
     return warning;
   }
   window.refreshLearningCompletion = refresh;

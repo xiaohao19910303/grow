@@ -2,7 +2,23 @@
 (() => {
   'use strict';
 
+  const owners = new WeakMap();
   const LoadingState = {
+    // Request-owned handle: a late completion must not hide a newer request.
+    start(container, message = '正在加载…', detail = '') {
+      if (!container) return {finish() {}};
+      this.hide(container);
+      const el = document.createElement('div');
+      el.className = 'loading-state desc';
+      el.setAttribute('role', 'status');
+      const title = document.createElement('p'); title.textContent = message; el.append(title);
+      if (detail) { const hint = document.createElement('p'); hint.textContent = detail; el.append(hint); }
+      container.prepend(el); owners.set(container, el); container.setAttribute('aria-busy', 'true');
+      return {finish() {
+        if (owners.get(container) === el) { container.removeAttribute('aria-busy'); owners.delete(container); }
+        el.remove();
+      }};
+    },
     // Show loading message in a container
     show(container, message = '正在加载…') {
       if (!container) return;
