@@ -41,8 +41,11 @@
     let debounceTimer;
     searchInput.addEventListener('input', (e) => {
       clearTimeout(debounceTimer);
+      // Password managers can fill this field without a search interaction.
+      if (document.activeElement !== searchInput) return;
       ++requestNumber; activeRequest?.abort();
       debounceTimer = setTimeout(() => {
+        if (document.activeElement !== searchInput) return;
         const query = e.target.value.trim();
         if (query.length >= 2) {
           performSearch(query);
