@@ -1,0 +1,6 @@
+{
+  "status": "cancelled_superseded_grouped_run",
+  "reason": "Account group outer execution budget corrected to 600s after real Scrypt sampling; browser deadlines and assertions unchanged. Not counted as pass.",
+  "pid": 54310,
+  "owned_descendants": 10
+}

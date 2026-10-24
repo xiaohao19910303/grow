@@ -1,0 +1,10 @@
+......                                                                   [100%]
+============================= slowest 5 durations ==============================
+0.17s call     tests/test_reading_content.py::ContentTests::test_private_and_mixed_dns_never_connect
+0.01s call     tests/test_reading_content.py::ContentTests::test_public_ip_pinned_with_host_and_tls_identity
+0.01s call     tests/test_reading_content.py::ContentTests::test_body_preserves_paragraphs_and_tail_beyond_old_limit
+0.01s call     tests/test_reading_content.py::ContentTests::test_redirect_is_validated_before_connect_and_download_is_bounded
+
+(1 durations < 0.005s hidden.  Use -vv to show these durations.)
+6 passed in 0.43s
+WEB_MODULE_RESULT {"tests": 6, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

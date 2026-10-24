@@ -1,0 +1,9 @@
+.......                                                                  [100%]
+============================= slowest 5 durations ==============================
+3.89s call     tests/test_action_p0_browser.py::P0BrowserAcceptance::test_T01_T03_K01_A05_timer_check_copy_and_stale_tabs
+2.79s call     tests/test_action_p0_browser.py::P0BrowserAcceptance::test_article_source_schedule_cancel_timer_and_confirm
+2.69s call     tests/test_action_p0_browser.py::P0BrowserAcceptance::test_course_source_schedule_cancel_timer_and_confirm
+1.63s call     tests/test_action_p0_browser.py::P0BrowserAcceptance::test_R01_R02_multiple_drafts_account_switch_and_reload
+1.62s setup    tests/test_action_p0_browser.py::P0BrowserAcceptance::test_F03_F04_F06_F07_F10_conditional_fields_keyboard_and_errors
+7 passed in 17.36s
+WEB_MODULE_RESULT {"tests": 7, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

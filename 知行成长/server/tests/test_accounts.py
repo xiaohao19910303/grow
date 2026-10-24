@@ -184,7 +184,7 @@ class AccountIntegrationTests(unittest.TestCase):
 
     def test_daily_schedule_identity_is_scoped_to_owner_schedule_only(self):
         headers={**self.headers,'Authorization':'Bearer fixture-oidc-token'}
-        with patch('reading.scheduled.authorized',return_value=True):
+        with patch('reading.scheduled.authorized',return_value=True), patch.dict(os.environ,{'GROW_SCHEDULED_READING_ENABLED':'1','GROW_PUBLIC_URL':'https://fixture.example','GROW_SCHEDULE_REPOSITORY':'owner/fixture','GROW_SCHEDULE_REPOSITORY_ID':'1234','GROW_SCHEDULE_REF':'refs/heads/main'}):
             response=self.client.get('/api/reading/scheduled-run',headers=headers)
             self.assertEqual(response.status_code,200,response.text)
             self.assertEqual(response.json()['state'],'paused')
@@ -489,7 +489,7 @@ class AccountBrowserTests(AccountIntegrationTests):
         import socket
         import threading
         import uvicorn
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, expect
         sock = socket.socket()
         sock.bind(('127.0.0.1',0))
         port = sock.getsockname()[1]

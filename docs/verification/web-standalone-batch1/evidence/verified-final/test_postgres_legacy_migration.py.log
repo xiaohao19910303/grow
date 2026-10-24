@@ -1,0 +1,10 @@
+....                                                                     [100%]
+============================= slowest 5 durations ==============================
+0.31s call     tests/test_postgres_legacy_migration.py::LegacyMigration::test_old_course_can_initialize_against_postgres_with_local_fixture
+0.17s call     tests/test_postgres_legacy_migration.py::LegacyMigration::test_existing_error_types_without_name_constraint_keep_ids_and_gain_compatibility
+0.15s call     tests/test_postgres_legacy_migration.py::LegacyMigration::test_known_old_tables_migrate_and_repeated_startup_preserves_records
+0.07s call     tests/test_postgres_legacy_migration.py::LegacyMigration::test_ambiguous_nonempty_old_table_is_preserved
+
+(1 durations < 0.005s hidden.  Use -vv to show these durations.)
+4 passed in 0.74s
+WEB_MODULE_RESULT {"tests": 4, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

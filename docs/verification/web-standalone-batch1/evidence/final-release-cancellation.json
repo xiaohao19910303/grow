@@ -1,0 +1,6 @@
+{
+  "status": "cancelled_superseded_run",
+  "reason": "Fresh-install teaching export/owner-isolation boundary corrected; new candidate must run whole profile. Incomplete run is not a pass.",
+  "pid": 77171,
+  "owned_descendants": 1
+}

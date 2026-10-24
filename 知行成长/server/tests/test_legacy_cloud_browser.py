@@ -18,9 +18,15 @@ class LegacyCloudBrowser(CloudHTTPFixture):
     def test_course_and_reading_complete_browser_flow(self):
         from playwright.sync_api import sync_playwright, expect
         static=Path(__file__).resolve().parents[1]/'static'
-        from study_notes import register as register_notes
-        register_notes(self.app)
         self.reader.save_full_text(self.aid,'Public saved article body. '*20)
+        from study_notes import register as register_notes
+        from test_reading_growth_browser import GUIDE
+        register_notes(self.app)
+        async def reading_model(messages,cfg):
+            self.assertEqual(cfg['key'],OWN['api_key'])
+            yield {'text':GUIDE+'\n\nPublic generated reading guide.'}
+            yield {'done':True}
+        self.service.transport=reading_model
         self.app.mount('/static',StaticFiles(directory=static))
         @self.app.get('/')
         def home():

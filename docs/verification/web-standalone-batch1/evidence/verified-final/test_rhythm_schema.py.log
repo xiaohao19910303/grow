@@ -1,0 +1,9 @@
+.........                                                       [100%]
+============================= slowest 5 durations ==============================
+0.18s call     tests/test_rhythm_schema.py::RhythmSchemaTests::test_existing_action_schema_and_json_survive_additive_migration
+0.09s call     tests/test_rhythm_schema.py::RhythmSchemaTests::test_concurrent_initializers_serialize_one_migration
+0.04s call     tests/test_rhythm_schema.py::RhythmSchemaTests::test_dates_and_business_keys_cannot_duplicate
+0.03s call     tests/test_rhythm_schema.py::RhythmSchemaTests::test_migration_marker_with_missing_table_is_not_silently_repaired
+0.03s call     tests/test_rhythm_schema.py::RhythmSchemaTests::test_empty_schema_initializes_once_without_enabling_or_enrolling
+9 passed, 9 subtests passed in 0.49s
+WEB_MODULE_RESULT {"tests": 9, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

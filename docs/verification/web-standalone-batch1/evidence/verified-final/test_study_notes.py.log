@@ -1,0 +1,15 @@
+...........                                       [100%]
+=============================== warnings summary ===============================
+../../../../../../../../tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 5 durations ==============================
+0.10s call     tests/test_study_notes.py::StudyNotesTests::test_account_schemas_do_not_share_notes
+0.06s call     tests/test_study_notes.py::StudyNotesTests::test_note_kinds_courses_and_nested_plan_course_ids_are_independent
+0.04s call     tests/test_study_notes.py::StudyNotesTests::test_same_key_retry_is_idempotent_and_changed_replay_or_stale_tab_cannot_overwrite
+0.04s call     tests/test_study_notes.py::StudyNotesTests::test_saving_notes_neither_completes_pending_courses_nor_changes_existing_completion_notes
+0.03s call     tests/test_study_notes.py::StudyNotesTests::test_invalid_fields_and_input_limits_are_rejected_without_creating_notes
+11 passed, 1 warning, 23 subtests passed in 0.57s
+WEB_MODULE_RESULT {"tests": 11, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

@@ -1,13 +1,15 @@
 # 知行成长 · 个人学习与成长平台
 
-「有思考 · 有执行 · 判断准确」的本地个人学习与成长平台。
+「有思考 · 有执行 · 判断准确」的网页学习与成长平台。网页优先独立交付；App 与 Zook 的后续完善保留现有接口边界。
+
+独立安装、配置预检、备份恢复请按[网页独立部署手册](docs/deployment/standalone-web.md)。当前候选尚需以本批验收报告核对外部发布阻塞。
 
 ## 入口导航
 
 - [知行成长平台说明](知行成长/README.md)
 - [内容生成与存储规则](知行成长/内容存储规则.md) — 模块目录、命名、课次、资料与索引约定
-- [Grow 统一产品方案与 App 改造计划](../project/plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — 方向已确认：沿用 LightTick 原生端，明确复用、新增、数据归属及分阶段验收；尚未改造代码
-- [Grow App G0 核验与 G1 任务](../project/plan/docs/04-planning/grow-app-g0-2026-10-18/README.md) — 基线、账户、数据归属和定向测试已核验，含具体任务及验收；尚未实施迁移
+- [Grow 统一产品方案与 App 改造计划](../project/plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — 后续 App 方向参考；当前网页优先，原生端与 Zook 暂缓
+- [Grow App G0 核验与 G1 任务](../project/plan/docs/04-planning/grow-app-g0-2026-10-18/README.md) — 历史基线与后续任务参考，不作为本轮网页交付前置条件
 - [客户端功能规划](../project/plan/docs/02-design/grow-client-feature-plan.md)与[迭代计划](../project/plan/docs/04-planning/grow-client-iteration-plan.md) — 记录、学习、行动三条路径，CF01–CF40 和 I0–I7；本轮仅完成规划
 
 - `学习系统总览.md` — 系统说明书：7 大模块 + 四层闭环
@@ -18,8 +20,12 @@
 
 ## 快速开始
 
-```bash
-cd 知行成长 && ./start.sh   # 一键启动，自动打开 http://localhost:8756
+先按部署手册安装根 requirements.txt、准备 PostgreSQL 和自己的 server/.env，再运行：
+
+```sh
+cd 知行成长/server
+../../.venv/bin/python deployment.py check
+../../.venv/bin/python deployment.py serve --port 8756
 ```
 
 ## 七大模块

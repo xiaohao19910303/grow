@@ -1,0 +1,6 @@
+{
+  "status": "cancelled_superseded_run",
+  "reason": "Replaced by frozen profile with exact account-class coverage checks. Incomplete run is not a pass.",
+  "root_pid": 14412,
+  "owned_descendants_terminated": 1
+}

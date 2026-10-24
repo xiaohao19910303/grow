@@ -1,0 +1,20 @@
+✔ QuotaExceededError: failed persistence is explicit and the volatile draft stays exportable (1.919208ms)
+✔ SecurityError: failed persistence is explicit and the volatile draft stays exportable (0.19375ms)
+✔ a recovery package restores the original unknown request key after a new page instance (1.65125ms)
+✔ a failed update shadows stale durable values and exports the newest unsaved input (0.236875ms)
+✔ a denied deletion does not resurrect a deleted draft from stale storage or export it (0.118167ms)
+✔ recovery exports retain immutable pending payloads and forked edits but exclude ephemeral AI secrets (0.324875ms)
+✔ a not-found receipt keeps the imported original key until an explicit same-key retry (0.878334ms)
+✔ recovery packages cannot cross accounts or overwrite an unresolved different request (0.746166ms)
+✔ durable storage remains durable and old saved drafts still load without a recovery package (0.142958ms)
+✔ healthy shared storage exposes another client changes, deletes, and same-name recreation (0.146834ms)
+✔ invalid versions and illegal recovery keys are rejected before any entry is imported (1.9005ms)
+✔ a conflicting late entry rejects the entire recovery package without importing earlier valid entries (0.307583ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.099125

@@ -1,0 +1,15 @@
+............                                                             [100%]
+=============================== warnings summary ===============================
+../../../../../../../../tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 5 durations ==============================
+0.41s call     tests/test_reflection_protection.py::ReflectionProtectionTests::test_inspection_is_read_only_and_renders_saved_database_text
+0.30s call     tests/test_reflection_protection.py::ReflectionProtectionTests::test_journal_and_records_commit_atomically_and_replay_once
+0.24s call     tests/test_reflection_protection.py::ReflectionProtectionTests::test_api_status_and_stale_update_use_database_only
+0.23s call     tests/test_reflection_protection.py::ReflectionProtectionTests::test_mutations_preserve_legacy_mirrors_and_private_records
+0.22s call     tests/test_reflection_protection.py::ReflectionProtectionTests::test_stale_editor_keeps_latest_record_and_history
+12 passed, 1 warning in 3.23s
+WEB_MODULE_RESULT {"tests": 12, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

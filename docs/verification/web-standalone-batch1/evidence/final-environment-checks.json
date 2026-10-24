@@ -1,0 +1,35 @@
+{
+  "checked_at": "2026-10-22T17:15:05.720088+00:00",
+  "checks": [
+    {
+      "name": "pip-check",
+      "returncode": 0,
+      "stdout": "No broken requirements found.",
+      "stderr": ""
+    },
+    {
+      "name": "manage-shell",
+      "returncode": 127,
+      "stdout": "",
+      "stderr": "bash: manage.sh: No such file or directory"
+    },
+    {
+      "name": "docker-engine",
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "Cannot connect to the Docker daemon at unix:///Users/hao/.docker/run/docker.sock. Is the docker daemon running?"
+    },
+    {
+      "name": "manage-shell-correct-path",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "start-shell",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

@@ -2,8 +2,8 @@ services:
   - type: web
     name: zhixingchengzhang
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: cd 知行成长/server && uvicorn app:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install -r requirements.txt && python 知行成长/server/prepare_materials.py /opt/render/project/src/.grow-public-materials
+    startCommand: cd 知行成长/server && python deployment.py serve --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -12,11 +12,11 @@ services:
       - key: CLOUD_DEPLOY
         value: "1"
       - key: LEARN_ROOT
-        value: /opt/render/project/src/知行成长/学习资料
+        sync: false
       - key: PLAN_CONTENT_BACKEND
         value: github
       - key: GITHUB_CONTENT_REPO
-        value: xiaohao19910303/zhixing
+        sync: false
       - key: GITHUB_CONTENT_BRANCH
         value: main
       - key: GITHUB_CONTENT_TOKEN
@@ -27,5 +27,9 @@ services:
         sync: false
       - key: ACCOUNT_ENCRYPTION_KEY
         sync: false
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: GROW_SCHEDULED_READING_ENABLED
+        value: "0"
     healthCheckPath: /api/health
     autoDeploy: true

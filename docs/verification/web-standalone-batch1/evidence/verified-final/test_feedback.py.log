@@ -1,0 +1,9 @@
+........                                                                 [100%]
+============================= slowest 5 durations ==============================
+0.29s call     tests/test_feedback.py::FeedbackSchemaTest::test_learning_records_has_archived_column
+0.18s call     tests/test_feedback.py::FeedbackSchemaTest::test_feedback_table_created_on_initialize
+0.15s call     tests/test_feedback.py::FeedbackCrudTest::test_list_feedback
+0.13s call     tests/test_feedback.py::FeedbackCrudTest::test_save_and_get_feedback
+0.12s call     tests/test_feedback.py::FeedbackSchemaTest::test_summaries_table_created_on_initialize
+8 passed in 1.28s
+WEB_MODULE_RESULT {"tests": 8, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

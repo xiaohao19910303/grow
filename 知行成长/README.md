@@ -1,5 +1,7 @@
 # 知行成长 - 云端应用
 
+当前开发方向为网页优先。独立部署不依赖 App/Zook，正式内容首版使用 PostgreSQL + 自有 GitHub 仓库，AI 按需启用；安装与恢复统一见[网页部署手册](../docs/deployment/standalone-web.md)。历史在线地址不代表当前候选已发布。
+
 ## 🌐 在线访问
 
 **应用地址**: https://zhixingchengzhang.onrender.com
@@ -88,35 +90,17 @@
 └── README.md           # 本文件
 ```
 
-## 💻 本地开发
+## 💻 本地开发与独立部署
 
-如果需要本地开发：
+以仓库根目录为起点，按[唯一部署主路径](../docs/deployment/standalone-web.md)安装锁定依赖、配置自己的 PostgreSQL 和 server/.env，再运行：
 
-```bash
-# 1. 克隆仓库
-git clone https://github.com/你的用户名/知行成长.git
-cd 知行成长
-
-# 2. 安装依赖
-cd server
-pip install -r requirements.txt
-
-# 3. 启动服务器
-python3 app.py
-
-# 4. 访问 http://localhost:8000
+```sh
+cd 知行成长/server
+../../.venv/bin/python deployment.py check
+../../.venv/bin/python deployment.py serve --port 8756
 ```
 
-## 🔄 自动部署
-
-代码推送到 GitHub 后，Render 会自动重新部署：
-
-```bash
-git add .
-git commit -m "更新说明"
-git push
-# 等待 2-3 分钟，应用自动更新
-```
+本机 HTTP 使用 CLOUD_DEPLOY=0，访问 http://127.0.0.1:8756；公网 HTTPS 代理使用 CLOUD_DEPLOY=1。manage.sh / start.sh 为相同入口的本地后台包装，GROW_PYTHON 可指定解释器。Render / Docker 配置仍需安装者提供自己的秘密、仓库和域名；正式部署应在验收与外部阻塞解除后单独执行。是否自动部署由安装者配置，不能以 git push 或进程启动代替验收。
 
 ## GitHub 内容存储：新计划、旧认知课程与认知阅读
 
@@ -129,9 +113,9 @@ Render 不克隆内容仓库，不把正式课程、锁文件或发布恢复日�
 
 本地 `./manage.sh start` / `restart` 会读取 `server/.env`，并从仓库根目录 `.env.local` 补充数据库与 GitHub 存储配置；进程已有环境变量优先。请在 `server/.env` 明确设置 `PLAN_CONTENT_BACKEND=github`、`GITHUB_CONTENT_REPO` 和分支，以读取已发布到 GitHub 的课程。根目录部署文件中的旧登录密码、AI 密钥及 Render 凭证不会导入本地服务。
 
-本次已确定内容仓库为 `xiaohao19910303/zhixing`，目标分支为 `main`，已写入部署配置。该仓库目前可公开访问，提交的教学内容会公开；个人反馈仍只存数据库。
+本部署的内容仓库由安装者通过 GITHUB_CONTENT_REPO 指定，目标分支通过 GITHUB_CONTENT_BRANCH 指定；示例不绑定既有站点或仓库。正式教学内容的可见性由你选择的仓库决定，个人反馈仍只存数据库。
 
-1. 使用已确定的内容仓库。空仓库会在首次正式发布时通过 Contents API 创建 README，再提交规划；生成草稿与阅读请求不会初始化仓库。若目标分支与空仓库的默认分支不同，须先在 GitHub 建立目标分支。需要私密课程时，先将仓库设置为私有。
+1. 使用自己的内容仓库，推荐独立私有仓库。空仓库会在首次正式发布时通过 Contents API 创建 README，再提交规划；生成草稿与阅读请求不会初始化仓库。若目标分支与空仓库的默认分支不同，须先在 GitHub 建立目标分支。需要私密课程时，先将仓库设置为私有。
 2. 创建仅授权该内容仓库的 fine-grained Token，授予 **Contents: Read and write**。目标分支应允许该凭证直接提交；要求 PR 的保护规则会阻止直接发布。不要授予 Workflows 权限。
 3. 在 Render 的 Environment 中配置仓库根目录 [.env.github.example](../.env.github.example) 所列变量。GitHub Token、数据库连接串、登录密码只写入服务端密钥配置，不写入 Git 或聊天。用户 AI 配置在浏览器设置页填写。
 4. `GITHUB_CONTENT_REPO` 使用 `账号/仓库`，`GITHUB_CONTENT_BRANCH` 默认 `main`。`DATABASE_URL` 使用 Supabase Connect → Session pooler 的完整连接串（端口 5432），以兼容 Render 的 IPv4 网络。AI 配置按登录账号分别保存在当前站点的浏览器 localStorage；Base URL 可填写 `/v1` 等兼容接口根地址或完整 `/chat/completions` 地址。每次生成必须携带用户自己的三项配置，不回退读取服务端 `QWEN_*` 或数据库配置。
@@ -169,27 +153,14 @@ GitHub 不可用时，未缓存的正文暂不可读，页面会显示错误；�
 
 ### 备份与故障边界
 
-Git 历史覆盖课程文件，Supabase 备份覆盖草稿、任务、索引、反馈和仓库版本映射，两者都需要保留。
+管理员须按[完整备份与恢复流程](../docs/deployment/standalone-web.md#完整备份离线管理员命令)保留 PostgreSQL 一致性快照、全部内容版本 Git bundle、代码版本及单独保管的加密密钥；不能只保留某一分支当前文件。
 GitHub 模式不支持原本的本地「完整学习备份」按钮，避免把临时文件误当成完整备份。
 课程已提交成功后，撤销发布应使用新的修订提交，不能强制回退内容分支。
 旧代码曾将数据库凭证写入配置；切换前应轮换已暴露的凭证，`render.yaml` 已改为服务端输入。
 
 ### 开发验证
 
-Python 3.11+，安装根目录 requirements 后执行（测试不访问真实 GitHub 或模型）：
-
-```bash
-PYTHONPATH=知行成长/server python -m unittest discover -s 知行成长/server/tests -p 'test_github_plans.py' -v
-PYTHONPATH=知行成长/server python -m unittest discover -s 知行成长/server/tests -p 'test_cloud_auth.py' -v
-node 知行成长/server/tests/test_plan_observer.cjs
-# 可选：安装 playwright 后运行真实浏览器流程
-RUN_GITHUB_BROWSER=1 PYTHONPATH=知行成长/server python -m unittest discover -s 知行成长/server/tests -p 'test_github_browser.py' -v
-```
-
-设置 `TEST_GITHUB_PG_DSN` 为专用本地 PostgreSQL 的 DSN，可对同一组场景额外运行真实 PostgreSQL 事务和并发锁验证；测试拒绝非 localhost 数据库并为每例创建独立 schema。
-`test_github_cloud_app.py` 另外覆盖真实 app 启动、登录中间件与发布阅读接口；`test_github_browser.py` 使用真实 Chromium 和实际前端脚本，GitHub 与 AI 均为 HTTP/流式模拟服务。
-2026-10-17 验证覆盖新计划链路、故障恢复、并发、空仓库和旧本地发布兼容。旧全量测试目前还受基线 `server/plans/backup.py:201` 的语法错误阻塞；旧模块也有未完成的 PostgreSQL SQL 迁移。本试点隔离旧模块初始化失败，使新学习计划可独立启动，不宣称已修复整个平台。
-GitHub 接口依据：[Contents](https://docs.github.com/en/rest/repos/contents)、[Trees](https://docs.github.com/en/rest/git/trees)、[Commits](https://docs.github.com/en/rest/git/commits)、[References](https://docs.github.com/en/rest/git/refs)。
+完整网页集合使用[部署手册的隔离 runner](../docs/deployment/standalone-web.md#隔离验收)，须显式传入专用 localhost PostgreSQL DSN。领域/API、Python/JS与真实 Chrome 均纳入；跨仓 Zook 合同单列延后，不记为通过。当前代码版本、逐模块用例数与未验证项见[本批报告](../docs/verification/web-standalone-batch1/acceptance.md)。历史报告不替代当前候选的回归结果。
 
 ## 📊 状态监控
 

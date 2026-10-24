@@ -84,3 +84,10 @@ class ActionLinkTests(PostgreSQLFixture):
             c.execute('UPDATE action_plans SET data=? WHERE id=?',(actions.encoded(value),plan['id']))
         response=self.post('/preview',{'code':self.code});self.assertEqual(response.status_code,422,response.text)
         self.assertEqual(self.client.get('/api/action-link').json()['phase'],'local');self.assertEqual(self.imports,[])
+
+    def test_new_p0_plan_is_rejected_before_any_bridge_request(self):
+        response=self.client.post('/api/action-plans',json={'key':'web-p0-gate','title':'P0仍不可接管','period':'day','completion_mode':'check'},headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        response=self.post('/preview',{'code':self.code})
+        self.assertEqual(response.status_code,409);self.assertEqual(response.json()['code'],'CONTRACT_UPGRADE_REQUIRED')
+        self.assertEqual(self.sources,[]);self.assertEqual(self.imports,[])

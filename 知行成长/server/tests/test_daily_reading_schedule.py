@@ -22,7 +22,10 @@ class ScheduleAuthenticationTests(unittest.TestCase):
         cls.private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
     def setUp(self):
-        self.env = patch.dict(os.environ, {'APP_PASSWORD': 'OWNER_TEST_PASSWORD_' + 'x' * 30})
+        self.env = patch.dict(os.environ, {'APP_PASSWORD': 'OWNER_TEST_PASSWORD_' + 'x' * 30,
+            'GROW_SCHEDULED_READING_ENABLED':'1','GROW_PUBLIC_URL':'https://second-grow.example',
+            'GROW_SCHEDULE_REPOSITORY':'another-owner/standalone','GROW_SCHEDULE_REPOSITORY_ID':'123456',
+            'GROW_SCHEDULE_REF':'refs/heads/main'})
         self.env.start(); self.addCleanup(self.env.stop)
         self.keys = patch('reading.scheduled.jwks.get_signing_key_from_jwt',
                           return_value=SimpleNamespace(key=self.private.public_key()))
@@ -36,7 +39,9 @@ class ScheduleAuthenticationTests(unittest.TestCase):
     def token(self, **changes):
         import time
         import jwt
-        from reading.scheduled import ISSUER, AUDIENCE, REPOSITORY, REPOSITORY_ID, WORKFLOW
+        from reading.scheduled import ISSUER, configuration
+        configured=configuration()
+        AUDIENCE,REPOSITORY,REPOSITORY_ID,WORKFLOW=(configured[k] for k in ('audience','repository','repository_id','workflow'))
         now = int(time.time())
         claims = {'iss':ISSUER, 'aud':AUDIENCE, 'sub':'repo:owner/repo:ref:refs/heads/main',
                   'exp':now+300, 'iat':now, 'nbf':now-1, 'repository':REPOSITORY,
@@ -68,6 +73,19 @@ class ScheduleAuthenticationTests(unittest.TestCase):
                    return_value=SimpleNamespace(key=rsa.generate_private_key(public_exponent=65537,key_size=2048).public_key())):
             self.assertEqual(self.client.post(PATH, headers={'Authorization':'Bearer '+self.token()}).status_code, 403)
 
+    def test_unconfigured_or_disabled_external_wakeup_never_authorizes_or_triggers(self):
+        signed=self.token()
+        for values in ({'GROW_SCHEDULED_READING_ENABLED':'0'}, {'GROW_PUBLIC_URL':''},
+                       {'GROW_PUBLIC_URL':'http://remote.example'}, {'GROW_SCHEDULE_REPOSITORY_ID':''}):
+            with self.subTest(values=values),patch.dict(os.environ,values):
+                self.assertEqual(self.client.post(PATH,headers={'Authorization':'Bearer '+signed}).status_code,403)
+        self.service.daily_tick.assert_not_called()
+
+    def test_the_old_site_or_repository_identity_is_not_trusted(self):
+        for changes in ({'aud':'https://zhixingchengzhang.onrender.com'+PATH},
+                        {'repository':'xiaohao19910303/grow','repository_id':'1415242621'}):
+            self.assertEqual(self.client.post(PATH,headers={'Authorization':'Bearer '+self.token(**changes)}).status_code,403)
+
     def test_pause_prevents_trigger_and_is_reported(self):
         self.store.prefs=lambda: {**DEFAULT,'enabled':False}
         result=self.client.post(PATH,headers={'Authorization':'Bearer '+self.token()})
@@ -88,6 +106,17 @@ class ScheduleAuthenticationTests(unittest.TestCase):
 
 
 class CloudDailyReadingTests(CloudFixture):
+    def test_disabled_scheduler_preserves_preferences_without_collecting(self):
+        service=Reader(self.reader)
+        original=self.reader.prefs()
+        async def stop(*args):raise asyncio.CancelledError()
+        async def run():
+            with patch.dict(os.environ,{'GROW_SCHEDULED_READING_ENABLED':'0'}),patch.object(service,'daily_tick') as tick,patch('reading.service.asyncio.sleep',side_effect=stop):
+                with self.assertRaises(asyncio.CancelledError):await service.schedule()
+                tick.assert_not_called()
+        asyncio.run(run())
+        self.assertEqual(self.reader.prefs(),original)
+
     def test_mixed_collection_fills_target_when_classics_are_already_read(self):
         from reading.sources import choose
         rows=[{'id':str(i),'title':'Technology science and society','summary':'psychology',

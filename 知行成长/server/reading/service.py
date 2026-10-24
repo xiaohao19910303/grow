@@ -271,7 +271,9 @@ class Reader:
         return self.begin({'key':key,'preferences':p},daily=True)
     async def schedule(self):
         while True:
-            try:self.daily_tick()
+            try:
+                import os
+                if os.getenv('GROW_SCHEDULED_READING_ENABLED') == '1':self.daily_tick()
             except Exception:pass  # A later tick retries startup/network scheduling, never completed jobs.
             await asyncio.sleep(30)
     async def shutdown(self):

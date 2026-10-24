@@ -4,3 +4,6 @@
 .env.local
 __pycache__/
 *.pyc
+
+# Prepared public teaching assets for standalone builds
+.grow-public-materials/

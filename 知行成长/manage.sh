@@ -7,7 +7,10 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 PID_FILE="$PROJECT_ROOT/.server.pid"
 LOG_FILE="$PROJECT_ROOT/.server.log"
-VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+VENV_PYTHON="${GROW_PYTHON:-$PROJECT_ROOT/../.venv/bin/python}"
+if [ -z "${GROW_PYTHON:-}" ] && [ ! -x "$VENV_PYTHON" ] && [ -x "$PROJECT_ROOT/.venv/bin/python" ]; then
+    VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+fi
 
 # 颜色定义
 RED='\033[0;31m'
@@ -38,11 +41,11 @@ check_venv() {
         log_error "缺少项目虚拟环境"
         echo ""
         echo "请先按 README.md 完成环境配置："
-        echo "  1. cd $PROJECT_ROOT"
+        echo "  1. cd $PROJECT_ROOT/.."
         echo "  2. python3 -m venv .venv"
         echo "  3. source .venv/bin/activate"
-        echo "  4. pip install fastapi uvicorn"
-        echo "  5. pip install -r requirements-ai.txt (可选)"
+        echo "  4. pip install -r requirements.txt"
+        echo "  5. 使用同一锁定依赖；配置 server/.env 后运行 deployment.py check"
         echo ""
         exit 1
     fi
@@ -51,12 +54,12 @@ check_venv() {
 # 检查依赖
 check_deps() {
     log_step "检查服务依赖..."
-    if ! "$VENV_PYTHON" -c 'import fastapi, uvicorn' 2>/dev/null; then
-        log_error "虚拟环境缺少 fastapi 或 uvicorn"
+    if ! "$VENV_PYTHON" -c 'import fastapi, uvicorn, psycopg2, cryptography, httpx, trafilatura, pypdf, fontTools, multipart' 2>/dev/null; then
+        log_error "虚拟环境缺少必要运行依赖"
         echo ""
         echo "请激活虚拟环境后安装依赖："
         echo "  source .venv/bin/activate"
-        echo "  pip install fastapi uvicorn"
+        echo "  pip install -r requirements.txt"
         echo ""
         exit 1
     fi
@@ -98,6 +101,8 @@ start() {
     check_venv
     check_deps
 
+    (cd "$PROJECT_ROOT/server" && "$VENV_PYTHON" deployment.py check)
+
     # 配置
     local PORT=${PORT:-8756}
     local HOST=127.0.0.1
@@ -118,7 +123,7 @@ start() {
     # 启动服务（后台运行）
     log_step "启动 uvicorn 服务..."
     cd "$PROJECT_ROOT/server"
-    nohup "$VENV_PYTHON" "$PROJECT_ROOT/server/run_local.py" --host "$HOST" --port "$PORT" \
+    nohup "$VENV_PYTHON" "$PROJECT_ROOT/server/deployment.py" serve --host "$HOST" --port "$PORT" \
         > "$LOG_FILE" 2>&1 &
 
     local new_pid=$!

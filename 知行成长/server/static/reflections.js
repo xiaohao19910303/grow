@@ -236,7 +236,8 @@
         }
         if (r.ok) {
           const res = await r.json();
-          try { localStorage.removeItem(draftKey(editor)); } catch (_) {}
+          try { localStorage.removeItem(draftKey(editor)); }
+      catch (_) { window.toast('本机草稿无法清除，当前编辑内容仍保留；请先复制原文。');return; }
           await load();
           editor = null;
           closeModal();
@@ -484,15 +485,18 @@
     const id = editor && editor.entryId;
     if (!id) return;
     const raw = document.getElementById('refRaw').value;
+    const inputSnapshot = () => JSON.stringify({raw:document.getElementById('refRaw').value,date:document.getElementById('refDate').value,kind:editor.kind,guided:editor.guided});
+    const before = inputSnapshot();
     downloadDraft(raw, editor.date);
     const loaded = await load();
     if (!editor || editor.entryId !== id || !document.getElementById('refRaw')) return;
-    if (document.getElementById('refRaw').value !== raw) {
+    if (inputSnapshot() !== before) {
       window.toast('读取期间有新编辑，已保留；请先复制当前原文'); return;
     }
     if (loaded) {
       // The explicit reload already downloaded the draft; do not restore it over the latest record.
-      try { localStorage.removeItem(draftKey(editor)); } catch (_) {}
+      try { localStorage.removeItem(draftKey(editor)); }
+      catch (_) { window.toast('本机草稿无法清除，当前编辑内容仍保留；请先复制原文。');return; }
       openEditor(null, id, {ignoreDraft:true});
     }
     else window.toast('读取失败，当前编辑内容仍保留');

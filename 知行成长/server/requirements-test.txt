@@ -1,2 +1,3 @@
-# Install alongside the repository-root requirements.txt.
+# Runtime is installed separately from requirements.lock.
 playwright==1.64.0
+pytest==9.1.1

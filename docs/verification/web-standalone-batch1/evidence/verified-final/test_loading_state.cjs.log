@@ -1,0 +1,12 @@
+✔ start immediately shows accessible progress/detail and finish preserves existing content (1.026833ms)
+✔ an old finish handle cannot clear a newer request indicator or busy state (0.116541ms)
+✔ finish is safe after reader replacement and missing optional containers (0.10925ms)
+✔ legacy show, update, hide and error remain compatible (0.126167ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.665458

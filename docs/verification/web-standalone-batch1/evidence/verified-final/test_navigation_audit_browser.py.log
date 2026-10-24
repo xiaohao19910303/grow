@@ -1,0 +1,7 @@
+.                                                                        [100%]
+============================= slowest 5 durations ==============================
+6.85s call     tests/test_navigation_audit_browser.py::NavigationAuditBrowser::test_shared_filters_compact_panels_and_topic_records
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+1 passed in 6.87s
+WEB_MODULE_RESULT {"tests": 1, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

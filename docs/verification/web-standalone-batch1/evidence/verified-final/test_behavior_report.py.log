@@ -1,0 +1,15 @@
+......                                                                   [100%]
+=============================== warnings summary ===============================
+../../../../../../../../tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 5 durations ==============================
+1.49s call     tests/test_behavior_report.py::BehaviorReportSummaryTests::test_ai_summary_includes_automatic_learning_and_keeps_durations_separate
+0.18s call     tests/test_behavior_report.py::BehaviorReportTests::test_disconnect_cancels_inflight_model_without_saving
+0.13s call     tests/test_behavior_report.py::BehaviorReportTests::test_completed_model_output_is_saved_using_current_browser_config_and_old_reports_remain_readable
+0.10s call     tests/test_behavior_report.py::BehaviorReportTests::test_other_account_schema_cannot_read_or_delete_a_saved_report
+0.10s call     tests/test_behavior_report.py::BehaviorReportTests::test_model_failure_empty_and_incomplete_output_never_become_successful_reports
+6 passed, 1 warning in 2.21s
+WEB_MODULE_RESULT {"tests": 6, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

@@ -1,0 +1,9 @@
+......                                                                   [100%]
+============================= slowest 5 durations ==============================
+1.21s call     tests/test_standalone_backup.py::StandaloneBackupTests::test_failed_upgrade_transaction_then_restore_to_new_database
+1.10s call     tests/test_standalone_backup.py::StandaloneBackupTests::test_real_snapshot_bundle_restore_and_repeat_refusal
+1.08s call     tests/test_standalone_backup.py::StandaloneBackupTests::test_corruption_wrong_key_and_nonempty_target_do_not_modify_database
+0.94s call     tests/test_standalone_backup.py::StandaloneBackupTests::test_incomplete_manifest_is_rejected_before_target_mutation
+0.79s call     tests/test_standalone_backup.py::StandaloneBackupTests::test_missing_content_or_writer_stop_refuses_incomplete_backup
+6 passed in 5.74s
+WEB_MODULE_RESULT {"tests": 6, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

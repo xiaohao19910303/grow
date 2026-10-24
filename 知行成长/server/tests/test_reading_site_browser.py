@@ -88,7 +88,9 @@ class ReadingSiteBrowser(CloudHTTPFixture):
             page.get_by_text('THE FINAL PARAGRAPH.',exact=True).first.wait_for();self.assertEqual(len(calls),1)
             self.assertTrue(self.reader.article(self.aid)['read']);self.assertEqual(self.reader.note(self.aid)['text'],'PRIVATE draft while body loads')
             self.assertEqual(self.reader.article(self.aid)['content_version'],2)
-            page.set_viewport_size({'width':390,'height':844});self.assertFalse(page.evaluate('document.documentElement.scrollWidth>innerWidth'))
+            page.set_viewport_size({'width':390,'height':844})
+            overflow=page.evaluate('''() => [...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().width&&e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,cls:e.className,width:e.getBoundingClientRect().width,text:e.textContent.slice(0,60)})).slice(0,20)''')
+            self.assertFalse(page.evaluate('document.documentElement.scrollWidth>innerWidth'),overflow)
             page.screenshot(path='/tmp/grow-reading-onsite-mobile.png',full_page=False)
             self.assertNotIn('PRIVATE draft',json.dumps(self.repository.commits[self.repository.head]['files']))
 

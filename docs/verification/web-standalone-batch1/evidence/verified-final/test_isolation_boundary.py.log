@@ -1,0 +1,9 @@
+......                                                                   [100%]
+============================= slowest 5 durations ==============================
+0.09s call     tests/test_isolation_boundary.py::IsolationBoundaryTests::test_rejects_workspace_writes_before_creating_files
+0.08s call     tests/test_isolation_boundary.py::IsolationBoundaryTests::test_rejects_remote_postgresql_before_connecting
+0.07s call     tests/test_isolation_boundary.py::IsolationBoundaryTests::test_rejects_external_http_sockets
+0.07s call     tests/test_isolation_boundary.py::IsolationBoundaryTests::test_rejects_workspace_sqlite_before_opening
+0.05s call     tests/test_isolation_boundary.py::IsolationBoundaryTests::test_full_run_cannot_select_only_part_of_the_suite
+6 passed in 0.40s
+WEB_MODULE_RESULT {"tests": 6, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

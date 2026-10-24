@@ -60,7 +60,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                 window.toast=t=>document.getElementById('notices').textContent=t;
                 window.goTab=name=>{document.getElementById('view-plans').style.display=name==='plans'?'block':'none';if(name==='plans')window.enterPlans();};
                 window.rememberLearningOrigin=()=>{};window.returnFromLesson=()=>goTab('plans');
-                </script><script src="/static/ai-config.js"></script><script>SETTINGS_SCRIPT</script><script src="/static/reading-tasks.js"></script><script src="/static/study-note-session.js"></script><script src="/static/study-notes.js"></script><script src="/static/copilot.js"></script><script src="/static/plans.js"></script>
+                </script><script src="/static/ai-config.js"></script><script>SETTINGS_SCRIPT</script><script src="/static/loading-state.js"></script><script src="/static/reading-tasks.js"></script><script src="/static/study-note-session.js"></script><script src="/static/study-notes.js"></script><script src="/static/copilot.js"></script><script src="/static/plans.js"></script>
                 <script>window.addEventListener('load',()=>window.loadPlans());</script></body></html>''').replace('SETTINGS_FORM',settings).replace('SETTINGS_SCRIPT',settings_script))
             sock = socket.socket(); sock.bind(('127.0.0.1', 0))
             base = 'http://127.0.0.1:'+str(sock.getsockname()[1])
@@ -132,6 +132,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                         self.assertEqual(saved_note['notes'], 'PRIVATE BROWSER NOTE')
                         self.assertNotIn('PRIVATE BROWSER NOTE', json.dumps(repository.commits[repository.head]['files']))
                         pid = store.rows('learning_plans')[0]['id']
+                        self.assertIn('PRIVATE BROWSER NOTE',page.request.get(base+'/api/study-notes/plan/'+pid+'/1').text())
                         # Fresh storage instance has no cache or content directory.
                         fresh = GitHubContent('owner/courses', 'main', 'TEST_ONLY_TOKEN', transport=httpx.MockTransport(repository))
                         store.content = fresh

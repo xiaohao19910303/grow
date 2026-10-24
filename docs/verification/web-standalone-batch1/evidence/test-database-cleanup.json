@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-10-22T17:18:41.238133+00:00",
+  "owned_cluster": "/tmp/grow-web-batch1-pg.sdOSRe",
+  "test_port": 55491,
+  "stopped": true,
+  "other_database_services_modified": false,
+  "operations": [
+    {
+      "action": "stop",
+      "returncode": 0,
+      "stdout": "waiting for server to shut down.... done\nserver stopped",
+      "stderr": ""
+    },
+    {
+      "action": "status",
+      "returncode": 3,
+      "stdout": "pg_ctl: no server running",
+      "stderr": ""
+    }
+  ]
+}

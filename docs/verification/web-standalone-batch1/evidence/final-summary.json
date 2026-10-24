@@ -1,0 +1,21 @@
+{
+  "tested_commit": "a9c72ae5a8ec5cc4a79c4a6649b81bb96a11b76c",
+  "full_profile": true,
+  "python_files": 87,
+  "python_tests": 539,
+  "javascript_files": 22,
+  "execution_groups": 111,
+  "failed_modules": [],
+  "skipped": 0,
+  "blocked_access": {
+    "blocked_real_database_access": 0,
+    "blocked_workspace_writes": 0,
+    "blocked_network_access": 0
+  },
+  "deferred_connection": [
+    {
+      "file": "test_action_source_http.py",
+      "reason": "Requires the separate Zook HTTP/PG fixture; deferred connection profile."
+    }
+  ]
+}

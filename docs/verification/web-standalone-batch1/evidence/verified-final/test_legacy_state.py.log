@@ -1,0 +1,15 @@
+......                                                             [100%]
+=============================== warnings summary ===============================
+../../../../../../../../tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 5 durations ==============================
+0.24s call     tests/test_legacy_state.py::LegacyStateTests::test_missing_revision_duplicate_or_unknown_identity_rolls_back
+0.21s call     tests/test_legacy_state.py::LegacyStateTests::test_identity_survives_multiple_edits_and_unrelated_saves
+0.21s call     tests/test_legacy_state.py::LegacyStateTests::test_api_rejects_old_client_and_returns_structured_conflict
+0.21s call     tests/test_legacy_state.py::LegacyStateTests::test_deleted_identity_is_not_reused_and_server_returns_allocated_ids
+0.19s call     tests/test_legacy_state.py::LegacyStateTests::test_stale_page_cannot_erase_other_page_or_import
+6 passed, 1 warning, 6 subtests passed in 2.11s
+WEB_MODULE_RESULT {"tests": 6, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}
