@@ -87,7 +87,7 @@
     } : { entryId: null, baseVersion: 0, date: date || today(), kind: '自由记录', raw: '', guided: {} };
 
     try {
-      const saved = !options.ignoreDraft && window.Account?.user?.id && JSON.parse(localStorage.getItem(draftKey(editor)) || 'null');
+      const saved = options.restoreDraft !== false && window.Account?.user?.id && JSON.parse(localStorage.getItem(draftKey(editor)) || 'null');
       if (saved && saved.entryId === editor.entryId && typeof saved.raw === 'string') editor = {
         ...editor, raw:saved.raw, guided:saved.guided || {}, kind:PROMPTS[saved.kind]?saved.kind:editor.kind,
         date:saved.date || editor.date, four:!!saved.four, restored:true,
@@ -493,12 +493,14 @@
     if (inputSnapshot() !== before) {
       window.toast('读取期间有新编辑，已保留；请先复制当前原文'); return;
     }
-    if (loaded) {
-      // The explicit reload already downloaded the draft; do not restore it over the latest record.
+    if (loaded && entryMap[id]) {
+      // The explicit reload has already downloaded this draft. Do not restore
+      // it over the newer cloud entry while reopening the editor.
       try { localStorage.removeItem(draftKey(editor)); }
       catch (_) { window.toast('本机草稿无法清除，当前编辑内容仍保留；请先复制原文。');return; }
-      openEditor(null, id, {ignoreDraft:true});
+      openEditor(null, id, {restoreDraft:false});
     }
+    else if (loaded) window.toast('这条记录暂未读取，当前编辑内容仍保留');
     else window.toast('读取失败，当前编辑内容仍保留');
   }
 

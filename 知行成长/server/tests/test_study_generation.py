@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -226,6 +227,7 @@ class StudyGenerationTests(PostgreSQLFixture):
                 return route.fulfill(json={'plans':[],'execution':None,'server_time':'2026-10-22T12:00:00Z','action_schema_version':2,'capabilities':{'nullable_schedule':True}})
             if endpoint == '/api/auth/me': result = {'user': {'id': 'fixture', 'username': 'tester', 'is_owner': True}}
             elif endpoint == '/api/data': result = dict(modules=[], checkins={}, habits={}, customFields=[], customRecords=[], decisions=[], predictions=[], reviews=[], insights=[], todos=[], _revision='fixture')
+            elif endpoint == '/api/action-plans': result = {'plans': [], 'execution': None, 'server_time': datetime.now(timezone.utc).isoformat(), 'action_schema_version': 2}
             else: result = dict(modules=[], lessons=[], plans=[], records=[], items=[], articles=[], jobs=[], entries=[], reports=[], stats={}, preferences={}, budget={}, attempts=[], legacy=[], drafts=[])
             route.fulfill(json=result)
         try:
@@ -278,7 +280,7 @@ class StudyGenerationTests(PostgreSQLFixture):
                     self.assertNotIn('PRIVATE', json.dumps(self.calls))
                     reader.get_by_role('button', name='放弃草稿', exact=True).click()
                     reader.get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
-                    expression = home.locator('.learning-module').filter(has=page.get_by_role('heading', name='结构化表达 · 15 分钟', exact=True))
+                    expression = library.locator('.learning-module').filter(has=page.get_by_role('heading', name='结构化表达 · 15 分钟', exact=True))
                     self.assertEqual(expression.get_by_role('button', name='生成下一课', exact=True).count(), 0)
                     expression.locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()
                     reader.get_by_role('button', name='标记学完并保存', exact=True).click()

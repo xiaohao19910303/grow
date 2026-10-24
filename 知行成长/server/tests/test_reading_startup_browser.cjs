@@ -6,7 +6,7 @@ const http=require('node:http');
 const {chromium}=require('playwright');
 const staticRoot=path.resolve(__dirname,'../static');
 const styles=fs.readFileSync(path.join(staticRoot,'index.html'),'utf8').match(/<style>([\s\S]*?)<\/style>/)[1];
-const preferences={enabled:false,hour:10,minute:0,count:3,mode:'recent',topics:['科技'],languages:['en'],query:'AI',auto_guide:false};
+const preferences={enabled:false,hour:10,minute:0,count:2,mode:'recent',topics:['科技'],languages:['en'],query:'AI',auto_guide:false};
 const requests=[],jobs=new Map(),pending=[],pendingSaves=[];
 let rejectNext=false,jobReads=0,holdListing=true,rejectSetup=false;const heldListings=[],heldSetups=[];
 const server=http.createServer(async(req,res)=>{
@@ -69,17 +69,40 @@ async function main(){
     for(let i=0;i<100&&!pending.length;i++)await page.waitForTimeout(10);
     assert(pending.length);pending.shift()();
   };
+  const conditions=async target=>({
+    query:await target.getByRole('textbox',{name:/主题或关键词/}).inputValue(),
+    count:await target.getByLabel('推荐数量（1—8篇）',{exact:true}).inputValue(),
+    mode:await target.getByLabel('文章类型').inputValue(),
+    topics:await target.getByRole('group',{name:'感兴趣的主题',exact:true}).getByRole('checkbox').evaluateAll(inputs=>inputs.filter(input=>input.checked).map(input=>input.parentElement.textContent)),
+    languages:await target.getByRole('group',{name:'文章语言',exact:true}).getByRole('checkbox').evaluateAll(inputs=>inputs.filter(input=>input.checked).map(input=>input.parentElement.textContent))
+  });
   try{
     await page.goto('http://127.0.0.1:'+server.address().port);
+    const unedited=await browser.newPage();unedited.on('pageerror',error=>errors.push(error.message));
+    await unedited.goto('http://127.0.0.1:'+server.address().port);
+    await unedited.getByRole('button',{name:'帮我找文章',exact:true}).click();
+    assert(await unedited.getByRole('button',{name:'开始查找',exact:true}).isEnabled(),'form must stay actionable before preferences arrive');
+    for(let i=0;i<100&&!heldSetups.length;i++)await unedited.waitForTimeout(10);
+    assert(heldSetups.length);heldSetups.shift()();
+    await unedited.getByText('已载入你的阅读偏好。',{exact:true}).waitFor();
+    assert.deepEqual(await conditions(unedited),{query:'AI',count:'2',mode:'recent',topics:['科技'],languages:['英文（可生成中文导读）']},'all saved conditions must load into an untouched form');
+    await unedited.close();
     const formClicked=Date.now();
     await form();
     const formMs=Date.now()-formClicked;
     assert(formMs<1000,'conditions must render before any data response');
     await page.getByRole('textbox',{name:/主题或关键词/}).fill('my in-progress edit');
+    await page.getByLabel('推荐数量（1—8篇）',{exact:true}).fill('5');
+    await page.getByLabel('文章类型').selectOption('classic');
+    for(const checkbox of await page.getByRole('group',{name:'感兴趣的主题',exact:true}).getByRole('checkbox').all())await checkbox.uncheck();
+    await page.getByRole('checkbox',{name:'成长',exact:true}).check();
+    await page.getByRole('checkbox',{name:'英文（可生成中文导读）',exact:true}).uncheck();
+    const editedConditions=await conditions(page);
     for(let i=0;i<100&&!heldSetups.length;i++)await page.waitForTimeout(10);
     assert(heldSetups.length);heldSetups.shift()();
     await page.getByText('已保留你正在调整的条件。',{exact:true}).waitFor();
     assert.equal(await page.getByRole('textbox',{name:/主题或关键词/}).inputValue(),'my in-progress edit');
+    assert.deepEqual(await conditions(page),editedConditions,'late saved preferences must preserve every edited condition');
     holdListing=false;heldListings.splice(0).forEach(reply=>reply());
     await page.waitForTimeout(50);
     assert.equal(await page.getByRole('heading',{name:'帮我找文章',exact:true}).count(),1,'stale home response must not replace conditions');
@@ -174,7 +197,7 @@ async function main(){
     await page.getByRole('button',{name:'重试加载文章',exact:true}).waitFor();
     await page.getByText('读取失败，请稍后重试。',{exact:true}).waitFor();
     assert.deepEqual(errors,[]);
-    console.log(JSON.stringify({result:'PASS',click_to_form_ms:formMs,click_to_progress_ms:progressMs,cases:['immediate conditions','preserve edits during preference loading','stale home response','slow admission','single submission','safe navigation','failure feedback','idempotent retry','normal polling and cancel']}));
+    console.log(JSON.stringify({result:'PASS',click_to_form_ms:formMs,click_to_progress_ms:progressMs,cases:['immediate conditions','load every saved condition','preserve all edits during preference loading','stale home response','slow admission','single submission','safe navigation','failure feedback','idempotent retry','normal polling and cancel']}));
   }finally{await browser.close();}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>server.close());

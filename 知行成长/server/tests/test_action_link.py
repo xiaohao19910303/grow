@@ -31,13 +31,19 @@ class ActionLinkTests(PostgreSQLFixture):
         if body['action']=='request':return {'from':'zook','path':body['path'],'method':body['method']}
     def post(self,path,body):return self.client.post('/api/action-link'+path,json=body,headers=self.headers)
     def create(self,title='先读书'):
-        response=self.client.post('/api/action-plans',json=dict(title=title,period='day',start_date='2026-10-20',end_date='2026-10-20',key=str(uuid.uuid4())),headers=self.headers);self.assertEqual(response.status_code,200,response.text)
-        # This suite exercises the legacy import protocol, not P0 eligibility.
-        # New P0/rhythm data is rejected in the separate boundary tests.
-        plan=response.json()['plans'][0];plan['schema_version']=1
+        # Handoff covers retained version-one data. The current API creates P0
+        # plans, whose handoff must remain disabled until both ends agree.
+        payload=dict(title=title,period='day',start_date='2026-10-20',end_date='2026-10-20',key=str(uuid.uuid4()))
+        plan={**{k:v for k,v in payload.items() if k!='key'},
+              'id':'action-'+uuid.uuid4().hex,'revision':1,'status':'active','horizon':'short',
+              'timezone':'Asia/Shanghai','parent_id':None,'target_minutes':20,'target_count':1,
+              'minimum_minutes':5,'at':None,'reminder':False,'reason':'','if_then':'','target':None,
+              'completion_mode':'time','created_at':'2026-10-20T08:00:00+00:00',
+              'updated_at':'2026-10-20T08:00:00+00:00','reminder_at':None}
         with actions.connection(True) as c:
-            actions.write(c,plan)
-            c.execute('DELETE FROM action_operations')
+            c.execute('INSERT INTO action_plans VALUES (?,?,1)',(plan['id'],actions.encoded(plan)))
+            c.execute('INSERT INTO action_operations VALUES (?,?,?)',
+                      (payload['key'],link.fingerprint(payload),actions.encoded({'plans':[plan]})))
         return plan
     def preview(self):
         response=self.post('/preview',{'code':self.code});self.assertEqual(response.status_code,200,response.text);return response.json()
@@ -84,10 +90,19 @@ class ActionLinkTests(PostgreSQLFixture):
             c.execute('UPDATE action_plans SET data=? WHERE id=?',(actions.encoded(value),plan['id']))
         response=self.post('/preview',{'code':self.code});self.assertEqual(response.status_code,422,response.text)
         self.assertEqual(self.client.get('/api/action-link').json()['phase'],'local');self.assertEqual(self.imports,[])
-
-    def test_new_p0_plan_is_rejected_before_any_bridge_request(self):
-        response=self.client.post('/api/action-plans',json={'key':'web-p0-gate','title':'P0仍不可接管','period':'day','completion_mode':'check'},headers=self.headers)
+    def test_current_p0_plan_keeps_handoff_closed_and_data_local(self):
+        payload=dict(title='当前P0计时计划',period='day',start_date='2026-10-20',end_date='2026-10-20',key=str(uuid.uuid4()))
+        old_client=self.client.post('/api/action-plans',json=payload,headers={'X-Copilot-Request':'1'})
+        self.assertEqual(old_client.status_code,409,old_client.text)
+        self.assertEqual(old_client.json()['code'],'CONTRACT_UPGRADE_REQUIRED')
+        response=self.client.post('/api/action-plans',json=payload,headers=self.headers)
         self.assertEqual(response.status_code,200,response.text)
+        plan=response.json()['plans'][0];self.assertEqual(plan['schema_version'],2)
         response=self.post('/preview',{'code':self.code})
-        self.assertEqual(response.status_code,409);self.assertEqual(response.json()['code'],'CONTRACT_UPGRADE_REQUIRED')
+        self.assertEqual(response.status_code,409,response.text)
+        self.assertEqual(response.json()['code'],'CONTRACT_UPGRADE_REQUIRED')
         self.assertEqual(self.sources,[]);self.assertEqual(self.imports,[])
+        with actions.connection() as c:
+            metadata,backup=link.state(c)
+            self.assertEqual(metadata,{'phase':'local'});self.assertIsNone(backup)
+            self.assertEqual(actions.get(c,plan['id']),plan)

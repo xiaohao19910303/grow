@@ -1,4 +1,3 @@
-import re
 """Actual homepage in Chrome with synthetic courses; no personal data or network."""
 import functools
 import os
@@ -6,6 +5,7 @@ from pathlib import Path
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import threading
 import unittest
+from datetime import datetime, timezone
 
 
 @unittest.skipUnless(os.getenv('RUN_GITHUB_BROWSER') == '1', 'Opt in to Chrome with RUN_GITHUB_BROWSER=1')
@@ -61,6 +61,8 @@ class SequentialLearningBrowser(unittest.TestCase):
                     {'lesson_no': 1, 'topic': '计划第一课', 'date': '2099-01-01', 'learning_state': 'unknown', 'learning_label': '待本人反馈'}]}], 'drafts': [], 'legacy': []}
             elif endpoint == '/api/data':
                 result = dict(modules=[], checkins={}, habits={}, customFields=[], customRecords=[], decisions=[], predictions=[], reviews=[], insights=[], todos=[], _revision='fixture')
+            elif endpoint == '/api/action-plans':
+                result = {'plans': [], 'execution': None, 'server_time': datetime.now(timezone.utc).isoformat(), 'action_schema_version': 2}
             elif endpoint == '/api/auth/me':
                 result = {'user': {'id': 'fixture', 'username': 'tester', 'is_owner': False}}
             elif endpoint == '/api/action-plans':

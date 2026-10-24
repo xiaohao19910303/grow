@@ -39,6 +39,8 @@ class BrowserLifecycle(PostgreSQLFixture):
             async def problem(request, exc):return JSONResponse({'message':exc.message}, status_code=exc.status)
             with patch('plans.api.make_store', return_value=store):
                 _, generator = register(app, '/missing', '/missing')
+            from study_notes import register as register_notes
+            register_notes(app)
             async def model(messages, config):
                 self.assertEqual(config['key'], 'BROWSER_TEST_KEY_ONLY')
                 self.assertEqual(config['model'], 'browser-test-model')
@@ -74,8 +76,9 @@ class BrowserLifecycle(PostgreSQLFixture):
                 with sync_playwright() as p:
                     browser = p.chromium.launch(headless=True, executable_path=os.getenv('CHROME_EXECUTABLE', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'))
                     try:
-                        page = browser.new_page(); errors = []
+                        page = browser.new_page(); page.set_default_timeout(10000); errors = []; server_errors = []
                         page.on('pageerror', lambda e: errors.append(str(e)))
+                        page.on('response', lambda response: server_errors.append((response.status, response.url)) if response.status >= 500 else None)
                         page.route('**/*', lambda route: route.continue_() if route.request.url.startswith(base+'/') else route.abort())
                         page.goto(base)
                         settings_form = page.locator('#view-settings')
@@ -103,7 +106,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                         page.get_by_label('模型名称', exact=True).fill('browser-test-model')
                         page.get_by_role('button', name='保存配置', exact=True).click()
                         page.screenshot(path='/tmp/grow-browser-ai-settings.png')
-                        page.get_by_role('button', name='创建课程规划', exact=True).click()
+                        page.get_by_role('button', name='创建课程计划', exact=True).click()
                         for name, value in [('学习方向','经济学'),('希望学会什么','理解经济新闻'),('周期（周）','2'),('每周学习次数','1'),('每次分钟数','20')]:
                             page.get_by_label(name, exact=True).fill(value)
                         page.get_by_role('button', name='让AI生成规划草稿').click()
@@ -142,6 +145,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                         page.get_by_role('button', name='阅读', exact=True).click()
                         reader.get_by_role('heading', name='核心概念', exact=True).wait_for()
                         self.assertEqual(errors, [])
+                        self.assertEqual(server_errors, [])
                     finally:browser.close()
             finally:
                 server.should_exit = True; thread.join(timeout=10); sock.close()

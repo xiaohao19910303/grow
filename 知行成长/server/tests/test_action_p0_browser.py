@@ -11,7 +11,7 @@ import uuid
 
 from playwright.sync_api import sync_playwright, expect
 
-EVIDENCE=Path(os.environ.get('ACTION_P0_EVIDENCE_DIR',tempfile.mkdtemp(prefix='grow-action-p0-browser-')))
+EVIDENCE=Path(os.environ['TEST_ARTIFACTS_DIR'])/'action-p0' if os.getenv('TEST_ARTIFACTS_DIR') else Path(__file__).resolve().parents[3]/'openspec/changes/action-plans-p0-clarity/evidence'
 
 
 @unittest.skipUnless(os.getenv('RUN_GITHUB_BROWSER')=='1','Opt in to isolated real Chrome')

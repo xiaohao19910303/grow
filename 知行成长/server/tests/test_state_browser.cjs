@@ -136,6 +136,14 @@ async function response(page,status){
     const draft=await download;await draft.saveAs(path.join(temp,'reflection-draft.txt'));
     assert.equal(fs.readFileSync(path.join(temp,'reflection-draft.txt'),'utf8'),'newer draft while cloud reloads');
     await first.waitForFunction(value=>document.getElementById('refRaw').value===value,external);
+    await first.getByRole('button',{name:'稍后继续',exact:true}).click();
+    await first.locator('#reflectionList').getByRole('button',{name:'编辑',exact:true}).click();
+    assert.equal(await first.locator('#refRaw').inputValue(),external,'reopening must not restore the discarded stale draft');
+    const resaved=first.waitForResponse(r=>r.url().includes('/api/reflections/'+meta.id) && r.request().method()==='PUT');
+    await first.locator('#refSaveBtn').click();
+    const reloadedSave=await resaved;
+    assert.equal(reloadedSave.status(),200,'reload adopts the latest remote base version');
+    assert.equal(reloadedSave.request().postDataJSON().base_version,2);
     assert.deepEqual(errors,[],'unexpected browser errors');
     console.log('Browser checks passed: actual UI/API stable ID, two-page conflict, unsaved copy, remote-record version protection, escaped text and draft reload.');
   }finally{await browser.close()}

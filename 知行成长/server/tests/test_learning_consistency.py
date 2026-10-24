@@ -76,6 +76,35 @@ class LearningConsistencyTests(PostgreSQLFixture):
         self.assertEqual(plans.get_setting('preferred_model', 'fallback'), 'saved-model')
         self.assertEqual(plans.get_setting('missing', 'fallback'), 'fallback')
 
+    def test_archive_upgrade_keeps_existing_learning_record_and_is_repeatable(self):
+        from copilot.schema import TABLES
+        with self.store.conn() as connection:
+            connection.executescript(TABLES)
+            connection.execute("INSERT INTO copilot_meta VALUES ('schema_version','2')")
+            connection.execute('ALTER TABLE copilot_learning_records DROP COLUMN archived')
+            connection.execute('ALTER TABLE copilot_learning_records DROP COLUMN archived_at')
+        self.insert_completion()
+
+        self.store.initialize()
+        with self.store.conn() as connection:
+            record = dict(connection.execute('SELECT * FROM copilot_learning_records').fetchone())
+        self.assertEqual(record['archived'], 0)
+        self.assertIsNone(record['archived_at'])
+        self.assertEqual(record['summary_text'], '保留已有的学习总结')
+        self.assertEqual(record['time_spent_seconds'], 245)
+        self.assertEqual(record['completed_at'], '2026-10-15T16:20:00+08:00')
+        self.assertEqual(record['idempotency_key'], 'existing-1')
+
+        self.store.archive_lesson(1, 'upgrade-archive')
+        self.store.initialize()
+        with self.store.conn() as connection:
+            records = connection.execute('SELECT * FROM copilot_learning_records').fetchall()
+            self.assertEqual(connection.execute("SELECT value FROM copilot_meta WHERE key='schema_version'").fetchone()[0], '3')
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]['id'], record['id'])
+        self.assertEqual(records[0]['archived'], 1)
+        self.assertTrue(records[0]['archived_at'])
+
     def test_database_completion_overrides_pending_markdown_label_and_supplies_date(self):
         self.store.initialize()
         self.insert_completion()

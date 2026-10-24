@@ -57,7 +57,7 @@ class ReadingGrowthBrowser(CloudHTTPFixture):
             window.toast=text=>document.getElementById('notice').textContent=text;
             window.goTab=()=>enterReading();
             window.renderArticleTranslation=(parent,a,text,markdown)=>markdown(parent,text);
-            </script><script src="/static/ai-config.js"></script><script src="/static/copilot.js"></script>
+            </script><script src="/static/ai-config.js"></script><script src="/static/reading-tasks.js"></script><script src="/static/copilot.js"></script>
             <script src="/static/reading-growth.js"></script><script src="/static/reading-body.js"></script><script src="/static/reading.js"></script></body></html>''')
         sock=socket.socket();sock.bind(('127.0.0.1',0));base='http://127.0.0.1:'+str(sock.getsockname()[1])
         server=uvicorn.Server(uvicorn.Config(self.app,log_level='error'))
@@ -102,7 +102,7 @@ class ReadingGrowthBrowser(CloudHTTPFixture):
                     page.get_by_text('反馈已保存。可用标签、收获或疑问搜索找回。',exact=True).wait_for()
                     page.get_by_role('button',name='返回历史文章',exact=True).click()
                     page.get_by_role('button',name='有反馈',exact=True).click()
-                    page.get_by_label('搜索历史文章').fill('未保存的新收获')
+                    page.get_by_role('searchbox',name='搜索历史文章',exact=True).fill('未保存的新收获')
                     page.get_by_role('button',name='查看反馈',exact=True).click()
                     self.assertEqual(page.get_by_label('一句话收获').input_value(),'PRIVATE 未保存的新收获')
                     page.reload();page.get_by_role('button',name='中文导读',exact=True).click();page.get_by_role('heading',name='核心观点',exact=True).wait_for()

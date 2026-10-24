@@ -107,7 +107,15 @@
     const languageBox=node('fieldset');languageBox.append(node('legend','文章语言'));parent.append(languageBox);for(const [value,label] of [['zh','中文'],['en','英文（可生成中文导读）']]){const el=field(languageBox,label,'','checkbox');el.checked=p.languages.includes(value);languages.push([value,el]);}
     let autoGuide;if(includeSchedule){autoGuide=field(parent,'打开英文文章的「中文导读」时自动生成并保存（使用我的个人模型）','','checkbox');autoGuide.checked=!!p.auto_guide;}
     let enabled,hour,minute;if(includeSchedule){enabled=field(parent,'启用每日搜集','','checkbox');enabled.checked=p.enabled;const time=node('div',undefined,'plan-grid');parent.append(time);hour=field(time,'北京时间：小时',p.hour,'number');minute=field(time,'分钟',p.minute,'number');}
-    return ()=>({...p,count:Number(count.value),mode:mode.value,topics:topics.filter(([,x])=>x.checked).map(([v])=>v),languages:languages.filter(([,x])=>x.checked).map(([v])=>v),...(includeSchedule?{enabled:enabled.checked,hour:Number(hour.value),minute:Number(minute.value),auto_guide:autoGuide.checked}:{})});
+    const get=()=>({...p,count:Number(count.value),mode:mode.value,topics:topics.filter(([,x])=>x.checked).map(([v])=>v),languages:languages.filter(([,x])=>x.checked).map(([v])=>v),...(includeSchedule?{enabled:enabled.checked,hour:Number(hour.value),minute:Number(minute.value),auto_guide:autoGuide.checked}:{})});
+    get.load=(saved,available=[])=>{
+      p={...p,...saved};count.value=p.count;mode.value=p.mode;
+      for(const value of [...available,...p.topics])if(!topics.some(([topic])=>topic===value))topics.push([value,field(topicBox,value,'','checkbox')]);
+      for(const [value,input] of topics)input.checked=p.topics.includes(value);
+      for(const [value,input] of languages)input.checked=p.languages.includes(value);
+      if(includeSchedule){enabled.checked=p.enabled;hour.value=p.hour;minute.value=p.minute;autoGuide.checked=!!p.auto_guide;}
+    };
+    return get;
   }
   async function settings(){const status=shell('阅读偏好与来源');const turn=revision;button(root,'返回阅读',window.loadReading);const data=await api();if(turn!==revision)return;const get=preferenceFields(root,data.preferences,true,data.topics);
     root.append(node('p',(data.storage_backend==='cloud'?'云端每日自动搜集，电脑和浏览器无需保持开启。':'服务停止期间不会搜集。重启后仅补当日。')+'来源失败或数量不足会明确记录。已保存文章不会重复推荐。','desc'));
@@ -187,14 +195,11 @@
     form.addEventListener('input',()=>{edited=true;});form.addEventListener('change',()=>{edited=true;});
 
     // 先渲染基础表单，使用默认值或缓存
-    function renderConditions(preferences,topics){
-      form.replaceChildren();
-      const query=field(form,'主题或关键词（可留空，例如：科技、心理、社会、decision）',preferences.query||'');
-      form.append(node('p','在已配置来源的标题与摘要中筛选，中文主题会扩展为英文关键词。复杂问题建议提取核心关键词。','desc'));
-      const getPreferences=preferenceFields(form,preferences,false,topics);
-      button(form,'开始查找',()=>start({...getPreferences(),query:query.value}),true);
-    }
-    renderConditions({...defaultPreferences,...(preset||cached?.preferences)},cached?.topics||defaultTopics);
+    const initialData={...defaultPreferences,...(preset||cached?.preferences)};
+    const query=field(form,'主题或关键词（可留空，例如：科技、心理、社会、decision）',initialData.query||'');
+    form.append(node('p','在已配置来源的标题与摘要中筛选，中文主题会扩展为英文关键词。复杂问题建议提取核心关键词。','desc'));
+    const tempGet=preferenceFields(form,initialData,false,cached?.topics||defaultTopics);
+    button(form,'开始查找',()=>start({...tempGet(),query:query.value}),true);
 
     if(preset||cached){status.textContent='调整条件后即可开始查找。';return;}
 
@@ -204,7 +209,9 @@
     async function refresh(){try{const data=await api('/setup');if(turn!==revision||account!==accountKey())return;
       preferenceCache={account,preferences:data.preferences,topics:data.topics};
       if(!edited){
-        renderConditions({...defaultPreferences,...data.preferences},data.topics||defaultTopics);
+        // 更新表单值而不重建
+        query.value=data.preferences.query||'';
+        tempGet.load(data.preferences,data.topics);
       }
       status.textContent=edited?'已保留你正在调整的条件。':'已载入你的阅读偏好。';
     }catch(error){if(turn!==revision)return;status.textContent='偏好暂未载入，可继续使用当前条件查找。';

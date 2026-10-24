@@ -31,7 +31,7 @@ class ReadingSiteBrowser(CloudHTTPFixture):
             return HTMLResponse('<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+style+'''
             <link rel="stylesheet" href="/static/reading.css"><body><main class="wrap"><p id="notice"></p><div id="view-copilot" style="display:none"></div><div id="view-reading"></div></main>
             <script>window.Account={user:{id:'test-owner',is_owner:true}};window.toast=text=>document.getElementById('notice').textContent=text;window.goTab=()=>enterReading();</script>
-            <script src="/static/ai-config.js"></script><script src="/static/copilot.js"></script><script src="/static/reading-growth.js"></script><script src="/static/reading-body.js"></script><script src="/static/reading.js"></script></body></html>''')
+            <script src="/static/ai-config.js"></script><script src="/static/reading-tasks.js"></script><script src="/static/copilot.js"></script><script src="/static/reading-growth.js"></script><script src="/static/reading-body.js"></script><script src="/static/reading.js"></script></body></html>''')
         sock=socket.socket();sock.bind(('127.0.0.1',0));base='http://127.0.0.1:'+str(sock.getsockname()[1])
         server=uvicorn.Server(uvicorn.Config(self.app,log_level='error'));thread=threading.Thread(target=lambda:server.run(sockets=[sock]),daemon=True);thread.start()
         try:
@@ -63,7 +63,12 @@ class ReadingSiteBrowser(CloudHTTPFixture):
         self.reader.put('reading_records','job-preview',{'id':'job-preview','type':'job','kind':'collect','state':'ready','created_at':'2026-10-17T12:00:00+08:00','date':'2026-10-17','daily':False,'candidates':[candidate,{**candidate,'id':'legacy-pdf','title':'Legacy PDF preview','url':'https://example.org/old.pdf','full_content':'%PDF-legacy-binary '*100}],'sources':[],'warnings':[]})
         with patch('reading.service.fetch_article_content',content),self.browser() as (page,base):
             page.goto(base);page.evaluate('enterReading()')
+            page.get_by_role('button',name='查看历史文章',exact=True).click()
+            page.get_by_role('heading',name='历史文章',exact=True).wait_for()
+            page.get_by_role('button',name='本站阅读',exact=True).wait_for()
+            self.assertEqual(page.locator('.reading-card').count(),1)
             page.get_by_role('button',name='历史搜集记录',exact=True).click()
+            page.get_by_role('heading',name='历史搜集记录',exact=True).wait_for()
             page.get_by_role('button',name='查看并保存',exact=True).click()
             page.get_by_text('本站预览正文',exact=True).first.click()
             page.get_by_text('THE FINAL PARAGRAPH.',exact=True).wait_for()
@@ -71,6 +76,7 @@ class ReadingSiteBrowser(CloudHTTPFixture):
             legacy.get_by_text('本次未取得正文。保存后可在本站尝试重新加载；当前仅有来源摘要。',exact=True).wait_for()
             self.assertNotIn('%PDF-legacy-binary',legacy.inner_text())
             page.get_by_role('button',name='返回阅读',exact=True).click()
+            page.get_by_role('button',name='查看历史文章',exact=True).click()
             self.assertEqual(page.get_by_role('link',name='阅读原文 ↗').count(),0)
             page.get_by_role('button',name='查看历史文章',exact=True).click()
             page.get_by_role('button',name='本站阅读',exact=True).click()
@@ -89,8 +95,7 @@ class ReadingSiteBrowser(CloudHTTPFixture):
             self.assertTrue(self.reader.article(self.aid)['read']);self.assertEqual(self.reader.note(self.aid)['text'],'PRIVATE draft while body loads')
             self.assertEqual(self.reader.article(self.aid)['content_version'],2)
             page.set_viewport_size({'width':390,'height':844})
-            overflow=page.evaluate('''() => [...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().width&&e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,cls:e.className,width:e.getBoundingClientRect().width,text:e.textContent.slice(0,60)})).slice(0,20)''')
-            self.assertFalse(page.evaluate('document.documentElement.scrollWidth>innerWidth'),overflow)
+            self.assertFalse(page.evaluate('document.documentElement.scrollWidth>innerWidth'),page.evaluate('''() => [...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,cls:el.className,left:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right})).filter(el=>el.left<0||el.right>innerWidth).slice(0,15)'''))
             page.screenshot(path='/tmp/grow-reading-onsite-mobile.png',full_page=False)
             self.assertNotIn('PRIVATE draft',json.dumps(self.repository.commits[self.repository.head]['files']))
 
@@ -98,7 +103,9 @@ class ReadingSiteBrowser(CloudHTTPFixture):
         calls=[]
         async def content(url):calls.append(url);return None if len(calls)==1 else BODY
         with patch('reading.service.fetch_article_content',content),self.browser() as (page,base):
-            page.goto(base);page.evaluate('enterReading()');page.get_by_role('button',name='查看历史文章',exact=True).click();page.get_by_role('button',name='本站阅读',exact=True).click()
+            page.goto(base);page.evaluate('enterReading()')
+            page.get_by_role('button',name='查看历史文章',exact=True).click()
+            page.get_by_role('button',name='本站阅读',exact=True).click()
             page.locator('.article-content-box [role=status]').filter(has_text='未能取得可阅读的正文').wait_for()
             page.get_by_role('heading',name='来源摘要（不是正文）',exact=True).wait_for();self.assertEqual(len(calls),1)
             self.assertFalse(self.reader.article(self.aid).get('full_content'))
