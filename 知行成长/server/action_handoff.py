@@ -29,7 +29,7 @@ def export_locked(c,source):
     c.execute('LOCK TABLE action_content_events IN SHARE MODE')
     if c.execute('SELECT count(*) FROM action_source_outbox').fetchone()[0] or c.execute('SELECT count(*) FROM action_source_contexts').fetchone()[0]:
         fail(409,'账号已有连接端投递状态，禁止混入新接管。')
-    data=snapshot(c)
+    data=snapshot(c,version=2)
     if any(r.get('state')=='generating' for r in data['reports']):
         fail(409,'请先等待正在生成的总结结束。')
     owner=c.execute('SELECT current_schema()').fetchone()[0]

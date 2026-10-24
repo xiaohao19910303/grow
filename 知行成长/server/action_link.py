@@ -65,7 +65,7 @@ def put(c,data,backup=None):
     c.execute('INSERT INTO action_link_state VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET data=EXCLUDED.data,backup=COALESCE(EXCLUDED.backup,action_link_state.backup)',(encoded(data),encoded(backup) if backup is not None else None))
 
 
-def snapshot(c):
+def snapshot(c, *, version=1):
     from rhythm.store import has_data
     if has_data(c):
         fail(409,'当前接管合同不包含日常节奏数据，原数据保留；请等待连接端升级。','CONTRACT_UPGRADE_REQUIRED')
@@ -73,7 +73,7 @@ def snapshot(c):
     result={}
     for name,table in [('plans','action_plans'),('records','action_executions'),('reviews','action_reviews'),('reports','action_reports')]:
         result[name]=[json.loads(r[0]) for r in c.execute(f'SELECT data FROM {table} ORDER BY id')]
-    if any(p.get('completion_mode','time')!='time' for p in result['plans']):
+    if version == 1 and any(p.get('completion_mode','time')!='time' for p in result['plans']):
         fail(422,'当前客户端联动首版支持计时计划；你的数据包含按内容或勾选完成的日程，暂不接管，原计划和记录均保留。')
     result['operations']=[dict(key=r['key'],hash=r['hash'],result=json.loads(r['result'])) for r in c.execute('SELECT * FROM action_operations ORDER BY key')]
     result['claims']=[dict(key=r['key'],claimed_at=r['claimed_at']) for r in c.execute('SELECT * FROM action_reminder_claims ORDER BY key')]

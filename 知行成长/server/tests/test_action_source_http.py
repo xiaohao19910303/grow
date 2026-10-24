@@ -9,7 +9,6 @@ import sys
 import tempfile
 import unittest
 import uuid
-from urllib.parse import quote
 from unittest.mock import patch
 from urllib.parse import quote, urlencode, urlsplit
 import httpx

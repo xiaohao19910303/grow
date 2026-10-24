@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 from unittest.mock import patch
 from test_action_p0_sources import CourseReceiptFixture
+from test_action_source_http import source_database_url
 from tenancy import current_user
 import action_plans as actions
 import action_link
@@ -16,7 +17,7 @@ class HandoffTests(CourseReceiptFixture):
         self.token=current_user.set({'id':'grow-handoff','schema_name':self.schema,'is_owner':1})
         self.addCleanup(current_user.reset,self.token)
 
-    def test_full_graph_export_and_real_zook_postgres_recovery(self):
+    def test_legacy_p0_graph_export_and_real_zook_postgres_recovery(self):
         self.assertEqual(self.confirm().status_code,200)
         # Real Grow facts: completed content, complete+reversal check, nullable check, running time.
         def create(key,**updates):
@@ -28,6 +29,20 @@ class HandoffTests(CourseReceiptFixture):
         check=create('handoff-check-create');check=op(check,'complete','handoff-complete');op(check,'reopen','handoff-reopen')
         create('handoff-nullable',start_date=None,end_date=None)
         op(create('handoff-running',completion_mode='time'),'start','handoff-start')
+        # Model stored P0 history from before daily-rhythm facts existed. The
+        # receiving P0 contract intentionally has no rhythm fields; production
+        # exports must never strip those fields from current records.
+        with actions.connection() as c:
+            for table,fields in (
+                ('action_plans', ('recurrence','until')),
+                ('action_executions', ('activity_at','activity_confirmed','activity_date',
+                 'activity_timezone','fact_version','focus_day_id','focus_plan_id_snapshot',
+                 'focus_selected_at_snapshot','minimum_step_snapshot','rhythm_variant',
+                 'next_step','recap_history','recap_kind','recap_revision','recap_saved_at'))):
+                for row in c.execute('SELECT id,data FROM '+table).fetchall():
+                    value=json.loads(row[1])
+                    for field in fields:value.pop(field,None)
+                    c.execute('UPDATE '+table+' SET data=? WHERE id=?',(actions.encoded(value),row[0]))
         exported=snapshot_v2('grow-handoff')
         self.assertEqual(exported,snapshot_v2('grow-handoff'))
         event=exported['content_events'][0]
@@ -38,9 +53,26 @@ class HandoffTests(CourseReceiptFixture):
         worktree=os.environ.get('TEST_ZOOK_WORKTREE')
         self.assertTrue(worktree,'Explicit TEST_ZOOK_WORKTREE required for C3 integration')
         result=subprocess.run(['node','--experimental-transform-types','test/support/lighttick-handoff-fixture.ts'],
-            cwd=worktree,input=actions.encoded(exported),text=True,capture_output=True,timeout=50)
+            cwd=worktree,env={**os.environ,'LIGHTTICK_ACTION_TEST_DATABASE_URL':source_database_url(self.dsn)},input=actions.encoded(exported),text=True,capture_output=True,timeout=50)
         self.assertEqual(result.returncode,0,result.stderr+'\n'+result.stdout)
         self.assertIn('C3_POSTGRES_RECOVERY_OK',result.stdout)
+
+    def test_export_preserves_current_rhythm_facts_without_loss(self):
+        self.assertEqual(self.confirm().status_code,200)
+        response=self.client.post('/api/action-plans',headers=self.headers,json={
+            'key':'rhythm-export-check','title':'保留新版事实','period':'day',
+            'completion_mode':'check','start_date':'2026-10-19','end_date':'2026-10-19'})
+        self.assertEqual(response.status_code,200,response.text)
+        plan=response.json()['plans'][0]
+        response=self.client.post('/api/action-plans/'+plan['id']+'/operations',
+            headers=self.headers,json={'key':'rhythm-export-complete','action':'complete','revision':plan['revision']})
+        self.assertEqual(response.status_code,200,response.text)
+        exported=snapshot_v2('grow-handoff')
+        with actions.connection() as c:
+            records=[json.loads(row[0]) for row in c.execute('SELECT data FROM action_executions ORDER BY id')]
+            self.assertEqual(exported['records'],records)
+            self.assertTrue(any(record.get('fact_version')==2 for record in records))
+            self.assertEqual(action_link.state(c)[0]['phase'],'local')
 
     def test_export_rejects_foreign_owner_and_existing_binding_without_freeze(self):
         self.assertEqual(self.confirm().status_code,200)

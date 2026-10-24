@@ -78,7 +78,6 @@ class ReadingSiteBrowser(CloudHTTPFixture):
             page.get_by_role('button',name='返回阅读',exact=True).click()
             page.get_by_role('button',name='查看历史文章',exact=True).click()
             self.assertEqual(page.get_by_role('link',name='阅读原文 ↗').count(),0)
-            page.get_by_role('button',name='查看历史文章',exact=True).click()
             page.get_by_role('button',name='本站阅读',exact=True).click()
             page.get_by_role('heading',name='文章正文',exact=True).wait_for()
             page.get_by_role('button',name='我的笔记',exact=True).click()

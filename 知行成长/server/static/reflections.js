@@ -236,8 +236,7 @@
         }
         if (r.ok) {
           const res = await r.json();
-          try { localStorage.removeItem(draftKey(editor)); }
-      catch (_) { window.toast('本机草稿无法清除，当前编辑内容仍保留；请先复制原文。');return; }
+          try { localStorage.removeItem(draftKey(editor)); } catch (_) {}
           await load();
           editor = null;
           closeModal();

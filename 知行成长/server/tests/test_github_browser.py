@@ -106,7 +106,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                         page.get_by_label('模型名称', exact=True).fill('browser-test-model')
                         page.get_by_role('button', name='保存配置', exact=True).click()
                         page.screenshot(path='/tmp/grow-browser-ai-settings.png')
-                        page.get_by_role('button', name='创建课程计划', exact=True).click()
+                        page.get_by_role('button', name='创建课程规划', exact=True).click()
                         for name, value in [('学习方向','经济学'),('希望学会什么','理解经济新闻'),('周期（周）','2'),('每周学习次数','1'),('每次分钟数','20')]:
                             page.get_by_label(name, exact=True).fill(value)
                         page.get_by_role('button', name='让AI生成规划草稿').click()

@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import socket
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,11 @@ class DeploymentBoot(unittest.TestCase):
             c=psycopg2.connect(admin);c.autocommit=True;c.cursor().execute(sql.SQL('DROP DATABASE {} WITH (FORCE)').format(sql.Identifier(name)));c.close()
         self.addCleanup(drop)
         with tempfile.TemporaryDirectory(prefix='grow-entrypoint-') as temp:
+            # A new installation must not load this checkout's real .env files.
+            server=Path(temp)/'app/server'
+            shutil.copytree(SERVER,server,ignore=shutil.ignore_patterns(
+                '.env','.env.local','*.db','*.db-*','*.sqlite*','runtime',
+                '__pycache__','*.pyc','tests','node_modules','*.log'))
             with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
             url='postgresql://'+quote(settings['user'])+'@127.0.0.1:'+settings.get('port','5432')+'/'+name
             env={'PATH':os.environ['PATH'],'PYTHONDONTWRITEBYTECODE':'1','DATABASE_URL':url,
@@ -36,13 +42,13 @@ class DeploymentBoot(unittest.TestCase):
             from prepare_materials import prepare
             prepare(SERVER.parent/'学习资料',env['LEARN_ROOT'])
             self.assertFalse((Path(env['LEARN_ROOT'])/'英文阅读/学习记录.md').exists())
-            checked=subprocess.run([sys.executable,'-B',str(SERVER/'deployment.py'),'check'],env=env,capture_output=True,text=True,timeout=20)
+            checked=subprocess.run([sys.executable,'-B',str(server/'deployment.py'),'check'],env=env,capture_output=True,text=True,timeout=20)
             self.assertEqual(checked.returncode,0,checked.stderr);self.assertIn('github_content_unconfigured',checked.stdout)
-            broken=subprocess.run([sys.executable,'-B',str(SERVER/'deployment.py'),'check'],env={**env,'DATABASE_URL':'postgresql://SENSITIVE_USER:SENSITIVE_PASSWORD@127.0.0.1:1/unreachable'},capture_output=True,text=True,timeout=15)
+            broken=subprocess.run([sys.executable,'-B',str(server/'deployment.py'),'check'],env={**env,'DATABASE_URL':'postgresql://SENSITIVE_USER:SENSITIVE_PASSWORD@127.0.0.1:1/unreachable'},capture_output=True,text=True,timeout=15)
             self.assertEqual(broken.returncode,2);self.assertIn('DATABASE_URL',broken.stderr);self.assertNotIn('SENSITIVE',broken.stderr)
             for index in range(2):
                 with (Path(temp)/('server-'+str(index)+'.log')).open('w') as log:
-                    process=subprocess.Popen([sys.executable,'-B',str(SERVER/'deployment.py'),'serve','--port',str(port)],env=env,stdout=log,stderr=subprocess.STDOUT,cwd=SERVER)
+                    process=subprocess.Popen([sys.executable,'-B',str(server/'deployment.py'),'serve','--port',str(port)],env=env,stdout=log,stderr=subprocess.STDOUT,cwd=server)
                     try:
                         with httpx.Client(base_url='http://127.0.0.1:'+str(port)) as client:
                             for _ in range(150):

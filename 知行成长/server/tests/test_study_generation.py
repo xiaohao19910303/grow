@@ -227,7 +227,6 @@ class StudyGenerationTests(PostgreSQLFixture):
                 return route.fulfill(json={'plans':[],'execution':None,'server_time':'2026-10-22T12:00:00Z','action_schema_version':2,'capabilities':{'nullable_schedule':True}})
             if endpoint == '/api/auth/me': result = {'user': {'id': 'fixture', 'username': 'tester', 'is_owner': True}}
             elif endpoint == '/api/data': result = dict(modules=[], checkins={}, habits={}, customFields=[], customRecords=[], decisions=[], predictions=[], reviews=[], insights=[], todos=[], _revision='fixture')
-            elif endpoint == '/api/action-plans': result = {'plans': [], 'execution': None, 'server_time': datetime.now(timezone.utc).isoformat(), 'action_schema_version': 2}
             else: result = dict(modules=[], lessons=[], plans=[], records=[], items=[], articles=[], jobs=[], entries=[], reports=[], stats={}, preferences={}, budget={}, attempts=[], legacy=[], drafts=[])
             route.fulfill(json=result)
         try:
@@ -243,8 +242,8 @@ class StudyGenerationTests(PostgreSQLFixture):
                         page.locator(selector).fill(value)
                     page.get_by_role('button', name='保存配置', exact=True).click()
                     page.locator('[data-group="learning"]').click()
-                    home = page.locator('#learningLibrary')
-                    english = home.locator('.learning-module').filter(has=page.get_by_role('heading', name='英文阅读 · 35 分钟', exact=True))
+                    library = page.locator('#learningLibrary')
+                    english = library.locator('.learning-module').filter(has=page.get_by_role('heading', name='英文阅读 · 35 分钟', exact=True))
                     english.get_by_role('button', name='生成下一课', exact=True).click()
                     english.get_by_role('button', name='保存课程并开始学习', exact=True).wait_for()
                     self.assertEqual(len(self.calls), 1)

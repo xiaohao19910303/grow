@@ -31,7 +31,7 @@ class PartialRecordBrowser(unittest.TestCase):
                     request.fulfill(status=response.status_code,headers={k:v for k,v in response.headers.items() if k.lower() not in ('content-encoding','content-length','transfer-encoding')},body=response.content)
                 else:request.abort()
             context.route('**/*',route)
-            page.goto('https://learning.example/');page.locator('#storageStatus').filter(has_text='已连接').wait_for()
+            page.goto('https://learning.example/',wait_until='domcontentloaded');page.locator('#storageStatus').filter(has_text='已连接').wait_for()
             page.evaluate("goTab('settings')")
             page.get_by_role('button',name='导出局部记录副本',exact=True).wait_for()
             with page.expect_download() as download:page.get_by_role('button',name='导出局部记录副本',exact=True).click()

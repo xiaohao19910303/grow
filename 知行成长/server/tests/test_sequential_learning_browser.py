@@ -1,6 +1,7 @@
 """Actual homepage in Chrome with synthetic courses; no personal data or network."""
 import functools
 import os
+import re
 from pathlib import Path
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import threading
@@ -62,11 +63,9 @@ class SequentialLearningBrowser(unittest.TestCase):
             elif endpoint == '/api/data':
                 result = dict(modules=[], checkins={}, habits={}, customFields=[], customRecords=[], decisions=[], predictions=[], reviews=[], insights=[], todos=[], _revision='fixture')
             elif endpoint == '/api/action-plans':
-                result = {'plans': [], 'execution': None, 'server_time': datetime.now(timezone.utc).isoformat(), 'action_schema_version': 2}
+                result = {'plans': [], 'execution': None, 'server_time': datetime.now(timezone.utc).isoformat(), 'action_schema_version': 2, 'capabilities': {'nullable_schedule': True}}
             elif endpoint == '/api/auth/me':
                 result = {'user': {'id': 'fixture', 'username': 'tester', 'is_owner': False}}
-            elif endpoint == '/api/action-plans':
-                result = {'plans':[],'execution':None,'server_time':'2026-10-22T12:00:00Z','action_schema_version':2,'capabilities':{'nullable_schedule':True}}
             else:
                 result = dict(modules=[], lessons=[], plans=[], records=[], items=[], articles=[], jobs=[], entries=[], reports=[], stats={}, preferences={}, budget={}, attempts=[])
             route.fulfill(json=result)

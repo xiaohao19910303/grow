@@ -16,14 +16,12 @@ from test_legacy_cloud_api import CloudHTTPFixture, OWN
 @unittest.skipUnless(os.getenv('RUN_LEGACY_BROWSER')=='1','Opt in to Chromium acceptance')
 class LegacyCloudBrowser(CloudHTTPFixture):
     def test_course_and_reading_complete_browser_flow(self):
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, expect
         from study_notes import register as register_study_notes
         register_study_notes(self.app)
         static=Path(__file__).resolve().parents[1]/'static'
         self.reader.save_full_text(self.aid,'Public saved article body. '*20)
-        from study_notes import register as register_notes
         from test_reading_growth_browser import GUIDE
-        register_notes(self.app)
         async def reading_model(messages,cfg):
             self.assertEqual(cfg['key'],OWN['api_key'])
             yield {'text':GUIDE+'\n\nPublic generated reading guide.'}
@@ -85,8 +83,6 @@ class LegacyCloudBrowser(CloudHTTPFixture):
                     page.get_by_text('笔记已保存',exact=True).wait_for()
                     page.get_by_role('button',name='生成/更新AI导读',exact=True).click()
                     page.get_by_text('已生成并保存，可随时返回查看。',exact=True).wait_for()
-                    page.get_by_role('button',name='中文导读',exact=True).click()
-                    page.get_by_role('button',name='我的笔记',exact=True).click()
                     self.assertEqual(page.get_by_placeholder('哪个观点改变了我的假设？哪些证据还不够？我的思考和疑问...').input_value(),'PRIVATE BROWSER NOTE')
                     page.get_by_text('Public generated reading guide.',exact=True).filter(visible=True).wait_for()
                     page.reload()

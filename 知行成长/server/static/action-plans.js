@@ -382,7 +382,7 @@
   }
   window.ActionPlans={enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','目标与计划'),n('p','正在读取计划与进度…'));try{await initialized;await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},
     resumeExecution:()=>{if(snapshot.execution)return openTarget(snapshot.execution.target,snapshot.execution.plan_id);},
-    refresh:async()=>{await initialized;return load(true);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;return quick(null,null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
+    refresh:async()=>{await initialized;return load(snapshot.action_schema_version!==undefined);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;return quick(null,null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
 
     schedule,addTask,change,start,openTarget,records,review:p=>window.ActionReviews.open({client,plan:p,dialog,edit:()=>quick(p)}),
     reconcile:async p=>{await load(true);const latest=planById(p.id);if(!latest)throw Error('这项安排已变更，请查看最新日程。');if(latest.status==='completed'){toast('内容已完成，安排状态已刷新。');return {plan:latest};}const result=await change(latest,'reconcile-content');toast('已核对保存的内容完成记录。');return result;},

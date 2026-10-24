@@ -93,7 +93,7 @@
   async function trial(){await window.RhythmTrial?.open(client);}
   window.DailyRhythm={refresh,settings:()=>{settings();},recap,sourceSaved,claimReminder,event,burden,
     client:()=>client,state:()=>state,node,button,field,option,modal,recoverPending};
-  ready=(window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{accountId=user.id;client=window.RhythmClient.create({account:user.id,storage:localStorage,request:(...args)=>{if(!activeAccount())throw Error('账号已切换，请刷新页面。');return window.fetch(...args);}});});
+  ready=(window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{accountId=user.id;let storage;try{storage=window.localStorage;}catch{/* Browser storage can be unavailable. */}client=window.RhythmClient.create({account:user.id,storage,request:(...args)=>{if(!activeAccount())throw Error('账号已切换，请刷新页面。');return window.fetch(...args);}});});
   ready.then(()=>refresh()).then(settings).catch(()=>{});
   window.EventBus?.on('plans:changed',()=>refresh());window.EventBus?.on('plans:loaded',()=>refresh());
 })();
