@@ -1,0 +1,9 @@
+test_invalid_rows_are_preserved_and_reported_without_partial_ddl (test_legacy_cloud_schema.LegacySchemaTests.test_invalid_rows_are_preserved_and_reported_without_partial_ddl) ... ok
+test_learning_archive_upgrade_is_additive_after_completed_migration (test_legacy_cloud_schema.LegacySchemaTests.test_learning_archive_upgrade_is_additive_after_completed_migration) ... ok
+test_old_bootstrap_schemas_are_archived_and_imported_once (test_legacy_cloud_schema.LegacySchemaTests.test_old_bootstrap_schemas_are_archived_and_imported_once) ... ok
+test_relations_and_nonserial_ids_survive_schema_conversion (test_legacy_cloud_schema.LegacySchemaTests.test_relations_and_nonserial_ids_survive_schema_conversion) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.718s
+
+OK

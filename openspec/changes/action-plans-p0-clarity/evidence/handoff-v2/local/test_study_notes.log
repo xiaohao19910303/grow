@@ -1,0 +1,18 @@
+/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_account_schemas_do_not_share_notes (test_study_notes.StudyNotesTests.test_account_schemas_do_not_share_notes) ... ok
+test_cross_site_and_unmarked_writes_are_forbidden (test_study_notes.StudyNotesTests.test_cross_site_and_unmarked_writes_are_forbidden) ... ok
+test_first_get_and_put_create_missing_tenant_table_and_public_read_survives_app_restart (test_study_notes.StudyNotesTests.test_first_get_and_put_create_missing_tenant_table_and_public_read_survives_app_restart) ... ok
+test_first_put_alone_can_create_the_table_and_explicit_initialize_is_repeatable (test_study_notes.StudyNotesTests.test_first_put_alone_can_create_the_table_and_explicit_initialize_is_repeatable) ... ok
+test_invalid_fields_and_input_limits_are_rejected_without_creating_notes (test_study_notes.StudyNotesTests.test_invalid_fields_and_input_limits_are_rejected_without_creating_notes) ... ok
+test_maximum_lengths_and_empty_draft_are_valid (test_study_notes.StudyNotesTests.test_maximum_lengths_and_empty_draft_are_valid) ... ok
+test_note_kinds_courses_and_nested_plan_course_ids_are_independent (test_study_notes.StudyNotesTests.test_note_kinds_courses_and_nested_plan_course_ids_are_independent) ... ok
+test_same_key_retry_is_idempotent_and_changed_replay_or_stale_tab_cannot_overwrite (test_study_notes.StudyNotesTests.test_same_key_retry_is_idempotent_and_changed_replay_or_stale_tab_cannot_overwrite) ... ok
+test_saving_notes_neither_completes_pending_courses_nor_changes_existing_completion_notes (test_study_notes.StudyNotesTests.test_saving_notes_neither_completes_pending_courses_nor_changes_existing_completion_notes) ... ok
+test_simultaneous_first_saves_have_one_winner (test_study_notes.StudyNotesTests.test_simultaneous_first_saves_have_one_winner) ... ok
+test_untrusted_note_and_answer_content_remains_plain_text (test_study_notes.StudyNotesTests.test_untrusted_note_and_answer_content_remains_plain_text) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.547s
+
+OK

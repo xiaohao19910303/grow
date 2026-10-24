@@ -1,0 +1,22 @@
+/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_legacy_archive_content_remains_readable (test_github_plans.ArchivedLocalStorageCompatibility.test_legacy_archive_content_remains_readable) ... ok
+test_branch_race_rebases_without_losing_unrelated_files (test_github_plans.GitHubPlanTests.test_branch_race_rebases_without_losing_unrelated_files) ... ok
+test_changed_dependency_blocks_pending_course_publication (test_github_plans.GitHubPlanTests.test_changed_dependency_blocks_pending_course_publication) ... ok
+test_concurrent_plan_adoption_allocates_unique_ids (test_github_plans.GitHubPlanTests.test_concurrent_plan_adoption_allocates_unique_ids) ... ok
+test_credentials_or_branch_change_does_not_retarget_existing_plans (test_github_plans.GitHubPlanTests.test_credentials_or_branch_change_does_not_retarget_existing_plans) ... ok
+test_database_failure_after_github_commit_is_recoverable (test_github_plans.GitHubPlanTests.test_database_failure_after_github_commit_is_recoverable) ... ok
+test_empty_repository_is_initialized_only_when_publishing (test_github_plans.GitHubPlanTests.test_empty_repository_is_initialized_only_when_publishing) ... ok
+test_external_change_is_never_overwritten (test_github_plans.GitHubPlanTests.test_external_change_is_never_overwritten) ... ok
+test_full_generation_publish_and_read_api (test_github_plans.GitHubPlanTests.test_full_generation_publish_and_read_api) ... ok
+test_lost_success_response_does_not_duplicate_commit (test_github_plans.GitHubPlanTests.test_lost_success_response_does_not_duplicate_commit) ... ok
+test_publish_and_read_without_any_content_directory (test_github_plans.GitHubPlanTests.test_publish_and_read_without_any_content_directory) ... ok
+test_reads_are_pinned_and_feedback_stays_in_database (test_github_plans.GitHubPlanTests.test_reads_are_pinned_and_feedback_stays_in_database) ... ok
+test_recovery_recognizes_commit_even_after_later_external_commit (test_github_plans.GitHubPlanTests.test_recovery_recognizes_commit_even_after_later_external_commit) ... ok
+test_ref_failure_keeps_draft_and_restart_recovers (test_github_plans.GitHubPlanTests.test_ref_failure_keeps_draft_and_restart_recovers) ... ok
+test_rejects_path_escape_and_never_logs_credentials (test_github_plans.GitHubPlanTests.test_rejects_path_escape_and_never_logs_credentials) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 3.109s
+
+OK

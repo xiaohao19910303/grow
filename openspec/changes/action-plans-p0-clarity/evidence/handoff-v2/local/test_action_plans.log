@@ -1,0 +1,14 @@
+/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_another_tenant_cannot_read_or_mutate_original_plan (test_action_plans.ActionPlansTests.test_another_tenant_cannot_read_or_mutate_original_plan) ... ok
+test_create_and_finish_are_idempotent_and_stale_edit_cannot_overwrite (test_action_plans.ActionPlansTests.test_create_and_finish_are_idempotent_and_stale_edit_cannot_overwrite) ... ok
+test_hierarchy_progress_and_minimum_interruption_do_not_invent_completions (test_action_plans.ActionPlansTests.test_hierarchy_progress_and_minimum_interruption_do_not_invent_completions) ... ok
+test_one_running_execution_survives_service_reregistration_and_concurrent_start (test_action_plans.ActionPlansTests.test_one_running_execution_survives_service_reregistration_and_concurrent_start) ... ok
+test_parent_pause_blocks_children_and_active_descendant_blocks_pause (test_action_plans.ActionPlansTests.test_parent_pause_blocks_children_and_active_descendant_blocks_pause) ... ok
+test_reminders_claim_once_per_device_snooze_and_calendar_timezone (test_action_plans.ActionPlansTests.test_reminders_claim_once_per_device_snooze_and_calendar_timezone) ... ok
+test_validation_repetition_csrf_and_foreign_reference (test_action_plans.ActionPlansTests.test_validation_repetition_csrf_and_foreign_reference) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.568s
+
+OK

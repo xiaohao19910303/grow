@@ -17,7 +17,7 @@ def main():
     if 'host=127.0.0.1' not in os.environ.get('TEST_LEGACY_PG_DSN', ''):
         raise SystemExit('Set TEST_LEGACY_PG_DSN to a disposable localhost PostgreSQL database.')
     root=Path(__file__).resolve().parents[3]
-    output=root/'openspec/changes/action-plans-p0-clarity/evidence'
+    output=Path(os.environ.get('ACTION_P0_EVIDENCE_DIR',root/'openspec/changes/action-plans-p0-clarity/evidence'))
     output.mkdir(parents=True,exist_ok=True)
     results=[]
     for suite in SUITES:

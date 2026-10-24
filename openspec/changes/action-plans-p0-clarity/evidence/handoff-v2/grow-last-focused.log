@@ -1,0 +1,26 @@
+/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_export_rejects_foreign_owner_and_existing_binding_without_freeze (test_action_handoff.HandoffTests.test_export_rejects_foreign_owner_and_existing_binding_without_freeze) ... ok
+test_full_graph_export_and_real_zook_postgres_recovery (test_action_handoff.HandoffTests.test_full_graph_export_and_real_zook_postgres_recovery) ... ok
+test_old_keys_read_locally_new_keys_route_to_zook_and_pending_unknown_stays_uncertain (test_action_handoff.HandoffTests.test_old_keys_read_locally_new_keys_route_to_zook_and_pending_unknown_stays_uncertain) ... ok
+test_schema_number_alone_never_opens_connection_writes (test_action_handoff.HandoffTests.test_schema_number_alone_never_opens_connection_writes) ... ok
+test_A02_midnight_date_snapshot_and_A01_review_overdue (test_action_p0.ActionP0Tests.test_A02_midnight_date_snapshot_and_A01_review_overdue) ... ok
+test_A04_legacy_read_keeps_dates_minutes_and_completion (test_action_p0.ActionP0Tests.test_A04_legacy_read_keeps_dates_minutes_and_completion) ... ok
+test_F01_F02_nullable_check_and_no_fake_time (test_action_p0.ActionP0Tests.test_F01_F02_nullable_check_and_no_fake_time) ... ok
+test_F03_F04_F05_invalid_fields_are_atomic (test_action_p0.ActionP0Tests.test_F03_F04_F05_invalid_fields_are_atomic) ... ok
+test_K01_reversal_keeps_original_fact (test_action_p0.ActionP0Tests.test_K01_reversal_keeps_original_fact) ... ok
+test_R06_connected_old_backend_is_gated_and_receipts_remain_readable (test_action_p0.ActionP0Tests.test_R06_connected_old_backend_is_gated_and_receipts_remain_readable) ... ok
+test_R06_p0_pairing_does_not_freeze_or_export_without_contract (test_action_p0.ActionP0Tests.test_R06_p0_pairing_does_not_freeze_or_export_without_contract) ... ok
+test_R06_write_contract_and_read_only_receipts (test_action_p0.ActionP0Tests.test_R06_write_contract_and_read_only_receipts) ... ok
+test_S01_S02_concurrent_content_dedup_and_null_bucket (test_action_p0.ActionP0Tests.test_S01_S02_concurrent_content_dedup_and_null_bucket) ... ok
+test_S03_S05_conflict_and_cancel_preserve_facts (test_action_p0.ActionP0Tests.test_S03_S05_conflict_and_cancel_preserve_facts) ... ok
+test_S04_remove_date_preserves_identity_and_turns_off_reminder (test_action_p0.ActionP0Tests.test_S04_remove_date_preserves_identity_and_turns_off_reminder) ... ok
+test_S08_no_phantom_calendar_or_reminder (test_action_p0.ActionP0Tests.test_S08_no_phantom_calendar_or_reminder) ... ok
+test_T01_cumulative_time_and_actual_date (test_action_p0.ActionP0Tests.test_T01_cumulative_time_and_actual_date) ... ok
+test_T03_interrupted_threshold_requires_explicit_confirmation (test_action_p0.ActionP0Tests.test_T03_interrupted_threshold_requires_explicit_confirmation) ... ok
+test_T06_T07_F09_state_locks_parent_and_future (test_action_p0.ActionP0Tests.test_T06_T07_F09_state_locks_parent_and_future) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 3.823s
+
+OK

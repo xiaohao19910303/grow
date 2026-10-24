@@ -1,0 +1,180 @@
+{
+  "date": "2026-10-22",
+  "scope": "Internal C3 cutover only; public writes/pairing/import remain closed; no native/P1/P2 changes",
+  "grow_regression": {
+    "results": [
+      {
+        "suite": "test_action_p0",
+        "exit_code": 0,
+        "tests": 15,
+        "skipped": 0
+      },
+      {
+        "suite": "test_action_p0_sources",
+        "exit_code": 0,
+        "tests": 3,
+        "skipped": 0
+      },
+      {
+        "suite": "test_action_p0_closeout",
+        "exit_code": 0,
+        "tests": 11,
+        "skipped": 0
+      },
+      {
+        "suite": "test_action_p0_closeout_sources",
+        "exit_code": 0,
+        "tests": 24,
+        "skipped": 0
+      },
+      {
+        "suite": "test_action_p0_browser",
+        "exit_code": 0,
+        "tests": 8,
+        "skipped": 0
+      },
+      {
+        "suite": "test_action_plans",
+        "exit_code": 0,
+        "tests": 7,
+        "skipped": 0
+      },
+      {
+        "suite": "test_action_reviews",
+        "exit_code": 0,
+        "tests": 13,
+        "skipped": 0
+      },
+      {
+        "suite": "test_daily_arrangements",
+        "exit_code": 0,
+        "tests": 6,
+        "skipped": 0
+      },
+      {
+        "suite": "test_arrangement_sources",
+        "exit_code": 0,
+        "tests": 5,
+        "skipped": 0
+      },
+      {
+        "suite": "test_github_plans",
+        "exit_code": 0,
+        "tests": 15,
+        "skipped": 0
+      },
+      {
+        "suite": "test_study_notes",
+        "exit_code": 0,
+        "tests": 11,
+        "skipped": 0
+      },
+      {
+        "suite": "test_study_materials",
+        "exit_code": 0,
+        "tests": 5,
+        "skipped": 0
+      },
+      {
+        "suite": "test_legacy_cloud_schema",
+        "exit_code": 0,
+        "tests": 4,
+        "skipped": 0
+      },
+      {
+        "suite": "test_legacy_cloud_content",
+        "exit_code": 0,
+        "tests": 9,
+        "skipped": 0
+      },
+      {
+        "suite": "test_legacy_cloud_api",
+        "exit_code": 0,
+        "tests": 2,
+        "skipped": 0
+      },
+      {
+        "suite": "test_plan_read_errors",
+        "exit_code": 0,
+        "tests": 2,
+        "skipped": 0
+      }
+    ],
+    "tests": 140,
+    "skipped": 0,
+    "failed_suites": []
+  },
+  "c3": {
+    "suites": [
+      {
+        "suite": "grow-cutover-recovery",
+        "exit_code": 0,
+        "tests": 18,
+        "skipped": 0
+      },
+      {
+        "suite": "grow-snapshot-and-routing",
+        "exit_code": 0,
+        "tests": 4,
+        "skipped": 0
+      },
+      {
+        "suite": "zook-contracts-and-gates",
+        "exit_code": 0,
+        "tests": 15,
+        "skipped": 0
+      }
+    ],
+    "failed": []
+  },
+  "c2": {
+    "suites": [
+      {
+        "suite": "grow-source-recovery",
+        "exit_code": 0,
+        "tests": 12
+      },
+      {
+        "suite": "zook-source-contract-runtime",
+        "exit_code": 0,
+        "tests": 4
+      }
+    ],
+    "failed": []
+  },
+  "zook_unit": {
+    "tests": 1508,
+    "failed": 0,
+    "skipped": 0,
+    "exit_code": 0
+  },
+  "postgres_integration": {
+    "tests": 3,
+    "failed": 0,
+    "skipped": 0,
+    "exit_code": 0
+  },
+  "checks": {
+    "client_groups": 2,
+    "contract_generate": "passed",
+    "contract_check": "passed",
+    "contract_lint_errors": 0,
+    "contract_lint_existing_warnings": 197,
+    "action_domain_types": "passed",
+    "source_line_count_files": 670,
+    "admin_typecheck": "passed",
+    "admin_build": "passed",
+    "openspec": "passed"
+  },
+  "unverified": [
+    "Native C4/C5 consumers and real dual-client integration",
+    "Real accounts and devices, notification/calendar copies",
+    "Production rollout, migrations and public entrypoints",
+    "Unified whole-backend strict typecheck"
+  ],
+  "failed_attempts": "Historical interrupted low-space full run retained; seven isolated cases passed then current complete 1508 passed. Incorrect article test publisher hook fixed. Receipt phase/unknown-field acceptance reproduced red, corrected and full 37 C3 checks passed.",
+  "verified_implementation_commits": {
+    "grow": "f4ec0b97518699da4c41af36adfdec57daecf5f0",
+    "zook": "e0d9807abec161f7294c2ac723311703a729b286"
+  }
+}

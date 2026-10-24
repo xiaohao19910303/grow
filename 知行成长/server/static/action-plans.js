@@ -177,9 +177,10 @@
     return [selected,selected];
   }
   function monthEnd(value){const dt=new Date(value.slice(0,7)+'-01T12:00:00Z');dt.setUTCMonth(dt.getUTCMonth()+1);dt.setUTCDate(0);return dt.toISOString().slice(0,10);}
-  function quick(existing=null,parent=null,options={}){requireP0();return ActionQuickEditor.open({openFull:()=>editor('day',null,parent,true),client,snapshot,dialog,field,button,option,day,refresh:()=>load(true),change,existing,parent,...options});}
+  async function quick(existing=null,parent=null,options={}){await initialized;if(snapshot.action_schema_version===undefined)await load();requireP0();return ActionQuickEditor.open({openFull:()=>editor('day',null,parent,true),client,snapshot,dialog,field,button,option,day,refresh:()=>load(true),change,existing,parent,...options});}
   function editor(kind,existing=null,parent=null,full=false){
     if(kind==='day'&&!full)return quick(existing,parent);
+
     const draftName='form.'+(existing?.id||'new'),draft=client.get(draftName),anchor=parent?[parent.start_date,day(parent.timezone),parent.end_date].sort()[1]:day(),[begin,end]=range(kind,anchor).map(value=>parent?[parent.start_date,value,parent.end_date].sort()[1]:value),defaultDate=parent?anchor:begin;
     const base=existing||{title:'',period:kind,horizon:kind==='year'?'long':'short',start_date:kind==='day'?defaultDate:begin,end_date:kind==='day'?defaultDate:end,parent_id:parent?.id||null,timezone:parent?.timezone||'Asia/Shanghai',target_minutes:20,minimum_minutes:5,target_count:kind==='day'?1:kind==='week'?3:kind==='month'?10:50,at:'21:00',reminder:true,reason:'',if_then:'',target:{kind:'library'},completion_mode:'time'};
     const seed=draft?.period===kind?{...base,...draft}:base;
@@ -381,7 +382,8 @@
   }
   window.ActionPlans={enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','目标与计划'),n('p','正在读取计划与进度…'));try{await initialized;await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},
     resumeExecution:()=>{if(snapshot.execution)return openTarget(snapshot.execution.target,snapshot.execution.plan_id);},
-    refresh:async()=>{await initialized;return load(true);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;await load();quick(null,null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
+    refresh:async()=>{await initialized;return load(true);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;return quick(null,null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
+
     schedule,addTask,change,start,openTarget,records,review:p=>window.ActionReviews.open({client,plan:p,dialog,edit:()=>quick(p)}),
     reconcile:async p=>{await load(true);const latest=planById(p.id);if(!latest)throw Error('这项安排已变更，请查看最新日程。');if(latest.status==='completed'){toast('内容已完成，安排状态已刷新。');return {plan:latest};}const result=await change(latest,'reconcile-content');toast('已核对保存的内容完成记录。');return result;},
     openRecord:async id=>{await initialized;await load(true);const plan=planById(id);if(!plan)throw Error('这项行动暂不可用，请刷新后重试。');if(goTab('action-plans')===false)return false;period='all';horizon='all';status='all';viewMode='flat';page=Math.floor(snapshot.plans.findIndex(p=>p.id===id)/15)+1;renderWorkspace();const row=[...root.querySelectorAll('[data-plan-id]')].find(el=>el.dataset.planId===id);row?.scrollIntoView({block:'center'});return true;},

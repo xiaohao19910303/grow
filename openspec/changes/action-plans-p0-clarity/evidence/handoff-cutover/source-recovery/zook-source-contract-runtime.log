@@ -1,0 +1,18 @@
+(node:40088) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ registered API and signed bridge remain closed independently of old enable flag and schema2 (494.010208ms)
+(node:40089) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ source contract requires explicit normalized proof, binding, version and signed origin context (7.696208ms)
+(node:40090) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ verified source event is durable, deduplicated and reconciles after a running session (467.05025ms)
+✔ unscoped confirmation consumes one matching occurrence only and private proof cannot be injected (393.183834ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2437.11975

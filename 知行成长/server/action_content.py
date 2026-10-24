@@ -17,10 +17,16 @@ def event_sql(event):
 
 
 def confirm_source(store, target, data, save):
-    """The source save and receipt commit together; action sync may be retried."""
-    from action_plans import connection, encoded, clock, get, same_target, fail, with_content_completion
     if not getattr(store, 'remote', False):
         return save()
+    from action_handoff_coordinator import source_fence
+    with source_fence():
+        return _confirm_source(store,target,data,save)
+
+
+def _confirm_source(store, target, data, save):
+    """The source save and receipt commit together; action sync may be retried."""
+    from action_plans import connection, encoded, clock, get, same_target, fail, with_content_completion
     key=data.get('key') or str(uuid.uuid4())
     if not isinstance(key,str) or not 1<=len(key)<=160:fail(422,'确认请求编号无效。')
     signature=hashlib.sha256(encoded({'target':target,'data':data}).encode()).hexdigest()

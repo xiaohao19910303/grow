@@ -1,0 +1,11 @@
+/Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_export_rejects_foreign_owner_and_existing_binding_without_freeze (test_action_handoff.HandoffTests.test_export_rejects_foreign_owner_and_existing_binding_without_freeze) ... ok
+test_full_graph_export_and_real_zook_postgres_recovery (test_action_handoff.HandoffTests.test_full_graph_export_and_real_zook_postgres_recovery) ... ok
+test_old_keys_read_locally_new_keys_route_to_zook_and_pending_unknown_stays_uncertain (test_action_handoff.HandoffTests.test_old_keys_read_locally_new_keys_route_to_zook_and_pending_unknown_stays_uncertain) ... ok
+test_schema_number_alone_never_opens_connection_writes (test_action_handoff.HandoffTests.test_schema_number_alone_never_opens_connection_writes) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 27.558s
+
+OK
