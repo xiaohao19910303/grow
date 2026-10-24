@@ -18,6 +18,12 @@ def setup_isolation():
     runtime = tempfile.TemporaryDirectory(prefix='grow-test-runtime-')
     os.environ['RUNTIME_ROOT'] = runtime.name
     os.environ['LEARN_ROOT'] = runtime.name
+    os.environ['TEST_ARTIFACTS_DIR'] = str(Path(runtime.name) / 'evidence')
+    # Fixtures launch fresh interpreters from temporary directories. Carry the
+    # import roots explicitly instead of relying on this process's sys.path.
+    roots = [str(server), str(server / 'tests')]
+    roots.extend(filter(None, os.environ.get('PYTHONPATH', '').split(os.pathsep)))
+    os.environ['PYTHONPATH'] = os.pathsep.join(dict.fromkeys(roots))
     os.environ.pop('DATABASE_URL', None)
     dsn = os.getenv('TEST_POSTGRES_DSN') or os.getenv('TEST_LEGACY_PG_DSN') or os.getenv('TEST_GITHUB_PG_DSN')
     if dsn:
@@ -98,6 +104,9 @@ def main():
         if args.pattern!='test_*.py':parser.error('--full cannot restrict test patterns')
         if not (os.getenv('TEST_POSTGRES_DSN') or os.getenv('TEST_LEGACY_PG_DSN') or os.getenv('TEST_GITHUB_PG_DSN')):
             parser.error('--full requires TEST_POSTGRES_DSN pointing to disposable localhost PostgreSQL')
+        zook = os.getenv('TEST_ZOOK_WORKTREE')
+        if not zook or not (Path(zook) / 'test/support/lighttick-source-http-fixture.ts').is_file():
+            parser.error('--full requires TEST_ZOOK_WORKTREE containing the real source HTTP contract fixture')
         for key in ('RUN_GITHUB_BROWSER','RUN_LEGACY_BROWSER','RUN_ACCOUNTS_BROWSER'):os.environ[key]='1'
     stats,runtime,server=setup_isolation()
     try:
@@ -105,7 +114,7 @@ def main():
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         javascript_ok=True
         javascript=[]
-        if args.full and result.wasSuccessful():
+        if args.full:
             import subprocess
             for script in sorted((server/'tests').glob('test_*.cjs')):
                 completed=subprocess.run([os.getenv('TEST_NODE','node'),str(script)],cwd=server,

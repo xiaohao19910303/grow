@@ -37,6 +37,8 @@ class BrowserLifecycle(PostgreSQLFixture):
             async def problem(request, exc):return JSONResponse({'message':exc.message}, status_code=exc.status)
             with patch('plans.api.make_store', return_value=store):
                 _, generator = register(app, '/missing', '/missing')
+            from study_notes import register as register_notes
+            register_notes(app)
             async def model(messages, config):
                 self.assertEqual(config['key'], 'BROWSER_TEST_KEY_ONLY')
                 self.assertEqual(config['model'], 'browser-test-model')
@@ -58,7 +60,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                 window.toast=t=>document.getElementById('notices').textContent=t;
                 window.goTab=name=>{document.getElementById('view-plans').style.display=name==='plans'?'block':'none';if(name==='plans')window.enterPlans();};
                 window.rememberLearningOrigin=()=>{};window.returnFromLesson=()=>goTab('plans');
-                </script><script src="/static/ai-config.js"></script><script>SETTINGS_SCRIPT</script><script src="/static/copilot.js"></script><script src="/static/plans.js"></script>
+                </script><script src="/static/ai-config.js"></script><script>SETTINGS_SCRIPT</script><script src="/static/copilot.js"></script><script src="/static/study-note-session.js"></script><script src="/static/study-notes.js"></script><script src="/static/plans.js"></script>
                 <script>window.addEventListener('load',()=>window.loadPlans());</script></body></html>''').replace('SETTINGS_FORM',settings).replace('SETTINGS_SCRIPT',settings_script))
             sock = socket.socket(); sock.bind(('127.0.0.1', 0))
             base = 'http://127.0.0.1:'+str(sock.getsockname()[1])
@@ -72,8 +74,9 @@ class BrowserLifecycle(PostgreSQLFixture):
                 with sync_playwright() as p:
                     browser = p.chromium.launch(headless=True, executable_path=os.getenv('CHROME_EXECUTABLE', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'))
                     try:
-                        page = browser.new_page(); errors = []
+                        page = browser.new_page(); page.set_default_timeout(10000); errors = []; server_errors = []
                         page.on('pageerror', lambda e: errors.append(str(e)))
+                        page.on('response', lambda response: server_errors.append((response.status, response.url)) if response.status >= 500 else None)
                         page.route('**/*', lambda route: route.continue_() if route.request.url.startswith(base+'/') else route.abort())
                         page.goto(base)
                         settings_form = page.locator('#view-settings')
@@ -101,7 +104,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                         page.get_by_label('模型名称', exact=True).fill('browser-test-model')
                         page.get_by_role('button', name='保存配置', exact=True).click()
                         page.screenshot(path='/tmp/grow-browser-ai-settings.png')
-                        page.get_by_role('button', name='创建学习计划', exact=True).click()
+                        page.get_by_role('button', name='创建课程计划', exact=True).click()
                         for name, value in [('学习方向','经济学'),('希望学会什么','理解经济新闻'),('周期（周）','2'),('每周学习次数','1'),('每次分钟数','20')]:
                             page.get_by_label(name, exact=True).fill(value)
                         page.get_by_role('button', name='让AI生成规划草稿').click()
@@ -121,9 +124,10 @@ class BrowserLifecycle(PostgreSQLFixture):
                         self.assertTrue(link.get_attribute('href').startswith('https://github.com/owner/courses/blob/'))
                         page.get_by_text('参考资料与边界', exact=True).click()
                         reader.get_by_role('link', name='在 GitHub 打开参考资料', exact=True).wait_for()
-                        page.get_by_label('本课反馈（可选，填写后保存；不会自动发送给AI）').fill('PRIVATE BROWSER NOTE')
+                        reader.get_by_label('学习笔记（可选）').fill('PRIVATE BROWSER NOTE')
                         page.get_by_role('button', name='本人确认学完', exact=True).click()
-                        page.get_by_text('已记录本人反馈', exact=True).wait_for()
+                        reader.get_by_text('本课已完成，笔记与练习答案已独立暂存。', exact=True).wait_for()
+                        self.assertEqual(store.rows('learning_feedback')[0]['state'], 'completed')
                         self.assertNotIn('PRIVATE BROWSER NOTE', json.dumps(repository.commits[repository.head]['files']))
                         pid = store.rows('learning_plans')[0]['id']
                         # Fresh storage instance has no cache or content directory.
@@ -135,6 +139,7 @@ class BrowserLifecycle(PostgreSQLFixture):
                         page.get_by_role('button', name='阅读', exact=True).click()
                         reader.get_by_role('heading', name='核心概念', exact=True).wait_for()
                         self.assertEqual(errors, [])
+                        self.assertEqual(server_errors, [])
                     finally:browser.close()
             finally:
                 server.should_exit = True; thread.join(timeout=10); sock.close()

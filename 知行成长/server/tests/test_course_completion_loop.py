@@ -1,110 +1,126 @@
-"""End-to-end integration test for course completion loop."""
-import pytest
-from fastapi.testclient import TestClient
-from app import app
+"""Course completion HTTP loop with isolated PostgreSQL and a GitHub simulator."""
+import asyncio
+from unittest.mock import patch
 
-client = TestClient(app)
+import httpx
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
-def test_complete_course_completion_loop():
-    """测试完整的课程完成闭环：学完→反馈→归档→总结→进阶生成"""
+from cloud_fixtures import AsyncCloudFixture
+from copilot.api import register
+from copilot.core import Problem
 
-    # Step 1: 完成一课（模拟已有完成记录）
-    # 假设第20课已完成，先检查状态
-    response = client.get('/api/copilot/lessons/20')
-    if response.status_code == 404:
-        pytest.skip("Lesson 20 not available for testing")
+AI_CONFIG = {'api_base_url': 'https://model.example/v1',
+             'api_key': 'TEST_ONLY_MODEL_KEY', 'model_name': 'test-model'}
+FEEDBACK = {
+    'mastery_level': 'basically_understood', 'value_rating': 2,
+    'feeling_tags': ['例子很好', '概念很清晰'],
+    'key_learnings': '学会了独立思考和批判性思维',
+    'questions': '如何应用到实际工作中？', 'next_direction': '想学习更多案例分析',
+}
 
-    # Step 2: 提交反馈
-    feedback_data = {
-        'mastery_level': 'basically_understood',
-        'value_rating': 2,
-        'feeling_tags': ['例子很好', '概念很清晰'],
-        'key_learnings': '学会了独立思考和批判性思维',
-        'questions': '如何应用到实际工作中？',
-        'next_direction': '想学习更多案例分析'
-    }
-    response = client.post('/api/copilot/lessons/20/feedback', json=feedback_data)
-    assert response.status_code == 200, f"反馈提交失败: {response.text}"
-    saved_feedback = response.json()
-    assert saved_feedback['mastery_level'] == 'basically_understood'
 
-    # Step 3: 验证反馈可查询
-    response = client.get('/api/copilot/lessons/20/feedback')
-    assert response.status_code == 200
-    retrieved_feedback = response.json()
-    assert retrieved_feedback['mastery_level'] == 'basically_understood'
-    assert '例子很好' in retrieved_feedback['feeling_tags']
+class CourseCompletionLoopTests(AsyncCloudFixture):
+    def setUp(self):
+        super().setUp()
+        self.store = self.seed_courses()
+        self.app = FastAPI()
 
-    # Step 4: 归档课程
-    response = client.post('/api/copilot/lessons/20/archive', json={'key': 'test-key'})
-    assert response.status_code == 200
-    assert response.json()['archived'] == True
+        @self.app.exception_handler(Problem)
+        async def problem_handler(request, error):
+            return JSONResponse({'error': error.code, 'message': error.message}, status_code=error.status)
 
-    # Step 5: 验证归档状态
-    response = client.get('/api/copilot/lessons/archived')
-    assert response.status_code == 200
-    archived_items = response.json()['items']
-    lesson_20_archived = any(item['lesson_no'] == 20 for item in archived_items)
-    assert lesson_20_archived, "第20课应该在归档列表中"
+        with patch('copilot.api.make_store', return_value=self.store):
+            register(self.app, self.root, self.runtime)
+        self.prompts = []
 
-    # Step 6: 取消归档（验证可逆性）
-    response = client.post('/api/copilot/lessons/20/unarchive', json={'key': 'test-key'})
-    assert response.status_code == 200
-    assert response.json()['archived'] == False
+        async def model(messages, cfg):
+            self.assertEqual(cfg['key'], AI_CONFIG['api_key'])
+            self.prompts.append(messages)
+            yield {'text': '完整课程总结与进阶建议'}
+            yield {'done': True}
 
-    # Step 7: 验证取消归档后不在归档列表
-    response = client.get('/api/copilot/lessons/archived')
-    archived_items = response.json()['items']
-    lesson_20_still_archived = any(item['lesson_no'] == 20 for item in archived_items)
-    assert not lesson_20_still_archived, "第20课取消归档后不应在归档列表中"
+        mocked = patch('copilot.transport.qwen_stream', model)
+        mocked.start()
+        self.addCleanup(mocked.stop)
 
-    # Step 8: 生成 AI 总结（如果有配置）
-    # 注意：这可能需要 AI API 配置，如果没有配置会失败
-    summary_request = {
-        'module': 'renzhi',
-        'round_id': 1,
-        'scope': 'full_course'
-    }
-    response = client.post('/api/copilot/summaries/generate', json=summary_request)
-    # 总结生成可能是流式响应，我们只验证端点可达
-    assert response.status_code in [200, 503], f"总结生成失败: {response.text}"
+    async def asyncSetUp(self):
+        self.client = httpx.AsyncClient(
+            transport=httpx.ASGITransport(self.app, client=('127.0.0.1', 1234)),
+            base_url='http://localhost', headers={'X-Copilot-Request': '1'})
+        self.addAsyncCleanup(self.client.aclose)
 
-    # Step 9: 重新归档以便后续测试
-    response = client.post('/api/copilot/lessons/20/archive', json={'key': 'test-key'})
-    assert response.status_code == 200
+    async def generate(self, endpoint, body):
+        response = await self.client.post('/api/copilot/summaries/' + endpoint,
+                                          json={**body, 'ai_config': AI_CONFIG},
+                                          headers={'Accept': 'application/json'})
+        self.assertEqual(response.status_code, 202, response.text)
+        job_id = response.json()['id']
+        async with asyncio.timeout(5):
+            while True:
+                response = await self.client.get('/api/copilot/background-jobs/' + job_id)
+                self.assertEqual(response.status_code, 200, response.text)
+                job = response.json()
+                if job['state'] not in ('queued', 'generating'):
+                    break
+                await asyncio.sleep(.01)
+        self.assertEqual(job['state'], 'ready', job)
+        return job
 
-    print("✅ 课程完成闭环测试通过")
+    async def test_complete_course_completion_loop(self):
+        """学完→反馈→归档/取消→总结→进阶草稿，均经真实 API。"""
+        response = await self.client.get('/api/copilot/lessons/1')
+        self.assertEqual(response.status_code, 200, response.text)
+        public_head = self.repo.head
+        response = await self.client.post('/api/copilot/lessons/1/complete', json={
+            'version': response.json()['version'], 'time_spent_seconds': 120, 'key': 'loop-complete'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(self.store.get_learning_record(1)['time_spent_seconds'], 120)
 
-def test_feedback_validation():
-    """测试反馈数据验证"""
-    # 测试无效的 mastery_level
-    response = client.post('/api/copilot/lessons/21/feedback', json={
-        'mastery_level': 'invalid_level',
-        'value_rating': 2,
-        'feeling_tags': [],
-        'key_learnings': '',
-        'questions': '',
-        'next_direction': ''
-    })
-    assert response.status_code in [400, 422], "应该拒绝无效的 mastery_level"
+        response = await self.client.post('/api/copilot/lessons/1/feedback',
+                                          json={**FEEDBACK, 'key': 'loop-feedback'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['mastery_level'], 'basically_understood')
+        response = await self.client.get('/api/copilot/lessons/1/feedback')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['mastery_level'], 'basically_understood')
+        self.assertIn('例子很好', response.json()['feeling_tags'])
 
-    # 测试无效的 value_rating
-    response = client.post('/api/copilot/lessons/21/feedback', json={
-        'mastery_level': 'basically_understood',
-        'value_rating': 5,  # 超出范围
-        'feeling_tags': [],
-        'key_learnings': '',
-        'questions': '',
-        'next_direction': ''
-    })
-    assert response.status_code in [400, 422], "应该拒绝超出范围的 value_rating"
+        for action, archived in (('archive', True), ('unarchive', False), ('archive', True)):
+            response = await self.client.post('/api/copilot/lessons/1/' + action,
+                                              json={'key': 'loop-' + action})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()['archived'], archived)
+            response = await self.client.get('/api/copilot/lessons/archived')
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(any(item['lesson_no'] == 1 for item in response.json()['items']), archived)
 
-def test_archive_requires_completed_lesson():
-    """测试归档需要先完成课程"""
-    # 尝试归档一个未完成的课程（假设第99课不存在）
-    response = client.post('/api/copilot/lessons/99/archive', json={'key': 'test-key'})
-    # 应该失败或返回适当的错误
-    assert response.status_code in [400, 404, 409], "不应该能归档不存在的课程"
+        summary = await self.generate('generate', {'key': 'loop-summary', 'scope': 'full_course'})
+        response = await self.client.get('/api/copilot/summaries/' + str(summary['result_id']))
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['content'], '完整课程总结与进阶建议')
+        self.assertIn(FEEDBACK['key_learnings'], str(self.prompts[0]))
+        advanced = await self.generate('generate-advanced', {
+            'key': 'loop-advanced', 'summary_content': response.json()['content']})
+        response = await self.client.get('/api/copilot/drafts/' + advanced['draft_id'])
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['content'], '完整课程总结与进阶建议')
+        self.assertTrue(response.json()['is_advanced'])
+        self.assertEqual(self.repo.head, public_head, '个人完成、反馈与总结必须仅保存在数据库')
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+    async def test_feedback_validation(self):
+        for invalid in ({'mastery_level': 'invalid_level'}, {'value_rating': 5}):
+            with self.subTest(invalid=invalid):
+                response = await self.client.post('/api/copilot/lessons/1/feedback',
+                                                  json={**FEEDBACK, **invalid, 'key': 'invalid-feedback'})
+                self.assertEqual(response.status_code, 422, response.text)
+                self.assertIsNone(self.store.get_feedback(1))
+
+    async def test_archive_requires_completed_lesson(self):
+        for number in (1, 99):
+            with self.subTest(lesson=number):
+                response = await self.client.post(f'/api/copilot/lessons/{number}/archive',
+                                                  json={'key': 'incomplete-archive'})
+                self.assertEqual(response.status_code, 409, response.text)
+                self.assertEqual(response.json()['error'], 'lesson_not_completed')
+        self.assertEqual(self.store.list_archived(), [])

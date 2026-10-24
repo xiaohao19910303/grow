@@ -19,14 +19,23 @@ export GROW_TEST_PGDATA="$(mktemp -d)"
 initdb -D "$GROW_TEST_PGDATA" -U grow_test -A trust
 pg_ctl -D "$GROW_TEST_PGDATA" -l /tmp/grow-regression-pg.log -o '-p 55441 -h 127.0.0.1' start
 export TEST_POSTGRES_DSN='host=127.0.0.1 port=55441 user=grow_test dbname=postgres'
+# 使用支持 P0 来源投递合同的 Zook 检出，含 test/support/lighttick-source-http-fixture.ts。
+# 本轮验证基线为 Zook 3db81b9；其 Node 依赖须按该仓库锁文件安装。
+export TEST_ZOOK_WORKTREE='/absolute/path/to/zook-p0-checkout'
 export NODE_PATH=/tmp/grow-regression-node/node_modules
 # macOS 使用已有 Chrome；其他系统设置为自己的 Chromium/Chrome 可执行文件。
 export CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 /tmp/grow-regression-env/bin/python -B 知行成长/server/tests/run_isolated_checks.py --full
+# 等价的 Make 入口（可指定已有测试虚拟环境）：
+make -C 知行成长 test PYTHON=/tmp/grow-regression-env/bin/python
 pg_ctl -D "$GROW_TEST_PGDATA" stop -m fast
 ```
 
-`--full` 自动启用 Python Chromium 用例，并运行所有 `test_*.cjs`。缺少测试 DSN、测试跳过、浏览器/JavaScript 失败或隔离审计失败都会返回非零退出码。`TEST_PYTHON` 自动使用调用完整回归的 Python；可用 `TEST_NODE` 指定 Node 可执行文件。
+`--full` 自动启用 Python Chromium 用例，并运行所有 `test_*.cjs`，即使 Python 存在失败也收集 JavaScript 结果。缺少测试 DSN、真实 Zook 合同夹具、测试跳过、浏览器/JavaScript 失败或隔离审计失败都会返回非零退出码。`TEST_PYTHON` 自动使用调用完整回归的 Python；可用 `TEST_NODE` 指定 Node 可执行文件。
+
+来源投递检查运行 Zook 的真实 HTTP 路由、行动服务和 PostgreSQL 仓储，不使用另写的合同替身。两个进程共用上述显式测试 DSN，并创建独立的临时 schema；不再回退到默认用户名或端口 5432。配置必须包含 `host=127.0.0.1`、非默认端口、用户和数据库名，测试不修改 Zook 源文件。
+
+隔离入口自动向子进程传递服务端和测试模块的 Python 路径。P0 浏览器截图写入临时运行目录下的 `TEST_ARTIFACTS_DIR/action-p0`，运行结束清理，不覆写仓库中的历史验收证据。
 
 单模块定位可运行 `--pattern test_copilot.py` 等；这些诊断运行不替代 `--full` 验收。
 

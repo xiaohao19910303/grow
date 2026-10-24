@@ -1,63 +1,44 @@
 """Tests for course feedback schema and CRUD."""
-import json
-import shutil
-import tempfile
-import unittest
-from pathlib import Path
 from unittest.mock import patch
 
-from copilot.core import Store, Problem, encoded
+from cloud_fixtures import CloudFixture
+from copilot.core import Problem
 
-ROOT = Path(__file__).resolve().parents[3]
 DATE = '2026-10-14T10:00:00+08:00'
 
 
-class FeedbackSchemaTest(unittest.TestCase):
+class FeedbackSchemaTest(CloudFixture):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
-        shutil.copytree(Path(__file__).parent / 'fixtures/renzhi', self.root / '每日认知与通识学习')
-        (self.root / 'server').mkdir()
-        self.store = Store(self.root, self.root / 'server/data.db')
+        super().setUp()
+        self.store = self.seed_courses()
         self.clock = patch('copilot.core.now', return_value=DATE)
         self.clock.start()
-        self.store.initialize()
-
-    def tearDown(self):
-        self.clock.stop()
-        self.temp.cleanup()
+        self.addCleanup(self.clock.stop)
 
     def test_feedback_table_created_on_initialize(self):
         with self.store.conn() as c:
-            row = c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_feedback'").fetchone()
+            row = c.execute("SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='copilot_feedback'").fetchone()
         self.assertIsNotNone(row)
 
     def test_summaries_table_created_on_initialize(self):
         with self.store.conn() as c:
-            row = c.execute("SELECT 1 FROM sqlite_master WHERE name='copilot_summaries'").fetchone()
+            row = c.execute("SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='copilot_summaries'").fetchone()
         self.assertIsNotNone(row)
 
     def test_learning_records_has_archived_column(self):
         with self.store.conn() as c:
-            columns = {row[1] for row in c.execute("PRAGMA table_info(copilot_learning_records)").fetchall()}
+            columns = {row[0] for row in c.execute("SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='copilot_learning_records'").fetchall()}
         self.assertIn('archived', columns)
         self.assertIn('archived_at', columns)
 
 
-class FeedbackCrudTest(unittest.TestCase):
+class FeedbackCrudTest(CloudFixture):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
-        shutil.copytree(Path(__file__).parent / 'fixtures/renzhi', self.root / '每日认知与通识学习')
-        (self.root / 'server').mkdir()
-        self.store = Store(self.root, self.root / 'server/data.db')
+        super().setUp()
+        self.store = self.seed_courses()
         self.clock = patch('copilot.core.now', return_value=DATE)
         self.clock.start()
-        self.store.initialize()
-
-    def tearDown(self):
-        self.clock.stop()
-        self.temp.cleanup()
+        self.addCleanup(self.clock.stop)
 
     def _complete_lesson(self, number):
         """Mark a lesson as completed in the learning records."""

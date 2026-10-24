@@ -1,4 +1,5 @@
 .PHONY: help start stop restart status logs test clean
+PYTHON ?= .venv/bin/python
 
 # 知行成长 - Makefile 快捷命令
 
@@ -27,8 +28,8 @@ logs:
 
 # 测试服务
 test:
-	@echo "运行测试..."
-	@cd server && ../.venv/bin/python -m pytest tests/ -v
+	@echo "运行隔离全量回归..."
+	@"$(PYTHON)" -B server/tests/run_isolated_checks.py --full
 
 # 清理临时文件
 clean:

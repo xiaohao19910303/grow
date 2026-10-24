@@ -99,9 +99,10 @@ class CloudDailyReadingTests(CloudFixture):
         self.reader.save_preferences({**DEFAULT, 'mode': 'classic'})
         service = Reader(self.reader)
         dt = datetime.fromisoformat(DATE)
+        article = 'Synthetic public article about evidence, reasoning and observable facts. ' * 8
         async def run():
             with patch('reading.service.now', return_value=DATE), \
-                 patch('reading.service.fetch_article_content', return_value='Public full article text'):
+                 patch('reading.service.fetch_article_content', return_value=article):
                 job = service.daily_tick(dt)
                 self.assertIsNotNone(job)
                 await asyncio.gather(*list(service.tasks.values()))
@@ -113,6 +114,7 @@ class CloudDailyReadingTests(CloudFixture):
             self.assertIsNone(Reader(self.reader).daily_tick(dt))
             for aid in result['saved_ids']:
                 self.assertTrue(self.reader.article(aid)['hashes'])
+                self.assertEqual(self.reader.article(aid)['full_content'], article)
         asyncio.run(run())
 
     def test_failed_daily_jobs_retry_with_cooldown_and_limit(self):

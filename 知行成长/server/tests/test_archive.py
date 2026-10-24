@@ -1,30 +1,19 @@
 """Tests for course archive functionality."""
-import shutil
-import tempfile
-import unittest
-from pathlib import Path
 from unittest.mock import patch
 
-from copilot.core import Store
+from cloud_fixtures import CloudFixture
+from copilot.core import Problem
 
-ROOT = Path(__file__).resolve().parents[3]
 DATE = '2026-10-14T10:00:00+08:00'
 
 
-class ArchiveTest(unittest.TestCase):
+class ArchiveTest(CloudFixture):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
-        shutil.copytree(Path(__file__).parent / 'fixtures/renzhi', self.root / '每日认知与通识学习')
-        (self.root / 'server').mkdir()
-        self.store = Store(self.root, self.root / 'server/data.db')
+        super().setUp()
+        self.store = self.seed_courses()
         self.clock = patch('copilot.core.now', return_value=DATE)
         self.clock.start()
-        self.store.initialize()
-
-    def tearDown(self):
-        self.clock.stop()
-        self.temp.cleanup()
+        self.addCleanup(self.clock.stop)
 
     def _complete_lesson(self, number):
         with self.store.conn() as c:

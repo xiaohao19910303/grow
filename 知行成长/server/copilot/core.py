@@ -209,11 +209,15 @@ class Store:
                         UNIQUE(module_id, round_id, lesson_no))''')
                     c.execute("UPDATE copilot_meta SET value='2' WHERE key='schema_version'")
                 if schema_ver < '3':
-                    columns = {row[1] for row in c.execute("PRAGMA table_info(copilot_learning_records)").fetchall()}
-                    if 'archived' not in columns:
-                        c.execute("ALTER TABLE copilot_learning_records ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
-                    if 'archived_at' not in columns:
-                        c.execute("ALTER TABLE copilot_learning_records ADD COLUMN archived_at TEXT")
+                    if sqlite:
+                        columns = {row[1] for row in c.execute("PRAGMA table_info(copilot_learning_records)").fetchall()}
+                        if 'archived' not in columns:
+                            c.execute("ALTER TABLE copilot_learning_records ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+                        if 'archived_at' not in columns:
+                            c.execute("ALTER TABLE copilot_learning_records ADD COLUMN archived_at TEXT")
+                    else:
+                        from .schema import upgrade_learning_archive
+                        upgrade_learning_archive(c)
                     c.execute("UPDATE copilot_meta SET value='3' WHERE key='schema_version'")
                 # A stopped process must not leave drafts permanently 'generating'.
                 c.execute("UPDATE copilot_drafts SET status='failed' WHERE status='generating'")
@@ -330,8 +334,7 @@ class Store:
                     lesson['completed_at'] = db_record['completed_at']
                     lesson['time_spent_seconds'] = db_record['time_spent_seconds']
                     lesson['archived'] = bool(db_record['archived'])
-                    if not status:
-                        lesson['learning_label'] = '已学习'
+                    lesson['learning_label'] = completion_label(db_record)
                     fb = c.execute('''
                         SELECT mastery_level FROM copilot_feedback
                         WHERE module_id='renzhi' AND round_id=1 AND lesson_no=?

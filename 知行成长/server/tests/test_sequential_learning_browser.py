@@ -1,4 +1,3 @@
-import re
 """Actual homepage in Chrome with synthetic courses; no personal data or network."""
 import functools
 import os
@@ -6,6 +5,7 @@ from pathlib import Path
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import threading
 import unittest
+from datetime import datetime, timezone
 
 
 @unittest.skipUnless(os.getenv('RUN_GITHUB_BROWSER') == '1', 'Opt in to Chrome with RUN_GITHUB_BROWSER=1')
@@ -50,15 +50,17 @@ class SequentialLearningBrowser(unittest.TestCase):
                 result = {'lessons': lessons}
             elif endpoint == '/api/study-materials':
                 result = {'modules': [
-                    {'id': 'expression', 'name': '结构化表达', 'duration': '15 分钟', 'lessons': expression},
-                    {'id': 'english', 'name': '英文阅读', 'duration': '15 分钟', 'lessons': []}]}
-            elif endpoint.startswith('/api/study-materials/expression/'):
-                result = {'content': '# 表达练习\n\n阅读后填写自己的反馈。'}
+                    {'id': 'biaoda', 'name': '结构化表达', 'duration': '15 分钟', 'lessons': expression},
+                    {'id': 'yingyu', 'name': '英文阅读', 'duration': '15 分钟', 'lessons': []}]}
+            elif endpoint.startswith('/api/study-materials/biaoda/'):
+                result = {'content': '# 表达练习\n\n阅读后填写自己的反馈。', 'lesson': {'version': 'fixture-version'}, 'record': None}
             elif endpoint == '/api/plans':
                 result = {'plans': [{'id': 'plan', 'name': '自定义计划', 'brief': {'minutes': 20}, 'lessons': [
                     {'lesson_no': 1, 'topic': '计划第一课', 'date': '2099-01-01', 'learning_state': 'unknown', 'learning_label': '待本人反馈'}]}], 'drafts': [], 'legacy': []}
             elif endpoint == '/api/data':
                 result = dict(modules=[], checkins={}, habits={}, customFields=[], customRecords=[], decisions=[], predictions=[], reviews=[], insights=[], todos=[], _revision='fixture')
+            elif endpoint == '/api/action-plans':
+                result = {'plans': [], 'execution': None, 'server_time': datetime.now(timezone.utc).isoformat(), 'action_schema_version': 2}
             elif endpoint == '/api/auth/me':
                 result = {'user': {'id': 'fixture', 'username': 'tester', 'is_owner': False}}
             else:
@@ -73,48 +75,73 @@ class SequentialLearningBrowser(unittest.TestCase):
                     page.route('**/api/**', fixture)
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     page.goto(base)
+                    page.get_by_text('继续学习 · 可选内容', exact=True).click()
                     home = page.locator('#dailyLearning')
-                    home.get_by_role('heading', name='认知与通识 · 15–20 分钟', exact=True).wait_for()
+                    home.get_by_role('heading', name='认知与通识', exact=True).wait_for()
                     self.assertEqual(page.locator('#dailyLearningTitle').inner_text(), '继续学习')
-                    cognitive = home.locator('.learning-module').first
-                    self.assertIn('待学习 3 课 · 累计已完成 1 课', cognitive.inner_text())
-                    self.assertEqual(cognitive.locator(':scope > .lesson-row .lesson-title').all_text_contents(), ['第二课'])
+                    cognitive_next = home.locator('.learning-module').filter(has=page.get_by_role('heading', name='认知与通识', exact=True))
+                    self.assertEqual(cognitive_next.locator('.lesson-title').all_text_contents(), ['第二课'])
                     self.assertNotIn('逾期', home.inner_text())
                     self.assertNotIn('2000-01-01', home.inner_text())
                     self.assertNotIn('undefined', home.inner_text())
                     self.assertIn('第 1 课', home.locator('.learning-module').nth(1).inner_text())
-                    cognitive.get_by_text('后续课程 · 2 课', exact=True).click()
-                    self.assertEqual(cognitive.locator('details').first.locator('.lesson-title').all_text_contents(), ['第三课', '第十课'])
-                    cognitive.get_by_text('已完成课程 · 1 课', exact=True).click()
+                    self.assertEqual(home.locator('.learning-module').nth(1).locator('.lesson-title').inner_text(), '表达第一课')
+                    self.assertEqual(home.locator('.learning-module').nth(2).locator('.lesson-title').inner_text(), '计划第一课')
+                    # The homepage exposes the next course; the library preserves all
+                    # completed and future courses in lesson-number order.
+                    home.get_by_role('button', name='查看全部课程', exact=True).click()
+                    library = page.locator('#learningLibrary')
+                    cognitive = library.locator('.learning-module').filter(has=page.get_by_role('heading', name='认知与通识 · 15–20 分钟', exact=True, include_hidden=True))
+                    expression_module = library.locator('.learning-module').filter(has=page.get_by_role('heading', name='结构化表达 · 15 分钟', exact=True, include_hidden=True))
                     cognitive.get_by_role('button', name='再次阅读', exact=True).wait_for()
-                    self.assertEqual(home.locator('.learning-module').nth(1).locator(':scope > .lesson-row .lesson-title').inner_text(), '表达第一课')
-                    self.assertIn('尚无已保存课程', home.locator('.learning-module').nth(2).inner_text())
-                    self.assertEqual(home.locator('.learning-module').nth(3).locator(':scope > .lesson-row .lesson-title').inner_text(), '计划第一课')
+                    self.assertEqual(cognitive.locator('.lesson-title').all_text_contents(), ['第一课', '第二课', '第三课', '第十课'])
+                    self.assertEqual(cognitive.locator('.lesson-row:not(.completed)').count(), 3)
+                    self.assertEqual(cognitive.locator('.lesson-row.completed').count(), 1)
+                    self.assertEqual(cognitive.locator('.lesson-row.completed .lesson-title').inner_text(), '第一课')
+                    self.assertEqual(expression_module.locator('.lesson-title').all_text_contents(), ['表达第一课', '表达第十课'])
+                    self.assertIn('尚无已保存课程', library.locator('.learning-module').nth(2).inner_text())
+                    self.assertEqual(library.locator('.learning-module').nth(3).locator('.lesson-title').inner_text(), '计划第一课')
+                    self.assertNotIn('逾期', library.inner_text())
+                    self.assertNotIn('2000-01-01', library.inner_text())
+                    self.assertNotIn('undefined', library.inner_text())
                     # Returning from the actual reader reloads saved completion state.
-                    home.locator('.learning-module').nth(1).locator(':scope > .lesson-row').get_by_role('button', name='开始学习', exact=True).click()
-                    page.locator('#dailyReader').get_by_role('heading', name='表达第一课', exact=True).wait_for()
+                    expression_module.locator('.lesson-row').first.get_by_role('button', name='开始学习', exact=True).click()
+                    try:
+                        page.locator('#dailyReader').get_by_role('heading', name='表达第一课', exact=True).wait_for(timeout=10000)
+                    except Exception:
+                        self.fail(f'Reader did not open: {page.locator("#dailyReader").inner_text()}; browser errors: {errors}')
                     expression[1]['learning_state'] = 'completed'
-                    page.locator('#dailyReader').get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
-                    home.locator('.learning-module').nth(1).get_by_text('下一课', exact=True).wait_for()
+                    expression[1]['learning_label'] = '本人确认完成'
+                    page.locator('#dailyReader').get_by_role('button', name='返回我的课程', exact=True).click()
+                    expression_module.locator('.lesson-row.completed .lesson-title').get_by_text('表达第一课', exact=True).wait_for()
+                    self.assertEqual(expression_module.get_by_role('button', name='再次阅读', exact=True).count(), 1)
+                    self.assertEqual(expression_module.get_by_role('button', name='查看记录', exact=True).count(), 1)
+                    page.get_by_role('button', name='今日', exact=True).click()
                     home.locator('.learning-module').nth(1).locator(':scope > .lesson-row .lesson-title').get_by_text('表达第十课', exact=True).wait_for()
                     self.assertIn('第 10 课', home.locator('.learning-module').nth(1).inner_text())
                     self.assertEqual(home.locator('.learning-module').nth(1).get_by_role('button', name='查看记录').count(), 0)
                     # Selecting another personal calendar date must not change the course queue.
                     page.locator('#personalDate').fill('1999-01-01')
                     page.locator('#personalDate').dispatch_event('change')
-                    self.assertEqual(cognitive.locator(':scope > .lesson-row .lesson-title').inner_text(), '第二课')
+                    self.assertEqual(cognitive_next.locator('.lesson-title').inner_text(), '第二课')
                     lessons[1]['learning_state'] = 'completed'
-                    page.locator('.learning-panel').get_by_role('button', name='刷新', exact=True).click()
-                    cognitive.get_by_text('待学习 2 课 · 累计已完成 2 课', exact=True).wait_for()
-                    self.assertEqual(cognitive.locator(':scope > .lesson-row .lesson-title').inner_text(), '第三课')
+                    page.locator('#view-personal').get_by_role('button', name='刷新', exact=True).click()
+                    cognitive_next.locator('.lesson-title').get_by_text('第三课', exact=True).wait_for()
+                    self.assertEqual(cognitive.locator('.lesson-row:not(.completed)').count(), 2)
+                    self.assertEqual(cognitive.locator('.lesson-row.completed').count(), 2)
                     lessons[3]['learning_state'] = 'completed'
                     page.reload()
-                    cognitive.get_by_text('待学习 1 课 · 累计已完成 3 课', exact=True).wait_for()
-                    self.assertEqual(cognitive.locator(':scope > .lesson-row .lesson-title').inner_text(), '第十课')
+                    page.get_by_text('继续学习 · 可选内容', exact=True).click()
+                    cognitive_next.locator('.lesson-title').get_by_text('第十课', exact=True).wait_for()
+                    self.assertEqual(cognitive.locator('.lesson-row:not(.completed)').count(), 1)
+                    self.assertEqual(cognitive.locator('.lesson-row.completed').count(), 3)
                     lessons[0]['learning_state'] = 'completed'
-                    page.locator('.learning-panel').get_by_role('button', name='刷新', exact=True).click()
-                    cognitive.get_by_text('已保存课程已全部学完，可随时复习。', exact=True).wait_for()
+                    page.locator('#view-personal').get_by_role('button', name='刷新', exact=True).click()
+                    cognitive_next.wait_for(state='detached')
+                    home.get_by_role('button', name='查看全部课程', exact=True).click()
+                    self.assertEqual(cognitive.locator('.lesson-row.completed').count(), 4)
                     self.assertEqual(cognitive.get_by_role('button', name='开始学习').count(), 0)
+                    self.assertEqual(cognitive.get_by_role('button', name='再次阅读', exact=True).count(), 4)
                     page.set_viewport_size({'width': 390, 'height': 844})
                     self.assertFalse(page.evaluate('document.documentElement.scrollWidth > window.innerWidth'))
                     self.assertEqual(mutations, [], 'Displaying or refreshing courses must never mark them completed')

@@ -39,6 +39,10 @@ api.mount('/static',StaticFiles(directory=server/'static'),name='static')
 def index():return FileResponse(server/'static/index.html')
 @api.get('/api/auth/me')
 def identity():return {'user':{'id':'state-browser-owner','username':'owner','is_owner':True}}
+@api.get('/api/action-plans')
+def actions():
+ from datetime import datetime,timezone
+ return {'plans':[],'execution':None,'server_time':datetime.now(timezone.utc).isoformat(),'action_schema_version':2}
 @api.get('/api/{rest:path}')
 def empty(rest:str):return {'modules':[],'lessons':[],'plans':[],'records':[],'items':[],'reports':[],'daily':[],'stats':{},'total':0,'trend':[],'top_concepts':[],'module_distribution':[],'types':[]}
 sock=socket.socket();sock.bind(('127.0.0.1',0))
@@ -114,6 +118,14 @@ async function response(page,status){
     const draft=await download;await draft.saveAs(path.join(temp,'reflection-draft.txt'));
     assert.equal(fs.readFileSync(path.join(temp,'reflection-draft.txt'),'utf8'),'unsaved reflection draft');
     await first.waitForFunction(value=>document.getElementById('refRaw').value===value,external);
+    await first.getByRole('button',{name:'稍后继续',exact:true}).click();
+    await first.locator('#reflectionList').getByRole('button',{name:'编辑',exact:true}).click();
+    assert.equal(await first.locator('#refRaw').inputValue(),external,'reopening must not restore the discarded stale draft');
+    const resaved=first.waitForResponse(r=>r.url().includes('/api/reflections/'+meta.id) && r.request().method()==='PUT');
+    await first.locator('#refSaveBtn').click();
+    const reloadedSave=await resaved;
+    assert.equal(reloadedSave.status(),200,'reload adopts the latest remote base version');
+    assert.equal(reloadedSave.request().postDataJSON().base_version,2);
     assert.deepEqual(errors,[],'unexpected browser errors');
     console.log('Browser checks passed: actual UI/API stable ID, two-page conflict, unsaved copy, remote-record version protection, escaped text and draft reload.');
   }finally{await browser.close()}
