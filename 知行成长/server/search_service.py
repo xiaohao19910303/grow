@@ -230,10 +230,10 @@ def source_query(source, fields, query, start_date, end_date):
         conditions.append("strpos(lower(concat_ws(' '," + ','.join(expressions) + ')),lower(%s))>0')
         params.append(query)
     if start_date:
-        conditions.append(f'({day}) >= %s')
+        conditions.append(f'(({day}) = \'\' OR ({day}) >= %s)')
         params.append(start_date)
     if end_date:
-        conditions.append(f'({day}) <= %s')
+        conditions.append(f'(({day}) = \'\' OR ({day}) <= %s)')
         params.append(end_date)
     where = ' WHERE ' + ' AND '.join(conditions) if conditions else ''
     excluded = {'date', 'completed_at', 'updated_at', 'archived'}

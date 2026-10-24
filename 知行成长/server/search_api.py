@@ -2,12 +2,15 @@
 
 提供跨模块搜索的 REST API 端点。
 """
+import re
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, FastAPI, HTTPException, Query
 
 from search_service import SearchService
+
+DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 
 def register(app: FastAPI, db_path: Path) -> SearchService:
@@ -30,6 +33,14 @@ def register(app: FastAPI, db_path: Path) -> SearchService:
         """
         if not q or not q.strip():
             raise HTTPException(status_code=400, detail="搜索关键词不能为空")
+        if len(q) > 500:
+            raise HTTPException(status_code=413, detail="搜索关键词过长，请缩短至 500 字符以内")
+
+        # 验证日期格式
+        if start_date and not DATE_PATTERN.match(start_date):
+            raise HTTPException(status_code=422, detail="开始日期格式无效，应为 YYYY-MM-DD")
+        if end_date and not DATE_PATTERN.match(end_date):
+            raise HTTPException(status_code=422, detail="结束日期格式无效，应为 YYYY-MM-DD")
 
         # 解析模块类型
         module_types = None
