@@ -145,6 +145,7 @@
 <link rel="stylesheet" href="/static/reading.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
 <link rel="stylesheet" href="/static/stocks.css?v=1">
+<link rel="stylesheet" href="/static/learning-notebook.css?v=20261025-1">
 <link rel="stylesheet" href="/static/learning-history.css?v=20261021-p1-navigation">
 <link rel="stylesheet" href="/static/account.css">
 <link rel="stylesheet" href="/static/daily-rhythm.css">
@@ -432,6 +433,8 @@
       <div id="errorList"></div>
     </div>
   </div>
+
+  <div id="view-learning-notes" style="display:none"></div>
 
   <div id="view-learning-history" style="display:none">
     <!-- Learning history will be rendered here by learning-history.js -->
@@ -2121,7 +2124,7 @@ function exportReportMarkdown(){
 const navGroups={
   personal:[['personal','今日']],
   actions:[['action-schedule','日程安排'],['action-plans','目标与计划'],['action-records','执行记录']],
-  learning:[['library','我的课程'],['reading','阅读'],['plans','课程规划']],
+  learning:[['library','我的课程'],['learning-notes','学习笔记'],['reading','阅读'],['plans','课程规划']],
   records:[['reviews','日常记录'],['timeline','时间线'],['applications','实践记录'],['decisions','决策与预测'],['insights','个人洞察'],['custom','专题记录']],
   growth:[['overview','成长总览'],['learning-history','学习回顾'],['knowledge','知识图谱'],['report','周期复盘']]
 };
@@ -2139,7 +2142,7 @@ function goGroup(group){ goTab(lastGroupTab[group] || navGroups[group][0][0]); }
 function rememberLearningOrigin(){ lessonOrigin={tab:currentTab,scroll:window.scrollY,focus:document.activeElement}; }
 function lessonReturnLabel(){
   const origin=lessonOrigin?.tab || 'personal';
-  return origin==='personal'?'返回今日安排':origin.startsWith('action-')?'返回行动安排':origin==='search'?'返回搜索结果':'返回我的课程';
+  return origin==='personal'?'返回今日安排':origin==='learning-notes'?'返回学习笔记':origin.startsWith('action-')?'返回行动安排':origin==='search'?'返回搜索结果':'返回我的课程';
 }
 function returnFromLesson(){
   const origin=lessonOrigin || {tab:'personal',scroll:0};
@@ -2171,7 +2174,7 @@ function goTab(name, options={}){
   const contextnav=document.getElementById('contextnav'), contexts=contextGroups[parentTab] || [];
   contextnav.hidden=!contexts.length || !!options.reading || ['reader','archive','summary'].includes(name);
   contextnav.innerHTML=contexts.map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('');
-  ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','learning-notes','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='report') window.WeeklyRhythm?.load();
   if(name==='personal'||name==='overview')window.CoachFacts?.refresh().catch(()=>{});
@@ -2202,6 +2205,8 @@ function goTab(name, options={}){
     ]);
   }
   if(name==='settings') { window.DailyRhythm?.settings(); loadApiSettings(); Account.loadStorage(); Account.loadInvitations(); }
+  if(name==='learning-notes') window.LearningNotebook?.enter();
+  else window.LearningNotebook?.leave();
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='progress' || name==='overview')refreshAutoCheckins();
   if(name==='stocks') window.initStocksModule?.();
@@ -2386,6 +2391,7 @@ init();
 <script src="/static/reading-position.js?v=20261021-merge"></script>
 <script src="/static/reading.js?v=20261024-merge"></script>
 <script src="/static/reflections.js?v=20261024-merge"></script>
+<script src="/static/learning-notebook.js?v=20261025-1"></script>
 <script src="/static/learning-history.js?v=20261021-p1-navigation"></script>
 <script src="/static/stocks.js?v=20261021-merge"></script>
 <script src="/static/search.js?v=20261023-autofill"></script>

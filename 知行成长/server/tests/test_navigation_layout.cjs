@@ -6,7 +6,8 @@ const context={window:{loadCopilot(){},addEventListener(){},scrollTo(){},studyRe
 for(const name of ['renderErrors','renderApplications','renderPredictionAnalysis','loadReport','renderKnowledgeGraph','loadKnowledge','renderOverview','renderPersonal','renderBehaviorStats','renderErrorStats','renderPredictionCalibration','renderAIReportLatest','renderAIReports','refreshAutoCheckins','loadApiSettings'])context[name]=()=>{};
 context.Account={loadStorage(){},loadInvitations(){}};context.window.loadLearningHistory=()=>{};
 vm.createContext(context);vm.runInContext(html.slice(html.indexOf('const navGroups='),html.indexOf('/* ================= 学习进度 / 习惯')),context);
-assert.equal(vm.runInContext('navGroups.records.length',context),6);assert.equal(vm.runInContext('navGroups.growth.length',context),4);assert.equal(vm.runInContext('navGroups.learning.length',context),3);
+assert.equal(vm.runInContext('navGroups.records.length',context),6);assert.equal(vm.runInContext('navGroups.growth.length',context),4);assert.equal(vm.runInContext('navGroups.learning.length',context),4);
+context.goTab('learning-notes');assert(element('subnav').innerHTML.includes('学习笔记'));assert.equal(element('view-learning-notes').style.display,'');
 context.goTab('errors');assert(element('subnav').innerHTML.includes('实践记录'));assert(element('contextnav').innerHTML.includes('错误记录'));assert(element('contextnav').innerHTML.includes('aria-current="page"'));assert.equal(buttons[3]['aria-current'],'page');
 context.goTab('progress');assert(element('subnav').innerHTML.includes('学习回顾'));assert.equal(element('view-progress').style.display,'');
 context.goTab('timeline');assert.equal(buttons[3]['aria-current'],'page');assert.equal(element('view-cycle-review').style.display,'none');

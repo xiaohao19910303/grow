@@ -33,6 +33,64 @@ class StudyNotesTests(PostgreSQLFixture):
         return self.client.put(path or self.path, json=body or self.body(),
                                headers=self.headers if headers is None else headers)
 
+    def test_notebook_lists_saved_drafts_without_requiring_course_completion(self):
+        self.put(self.body(notes='还没学完的证据笔记', answers={'q1': '先观察再解释'}))
+        response = self.client.get('/api/study-notes')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertIn('no-store', response.headers.get('cache-control', ''))
+        data = response.json()
+        self.assertEqual(data['total'], 1)
+        note = data['items'][0]
+        self.assertEqual((note['kind'], note['course_id']), ('biaoda', 'Day 001.md'))
+        self.assertEqual(note['preview'], '还没学完的证据笔记')
+        self.assertEqual(note['answer_count'], 1)
+        self.assertEqual(note['target'], {'kind': 'study', 'module': 'biaoda', 'course': 'Day 001.md'})
+        self.assertNotIn('answers', note)
+        self.assertNotIn('request_key', note)
+        self.assertNotIn('completed_at', note)
+        with db.connect() as connection:
+            self.assertIsNone(connection.execute("SELECT to_regclass('study_learning_records')").fetchone()[0])
+
+    def test_notebook_searches_answers_filters_modules_and_treats_wildcards_literally(self):
+        self.put(self.body(notes='', answers={'q1': '判断依据 50%_增长'}))
+        self.put(self.body(notes='另一篇笔记', key='another-note-key'), '/api/study-notes/yingyu/Day%20002.md')
+        self.assertEqual(self.client.get('/api/study-notes', params={'q': '判断依据'}).json()['total'], 1)
+        literal = self.client.get('/api/study-notes', params={'q': '%_'})
+        self.assertEqual(literal.json()['total'], 1)
+        self.assertIn('50%_增长', literal.json()['items'][0]['preview'])
+        english = self.client.get('/api/study-notes', params={'kind': 'yingyu'}).json()
+        self.assertEqual(english['total'], 1)
+        self.assertEqual(english['items'][0]['kind'], 'yingyu')
+        self.assertEqual(self.client.get('/api/study-notes', params={'kind': 'invalid'}).status_code, 422)
+
+    def test_notebook_paginates_stably_and_omits_empty_notes(self):
+        for index in range(5):
+            self.put(self.body(notes=f'笔记 {index}', key=f'notebook-key-{index}'), f'/api/study-notes/renzhi/{index+1}')
+        self.put(self.body(notes=' \n\t', answers={'q1': ' \r\n'}, key='empty-note-key'))
+        first = self.client.get('/api/study-notes', params={'page_size': 2}).json()
+        second = self.client.get('/api/study-notes', params={'page_size': 2, 'page': 2}).json()
+        self.assertEqual(first['total'], 5)
+        self.assertEqual((len(first['items']), len(second['items'])), (2, 2))
+        self.assertFalse({n['course_id'] for n in first['items']} & {n['course_id'] for n in second['items']})
+        self.assertEqual(self.client.get('/api/study-notes', params={'page': 0}).status_code, 422)
+        self.assertEqual(self.client.get('/api/study-notes', params={'page_size': 101}).status_code, 422)
+
+    def test_notebook_is_scoped_to_the_current_database_tenant(self):
+        self.put(self.body(notes='本人笔记'))
+        other = 'notebook_other_' + uuid.uuid4().hex
+        with psycopg2.connect(self.dsn) as connection:
+            connection.cursor().execute('CREATE SCHEMA ' + other)
+        try:
+            with patch('db.connect', lambda *a, **kw: self.raw_connect(self.dsn + ' options=-csearch_path=' + other, tenant=False)):
+                self.put(self.body(notes='另一个人的私人笔记'))
+                listing = self.client.get('/api/study-notes').json()
+                self.assertEqual([n['preview'] for n in listing['items']], ['另一个人的私人笔记'])
+            listing = self.client.get('/api/study-notes').json()
+            self.assertEqual([n['preview'] for n in listing['items']], ['本人笔记'])
+        finally:
+            with psycopg2.connect(self.dsn) as connection:
+                connection.cursor().execute('DROP SCHEMA ' + other + ' CASCADE')
+
     def test_first_get_and_put_create_missing_tenant_table_and_public_read_survives_app_restart(self):
         with db.connect() as connection:
             self.assertIsNone(connection.execute("SELECT to_regclass('course_study_notes')").fetchone()[0])
