@@ -11,7 +11,23 @@
     "知行成长/server/tests/test_knowledge_scanning.py": "13802f07fb11b08fb980fb679a7c123e780bd5d121772aa9f266620a19195192",
     "知行成长/server/tests/test_action_p0.py": "91dbf5d6354ecae784949acf6715818fa2b4212e4f057372bb0833563ac48486",
     "知行成长/server/tests/test_browser_ai_config.py": "0d96e35b5a7fea1f40034b4733de5c5a73a01cb3a164428019d0f930f9114c3f",
-    "知行成长/server/tests/test_legacy_state_client.cjs": "d913d92f347fa19c36a6e2a4261751728244178864153e5dfbe476cba13d65a1"
+    "知行成长/server/tests/test_legacy_state_client.cjs": "d913d92f347fa19c36a6e2a4261751728244178864153e5dfbe476cba13d65a1",
+    "知行成长/server/static/index.html": "850c47e4a358e90bb3363ddce2ff6cfb8c6232d1e8bd7fc6a6598c20a15ea3a2",
+    "知行成长/server/static/theme.js": "5d7644149d45d315d2b8a3dd42ebbeb1a65b81dd3697632717628f7acaab7fa4",
+    "知行成长/server/tests/test_theme_client.cjs": "d408b0c0771341c68b189c85f34fde60d6192efe905c9661a67d51a2541b106c"
   },
-  "fixture_failure_related_business_files_unchanged": true
+  "isolated_checkpoint": "31f631266662a5db2101fba6f4acac914c1e3f49",
+  "fixture_failure_related_business_files_unchanged_before_theme_extraction": true,
+  "environment": {
+    "python": "3.13.9",
+    "node": "v25.6.0",
+    "packages": {
+      "fastapi": "0.159.1",
+      "starlette": "1.9.0",
+      "httpx": "0.28.1",
+      "psycopg2-binary": "2.9.13",
+      "playwright": "1.64.0"
+    }
+  },
+  "final_log_sha256": "b6b9cb19c52a6dbc680b9500cce590b2fa4402d90830582b7aecec5f260254dd"
 }

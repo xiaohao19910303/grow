@@ -1,0 +1,9 @@
+test_form_warning_download_import_and_same_key_recovery_after_reload (test_action_storage_recovery_ui.ActionStorageRecoveryUI.test_form_warning_download_import_and_same_key_recovery_after_reload) ... ok
+test_storage_getter_security_error_still_initializes_action_editor (test_action_storage_recovery_ui.ActionStorageRecoveryUI.test_storage_getter_security_error_still_initializes_action_editor) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 64.346s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 2, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

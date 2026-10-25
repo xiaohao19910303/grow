@@ -600,58 +600,8 @@
 <script src="/static/event-bus.js?v=20261021-1"></script>
 <script src="/static/account.js?v=20261018-loading"></script>
 <script src="/static/ai-config.js?v=20261025-e1"></script>
+<script src="/static/theme.js?v=20261025-structure"></script>
 <script>
-/* ================= 主题切换 ================= */
-function initTheme() {
-  // 从 localStorage 读取主题偏好,如果没有则跟随系统
-  const saved = localStorage.getItem('theme');
-  if (saved === 'dark' || saved === 'light') {
-    document.documentElement.setAttribute('data-theme', saved);
-  }
-  updateThemeButton();
-}
-
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  let newTheme;
-
-  if (current === 'dark') {
-    newTheme = 'light';
-  } else if (current === 'light') {
-    newTheme = 'dark';
-  } else {
-    // 没有手动设置,跟随系统偏好反向切换
-    newTheme = prefersDark ? 'light' : 'dark';
-  }
-
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-  updateThemeButton();
-}
-
-function updateThemeButton() {
-  const btn = document.getElementById('themeToggle');
-  if (!btn) return;
-
-  const current = document.documentElement.getAttribute('data-theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = current === 'dark' || (current === null && prefersDark);
-
-  btn.textContent = isDark ? '☀️' : '🌙';
-  btn.setAttribute('aria-label', isDark ? '切换到明亮模式' : '切换到暗黑模式');
-}
-
-// 监听系统主题变化
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-  if (!localStorage.getItem('theme')) {
-    updateThemeButton();
-  }
-});
-
-// 初始化主题
-initTheme();
-
 /* ================= 工具 ================= */
 const DAY = 86400000;
 const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };

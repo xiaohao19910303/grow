@@ -9,6 +9,7 @@
 | `知行成长/server/knowledge/scanning.py` | Markdown 索引、思维工具和学习足迹解析；显式传入已解析的账号资料根目录 |
 | `知行成长/server/knowledge/catalog.py` | 扫描节点的增量写入与分类读取；通过调用方传入的连接工厂保留账号隔离 |
 | `知行成长/server/growth_reports.py` | 周月报与连续活动天数计算；复用 `growth_statistics.py` 的统计口径 |
+| `知行成长/server/static/theme.js` | 主题偏好读取、切换与系统主题监听；存储失败时保留页面可用性 |
 | `知行成长/server/static/` | HTML、CSS、JavaScript 与浏览器资源 |
 | `知行成长/server/{plans,reading,rhythm,copilot,...}/` | 按业务域组织的接口、服务与存储 |
 | `知行成长/server/*.py` | 现有共享基础设施、跨域服务与兼容模块；仍保留原导入路径 |
