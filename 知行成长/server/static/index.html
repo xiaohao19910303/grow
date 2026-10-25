@@ -153,7 +153,7 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
-<link rel="stylesheet" href="/static/action-plans.css?v=20261025-e2">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261025-e1">
 </head>
 <body>
 
@@ -226,18 +226,26 @@
     <button type="button" class="btn" onclick="showCompletionHelp()">完成与进度说明</button>
     <h2 style="font-size:18px;margin:16px 0 8px">课程生成配置</h2>
     <p class="desc">配置按账号保存在当前浏览器，换浏览器或清除站点数据后需重新填写。生成和测试时经后端临时调用，不保存到远端数据库。已有内容无需配置即可阅读。</p>
+    <div class="cp-actions"><button type="button" class="btn primary" onclick="AISetup.open()">开始配置引导</button></div>
     <div id="apiSettingsForm" class="cp-settings-form">
+      <div id="aiSetupHeader" hidden><h3 id="aiSetupStep" tabindex="-1"></h3><p id="aiSetupHint" class="desc"></p></div>
       <div class="field-row" style="flex-direction:column">
-        <label>API Base URL<input type="text" id="apiBaseUrl" placeholder="https://api.example.com/v1"></label>
+        <label>API Base URL<input type="url" id="apiBaseUrl" autocomplete="off" spellcheck="false" maxlength="2048" aria-describedby="aiAddressHelp" placeholder="https://api.example.com/v1"></label>
+        <p id="aiAddressHelp" class="desc">从服务商复制兼容 Chat Completions 的 HTTPS API 地址；不要填写聊天网页地址，也不要把密钥放在地址里。保留服务商要求的路径，末尾可带 /chat/completions。</p>
       </div>
       <div class="field-row" style="flex-direction:column">
-        <label>API Key<input type="password" id="apiKey" placeholder="sk-..."></label>
+        <label>API Key<input type="password" id="apiKey" autocomplete="off" spellcheck="false" maxlength="4096" placeholder="填写自己的 API Key"></label>
       </div>
       <div class="field-row" style="flex-direction:column">
-        <label>模型名称<input type="text" id="modelName" placeholder="填写服务商提供的模型名称"></label>
+        <label>模型名称<input type="text" id="modelName" autocomplete="off" spellcheck="false" maxlength="100" placeholder="填写服务商提供的模型名称"></label>
       </div>
-      <div id="apiStatus" style="font-size:13px;color:var(--muted)"></div>
-      <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="testApiConnection()">测试连接</button><button class="btn" onclick="loadApiSettings()">读取本地配置</button><button class="btn" onclick="clearApiSettings()">清除本地配置</button></div>
+      <p class="desc" id="aiCredentialsHelp">API Key 由服务商提供，请填写有权限使用该模型的密钥；模型名称应复制服务商的模型 ID，而非随意起名。配置仅属于当前账号的当前浏览器，换浏览器或清除站点数据后需重新填写。</p>
+      <div id="aiSetupReview" class="account-settings" hidden></div>
+      <p id="aiTestHelp" class="desc">保存不调用模型。点击“测试连接”会临时发送上述配置并请求一次简短模型响应，可能产生服务商费用；测试不自动保存。</p>
+      <div id="apiStatus" role="status" aria-live="polite" style="font-size:13px;color:var(--muted)"></div>
+      <div id="aiSetupNavigation" class="cp-actions" hidden><button type="button" class="btn" id="aiSetupBack" onclick="AISetup.back()">上一步</button><button type="button" class="btn primary" id="aiSetupNext" onclick="AISetup.next()">下一步</button><button type="button" class="btn" onclick="AISetup.close()">直接编辑全部字段</button></div>
+      <div id="aiSaveActions" class="cp-actions"><button type="button" class="btn primary" onclick="saveApiSettings()">保存配置</button><button type="button" class="btn" data-ai-test onclick="testApiConnection()">测试连接</button><button type="button" class="btn" id="apiCancelTest" onclick="cancelApiTest('测试已取消，配置尚未保存。')" hidden>取消测试</button></div>
+      <div id="aiLocalActions" class="cp-actions"><button type="button" class="btn" onclick="loadApiSettings()">读取本地配置</button><button type="button" class="btn" onclick="clearApiSettings()">清除本地配置</button></div>
     </div>
     <section class="account-settings" aria-labelledby="githubTitle">
       <h2 id="githubTitle">GitHub 内容存储</h2>
@@ -590,7 +598,7 @@
 <script src="/static/loading-state.js?v=web-batch1-20261023"></script>
 <script src="/static/event-bus.js?v=20261021-1"></script>
 <script src="/static/account.js?v=20261018-loading"></script>
-<script src="/static/ai-config.js?v=20261017"></script>
+<script src="/static/ai-config.js?v=20261025-e1"></script>
 <script>
 /* ================= 工具 ================= */
 const DAY = 86400000;
@@ -729,36 +737,67 @@ async function doReset(){
 function showCompletionHelp(){const d=document.getElementById('completionHelpDialog');if(!d.open)d.showModal();}
 
 function apiSettingsValue(){
-  return {api_base_url:document.getElementById('apiBaseUrl').value.trim(),
-    api_key:document.getElementById('apiKey').value.trim(),
-    model_name:document.getElementById('modelName').value.trim()};
+  return {api_base_url:document.getElementById('apiBaseUrl').value,
+    api_key:document.getElementById('apiKey').value,
+    model_name:document.getElementById('modelName').value};
+}
+let apiTestController=null,apiTestTurn=0,apiSettingsReadTurn=0;
+function cancelApiTest(message=''){
+  const wasPending=!!apiTestController;
+  ++apiTestTurn;apiTestController?.abort();apiTestController=null;
+  document.querySelectorAll('[data-ai-test]').forEach(button=>button.disabled=false);
+  const cancel=document.getElementById('apiCancelTest');if(cancel)cancel.hidden=true;
+  if(message&&(wasPending||message.includes('已变化')))document.getElementById('apiStatus').textContent=message;
 }
 function loadApiSettings(){
-  const d=AIConfig.read();
-  document.getElementById('apiBaseUrl').value=d.api_base_url;
-  document.getElementById('modelName').value=d.model_name;
-  document.getElementById('apiKey').value=d.api_key;
-  document.getElementById('apiStatus').textContent=AIConfig.status()||'已读取本浏览器配置，生成时使用自己的密钥。';
+  cancelApiTest();const turn=++apiSettingsReadTurn;
+  const apply=()=>{
+    if(turn!==apiSettingsReadTurn)return;
+    const d=AIConfig.read();
+    document.getElementById('apiBaseUrl').value=d.api_base_url;
+    document.getElementById('modelName').value=d.model_name;
+    document.getElementById('apiKey').value=d.api_key;
+    document.getElementById('apiStatus').textContent=AIConfig.status()||'已读取本浏览器配置；这不代表已通过连接测试。';
+    window.AISetup?.changed();
+  };
+  if(window.Account?.ready&&!window.Account.user){
+    document.getElementById('apiStatus').textContent='正在等待账号就绪以读取本地配置…';
+    window.Account.ready.then(apply).catch(()=>{if(turn===apiSettingsReadTurn)document.getElementById('apiStatus').textContent='账号尚未就绪，请重新连接后读取配置。';});
+  }else apply();
 }
 async function testApiConnection(){
-  const body=apiSettingsValue();
-  const el=document.getElementById('apiStatus');
-  if(!body.api_base_url||!body.api_key||!body.model_name){el.textContent='请完整填写 Base URL、API Key 和模型名称。';return;}
-  el.textContent='正在测试连接…';
+  if(apiTestController)return false;
+  const el=document.getElementById('apiStatus');let body;
+  try{body=AIConfig.validate(apiSettingsValue());}catch(error){el.textContent=error.message;return false;}
+  const account=window.Account?.user?.id,turn=++apiTestTurn,snapshot=JSON.stringify(apiSettingsValue());
+  const controller=apiTestController=new AbortController();
+  document.querySelectorAll('[data-ai-test]').forEach(button=>button.disabled=true);
+  const cancel=document.getElementById('apiCancelTest');if(cancel)cancel.hidden=false;
+  const timer=setTimeout(()=>controller.abort(),95000);el.textContent='正在测试连接…';
+  const current=()=>turn===apiTestTurn&&account===window.Account?.user?.id&&snapshot===JSON.stringify(apiSettingsValue());
   try{
-    const r=await fetch('/api/ai/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
-    const d=await r.json();
-    el.textContent=d.message||'连接测试失败，请检查配置。';
-  }catch(e){el.textContent='测试失败，请检查网络与配置。';}
+    const r=await fetch('/api/ai/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body),signal:controller.signal});
+    const d=await r.json();if(!current())return false;
+    if(controller.signal.aborted){el.textContent='连接测试超时，请稍后重试。';return false;}
+    const ok=r.ok&&d.ok===true;
+    el.textContent=ok?'连接成功，仅验证本次简短响应；配置尚未保存。':'连接失败：请核对地址、密钥、模型和服务商状态，可修改后重试；已有配置未被改写。';
+    return ok;
+  }catch(error){if(current())el.textContent=controller.signal.aborted?'连接测试超时，请稍后重试。':'测试失败，请检查网络与配置后重试；已有配置未被改写。';return false;}
+  finally{clearTimeout(timer);if(turn===apiTestTurn){if(!current())el.textContent='配置或账号已变化，请重新核对后测试。';apiTestController=null;document.querySelectorAll('[data-ai-test]').forEach(button=>button.disabled=false);if(cancel)cancel.hidden=true;}}
 }
 function saveApiSettings(){
-  try{AIConfig.save(apiSettingsValue());loadApiSettings();toast('配置已保存到本浏览器');}
-  catch(e){toast(e.message);}
+  cancelApiTest();
+  const status=document.getElementById('apiStatus');
+  try{AIConfig.save(apiSettingsValue());loadApiSettings();status.textContent='配置已保存到本浏览器；保存本身不调用模型。';toast('配置已保存到本浏览器');window.AISetup?.saved();return true;}
+  catch(error){status.textContent=error.message;toast(error.message);return false;}
 }
 function clearApiSettings(){
-  try{AIConfig.clear();loadApiSettings();toast('本地 AI 配置已清除');}
-  catch(e){toast('无法清除，请检查浏览器存储权限。');}
+  cancelApiTest();
+  try{AIConfig.clear();loadApiSettings();document.getElementById('apiStatus').textContent='本地 AI 配置已清除；已有学习内容和记录保留。';toast('本地 AI 配置已清除');}
+  catch(error){document.getElementById('apiStatus').textContent='无法清除，请检查浏览器存储权限。';toast('无法清除，请检查浏览器存储权限。');}
 }
+document.getElementById('apiSettingsForm')?.addEventListener('input',()=>{++apiSettingsReadTurn;cancelApiTest('配置已变化，请重新核对；此前测试结果不再适用。');window.AISetup?.changed();});
+window.addEventListener('ai-config-changed',()=>cancelApiTest(''));
 
 /* ================= 个人日程 ================= */
 function renderPersonal(){
@@ -2114,6 +2153,7 @@ function goTab(name, options={}){
   window.studyReaderRequest=(window.studyReaderRequest||0)+1;
   if(window.leaveCopilot && currentTab==='copilot' && name!=='copilot') window.leaveCopilot();
   if(currentTab==='knowledge'&&name!=='knowledge'&&typeof stopKnowledgeGraph==='function')stopKnowledgeGraph();
+  if(currentTab==='settings'&&name!=='settings'){cancelApiTest();window.AISetup?.close(false);}
   currentTab=name;
   const parentTab=navParents[name] || name;
   const group=Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===parentTab));
@@ -2328,17 +2368,18 @@ init();
 <script src="/static/reading-tasks.js?v=20261021-audit"></script>
 <script src="/static/behavior-report.js?v=20261021-p1"></script>
 <script src="/static/learning-completion.js?v=20261025-c1c3"></script>
-<script src="/static/copilot.js?v=20261021-p1-navigation"></script>
+<script src="/static/copilot.js?v=20261025-e1"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
 <script src="/static/course-archive.js?v=20261019-1"></script>
 <script src="/static/course-summary.js?v=20261021-background"></script>
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
 <script src="/static/learning-plan-actions.js?v=20261025-c1c3"></script>
-<script src="/static/plans.js?v=20261025-e2"></script>
+<script src="/static/ai-setup.js?v=20261025-e1"></script>
+<script src="/static/plans.js?v=20261025-e1"></script>
 <script src="/static/study-generation.js?v=20261021-unified"></script>
 <script src="/static/daily-learning.js?v=20261021-audit"></script>
-<script src="/static/reading-growth.js?v=20261021-tasks"></script>
+<script src="/static/reading-growth.js?v=20261025-e1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
 <script src="/static/reading-position.js?v=20261021-merge"></script>
 <script src="/static/reading.js?v=20261024-merge"></script>

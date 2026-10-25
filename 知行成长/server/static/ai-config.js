@@ -18,20 +18,29 @@
       return Object.fromEntries(['api_base_url', 'api_key', 'model_name'].map(k => [k, typeof value?.[k] === 'string' ? value[k] : '']));
     } catch (_) { return {api_base_url: '', api_key: '', model_name: ''}; }
   }
-  function validate(value) {
-    if (!value.api_base_url || !value.api_key || !value.model_name) throw new Error(missing);
+  function field(value, name, limit) {
+    if(typeof value !== 'string' || !value.trim())throw new Error(missing);
+    if(value.length>limit || /[\x00-\x1f]/.test(value))throw new Error(name+'超长或含有换行等控制字符，请检查后重新填写。');
+    return value.trim();
+  }
+  function address(value) {
+    value=field(value,'Base URL',2048);
     let url;
-    try { url = new URL(value.api_base_url); } catch (_) { throw new Error('请填写有效的 HTTPS Base URL。'); }
-    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('请填写无账号、查询参数和片段的 HTTPS Base URL。');
+    try { url = new URL(value); } catch (_) { throw new Error('请填写有效的 HTTPS Base URL。'); }
+    if (url.protocol !== 'https:' || !url.hostname || url.username || url.password || url.search || url.hash) throw new Error('请填写无账号、查询参数和片段的 HTTPS Base URL。');
     return value;
+  }
+  function validate(value) {
+    return {api_base_url:address(value?.api_base_url),api_key:field(value?.api_key,'API Key',4096),model_name:field(value?.model_name,'模型名称',100)};
   }
   window.AIConfig = {
     read,
+    address,
+    validate,
     require: () => validate(read()),
     status: () => { try { validate(read()); return ''; } catch (e) { return e.message; } },
     save: value => {
-      const clean = Object.fromEntries(['api_base_url', 'api_key', 'model_name'].map(k => [k, String(value[k] || '').trim()]));
-      validate(clean);
+      const clean = validate(value);
       try { const key = storageKey();
         if (!key) throw new Error('请先登录。');
         localStorage.setItem(key, JSON.stringify(clean)); }

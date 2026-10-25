@@ -50,3 +50,73 @@ class SetupHelpBrowserTests(unittest.TestCase):
         self.page.set_viewport_size({'width':320,'height':850});self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'),320)
         self.page.screenshot(path=str(self.evidence/'completion-help-mobile.png'))
         self.assertFalse(any(r['path']=='/api/ai/test' or '/generate' in r['path'] for r in self.requests))
+
+    def guide(self,model='test-model'):
+        self.page.evaluate("goTab('settings')")
+        self.page.get_by_role('button',name='开始配置引导',exact=True).click()
+        expect(self.page.locator('#aiSetupStep')).to_contain_text('1/3')
+        self.page.get_by_label('API Base URL',exact=True).fill('https://model.example/v1')
+        self.page.get_by_role('button',name='下一步',exact=True).click()
+        self.page.get_by_label('API Key',exact=True).fill('TEST_SETUP_PRIVATE_KEY')
+        self.page.get_by_label('模型名称',exact=True).fill(model)
+        self.page.get_by_role('button',name='下一步',exact=True).click()
+        expect(self.page.locator('#aiSetupStep')).to_contain_text('3/3')
+
+    def test_setup_save_without_model_request_and_new_browser_is_empty(self):
+        self.guide();review=self.page.locator('#aiSetupReview')
+        expect(review).to_contain_text('test-model');expect(review).not_to_contain_text('TEST_SETUP_PRIVATE_KEY')
+        self.page.screenshot(path=str(self.evidence/'ai-setup-review-desktop.png'))
+        self.page.set_viewport_size({'width':320,'height':850});review.scroll_into_view_if_needed();self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'),320)
+        self.page.screenshot(path=str(self.evidence/'ai-setup-review-mobile.png'))
+        self.page.get_by_role('button',name='保存配置',exact=True).click();expect(self.page.locator('#apiStatus')).to_contain_text('已保存')
+        self.assertFalse(any(r['path']=='/api/ai/test' or '/generate' in r['path'] for r in self.requests))
+        self.page.reload();self.page.evaluate("goTab('settings')");expect(self.page.get_by_label('模型名称',exact=True)).to_have_value('test-model')
+        other=self.browser.new_context();self.addCleanup(other.close);p=other.new_page();p.goto(self.base);p.evaluate('Account.ready');p.evaluate("goTab('settings')");expect(p.get_by_label('模型名称',exact=True)).to_have_value('')
+        self.page.get_by_role('button',name='清除本地配置',exact=True).click();self.page.reload();self.page.evaluate("goTab('settings')");expect(self.page.get_by_label('模型名称',exact=True)).to_have_value('')
+
+    def test_setup_validation_explicit_test_failure_retry_and_stale_response(self):
+        self.page.evaluate("goTab('settings')");self.page.get_by_role('button',name='开始配置引导',exact=True).click()
+        self.page.get_by_label('API Base URL',exact=True).fill('http://invalid.example')
+        self.page.get_by_role('button',name='下一步',exact=True).click();expect(self.page.locator('#apiStatus')).to_contain_text('HTTPS')
+        expect(self.page.locator('#aiSetupStep')).to_contain_text('1/3')
+        self.page.get_by_label('API Base URL',exact=True).fill('https://model.example/v1');self.page.get_by_role('button',name='下一步',exact=True).click()
+        self.page.get_by_label('API Key',exact=True).fill('TEST_SETUP_PRIVATE_KEY');self.page.get_by_label('模型名称',exact=True).fill('test-model');self.page.get_by_role('button',name='下一步',exact=True).click()
+        self.context.request.post(self.base+'/fixture/setup-mode/error');self.page.locator('#apiSettingsForm').get_by_role('button',name='测试连接',exact=True).click();expect(self.page.locator('#apiStatus')).to_contain_text('连接失败')
+        self.page.screenshot(path=str(self.evidence/'ai-setup-test-failure.png'))
+        self.context.request.post(self.base+'/fixture/setup-mode/success');self.page.locator('#apiSettingsForm').get_by_role('button',name='测试连接',exact=True).click();expect(self.page.locator('#apiStatus')).to_contain_text('连接成功')
+        expect(self.page.locator('#apiStatus')).not_to_contain_text('PRIVATE')
+        self.context.request.post(self.base+'/fixture/setup-mode/slow');self.page.locator('#apiSettingsForm').get_by_role('button',name='测试连接',exact=True).click()
+        self.page.get_by_role('button',name='上一步',exact=True).click();self.page.get_by_label('模型名称',exact=True).fill('changed-model')
+        self.page.wait_for_timeout(1200);expect(self.page.locator('#apiStatus')).not_to_contain_text('连接成功')
+
+        self.page.get_by_role('button',name='下一步',exact=True).click();self.page.locator('#apiSettingsForm').get_by_role('button',name='测试连接',exact=True).click()
+        self.page.get_by_role('button',name='取消测试',exact=True).click();expect(self.page.locator('#apiStatus')).to_contain_text('已取消')
+        self.page.wait_for_timeout(1200);expect(self.page.locator('#apiStatus')).not_to_contain_text('连接成功')
+
+    def test_storage_denial_preserves_previous_saved_configuration(self):
+        self.guide('old-model');self.page.get_by_role('button',name='保存配置',exact=True).click()
+        self.guide('new-model')
+        self.page.evaluate("""() => {
+          const original=Storage.prototype.setItem;
+          Storage.prototype.setItem=function(key,value){if(key.startsWith('zhixing-ai-config-v1:'))throw new DOMException('Synthetic storage denial');return original.call(this,key,value);};
+        }""")
+        self.page.get_by_role('button',name='保存配置',exact=True).click();expect(self.page.locator('#apiStatus')).to_contain_text('不允许保存')
+        self.page.screenshot(path=str(self.evidence/'ai-setup-storage-denied.png'))
+        self.page.reload();self.page.evaluate("goTab('settings')");expect(self.page.get_by_label('模型名称',exact=True)).to_have_value('old-model')
+
+    def test_missing_config_entry_respects_leave_guard_and_never_replays_generation(self):
+        self.page.evaluate("goTab('plans')")
+        configure=self.page.locator('#view-plans').get_by_role('button',name='配置个人模型',exact=True);expect(configure).to_be_visible()
+        self.page.evaluate("window.fixtureOriginalGuard=window.beforePlansLeave;window.beforePlansLeave=()=>false")
+        configure.click();expect(self.page.locator('#view-settings')).not_to_be_visible()
+        self.page.evaluate('window.beforePlansLeave=window.fixtureOriginalGuard')
+        configure.focus();self.page.keyboard.press('Enter');expect(self.page.locator('#aiSetupStep')).to_be_focused()
+        expect(self.page.locator('#aiSetupStep')).to_contain_text('1/3')
+        self.page.get_by_label('API Base URL',exact=True).fill('https://model.example/v1');self.page.get_by_role('button',name='下一步',exact=True).click()
+        self.page.get_by_label('API Key',exact=True).fill('TEST_SETUP_PRIVATE_KEY');self.page.get_by_label('模型名称',exact=True).fill('test-model')
+        self.page.get_by_role('button',name='直接编辑全部字段',exact=True).click()
+        expect(self.page.get_by_label('API Base URL',exact=True)).to_have_value('https://model.example/v1')
+        expect(self.page.get_by_label('模型名称',exact=True)).to_have_value('test-model')
+        self.page.get_by_role('button',name='保存配置',exact=True).click();self.page.evaluate("goTab('plans')")
+        expect(configure).to_have_count(0)
+        self.assertFalse(any('/generate' in r['path'] or r['path']=='/api/ai/test' for r in self.requests))
