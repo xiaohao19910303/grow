@@ -14,7 +14,7 @@
 .action-field:has(input[type=checkbox]){flex-direction:row;align-items:center}
 .action-field input[type=checkbox]{width:auto;order:-1}
 .action-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--spacing-lg)}
-.action-dialog{border:1px solid var(--border);border-radius:var(--radius-xl);padding:var(--spacing-xxl);max-width:680px;width:calc(100% - 32px);max-height:88vh;overflow:auto;color:var(--text)}
+.action-dialog{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-xl);padding:var(--spacing-xxl);max-width:680px;width:calc(100% - 32px);max-height:88vh;overflow:auto;color:var(--text)}
 .action-dialog::backdrop{background:rgba(20,26,51,.36)}
 .action-dialog h2{font-size:20px;margin:0 0 var(--spacing-lg)}
 .action-dialog .action-buttons{position:sticky;bottom:-24px;background:var(--card);padding:var(--spacing-md) 0}

@@ -17,6 +17,7 @@
 
 /* 课程完成记录样式 */
 .cp-reflection-dialog, .cp-reflection-view {
+  background: var(--card);
   border: none;
   border-radius: var(--radius-lg);
   padding: 0;

@@ -1,0 +1,30 @@
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_ambiguous_legacy_matches_are_not_silently_merged (test_knowledge_stable_ids.KnowledgeStableIDTests.test_ambiguous_legacy_matches_are_not_silently_merged) ... ok
+test_cli_verification_returns_failure_for_unmigrated_schema (test_knowledge_stable_ids.KnowledgeStableIDTests.test_cli_verification_returns_failure_for_unmigrated_schema) ... ok
+test_completed_legacy_migration_also_upgrades_stable_columns (test_knowledge_stable_ids.KnowledgeStableIDTests.test_completed_legacy_migration_also_upgrades_stable_columns) ... ok
+test_concurrent_imports_create_one_identity (test_knowledge_stable_ids.KnowledgeStableIDTests.test_concurrent_imports_create_one_identity) ... ok
+test_http_import_lookup_and_graph_share_identity (test_knowledge_stable_ids.KnowledgeStableIDTests.test_http_import_lookup_and_graph_share_identity) ... ok
+test_import_reuses_matching_legacy_node_without_losing_links (test_knowledge_stable_ids.KnowledgeStableIDTests.test_import_reuses_matching_legacy_node_without_losing_links) ... ok
+test_invalid_imports_are_rejected_without_creating_nodes (test_knowledge_stable_ids.KnowledgeStableIDTests.test_invalid_imports_are_rejected_without_creating_nodes) ... ok
+test_legacy_backfill_and_repeated_initialization_preserve_ids_and_links (test_knowledge_stable_ids.KnowledgeStableIDTests.test_legacy_backfill_and_repeated_initialization_preserve_ids_and_links) ... ok
+test_migration_rejects_duplicate_existing_ids_and_rolls_back (test_knowledge_stable_ids.KnowledgeStableIDTests.test_migration_rejects_duplicate_existing_ids_and_rolls_back) ... ok
+test_one_file_can_contain_multiple_nodes_and_kinds (test_knowledge_stable_ids.KnowledgeStableIDTests.test_one_file_can_contain_multiple_nodes_and_kinds) ... ok
+test_related_nodes_are_unique_ranked_and_support_both_directions (test_knowledge_stable_ids.KnowledgeStableIDTests.test_related_nodes_are_unique_ranked_and_support_both_directions) ... ok
+test_repeat_and_changed_hash_preserve_identity_and_links (test_knowledge_stable_ids.KnowledgeStableIDTests.test_repeat_and_changed_hash_preserve_identity_and_links) ... ok
+test_same_source_and_guessed_id_cannot_cross_tenants (test_knowledge_stable_ids.KnowledgeStableIDTests.test_same_source_and_guessed_id_cannot_cross_tenants) ... ok
+test_scanning_twice_preserves_imported_nodes_and_gives_new_nodes_ids (test_knowledge_stable_ids.KnowledgeStableIDTests.test_scanning_twice_preserves_imported_nodes_and_gives_new_nodes_ids) ... ok
+test_storage_failure_is_sanitized (test_knowledge_stable_ids.KnowledgeStableIDTests.test_storage_failure_is_sanitized) ... ok
+test_store_startup_failure_has_a_recoverable_http_status (test_knowledge_stable_ids.KnowledgeStableIDTests.test_store_startup_failure_has_a_recoverable_http_status) ... ok
+test_unknown_nodes_and_invalid_limits_have_client_errors (test_knowledge_stable_ids.KnowledgeStableIDTests.test_unknown_nodes_and_invalid_limits_have_client_errors) ... ok
+test_verification_is_schema_scoped_and_read_only (test_knowledge_stable_ids.KnowledgeStableIDTests.test_verification_is_schema_scoped_and_read_only) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 1.336s
+
+OK
+schema=legacy_cloud_aed68351b84146a2a3faec1ccd31f9f5：稳定 ID 验证未通过，请核对列、唯一索引、默认值与记录。
+schema=legacy_cloud_1f771dd1b27d495cb534755d3a173a50：稳定 ID 验证通过。
+schema=knowledge_other_060f08c14f7c465fbbaddcdaf1b61e51：稳定 ID 验证未通过，请核对列、唯一索引、默认值与记录。
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 18, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

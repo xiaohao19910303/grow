@@ -40,6 +40,7 @@
 
 /* Learning record dialog */
 .learning-record-dialog {
+  background: var(--card);
   padding: 0;
   border: none;
   border-radius: 14px;

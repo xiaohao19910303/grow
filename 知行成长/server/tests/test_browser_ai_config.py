@@ -19,6 +19,7 @@ from plans.generation import PlanGenerator
 from plans.github import GitHubContent
 from test_github_plans import B, D
 from cloud_fixtures import AsyncCloudFixture
+from test_legacy_cloud_schema import PostgreSQLFixture
 
 OWN = {'api_base_url': 'https://user-model.example/v1', 'api_key': 'USER_SECRET_TEST_ONLY', 'model_name': 'user-model'}
 
@@ -45,27 +46,6 @@ class BrowserConfigTests(unittest.TestCase):
                 remove_server_config(c)
                 self.assertEqual(c.execute('SELECT * FROM copilot_settings').fetchall(), [('generation_total_timeout_seconds','300')])
 
-    def test_all_generation_routes_require_browser_config(self):
-        from reflections.api import register as register_reflections
-        from reading.api import register as register_reading
-        with tempfile.TemporaryDirectory() as tmp:
-            app = FastAPI()
-            register_copilot(app, tmp, Path(tmp)/'runtime')
-            register_reflections(app, tmp, Path(tmp)/'runtime')
-            register_reading(app, tmp, Path(tmp)/'runtime')
-            with patch('plans.api.make_store', return_value=type('Store', (), {'startup_error':None, 'remote':True})()):
-                register_plans(app, tmp, Path(tmp)/'runtime')
-            routes = [('/api/copilot/generations', {'lesson_no':3,'key':'test-key-123'}),
-                      ('/api/plans/generate', {'data':{'kind':'plan','key':'test-key','brief':B}}),
-                      ('/api/plans/drafts/draft/refine', {'data':{'key':'test-key'}}),
-                      ('/api/reflections/ref-test/assist', {'kind':'organize','snapshot':{'text':'hello'},'key':'test-key-123'})]
-            routes += [('/api/reading/articles/article-test/'+kind, {'data':{'key':'test-key'}}) for kind in ('guide','summary','english')]
-            with TestClient(app, base_url='http://localhost') as client, patch.dict(os.environ, {'QWEN_API_KEY':'SERVER_SECRET'}):
-                for path, body in routes:
-                    r = client.post(path, json=body, headers={'X-Copilot-Request':'1'})
-                    self.assertEqual(r.status_code, 422, (path,r.text))
-                    self.assertIn('自己的', r.json()['message'])
-
     def test_http_settings_do_not_read_write_or_echo_credentials(self):
         with tempfile.TemporaryDirectory() as tmp:
             app = FastAPI()
@@ -90,6 +70,30 @@ class BrowserConfigTests(unittest.TestCase):
                 self.assertEqual(r.status_code, 200)
                 self.assertFalse(r.json()['ok'])
                 self.assertNotIn(OWN['api_key'], r.text)
+
+
+class GenerationRouteCredentials(PostgreSQLFixture):
+    def test_all_generation_routes_require_browser_config(self):
+        from reflections.api import register as register_reflections
+        from reading.api import register as register_reading
+        with tempfile.TemporaryDirectory() as tmp:
+            app = FastAPI()
+            register_copilot(app, tmp, Path(tmp)/'runtime')
+            reflection_store, _ = register_reflections(app, tmp, Path(tmp)/'runtime')
+            reflection_store.initialize()
+            register_reading(app, tmp, Path(tmp)/'runtime')
+            with patch('plans.api.make_store', return_value=type('Store', (), {'startup_error':None, 'remote':True})()):
+                register_plans(app, tmp, Path(tmp)/'runtime')
+            routes = [('/api/copilot/generations', {'lesson_no':3,'key':'test-key-123'}),
+                      ('/api/plans/generate', {'data':{'kind':'plan','key':'test-key','brief':B}}),
+                      ('/api/plans/drafts/draft/refine', {'data':{'key':'test-key'}}),
+                      ('/api/reflections/ref-test/assist', {'kind':'organize','snapshot':{'text':'hello'},'key':'test-key-123'})]
+            routes += [('/api/reading/articles/article-test/'+kind, {'data':{'key':'test-key'}}) for kind in ('guide','summary','english')]
+            with TestClient(app, base_url='http://localhost') as client, patch.dict(os.environ, {'QWEN_API_KEY':'SERVER_SECRET'}):
+                for path, body in routes:
+                    r = client.post(path, json=body, headers={'X-Copilot-Request':'1'})
+                    self.assertEqual(r.status_code, 422, (path,r.text))
+                    self.assertIn('自己的', r.json()['message'])
 
 
 class GenerationCredentials(AsyncCloudFixture):

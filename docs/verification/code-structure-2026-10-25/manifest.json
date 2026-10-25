@@ -1,0 +1,17 @@
+{
+  "head": "1634199cfb8b73043ec1784d24b81f4e9283a2da",
+  "openapi_paths": 219,
+  "routes_and_openapi_identical": true,
+  "routes_and_openapi_sha256": "c9283868935e7f85bb3f14b7b0b494626a2aacaa40d7b953720de9e248a83556",
+  "source_sha256": {
+    "知行成长/server/app.py": "9f7d793ce9c8c0c6381fd7e1dfe1f6f48475acde1850773276c8b61189bbbfe4",
+    "知行成长/server/knowledge/scanning.py": "2d900f3e733d13389ac5c1259c200e26f16bca9b651bb9d052a2d319948ac498",
+    "知行成长/server/knowledge/catalog.py": "b7ffde6df1fc61cae952deff170a9b2693a4f64c5eb5b2317e3b847a0ff3a6d7",
+    "知行成长/server/growth_reports.py": "cec16df6ac0fb8dc25d95a46910c6ce492199aab1f02f292ebc28c8e54630c8c",
+    "知行成长/server/tests/test_knowledge_scanning.py": "13802f07fb11b08fb980fb679a7c123e780bd5d121772aa9f266620a19195192",
+    "知行成长/server/tests/test_action_p0.py": "91dbf5d6354ecae784949acf6715818fa2b4212e4f057372bb0833563ac48486",
+    "知行成长/server/tests/test_browser_ai_config.py": "0d96e35b5a7fea1f40034b4733de5c5a73a01cb3a164428019d0f930f9114c3f",
+    "知行成长/server/tests/test_legacy_state_client.cjs": "d913d92f347fa19c36a6e2a4261751728244178864153e5dfbe476cba13d65a1"
+  },
+  "fixture_failure_related_business_files_unchanged": true
+}

@@ -1,0 +1,11 @@
+test_index_skips_headers_and_separators_and_keeps_category_and_source (test_knowledge_scanning.KnowledgeScanningTests.test_index_skips_headers_and_separators_and_keeps_category_and_source) ... ok
+test_missing_material_folders_produce_an_empty_scan (test_knowledge_scanning.KnowledgeScanningTests.test_missing_material_folders_produce_an_empty_scan) ... ok
+test_request_account_scans_only_its_own_learning_root (test_knowledge_scanning.KnowledgeScanningTests.test_request_account_scans_only_its_own_learning_root) ... ok
+test_scan_preserves_file_order_titles_dates_and_relative_sources (test_knowledge_scanning.KnowledgeScanningTests.test_scan_preserves_file_order_titles_dates_and_relative_sources) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.009s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 4, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

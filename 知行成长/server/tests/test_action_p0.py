@@ -215,10 +215,16 @@ class ActionP0Tests(PostgreSQLFixture):
         self.create()
         token=current_user.set({'id':'p0-synthetic'})
         try:
-            with patch('action_link.call') as bridge:
+            # Preview may inspect the remote contract, but an unsupported contract
+            # must never create/export a snapshot or freeze the local writer.
+            with patch('action_link.call', return_value={'action_schema_version': 1}) as bridge, \
+                    patch('action_link.snapshot') as legacy_snapshot, \
+                    patch('action_handoff.snapshot_v2') as v2_snapshot:
                 response=self.client.post('/api/action-link/preview',headers=self.headers,json={'code':'a'*36})
                 self.assertEqual(response.status_code,409,response.text)
-                bridge.assert_not_called()
+                bridge.assert_called_once_with('p0-synthetic', {'action': 'preview', 'code': 'a'*36})
+                legacy_snapshot.assert_not_called()
+                v2_snapshot.assert_not_called()
             with actions.connection() as c:
                 self.assertEqual(c.execute('SELECT count(*) FROM action_link_state').fetchone()[0],0)
         finally:current_user.reset(token)
