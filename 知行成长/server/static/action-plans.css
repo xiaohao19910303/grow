@@ -64,3 +64,11 @@
 .loading-state{padding:12px 0;font-size:14px;color:var(--muted)}
 .loading-error{color:#d97706}
 .loading-success{color:#059669}
+
+.learning-plan-actions { margin: 20px 0; min-width: 0; }
+.learning-plan-card { overflow-wrap: anywhere; }
+.learning-plan-card .btn { margin: 4px 8px 4px 0; white-space: normal; max-width: 100%; }
+.learning-plan-progress { margin: 12px 0; }
+.learning-plan-progress p { margin-bottom: 4px; }
+.learning-plan-progress progress { width: min(100%, 28rem); accent-color: var(--accent, #32735a); }
+.learning-plan-lesson { margin-top: 12px; }

@@ -100,6 +100,23 @@ class AccountIntegrationTests(unittest.TestCase):
     def login(self, username, password='user-password-123'):
         return self.client.post('/api/auth/login', json={'username':username,'password':password}, headers=self.headers)
 
+    def test_learning_plan_actions_are_private_and_reject_stale_account_writes(self):
+        headers={**self.headers,'X-Copilot-Request':'1','X-Grow-Action-Schema':'2'}
+        self.assertEqual(self.client.get('/api/plan-actions').status_code,401)
+        self.login('owner',os.environ['APP_PASSWORD'])
+        owner=self.client.get('/api/auth/me').json()['user']['id']
+        draft=self.client.post('/api/plans/drafts',json={'data':{'brief':B,'document':D}},headers=headers).json()
+        adopted=self.client.post('/api/plans/drafts/'+draft['id']+'/adopt',json={'data':{'key':'private-plan-adopt','expected_hash':draft['content_hash'],'link_actions':True}},headers=headers)
+        self.assertEqual(adopted.status_code,200,adopted.text);pid=adopted.json()['plan_id']
+        self.assertEqual(len(self.client.get('/api/plan-actions').json()['plans']),1)
+        self.register('alice')
+        self.assertEqual(self.client.get('/api/plan-actions').json()['plans'],[])
+        self.assertEqual(self.client.get('/api/plans/'+pid+'/actions').status_code,404)
+        response=self.client.post('/api/plans/'+pid+'/actions',json={'data':{'key':'stale-account-plan-link','expected_version':1}},headers={**headers,'X-Account-Id':owner})
+        self.assertEqual(response.status_code,409,response.text)
+        self.login('owner',os.environ['APP_PASSWORD'])
+        self.assertEqual(len(self.client.get('/api/plan-actions').json()['plans']),1)
+
     def test_module_generation_jobs_and_published_courses_use_each_accounts_repository(self):
         from test_study_generation import AI, output
         directory = Path(os.environ['LEARN_ROOT']) / '结构化表达/每日练习'

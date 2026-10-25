@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS plan_status_history (
     FOREIGN KEY (plan_id) REFERENCES learning_plans(id) ON DELETE CASCADE);
 CREATE INDEX IF NOT EXISTS idx_plan_status_plan_id ON plan_status_history(plan_id);
 CREATE INDEX IF NOT EXISTS idx_plan_status_changed_at ON plan_status_history(changed_at);
+CREATE TABLE IF NOT EXISTS learning_action_links (id TEXT PRIMARY KEY REFERENCES learning_plans(id), data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS learning_plan_versions (plan_id TEXT, version INTEGER, data TEXT NOT NULL, PRIMARY KEY(plan_id,version));
 CREATE TABLE IF NOT EXISTS learning_lessons (plan_id TEXT, lesson_no INTEGER, data TEXT NOT NULL, PRIMARY KEY(plan_id,lesson_no));
 CREATE TABLE IF NOT EXISTS learning_drafts (id TEXT PRIMARY KEY, data TEXT NOT NULL);

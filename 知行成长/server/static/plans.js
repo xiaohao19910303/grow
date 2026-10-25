@@ -8,12 +8,13 @@
   const canonical = x => JSON.stringify(x, (_, value) => value && !Array.isArray(value) && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k=>[k,value[k]])) : value);
   async function api(path, data) {
     if(data!==undefined && (path==='/generate'||/^\/drafts\/[^/]+\/refine$/.test(path))) data={...data,ai_config:AIConfig.require()};
-    const r=await fetch('/api/plans'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});
+    const r=await fetch('/api/plans'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1','X-Grow-Action-Schema':'2'},body:data===undefined?undefined:JSON.stringify({data})});
     let d;try{d=await r.json();}catch{throw new Error(r.ok?'返回的数据暂时无法读取，请重试。':`服务暂时无法完成请求（${r.status}），请稍后重试。`);}
-    if(!r.ok)throw new Error(typeof d.message==='string'?d.message:'请求未完成，请检查输入或重新读取。');
+    if(!r.ok)throw new Error(typeof d.message==='string'?d.message:typeof d.detail==='string'?d.detail:'请求未完成，请检查输入或重新读取。');
     if(data!==undefined && /\/lessons\/\d+\/feedback$/.test(path))await window.refreshLearningCompletion?.(d);
     if(d.id&&d.state&&['plan','course'].includes(d.kind)&&(path==='/generate'||path.startsWith('/attempts/')||/^\/drafts\/[^/]+\/refine$/.test(path)))trackGeneration(d);
     if(/^\/drafts\/[^/]+$/.test(path)&&d.id)window.GenerationTasks?.forget('plans:'+d.id);
+    if(data!==undefined)window.PlanActions?.refresh();
     return d;
   }
   function planTask(a){const context=a.context;return window.GenerationTasks?.external('plans',a,{label:a.kind==='plan'?'学习计划生成':'计划课程生成',...(context?.brief?.title?{title:context.brief.title+(context.lesson?' · 第 '+context.lesson.number+' 课':' · 规划草稿')}:{})});}
@@ -135,6 +136,7 @@
   async function detail(pid){
     const status=shell('计划详情');status.textContent='正在读取课程规划…';const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
     root.querySelector('h2').textContent=data.plan.name;status.textContent=pid+' · 当前版本 v'+data.plan.version;
+    window.PlanActions?.mount(root,pid);
     button(root,'返回列表',window.loadPlans);button(root,'调整后续规划',()=>create(data));
     button(root,'修改显示名称',async()=>{const name=prompt('新的显示名称',data.plan.name);if(name){await api('/'+pid+'/metadata',{name,key:uuid()});await detail(pid);refresh();}});
 
@@ -377,13 +379,21 @@
       button(confirmBox,'确认改为今天日期并预览',async()=>{const child=await api('/drafts/'+id+'/redate',{parent_hash:d.content_hash,confirm_date:true});await previewDraft(child.id);},true);return;
     }
     const check=field(confirmBox,'已阅读这份草稿，确认将其正式保存','','checkbox');
+    const linkActions=d.kind==='plan'?field(confirmBox,'同时关联到行动（不指定学习日期）','','checkbox'):null;if(linkActions)linkActions.checked=true;
     button(confirmBox,d.kind==='plan'?'采用这份规划':'保存正式课程',async()=>{
       const turn=navigation;if(!check.checked)throw new Error('请先阅读草稿并勾选确认。');let result;
       if(d.kind==='plan'){
-        try{result=await api('/drafts/'+id+'/adopt',{key:id+':adopt',expected_hash:d.content_hash,accept_over:false});}
-        catch(e){if(!e.message.includes('预算')||!confirm(e.message+' 仍然采用并接受超额？'))throw e;result=await api('/drafts/'+id+'/adopt',{key:id+':over',expected_hash:d.content_hash,accept_over:true});}
+        try{result=await api('/drafts/'+id+'/adopt',{key:id+':adopt',expected_hash:d.content_hash,accept_over:false,link_actions:!!linkActions?.checked});}
+        catch(e){if(!e.message.includes('预算')||!confirm(e.message+' 仍然采用并接受超额？'))throw e;result=await api('/drafts/'+id+'/adopt',{key:id+':over',expected_hash:d.content_hash,accept_over:true,link_actions:!!linkActions?.checked});}
       }else result=await api('/drafts/'+id+'/publish',{key:id+':publish',expected_hash:d.content_hash});
-      toast(result.storage==='github'?'已提交 GitHub，可立即阅读；学习状态仍待本人记录。':'已正式保存；学习状态仍待本人记录。');refresh();if(turn===navigation)await detail(result.plan_id);
+      toast(result.learning_action_sync_error||(result.storage==='github'?'已提交 GitHub，可立即阅读；学习状态仍待本人记录。':'已正式保存；学习状态仍待本人记录。'));
+      refresh();
+      if(turn===navigation){
+        await detail(result.plan_id);
+        if(result.learning_action_sync_error&&turn+1===navigation){
+          const warning=node('p',result.learning_action_sync_error);warning.setAttribute('role','status');root.prepend(warning);
+        }
+      }
     },true);
   }
   function refineEditor(d){
@@ -437,4 +447,5 @@
       button(notes.actions,'本人确认学完',async()=>{await notes.flush();await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:feedback?.comment||'',...(window.actionContentOrigin?.target?.kind==='plan'&&window.actionContentOrigin.target.plan_id===pid&&window.actionContentOrigin.target.lesson_no===n?{origin_action_id:window.actionContentOrigin.actionId}:{})});d.lesson.learning_state='completed';status.textContent='本课已完成，笔记与练习答案已独立暂存。';refresh();},true);
     }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,(window.lessonReturnLabel?.() || '返回我的课程'),returnFromLesson);button(reader,'重试读取课程',()=>window.openPlanCourse(pid,n));}finally{loading?.finish();}
   };
+  window.openLearningPlan=async pid=>{if(goTab('plans')===false)return false;await detail(pid);return true;};
 })();
