@@ -3,9 +3,16 @@ import re
 
 
 def questions(content):
+    content=re.sub(r'<details\b[^>]*>.*?</details>','',content,flags=re.S|re.I)
+    content=re.sub(r'^```.*?^```[^\n]*','',content,flags=re.S|re.M)
+    excluded=0
     headings=list(re.finditer(r'^(#{2,6})\s+(.+?)\s*$',content,re.M));result=[]
     for i,h in enumerate(headings):
         title=re.sub(r'[*_`]', '',h[2]).strip()[:180]
+        level=len(h[1])
+        if excluded and level<=excluded:excluded=0
+        if re.search(r'参考答案|参考分析|答案解析|答案与解释',title):excluded=level
+        if excluded:continue
         if not re.search(r'练习|阅读理解|引导问题|思考题|思考问题|复盘问题',title) or re.search(r'参考答案|参考分析|答案解析|答案与解释',title):continue
         end=next((v.start() for v in headings[i+1:] if len(v[1])<=len(h[1])),len(content));section=content[h.end():end]
         if re.search(r'^#{2,6}\s+.*(?:练习|阅读理解|思考题)',section,re.M):continue

@@ -31,21 +31,25 @@ def consent(enabled):
 
 def catalog(store,materials):
     """Resolve trusted source identities, never accept filenames or users from phones."""
+    with actions.connection() as c:published={l['id']:l for l in library.table(c).get('payload',{}).get('lessons',[])}
     result={}
     def add(identity,kind,course,body,refs,completed,completed_at,record=None):
         lid='lesson-'+hashlib.sha256(actions.encoded(identity).encode()).hexdigest()[:40]
         result[lid]=dict(id=lid,identity=identity,kind=kind,course=course,content=body,raw_version=hashlib.sha256(body.encode()).hexdigest(),content_version=hashlib.sha256(actions.encoded(dict(content=body,references=refs)).encode()).hexdigest(),completed=completed,completed_at=completed_at,record=record)
     if materials is not None:
         for item in materials.lessons('yingyu'):
-            course=materials.lesson('yingyu',item['filename']);record=course.get('record')
-            add(dict(module='yingyu',filename=item['filename']),'yingyu',item['filename'],course['content'],'',item['learning_state']=='completed',record.get('completed_at') if record else None,record)
+            identity=dict(module='yingyu',filename=item['filename']);lid='lesson-'+hashlib.sha256(actions.encoded(identity).encode()).hexdigest()[:40];course=published.get(lid)
+            if not course:continue
+            record=materials.record('yingyu',item['filename'])
+            add(identity,'yingyu',item['filename'],course['content'],'',item['learning_state']=='completed',record.get('completed_at') if record else None,record)
     for p in store.rows('learning_plans'):
         for item in store.lessons(p['id']):
-            c=store.read_course(p['id'],item['lesson_no'])
+            identity=dict(plan_id=p['id'],lesson_no=item['lesson_no']);lid='lesson-'+hashlib.sha256(actions.encoded(identity).encode()).hexdigest()[:40];c=published.get(lid)
+            if not c:continue
             with store.conn() as db:
                 feedback=db.execute('SELECT data FROM learning_feedback WHERE plan_id=? AND lesson_no=?',(p['id'],item['lesson_no'])).fetchone()
             feedback=json.loads(feedback[0]) if feedback else {}
-            add(dict(plan_id=p['id'],lesson_no=item['lesson_no']),'plan',p['id']+'/'+str(item['lesson_no']),c['content'],c['sources'],item.get('learning_state')=='completed',feedback.get('date') if feedback.get('state')=='completed' else None)
+            add(dict(plan_id=p['id'],lesson_no=item['lesson_no']),'plan',p['id']+'/'+str(item['lesson_no']),c['content'],c['references'],item.get('learning_state')=='completed',feedback.get('date') if feedback.get('state')=='completed' else None,feedback)
     return result
 
 
@@ -60,8 +64,10 @@ def snapshots(courses):
             fields.extend(dict(id=k,prompt='旧版或其他题目 · '+k[:300],answer=v) for k,v in answers.items() if k not in known or notes.get('version')!=course['raw_version'])
             # Do not duplicate an old answer under a current-version question ID.
             if notes.get('version') and notes['version']!=course['raw_version']:fields=[dict(id=k,prompt='旧版答案 · '+k[:300],answer=v) for k,v in answers.items()]
+            if len(fields)>100:
+                stored=[f for f in fields if f['id'] in answers];fields=stored+[f for f in fields if f['id'] not in answers][:max(0,100-len(stored))]
             pos=positions.get(lid,{})
-            data=dict(id=lid,content_version=course['content_version'],draft_version=course['content_version'] if not notes or notes.get('version')==course['raw_version'] else notes['version'],questions=questions(course['content']),notes=notes.get('notes',course.get('record',{}).get('summary_text','') if course.get('record') else ''),answers=fields,completed=course['completed'],completed_at=course['completed_at'],position=pos.get('position',0) if pos.get('version')==course['content_version'] else 0)
+            data=dict(id=lid,content_version=course['content_version'],draft_version=course['content_version'] if not notes or notes.get('version')==course['raw_version'] else notes['version'],questions=questions(course['content']),notes=notes.get('notes',course.get('record',{}).get('summary_text',course.get('record',{}).get('comment','')) if course.get('record') else ''),answers=fields,completed=course['completed'],completed_at=course['completed_at'],position=pos.get('position',0) if pos.get('version')==course['content_version'] else 0)
             fingerprint=hashlib.sha256(actions.encoded(data).encode()).hexdigest();old=previous.get(lid,{})
             value=old if old.get('fingerprint')==fingerprint else dict(**data,revision=old.get('revision',0)+1,updated_at=actions.clock().isoformat(),fingerprint=fingerprint)
             previous[lid]=value;output.append({k:v for k,v in value.items() if k!='fingerprint'})
@@ -69,6 +75,16 @@ def snapshots(courses):
 
 
 def apply(store,materials,command):
+    if getattr(store,'remote',False):
+        from action_handoff_coordinator import source_fence
+        with source_fence(),store.lock():
+            library.sync(store,materials)
+            return _apply(store,materials,command)
+    library.sync(store,materials)
+    return _apply(store,materials,command)
+
+
+def _apply(store,materials,command):
     key=command['id'];signature=hashlib.sha256(actions.encoded(command).encode()).hexdigest()
     with actions.connection(True,allow_link=True) as c:
         saved=state(c);journal=saved.setdefault('journal',{});old=journal.get(key)
@@ -93,14 +109,14 @@ def apply(store,materials,command):
         if current['revision']!=command['revision'] and not (own_save and command['action']=='save' or own_finish):raise HTTPException(409,'网页或另一设备已更新，请核对来源版本；手机输入已保留。')
         if command['action']=='save':
             study_notes.save(course['kind'],course['course'],study_notes.Draft(notes=command['notes'],answers={a['id']:a['answer'] for a in command['answers']},version=course['raw_version'],revision=note['revision'] if note and not own_save else max(0,(note['revision']-1) if note else 0),key=source_key))
-        elif command['action']=='complete' and not own_finish:
+        elif command['action']=='complete' and not own_finish and not course['completed']:
             if course['kind']=='yingyu':
                 from study_materials import Completion
                 record=course.get('record')
                 actions.with_content_completion(materials.save('yingyu',course['course'],Completion(summary_text=record.get('summary_text','') if record else '',time_spent_seconds=0,version=course['raw_version'],revision=record.get('revision',0) if record else 0,key=source_key)),dict(kind='yingyu',course=course['course']))
             else:
                 from action_content import confirm_source
-                target=dict(kind='plan',**course['identity']);data=dict(key=source_key,state='completed',comment='')
+                target=dict(kind='plan',**course['identity']);data=dict(key=source_key,state='completed',comment=(course.get('record') or {}).get('comment',''))
                 confirm_source(store,target,data,lambda:store.feedback(course['identity']['plan_id'],course['identity']['lesson_no'],data,source_key))
         if command['action'] in ('save','position'):
             with actions.connection(True,allow_link=True) as c:
@@ -127,6 +143,7 @@ def _sync(store,materials=None):
         saved=state(c);link,_=library.state(c);reading=library.table(c);bound=library.binding(link,reading)
     if saved.get('binding_id')!=bound.get('binding_id') or not saved.get('binding_id') or not reading.get('enabled'):return
     enabled=saved.get('enabled',False)
+    if enabled:library.sync(store,materials)
     # Replay persisted exchange verbatim after response loss before preparing a new revision.
     def exchange(lessons,results):
         with actions.connection(True,allow_link=True) as c:
