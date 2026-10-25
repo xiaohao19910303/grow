@@ -291,3 +291,6 @@ git reflog --all | grep <关键字>
 ## 11. 后续收敛验收
 
 本轮补齐 detached 结构优化 worktree 的剩余改动，并在合并后的 main 上运行完整隔离回归：746 项 Python、33 组 JavaScript 全部通过，0 失败、0 错误、0 跳过。最新分支清理与证据以[收敛报告](verification/branch-consolidation-2026-10-25/README.md)为准；上文未配置数据库的 pytest 运行不作为最终验收。
+
+
+最新清理已完成：main 已同步 origin，远端 5 个旧功能分支已删除，最后一个 detached worktree 已无强制移除。当前本地与远端仅 main，工作树仅 `/Volumes/肖豪/project/grow`。两份 stash 保留，私人会话记忆未发布。
