@@ -11,11 +11,12 @@
 - [知行成长平台说明](知行成长/README.md)
 - [当前版本与功能状态](docs/verification/current-state-2026-10-24/README.md)
 - [D0启动检查与设置竞态修复](docs/verification/d0-startup-2026-10-24/README.md)
+- [课程规划关联行动与阶段进度验收（C1/C2/C3）](docs/verification/learning-plan-actions-2026-10-25/README.md)
 - [日常节奏 14 天使用验证计划](知行成长/docs/daily-rhythm-14-day-validation.md)
 - [内容生成与存储规则](知行成长/内容存储规则.md) — 模块目录、命名、课次、资料与索引约定
-- [Grow 统一产品方案与 App 改造计划](../project/plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — 后续 App 方向参考；当前网页优先，原生端与 Zook 暂缓
-- [Grow App G0 核验与 G1 任务](../project/plan/docs/04-planning/grow-app-g0-2026-10-18/README.md) — 历史基线与后续任务参考，不作为本轮网页交付前置条件
-- [客户端功能规划](../project/plan/docs/02-design/grow-client-feature-plan.md)与[迭代计划](../project/plan/docs/04-planning/grow-client-iteration-plan.md) — 记录、学习、行动三条路径，CF01–CF40 和 I0–I7；本轮仅完成规划
+- [Grow 统一产品方案与 App 改造计划](../plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — 后续 App 方向参考；当前网页优先，原生端与 Zook 暂缓
+- [Grow App G0 核验与 G1 任务](../plan/docs/04-planning/grow-app-g0-2026-10-18/README.md) — 历史基线与后续任务参考，不作为本轮网页交付前置条件
+- [客户端功能规划](../plan/docs/02-design/grow-client-feature-plan.md)与[迭代计划](../plan/docs/04-planning/grow-client-iteration-plan.md) — 记录、学习、行动三条路径，CF01–CF40 和 I0–I7；本轮仅完成规划
 
 - [学习系统总览](学习系统总览.md) — 系统说明书：7 大模块 + 四层闭环
 - [长期成长学习体系总规划](长期成长学习体系总规划.md) — 总纲：目标 + 路线图 + 度量系统

@@ -1,0 +1,10 @@
+{
+  "dedicated_postgres_port": 56794,
+  "dedicated_postgres_stopped": true,
+  "real_database_connected": false,
+  "real_configuration_changed": false,
+  "old_virtualenv_retained": true,
+  "preexisting_worktrees_retained": true,
+  "pushed": false,
+  "deployed": false
+}

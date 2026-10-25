@@ -1,0 +1,7 @@
+...                                                                      [100%]
+============================= slowest 3 durations ==============================
+6.73s setup    tests/test_coach_facts_browser.py::CoachFactsBrowserTests::test_auto_facts_navigation_keyboard_dismiss_and_responsive_layout
+1.69s call     tests/test_coach_facts_browser.py::CoachFactsBrowserTests::test_auto_facts_navigation_keyboard_dismiss_and_responsive_layout
+1.58s call     tests/test_coach_facts_browser.py::CoachFactsBrowserTests::test_threshold_rules_and_failure_retry_do_not_generate_ai
+3 passed in 11.31s
+WEB_MODULE_RESULT {"tests": 3, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}
