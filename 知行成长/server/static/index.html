@@ -95,6 +95,12 @@
   .chart-svg{width:100%;height:auto;display:block}
   .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  /* 热力图颜色级别 */
+  .heatmap-level-0{background:var(--heatmap-0)}
+  .heatmap-level-1{background:var(--heatmap-1)}
+  .heatmap-level-2{background:var(--heatmap-2)}
+  .heatmap-level-3{background:var(--heatmap-3)}
+  .heatmap-level-4{background:var(--heatmap-4)}
   table.matrix{border-collapse:separate;border-spacing:0;width:100%}
   .matrix th,.matrix td{font-size:12px;text-align:center}
   .matrix th{color:var(--muted);font-weight:550;padding:6px 4px;white-space:nowrap}
@@ -392,7 +398,7 @@
     <div class="cards" id="statCards"></div>
     <details class="section"><summary>学习变化与活动明细</summary>
     <div><h2>本周各模块投入度</h2><p class="desc">近 7 天（周一起）各模块完成情况，完成度 = 有进展(≥1)的天数 ÷ 7</p><div id="barChart"></div></div>
-    <div class="section"><h2>活动记录热力图</h2><p class="desc">最近约 4 个月，颜色越深表示当天学习活动越多</p><div id="heatmap"></div><div class="legend"><span><i style="background:#ebedf0"></i>无</span><span><i style="background:#c6e48b"></i>少</span><span><i style="background:#7bc96f"></i>中</span><span><i style="background:#239a3b"></i>多</span><span><i style="background:#196127"></i>很多</span></div></div>
+    <div class="section"><h2>活动记录热力图</h2><p class="desc">最近约 4 个月，颜色越深表示当天学习活动越多</p><div id="heatmap"></div><div class="legend"><span><i class="heatmap-level-0"></i>无</span><span><i class="heatmap-level-1"></i>少</span><span><i class="heatmap-level-2"></i>中</span><span><i class="heatmap-level-3"></i>多</span><span><i class="heatmap-level-4"></i>很多</span></div></div>
     <div class="section"><h2>最近 7 天记录</h2><div id="recentList"></div></div>
     <button class="btn" onclick="goTab('learning-history')">查看学习回顾</button>
     </details>
@@ -427,7 +433,7 @@
       <button class="btn primary" onclick="saveHabit()">保存当天记录</button>
       <span style="margin-left:12px;font-size:12px;color:var(--muted)" id="habitHint"></span>
     </details>
-    <div class="section"><h2>手工补记时长热力图（近 4 个月）</h2><div id="habitHeatmap"></div><div class="legend"><span><i style="background:#ebedf0"></i>0</span><span><i style="background:#c6e48b"></i>≤30</span><span><i style="background:#7bc96f"></i>≤60</span><span><i style="background:#239a3b"></i>≤120</span><span><i style="background:#196127"></i>&gt;120 分钟</span></div></div>
+    <div class="section"><h2>手工补记时长热力图（近 4 个月）</h2><div id="habitHeatmap"></div><div class="legend"><span><i class="heatmap-level-0"></i>0</span><span><i class="heatmap-level-1"></i>≤30</span><span><i class="heatmap-level-2"></i>≤60</span><span><i class="heatmap-level-3"></i>≤120</span><span><i class="heatmap-level-4"></i>&gt;120 分钟</span></div></div>
   </div>
 
   <div id="view-decisions" style="display:none">
@@ -1088,14 +1094,22 @@ function heatmap(el, levelMap, weeks){
   const W=padLeft+cols*(cell+gap)+16, H=padTop+7*(cell+gap)+18;
   const xAt=c=>padLeft+c*(cell+gap), yAt=r=>padTop+r*(cell+gap);
   let s='<svg class="chart-svg" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
-  WEEKCN.forEach((w,i)=>{ s+='<text x="'+(padLeft-8)+'" y="'+(yAt(i)+cell-3)+'" text-anchor="end" font-size="10" fill="#a0a5b5">'+w+'</text>'; });
-  const colors=['#ebedf0','#c6e48b','#7bc96f','#239a3b','#196127'];
+  WEEKCN.forEach((w,i)=>{ s+='<text x="'+(padLeft-8)+'" y="'+(yAt(i)+cell-3)+'" text-anchor="end" font-size="10" fill="var(--muted)">'+w+'</text>'; });
+  // Get heatmap colors from CSS variables
+  const cs=getComputedStyle(document.documentElement);
+  const colors=[
+    cs.getPropertyValue('--heatmap-0').trim()||'#ebedf0',
+    cs.getPropertyValue('--heatmap-1').trim()||'#c6e48b',
+    cs.getPropertyValue('--heatmap-2').trim()||'#7bc96f',
+    cs.getPropertyValue('--heatmap-3').trim()||'#239a3b',
+    cs.getPropertyValue('--heatmap-4').trim()||'#196127'
+  ];
   let d=start; const end=addDays(startOfWeek(todayD),6);
   while(d<=end){ const dsStr=ds(d); const wd=(d.getDay()+6)%7; const col=Math.floor((d-start)/DAY/7);
     const lvl=Math.min(4,levelMap[dsStr]||0); const show=dsStr<=today();
-    s+='<rect x="'+xAt(col)+'" y="'+yAt(wd)+'" width="'+cell+'" height="'+cell+'" rx="3" fill="'+(show?colors[lvl]:'#f5f6f8')+'"><title>'+dsStr+'：'+(levelMap[dsStr]||0)+'</title></rect>';
+    s+='<rect x="'+xAt(col)+'" y="'+yAt(wd)+'" width="'+cell+'" height="'+cell+'" rx="3" fill="'+(show?colors[lvl]:'var(--bg)')+'"><title>'+dsStr+'：'+(levelMap[dsStr]||0)+'</title></rect>';
     d=addDays(d,1); }
-  let m=start; while(m<=end){ if(m.getDate()<=7){ const col=Math.floor((m-start)/DAY/7); s+='<text x="'+xAt(col)+'" y="'+(padTop-6)+'" font-size="10" fill="#a0a5b5">'+(m.getMonth()+1)+'月</text>'; } m=addDays(m,1); }
+  let m=start; while(m<=end){ if(m.getDate()<=7){ const col=Math.floor((m-start)/DAY/7); s+='<text x="'+xAt(col)+'" y="'+(padTop-6)+'" font-size="10" fill="var(--muted)">'+(m.getMonth()+1)+'月</text>'; } m=addDays(m,1); }
   s+='</svg>'; el.innerHTML=s;
 }
 
