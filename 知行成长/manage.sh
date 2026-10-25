@@ -1,6 +1,6 @@
 #!/bin/bash
 # 知行成长 - 服务管理脚本
-# 用法: ./manage.sh [start|stop|restart|status|logs|help]
+# 用法: ./manage.sh [check [--offline]|start|stop|restart|status|logs|help]
 
 set -e
 
@@ -288,6 +288,12 @@ logs() {
     tail -f "$LOG_FILE"
 }
 
+# 预检，不启动服务
+check_config() {
+    check_venv
+    "$VENV_PYTHON" -B "$PROJECT_ROOT/server/deployment.py" check "$@"
+}
+
 # 显示帮助
 help() {
     echo ""
@@ -298,6 +304,7 @@ help() {
     echo "用法: $0 <命令>"
     echo ""
     echo "命令："
+    echo "  check [--offline]  检查配置、依赖和目录；offline 跳过数据库连接"
     echo "  start      启动服务（后台运行）"
     echo "  stop       停止服务"
     echo "  restart    重启服务"
@@ -312,6 +319,8 @@ help() {
     echo "  COPILOT_ALLOWED_HOSTS   允许的主机 (逗号分隔)"
     echo ""
     echo "示例："
+    echo "  $0 check --offline      # 离线核验（不启动服务）"
+    echo "  $0 check                # 包含数据库连接检查"
     echo "  $0 start                # 启动服务"
     echo "  $0 restart              # 重启服务"
     echo "  PORT=9000 $0 start      # 使用自定义端口"
@@ -323,6 +332,10 @@ help() {
 
 # 主入口
 case "${1:-help}" in
+    check)
+        shift
+        check_config "$@"
+        ;;
     start)
         start
         ;;
