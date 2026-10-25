@@ -1,11 +1,11 @@
 /* 时间线视图样式 */
 
 .timeline-filters {
-  margin-bottom: 24px;
-  padding: 16px;
-  background: #fafbfd;
+  margin-bottom: var(--spacing-xxl);
+  padding: var(--spacing-lg);
+  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .timeline-filters .field-row {
@@ -41,7 +41,7 @@
 
 /* 统计卡片 */
 #timelineStats {
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-xxl);
 }
 
 #timelineStats .card {
@@ -62,23 +62,23 @@
 
 /* 时间线列表 */
 #timelineList {
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-xxl);
 }
 
 .timeline-date-group {
-  margin-bottom: 32px;
+  margin-bottom: var(--spacing-xxxl);
 }
 
 .timeline-date-header {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 16px;
-  padding-bottom: 8px;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
   border-bottom: 2px solid var(--primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .timeline-date-header::before {
@@ -92,12 +92,12 @@
 /* 时间线记录项 */
 .timeline-item {
   position: relative;
-  padding: 14px 16px 14px 48px;
-  margin-bottom: 12px;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 48px;
+  margin-bottom: var(--spacing-md);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--card);
-  transition: all 0.15s;
+  transition: all var(--animation-fast);
 }
 
 .timeline-item:hover {
@@ -156,7 +156,7 @@
 
 /* 模块图标颜色 */
 .timeline-item[data-module="learning"]::before {
-  border-color: #4F6EF7;
+  border-color: var(--primary);
 }
 
 .timeline-item[data-module="reflection"]::before {
@@ -168,11 +168,11 @@
 }
 
 .timeline-item[data-module="prediction"]::before {
-  border-color: #E07B39;
+  border-color: var(--warning);
 }
 
 .timeline-item[data-module="review"]::before {
-  border-color: #2FA84F;
+  border-color: var(--success);
 }
 
 .timeline-item[data-module="insight"]::before {
@@ -180,7 +180,7 @@
 }
 
 .timeline-item[data-module="knowledge"]::before {
-  border-color: #6B7280;
+  border-color: var(--muted);
 }
 
 /* 空状态 */
@@ -245,8 +245,8 @@
 }
 
 #view-timeline .error-state p {
-  margin: 8px 0;
-  color: var(--red, #e5484d);
+  margin: var(--spacing-sm) 0;
+  color: var(--error);
 }
 
 #view-timeline .error-state .btn {

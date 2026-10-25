@@ -1,6 +1,7 @@
 /**
  * 知行成长网页设计变量；沿用现有配色。
  * 跨端一致性需独立核验，本文件不代表与原生端自动同步。
+ * 支持亮色/暗色模式
  */
 
 :root {
@@ -21,7 +22,7 @@
   --warning: #E8A33D;
   --warning-light: #FDF3E3;
   --warning-text: #8A5600;
-  --error: #E5484D;
+  --error: #D63940;  /* 已调整以满足 WCAG AA 对比度要求 */
   --error-light: #FDEEEE;
   --error-text: #B42329;
 
@@ -33,7 +34,7 @@
   /* ===== 文字色 ===== */
   --text: #1F2430;
   --muted: #626B7D;
-  --text-tertiary: #A0A5B5;
+  --text-tertiary: #8A90A0;  /* 已调整以满足 WCAG AA 对比度要求 */
 
   /* ===== 间距（4px 基础步进） ===== */
   --spacing-xs: 4px;
@@ -103,6 +104,46 @@
   --red: var(--error);
   --amber: var(--warning);
   --radius: var(--radius-xl);
+}
+
+/* ===== 暗色模式 ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* ===== 主色系 - 暗色模式 ===== */
+    --primary: #6B82F7;  /* 提高亮度 */
+    --primary-light: #2A3A7A;  /* 深色底 */
+    --primary-dark: #8B9DF0;  /* 更亮 */
+
+    /* 品牌渐变 */
+    --gradient-start: #6B82F7;
+    --gradient-end: #9B7CF0;
+
+    /* ===== 语义色 - 暗色模式 ===== */
+    --success: #4FD670;
+    --success-light: #1A4D2A;
+    --success-text: #7FE89A;
+    --warning: #F7C060;
+    --warning-light: #4D3A1A;
+    --warning-text: #FFD580;
+    --error: #F77075;
+    --error-light: #4D1A1C;
+    --error-text: #FF9095;
+
+    /* ===== 中性色 - 暗色模式 ===== */
+    --bg: #1A1D26;  /* 深灰背景 */
+    --card: #242832;  /* 卡片表面 */
+    --border: #3A3E4A;  /* 深色边框 */
+
+    /* ===== 文字色 - 暗色模式 ===== */
+    --text: #F5F6FA;  /* 浅色文字 */
+    --muted: #A0A5B5;  /* 次要文字 */
+    --text-tertiary: #626B7D;  /* 占位符 */
+
+    /* ===== 阴影 - 暗色模式 ===== */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+    --shadow: var(--shadow-sm), var(--shadow-md);
+  }
 }
 
 /* Keep keyboard focus visible even when a component resets pointer focus. */

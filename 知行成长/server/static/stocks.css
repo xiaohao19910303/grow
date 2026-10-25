@@ -87,7 +87,7 @@
 }
 
 .stocks-actions .btn.primary:hover {
-  background: #3d5ce8;
+  background: var(--primary-dark);
   color: #fff;
 }
 
@@ -193,18 +193,18 @@
 }
 
 .stock-action.buy {
-  background: #e8f7ec;
-  color: var(--green);
+  background: var(--success-light);
+  color: var(--success);
 }
 
 .stock-action.sell {
-  background: #fdeeee;
-  color: var(--red);
+  background: var(--error-light);
+  color: var(--error);
 }
 
 .stock-action.hold {
-  background: #fdf3e3;
-  color: var(--amber);
+  background: var(--warning-light);
+  color: var(--warning);
 }
 
 .stock-rationale {
@@ -252,18 +252,18 @@
 }
 
 .outcome-badge.pending {
-  background: #fdf3e3;
-  color: var(--amber);
+  background: var(--warning-light);
+  color: var(--warning);
 }
 
 .outcome-badge.success {
-  background: #e8f7ec;
-  color: var(--green);
+  background: var(--success-light);
+  color: var(--success);
 }
 
 .outcome-badge.failure {
-  background: #fdeeee;
-  color: var(--red);
+  background: var(--error-light);
+  color: var(--error);
 }
 
 .profit-loss {
@@ -316,7 +316,7 @@
 }
 
 .btn-small.primary:hover {
-  background: #3d5ce8;
+  background: var(--primary-dark);
   color: #fff;
 }
 
@@ -420,7 +420,7 @@
 }
 
 .form-actions .btn.primary:hover {
-  background: #3d5ce8;
+  background: var(--primary-dark);
   color: #fff;
 }
 

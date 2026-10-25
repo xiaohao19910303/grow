@@ -1,7 +1,7 @@
 .cp-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
 .cp-summary{font-size:17px;font-weight:600;margin:16px 0}
 .cp-status{color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
-.cp-blockers{color:#725619;line-height:1.9;padding-left:22px}
+.cp-blockers{color:var(--warning-text);line-height:1.9;padding-left:22px}
 .cp-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
 .cp-reader{line-height:1.9;overflow-wrap:anywhere}
 .cp-reader h2,.cp-reader h3{margin-top:24px}
@@ -10,7 +10,7 @@
 .cp-reader blockquote{border-left:3px solid var(--primary);margin:10px 0;padding-left:14px;color:var(--muted)}
 .cp-reader details{border:1px solid var(--border);border-radius:8px;padding:12px;margin:18px 0}
 .cp-reader summary{cursor:pointer;font-weight:600}
-.cp-reader pre,.cp-stream{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f7fb;padding:14px;border-radius:8px}
+.cp-reader pre,.cp-stream{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);padding:var(--spacing-md);border-radius:var(--radius-sm)}
 #view-copilot textarea{display:block;width:100%;box-sizing:border-box;font:14px/1.7 monospace;margin:8px 0 18px;resize:vertical}
 #view-copilot [hidden]{display:none}
 @media(max-width:680px){.cp-row{align-items:flex-start}.cp-actions button{flex-grow:1}.cp-summary{font-size:15px}}
@@ -18,13 +18,13 @@
 /* 课程完成记录样式 */
 .cp-reflection-dialog, .cp-reflection-view {
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 0;
   max-width: 600px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-md);
 }
 
 .cp-reflection-dialog::backdrop, .cp-reflection-view::backdrop {
@@ -80,14 +80,14 @@
 .cp-reflection-content textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.1);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .reflection-info {
-  background: var(--bg-soft, #f5f6fb);
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  background: var(--bg);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-xl);
 }
 
 .reflection-info p {
@@ -102,9 +102,9 @@
 .reflection-section h3 {
   font-size: 16px;
   color: var(--primary);
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--primary-soft, #eef1ff);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--primary-light);
 }
 
 .reflection-section p {
@@ -115,13 +115,13 @@
 
 .reflection-badge {
   display: inline-block;
-  background: #e8f5e9;
-  color: #2e7d32;
-  padding: 4px 10px;
-  border-radius: 12px;
+  background: var(--success-light);
+  color: var(--success);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 500;
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
 }
 
 .reflection-badge::before {
@@ -135,11 +135,11 @@
 
 /* 课程详情页面样式 */
 .lesson-detail-section {
-  margin: 20px 0;
-  padding: 16px;
-  background: var(--bg-subtle, #f9f9f9);
-  border-radius: 8px;
-  border-left: 3px solid var(--primary, #4a90e2);
+  margin: var(--spacing-xl) 0;
+  padding: var(--spacing-lg);
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--primary);
 }
 
 .lesson-detail-section h4 {
@@ -189,35 +189,35 @@
 }
 
 .lesson-info, .lesson-record, .lesson-plan-info {
-  background: white;
-  padding: 12px;
-  border-radius: 6px;
-  margin: 8px 0;
+  background: var(--card);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  margin: var(--spacing-sm) 0;
 }
 
 .lesson-info p, .lesson-record p, .lesson-plan-info p {
-  margin: 6px 0;
+  margin: var(--spacing-sm) 0;
   line-height: 1.6;
 }
 
 .lesson-info h5, .lesson-record h5, .lesson-plan-info h5 {
-  margin: 12px 0 8px 0;
+  margin: var(--spacing-md) 0 var(--spacing-sm) 0;
   font-size: 14px;
-  color: var(--primary, #4a90e2);
+  color: var(--primary);
 }
 
 .lesson-record ul {
-  margin: 8px 0;
+  margin: var(--spacing-sm) 0;
   padding-left: 20px;
 }
 
 .lesson-record li {
-  margin: 6px 0;
+  margin: var(--spacing-sm) 0;
   line-height: 1.6;
 }
 
 .lesson-record li strong {
-  color: var(--primary, #4a90e2);
+  color: var(--primary);
 }
 
 .btn-small {
