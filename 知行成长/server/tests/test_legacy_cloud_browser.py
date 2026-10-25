@@ -31,7 +31,7 @@ class LegacyCloudBrowser(CloudHTTPFixture):
         @self.app.get('/')
         def home():
             source=(static/'index.html').read_text()
-            style=source[source.index('<style>'):source.index('</style>')+8]
+            style='<style>'+(static/'design-tokens.css').read_text()+'</style>'+source[source.index('<style>'):source.index('</style>')+8]
             language='<script src="/static/language.js"></script>' if (static/'language.js').exists() else ''
             return HTMLResponse('''<!doctype html><html lang="zh"><meta charset="utf-8">'''+style+'''
             <body><input id="autoTranslateArticles" type="checkbox" hidden><nav><button onclick="goTab('copilot')">旧认知课程</button><button onclick="goTab('reading')">认知阅读</button></nav>

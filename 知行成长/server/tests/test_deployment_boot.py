@@ -61,6 +61,11 @@ class DeploymentBoot(unittest.TestCase):
                             h={'X-Copilot-Request':'1','X-Grow-Action-Schema':'2'}
                             login=client.post('/api/auth/login',json={'username':'owner','password':env['APP_PASSWORD']},headers=h)
                             self.assertEqual(login.status_code,200,login.text)
+                            page=client.get('/');self.assertEqual(page.status_code,200)
+                            self.assertIn('/static/design-tokens.css',page.text)
+                            tokens=client.get('/static/design-tokens.css');self.assertEqual(tokens.status_code,200)
+                            self.assertIn('--primary:',tokens.text)
+                            self.assertIn('text/css',tokens.headers['content-type'])
                             modules=client.get('/api/study-materials');self.assertEqual(modules.status_code,200,modules.text)
                             english=next(module for module in modules.json()['modules'] if module['id']=='yingyu')
                             self.assertTrue(english['lessons']);self.assertTrue(all(lesson['learning_state']=='unknown' for lesson in english['lessons']))

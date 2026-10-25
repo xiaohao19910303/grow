@@ -27,7 +27,7 @@ class ReadingSiteBrowser(CloudHTTPFixture):
         self.app.mount('/static',StaticFiles(directory=static))
         @self.app.get('/')
         def home():
-            source=(static/'index.html').read_text();style=source[source.index('<style>'):source.index('</style>')+8]
+            source=(static/'index.html').read_text();style='<style>'+(static/'design-tokens.css').read_text()+'</style>'+source[source.index('<style>'):source.index('</style>')+8]
             return HTMLResponse('<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+style+'''
             <link rel="stylesheet" href="/static/reading.css"><body><main class="wrap"><p id="notice"></p><div id="view-copilot" style="display:none"></div><div id="view-reading"></div></main>
             <script>window.Account={user:{id:'test-owner',is_owner:true}};window.toast=text=>document.getElementById('notice').textContent=text;window.goTab=()=>enterReading();</script>

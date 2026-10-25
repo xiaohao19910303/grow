@@ -1,0 +1,122 @@
+/**
+ * 知行成长网页设计变量；沿用现有配色。
+ * 跨端一致性需独立核验，本文件不代表与原生端自动同步。
+ */
+
+:root {
+  /* ===== 主色系 ===== */
+  --primary: #465CE0;
+  --primary-light: #EEF1FF;
+  --primary-dark: #3D5CE8;
+
+  /* 品牌渐变 */
+  --gradient-start: #4F6EF7;
+  --gradient-end: #7C5CF0;
+  --gradient-brand: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+
+  /* ===== 语义色 ===== */
+  --success: #2FA84F;
+  --success-light: #E8F7EC;
+  --success-text: #1B6B32;
+  --warning: #E8A33D;
+  --warning-light: #FDF3E3;
+  --warning-text: #8A5600;
+  --error: #E5484D;
+  --error-light: #FDEEEE;
+  --error-text: #B42329;
+
+  /* ===== 中性色 ===== */
+  --bg: #F5F6FA;
+  --card: #FFFFFF;
+  --border: #E6E8F0;
+
+  /* ===== 文字色 ===== */
+  --text: #1F2430;
+  --muted: #626B7D;
+  --text-tertiary: #A0A5B5;
+
+  /* ===== 间距（4px 基础步进） ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-xxl: 24px;
+  --spacing-xxxl: 32px;
+  --spacing-page: 28px;
+
+  /* ===== 圆角 ===== */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-xxl: 18px;
+  --radius-pill: 999px;
+
+  /* ===== 阴影 ===== */
+  --shadow-sm: 0 1px 3px rgba(20, 26, 51, 0.06);
+  --shadow-md: 0 8px 24px rgba(20, 26, 51, 0.05);
+  --shadow: var(--shadow-sm), var(--shadow-md);
+
+  /* ===== 排版 ===== */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+
+  --font-h1: 700 28px/1.3 var(--font-family);
+  --font-h2: 600 22px/1.3 var(--font-family);
+  --font-h3: 600 18px/1.4 var(--font-family);
+  --font-h4: 600 15px/1.4 var(--font-family);
+
+  --font-body-large: 400 16px/1.6 var(--font-family);
+  --font-body: 400 14px/1.6 var(--font-family);
+  --font-body-small: 400 13px/1.6 var(--font-family);
+  --font-caption: 500 12px/1.4 var(--font-family);
+  --font-overline: 600 11px/1.4 var(--font-family);
+
+  --font-display-number: 700 24px/1.2 var(--font-family);
+  --font-stat-number: 600 20px/1.2 var(--font-family);
+
+  /* ===== 组件尺寸 ===== */
+  --button-height: 44px;
+  --button-height-sm: 36px;
+  --button-height-lg: 52px;
+  --input-height: 44px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --icon-xl: 32px;
+
+  /* ===== 动画 ===== */
+  --animation-fast: 0.15s ease-in-out;
+  --animation-medium: 0.25s ease-in-out;
+  --animation-slow: 0.35s ease-in-out;
+  --animation-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ===== 页面 ===== */
+  --page-max-width: 1180px;
+  --page-padding: var(--spacing-page);
+
+  /* ===== 旧变量兼容 ===== */
+  --primary-soft: var(--primary-light);
+  --green: var(--success);
+  --red: var(--error);
+  --amber: var(--warning);
+  --radius: var(--radius-xl);
+}
+
+/* Keep keyboard focus visible even when a component resets pointer focus. */
+:root :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .btn:active { transform: none !important; }
+}
