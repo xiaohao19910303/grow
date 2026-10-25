@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>知行成长 · 个人学习与成长平台</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="stylesheet" href="/static/design-tokens.css?v=20261025-dark-fix">
+<link rel="stylesheet" href="/static/design-tokens.css?v=20261025-ui-v2">
 <style>
   /* Dark mode fix: 2026-10-25 */
   *{box-sizing:border-box}
@@ -22,25 +22,66 @@
   .brand .logo{width:30px;height:30px;border-radius:8px;background:var(--gradient-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
   .brand h1{font-size:24px;margin:0;font-weight:700}
   .brand .sub{font-size:12px;color:var(--muted)}
-  .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  /* 按钮层级系统 */
   .btn{
-    display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--radius-md,10px);border:1px solid var(--border);
-    background:var(--card);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:var(--animation-fast,.15s);white-space:nowrap;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    height:var(--btn-height,36px);padding:var(--btn-padding,0 14px);
+    border-radius:var(--btn-radius,10px);border:1px solid var(--border);
+    background:var(--card);color:var(--text);font:var(--btn-font,500 13px/1);
+    cursor:pointer;transition:all var(--animation-fast,.15s);white-space:nowrap;
   }
   .btn:hover{border-color:var(--primary);color:var(--primary)}
-  .btn:active{transform:scale(0.98);opacity:0.9}
-  .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+  .btn:active{transform:scale(0.97)}
+  /* 主操作按钮 */
+  .btn.primary{background:var(--primary);border-color:transparent;color:#fff}
   .btn.primary:hover{background:var(--primary-dark);color:#fff}
-  .btn.danger:hover{border-color:var(--error-text);color:var(--error-text)}
+  /* 幽灵按钮 - 低优先级 */
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+  .btn.ghost:hover{background:var(--bg);color:var(--text)}
+  /* 危险按钮 */
+  .btn.danger{color:var(--error);border-color:transparent;background:transparent}
+  .btn.danger:hover{background:var(--error-light);color:var(--error-text)}
+  /* 图标按钮 */
+  .btn.icon-only{width:36px;padding:0;font-size:16px}
+  .btn.icon-only.sm{width:30px;height:30px;font-size:14px}
   .badge{font-size:12px;padding:4px 10px;border-radius:var(--radius-pill);background:var(--primary-light);color:var(--primary);font-weight:600}
   .badge.on{background:var(--success-light);color:var(--success-text)}
   .badge.warn{background:var(--warning-light);color:var(--warning-text)}
   .badge.err{background:var(--error-light);color:var(--error-text)}
+  /* 搜索框 */
+  .search-box{position:relative;display:flex;align-items:center}
+  .search-box input{width:180px;height:34px;padding:0 32px 0 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg);font:400 13px/1;transition:all var(--animation-fast);color:var(--text)}
+  .search-box input:focus{width:240px;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light);outline:none}
+  .search-box .search-shortcut{position:absolute;right:8px;font-size:11px;color:var(--text-tertiary);background:var(--card);padding:2px 5px;border-radius:4px;border:1px solid var(--border);pointer-events:none}
+  /* 用户菜单 */
+  .user-menu{position:relative}
+  .user-menu-trigger{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:var(--radius-md);cursor:pointer;border:1px solid transparent;transition:all var(--animation-fast)}
+  .user-menu-trigger:hover{background:var(--bg);border-color:var(--border)}
+  .user-avatar{width:28px;height:28px;border-radius:50%;background:var(--gradient-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
+  .user-menu-name{font-size:13px;font-weight:500;color:var(--text)}
+  .user-menu-arrow{font-size:10px;color:var(--muted);transition:transform var(--animation-fast)}
+  .user-menu.open .user-menu-arrow{transform:rotate(180deg)}
+  .user-dropdown{position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:4px;opacity:0;visibility:hidden;transform:translateY(-4px);transition:all var(--animation-fast);z-index:100}
+  .user-menu.open .user-dropdown{opacity:1;visibility:visible;transform:translateY(0)}
+  .user-dropdown-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);transition:background var(--animation-fast)}
+  .user-dropdown-item:hover{background:var(--bg)}
+  .user-dropdown-item.danger{color:var(--error)}
+  .user-dropdown-item.danger:hover{background:var(--error-light)}
+  .user-dropdown-divider{height:1px;background:var(--border);margin:4px 0}
+  .user-dropdown-status{padding:8px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .status-dot{width:6px;height:6px;border-radius:50%}
+  .status-dot.connected{background:var(--success)}
+  .status-dot.connecting{background:var(--warning)}
+  .status-dot.disconnected{background:var(--error)}
   .wrap{max-width:1180px;margin:0 auto;padding:24px 28px 64px}
-  .tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--card);padding:6px;border-radius:12px;border:1px solid var(--border);width:max-content;max-width:100%;overflow-x:auto}
-  .tab{padding:8px 16px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:550;white-space:nowrap;border:1px solid transparent}
-  .tab:hover{color:var(--text)}
-  .tab.active{background:var(--primary);color:#fff}
+  /* 主导航 Tabs */
+  .tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--card);padding:4px;border-radius:var(--radius-lg);border:1px solid var(--border);width:max-content;max-width:100%;overflow-x:auto}
+  .tab{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius-md);cursor:pointer;color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap;border:none;background:transparent;transition:all var(--animation-fast);position:relative}
+  .tab:hover{color:var(--text);background:var(--bg)}
+  .tab.active{color:var(--primary);background:var(--primary-light);font-weight:600}
+  .tab-icon{font-size:15px;line-height:1;opacity:0.8}
+  .tab.active .tab-icon{opacity:1}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
   .card .k{font-size:12px;color:var(--muted);margin-bottom:6px}
@@ -137,7 +178,18 @@
   .cp-setting-option select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer}
   .cp-setting-option label{display:flex;align-items:center;gap:8px;cursor:pointer}
 
-  @media (max-width:680px){.wrap{padding:16px 14px 48px}.topbar{padding:12px 18px}.modal .form-grid{grid-template-columns:1fr}}
+  @media (max-width:680px){
+    .wrap{padding:16px 14px 48px}
+    .topbar{padding:12px 18px}
+    .topbar .brand .sub{display:none}
+    .toolbar{gap:4px}
+    .search-box input{width:120px}
+    .search-box input:focus{width:160px}
+    .user-menu-name{display:none}
+    .tab{padding:6px 10px;font-size:12px}
+    .tab-icon{font-size:13px}
+    .modal .form-grid{grid-template-columns:1fr}
+  }
 </style>
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
 <link rel="stylesheet" href="/static/growth.css?v=20261025-coach">
@@ -171,11 +223,40 @@
       <input type="search" id="globalSearch" placeholder="搜索…" autocomplete="off" aria-label="全局搜索">
       <kbd class="search-shortcut">⌘K</kbd>
     </div>
-    <span id="accountName" class="badge" aria-label="当前账号"></span>
-    <button class="btn" onclick="toggleTheme()" id="themeToggle" aria-label="切换主题">🌙</button>
-    <button class="btn" onclick="Account.logout()">退出登录</button>
-    <span class="badge" id="storageStatus" role="status">连接中…</span>
-    <button class="btn" onclick="goTab('settings')">设置</button>
+    <button class="btn ghost icon-only" onclick="toggleTheme()" id="themeToggle" aria-label="切换主题" title="切换主题">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="themeIcon">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    <button class="btn ghost icon-only" onclick="goTab('settings')" aria-label="设置" title="设置">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+    <div class="user-menu" id="userMenu">
+      <div class="user-menu-trigger" onclick="toggleUserMenu()">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <span class="user-menu-name" id="accountName">用户</span>
+        <span class="user-menu-arrow">▾</span>
+      </div>
+      <div class="user-dropdown">
+        <div class="user-dropdown-status">
+          <span class="status-dot connecting" id="storageStatusDot"></span>
+          <span id="storageStatus">连接中…</span>
+        </div>
+        <div class="user-dropdown-divider"></div>
+        <div class="user-dropdown-item" onclick="goTab('settings');toggleUserMenu()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          设置
+        </div>
+        <div class="user-dropdown-divider"></div>
+        <div class="user-dropdown-item danger" onclick="Account.logout()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          退出登录
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -186,11 +267,21 @@
     <button class="btn" onclick="reloadLegacyState()">下载副本并载入最新记录</button>
   </div>
   <nav class="tabs main-nav" id="tabs" aria-label="主导航">
-    <button class="tab active" data-group="personal" aria-current="page" onclick="goGroup('personal')">今日</button>
-    <button class="tab" data-group="actions" onclick="goGroup('actions')">行动</button>
-    <button class="tab" data-group="learning" onclick="goGroup('learning')">学习</button>
-    <button class="tab" data-group="records" onclick="goGroup('records')">记录</button>
-    <button class="tab" data-group="growth" onclick="goGroup('growth')">成长</button>
+    <button class="tab active" data-group="personal" aria-current="page" onclick="goGroup('personal')">
+      <span class="tab-icon">📅</span>今日
+    </button>
+    <button class="tab" data-group="actions" onclick="goGroup('actions')">
+      <span class="tab-icon">🎯</span>行动
+    </button>
+    <button class="tab" data-group="learning" onclick="goGroup('learning')">
+      <span class="tab-icon">📚</span>学习
+    </button>
+    <button class="tab" data-group="records" onclick="goGroup('records')">
+      <span class="tab-icon">📝</span>记录
+    </button>
+    <button class="tab" data-group="growth" onclick="goGroup('growth')">
+      <span class="tab-icon">📈</span>成长
+    </button>
   </nav>
   <nav id="subnav" class="subnav" aria-label="栏目导航" hidden></nav>
   <nav id="contextnav" class="subnav context-nav" aria-label="页面视图" hidden></nav>
@@ -605,6 +696,53 @@
 <script src="/static/ai-config.js?v=20261025-e1"></script>
 <script src="/static/theme.js?v=20261025-structure"></script>
 <script>
+/* ================= 主题切换 ================= */
+function initTheme(){
+  const saved = localStorage.getItem('theme');
+  if(saved === 'dark' || saved === 'light'){
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+  updateThemeIcon();
+}
+function toggleTheme(){
+  const current = document.documentElement.getAttribute('data-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let newTheme;
+  if(current === 'dark') newTheme = 'light';
+  else if(current === 'light') newTheme = 'dark';
+  else newTheme = prefersDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  updateThemeIcon();
+}
+function updateThemeIcon(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+    (document.documentElement.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const icon = document.getElementById('themeIcon');
+  if(icon){
+    if(isDark){
+      icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+    } else {
+      icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+    }
+  }
+}
+/* ================= 用户菜单 ================= */
+function toggleUserMenu(){
+  const menu = document.getElementById('userMenu');
+  if(menu) menu.classList.toggle('open');
+}
+function closeUserMenu(){
+  const menu = document.getElementById('userMenu');
+  if(menu) menu.classList.remove('open');
+}
+document.addEventListener('click', function(e){
+  const menu = document.getElementById('userMenu');
+  if(menu && !menu.contains(e.target)){
+    closeUserMenu();
+  }
+});
+
 /* ================= 工具 ================= */
 const DAY = 86400000;
 const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
@@ -702,7 +840,18 @@ async function saveToServer(){
   }
   return saved;
 }
-function setStatus(txt, cls){ const el=document.getElementById('storageStatus'); el.textContent=txt; el.className='badge'+(cls?(' '+cls):''); }
+function setStatus(txt, cls){
+  const el=document.getElementById('storageStatus');
+  const dot=document.getElementById('storageStatusDot');
+  if(el) el.textContent=txt;
+  if(dot){
+    dot.className='status-dot';
+    if(cls==='on') dot.classList.add('connected');
+    else if(cls==='warn') dot.classList.add('connecting');
+    else if(cls==='err') dot.classList.add('disconnected');
+    else dot.classList.add('connecting');
+  }
+}
 function exportJson(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='grow-partial-records-'+today()+'.json'; a.click(); URL.revokeObjectURL(a.href); toast('已导出局部记录副本；不含行动、笔记或正式内容');
@@ -2359,11 +2508,17 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 
 /* ================= 初始化 ================= */
 async function init(){
+  initTheme();
   await Account.ready;
   document.getElementById('todayLabel').textContent=fmtDateFull(today())+' · '+WEEKCN[(new Date().getDay()+6)%7];
   const hd=document.getElementById('habitDate'); if(hd){ hd.value=today(); hd.addEventListener('change', renderHabits); }
   document.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='s'){ e.preventDefault(); saveToServer(); } });
   document.getElementById('personalDate').value=today();
+  // Update user avatar and name
+  const accountInfo = Account.info ? Account.info() : null;
+  const displayName = accountInfo?.username || '用户';
+  document.getElementById('accountName').textContent = displayName;
+  document.getElementById('userAvatar').textContent = displayName.charAt(0).toUpperCase();
   loadFromServer();
 }
 init();

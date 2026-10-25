@@ -104,6 +104,16 @@
   --red: var(--error);
   --amber: var(--warning);
   --radius: var(--radius-xl);
+
+  /* ===== 按钮层级 ===== */
+  --btn-height: 36px;
+  --btn-height-sm: 30px;
+  --btn-height-lg: 44px;
+  --btn-padding: 0 14px;
+  --btn-padding-sm: 0 10px;
+  --btn-padding-lg: 0 18px;
+  --btn-radius: var(--radius-md);
+  --btn-font: 500 13px/1 var(--font-family);
 }
 
 /* ===== 暗色模式 ===== */
