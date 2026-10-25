@@ -24,6 +24,7 @@ PROMPT_KINDS = ('自由记录', '学习收获', '遇到困难', '决策回顾')
 MAX_TEXT = 10000
 
 TABLES = '''
+CREATE TABLE IF NOT EXISTS reflection_link_state (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reflection_entries (
     id TEXT PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reflection_versions (
@@ -98,10 +99,13 @@ class ReflectionsStore:
         return int(digest((user['schema_name'] + ':' if user else '') + name)[:15], 16)
 
     @contextmanager
-    def lock(self):
+    def lock(self, handoff=False):
         if self.remote:
             with self.conn() as c:
                 c.execute('SELECT pg_advisory_xact_lock(?)', (self.lock_id('reflection-writes'),))
+                if not handoff:
+                    from record_handoff import assert_writable
+                    assert_writable(self)
                 yield
             return
         if not self.root.is_dir():
@@ -110,6 +114,9 @@ class ReflectionsStore:
         with (self.runtime / 'write.lock').open('a') as stream:
             fcntl.flock(stream, fcntl.LOCK_EX)
             try:
+                if not handoff:
+                    from record_handoff import assert_writable
+                    assert_writable(self)
                 yield
             finally:
                 fcntl.flock(stream, fcntl.LOCK_UN)
@@ -201,7 +208,7 @@ class ReflectionsStore:
     def initialize(self):
         if not self.remote and (self.runtime / 'restore-pending.json').exists():
             fail('restore_pending', '存在未完成的恢复，请先处理恢复日志。', 503)
-        with self.lock():
+        with self.lock(handoff=True):
             with self.conn() as c:
                 sqlite = isinstance(c, sqlite3.Connection)
                 installed = self.remote or c.execute("SELECT 1 FROM sqlite_master WHERE name='reflection_entries'" if sqlite else
@@ -211,6 +218,9 @@ class ReflectionsStore:
                 database_snapshot(self, self.runtime / f'before-reflection-{uuid.uuid4().hex}.db')
             with self.conn() as c:
                 c.executescript(TABLES)
+            from record_handoff import state
+            if state(self)['phase'] not in ('local','preview'):
+                return
             with self.conn() as c:
                 for row in c.execute('SELECT id,data FROM reflection_ai_attempts').fetchall():
                     a = json.loads(row['data'])
@@ -331,7 +341,7 @@ class ReflectionsStore:
                 os.unlink(tmp)
 
     def _put(self, table, key, data):
-        with self.conn() as c:
+        with self.lock(), self.conn() as c:
             if table == 'reflection_versions':
                 c.execute('INSERT INTO reflection_versions VALUES (?,?) ON CONFLICT(key) DO UPDATE SET data=excluded.data',
                           (key, encoded(data)))
