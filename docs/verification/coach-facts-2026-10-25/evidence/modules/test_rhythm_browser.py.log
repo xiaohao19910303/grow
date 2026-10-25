@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-9.1.1, pluggy-1.7.0 -- /Users/hao/Documents/grow/知行成长/.venv/bin/python
+rootdir: /Users/hao/Documents/grow
+collecting ... collected 6 items
+
+知行成长/server/tests/test_rhythm_browser.py::RhythmBrowserTests::test_created_focus_lost_response_retry_does_not_create_twice RHYTHM_BROWSER_EVIDENCE /var/folders/lq/n22ny0mj32gdqfv_4zgm9sy80000gn/T/grow-rhythm-browser-esi2x605
+PASSED
+知行成长/server/tests/test_rhythm_browser.py::RhythmBrowserTests::test_minimum_check_recap_reload_weekly_and_mobile PASSED
+知行成长/server/tests/test_rhythm_browser.py::RhythmBrowserTests::test_recap_pending_recovery_preserves_edits_after_unsent_request PASSED
+知行成长/server/tests/test_rhythm_browser.py::RhythmBrowserTests::test_settings_reload_initializes_form_and_preserves_unsaved_edits PASSED
+知行成长/server/tests/test_rhythm_browser.py::RhythmBrowserTests::test_source_completion_article_and_course_recap_uses_receipt PASSED
+知行成长/server/tests/test_rhythm_browser.py::RhythmBrowserTests::test_time_finish_fields_and_historical_read_only PASSED
+
+======================== 6 passed in 103.18s (0:01:43) =========================
+WEB_MODULE_RESULT {"tests": 6, "failed": 0, "skipped": 0, "exit_code": 0, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

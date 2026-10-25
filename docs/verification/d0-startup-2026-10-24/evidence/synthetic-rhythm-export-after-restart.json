@@ -1,0 +1,336 @@
+{
+  "format": "grow-rhythm-v1",
+  "contract_version": 1,
+  "exported_at": "2026-10-24T15:32:56.953838+00:00",
+  "preferences": [
+    {
+      "effective_at": "2026-10-24T15:24:57.342712+00:00",
+      "effective_from": "2026-10-24",
+      "enabled": true,
+      "id": "rhythm-pref-225eff61b9b04d6fa6129f082e3e20d8",
+      "reminder_enabled": false,
+      "reminder_time": null,
+      "review_weekday": 7,
+      "revision": 1,
+      "timezone": "Asia/Shanghai",
+      "updated_at": "2026-10-24T15:24:57.342712+00:00",
+      "weekly_target_days": 3
+    }
+  ],
+  "focus_days": [
+    {
+      "first_step": "只列一个需要核对的问题",
+      "id": "focus-1d872f288fdc4ae9aade230a12797b8a",
+      "local_date": "2026-10-24",
+      "minimum_step": "",
+      "mode": "standard",
+      "plan_id": "action-8306a1e9659f4f77bf035a550444b411",
+      "rest": false,
+      "revision": 4,
+      "selected_at": "2026-10-24T15:27:07.728729+00:00",
+      "success_criterion": "",
+      "timezone": "Asia/Shanghai",
+      "updated_at": "2026-10-24T15:27:12.435051+00:00"
+    }
+  ],
+  "weekly_cards": [
+    {
+      "adjustment_target_plan_id": "action-94811fde144f4e75aacf7179bcc944ac",
+      "adjustment_text": "D0合成验证：开始前先核对一条证据。",
+      "as_of": "2026-10-24",
+      "confirmed_at": "2026-10-24T15:25:34.647614+00:00",
+      "history": [],
+      "id": "weekly-f4d434feab704de782649efe9f206dac",
+      "is_partial": true,
+      "records": [
+        {
+          "activity_at": "2026-10-24T15:25:06.652119+00:00",
+          "activity_confirmed": true,
+          "activity_date": "2026-10-24",
+          "activity_timezone": "Asia/Shanghai",
+          "actual_minutes": 0,
+          "business_date": "2026-10-24",
+          "completion_effect": "none",
+          "completion_mode": "check",
+          "date_basis": "actual_confirmation",
+          "ended_at": "2026-10-24T15:25:06.652119+00:00",
+          "fact_version": 2,
+          "focus_day_id": "focus-1d872f288fdc4ae9aade230a12797b8a",
+          "focus_plan_id_snapshot": "action-94811fde144f4e75aacf7179bcc944ac",
+          "focus_selected_at_snapshot": "2026-10-24T15:25:02.345204+00:00",
+          "id": "execution-fe3b68d27bc740f0ac31868687712205",
+          "minimum_step_snapshot": "只列一个需要核对的问题",
+          "next_step": "D0合成验证：下次核对一条依据。",
+          "note": "D0合成验证：已列出问题，完整待办尚未完成。",
+          "outcome": "partial",
+          "plan_id": "action-94811fde144f4e75aacf7179bcc944ac",
+          "planned_date": "2026-10-24",
+          "planned_minutes": null,
+          "recap_history": [
+            {
+              "next_step": "",
+              "note": "",
+              "recap_kind": "gain",
+              "recap_revision": 0,
+              "recap_saved_at": null
+            }
+          ],
+          "recap_kind": "gain",
+          "recap_revision": 1,
+          "recap_saved_at": "2026-10-24T15:25:11.401309+00:00",
+          "record_kind": "step",
+          "rhythm_variant": "minimum",
+          "schema_version": 2,
+          "started_at": "2026-10-24T15:25:06.652119+00:00",
+          "target": null,
+          "timezone": "Asia/Shanghai",
+          "title": "D0隔离验证：列出一个问题",
+          "variant": "minimum"
+        }
+      ],
+      "revision": 1,
+      "selected_execution_ids": [
+        "execution-fe3b68d27bc740f0ac31868687712205"
+      ],
+      "snapshot_hash": "dfa8448698bca29047d6701d51839b391c734fceaf0541c79ac7faea3310a155",
+      "stats": {
+        "action_dates": [
+          "2026-10-24"
+        ],
+        "action_days": 1,
+        "action_units": 1,
+        "loop_dates": [
+          "2026-10-24"
+        ],
+        "loop_days": 1,
+        "minimum_dates": [
+          "2026-10-24"
+        ],
+        "minimum_days": 1,
+        "recap_units": 1,
+        "source_fact_ids": [
+          "execution-fe3b68d27bc740f0ac31868687712205"
+        ],
+        "source_recap_revisions": {
+          "execution-fe3b68d27bc740f0ac31868687712205": 1
+        },
+        "standard_days": 0
+      },
+      "target_days": 3,
+      "timezone": "Asia/Shanghai",
+      "week_end": "2026-10-25",
+      "week_start": "2026-10-19"
+    }
+  ],
+  "enrollments": [
+    {
+      "app_version": "rhythm-v1",
+      "day14_survey": null,
+      "day7_survey": null,
+      "eligible_reason": "local_owner_opted_in",
+      "enrolled_at": "2026-10-24T15:28:09.656681+00:00",
+      "experiment_key": "daily-rhythm-v1",
+      "id": "participant-e09022f93e1c462ba839e1be6b0eba15",
+      "is_test": false,
+      "review_weekday": 7,
+      "timezone_snapshot": "Asia/Shanghai",
+      "weekly_target_days": 3
+    }
+  ],
+  "plans": [
+    {
+      "at": null,
+      "completed_at": "2026-10-24T15:27:57.853780+00:00",
+      "completion_mode": "time",
+      "completion_record_id": "execution-d5c1f89d2b054bd4a86b72f7a1f2bf37",
+      "created_at": "2026-10-24T15:27:02.967078+00:00",
+      "end_date": "2026-10-24",
+      "estimated_minutes": null,
+      "horizon": "short",
+      "id": "action-8306a1e9659f4f77bf035a550444b411",
+      "if_then": "",
+      "minimum_minutes": 1,
+      "parent_id": null,
+      "period": "day",
+      "reason": "",
+      "reminder": false,
+      "reminder_at": null,
+      "revision": 3,
+      "schema_version": 2,
+      "start_date": "2026-10-24",
+      "status": "completed",
+      "target": {
+        "course": "2026-10-09-Day001-为什么天空是蓝色的.md",
+        "kind": "yingyu",
+        "lesson_no": 1,
+        "plan_id": ""
+      },
+      "target_count": 1,
+      "target_minutes": 1,
+      "timezone": "Asia/Shanghai",
+      "title": "Day 001｜Why Does the Sky Look Blue?｜为什么天空是蓝色的？",
+      "updated_at": "2026-10-24T15:27:57.856412+00:00"
+    },
+    {
+      "at": null,
+      "completed_at": null,
+      "completion_mode": "check",
+      "completion_record_id": null,
+      "created_at": "2026-10-24T15:25:02.200164+00:00",
+      "end_date": "2026-10-24",
+      "estimated_minutes": null,
+      "horizon": "short",
+      "id": "action-94811fde144f4e75aacf7179bcc944ac",
+      "if_then": "",
+      "minimum_minutes": null,
+      "parent_id": null,
+      "period": "day",
+      "reason": "",
+      "reminder": false,
+      "reminder_at": null,
+      "revision": 2,
+      "schema_version": 2,
+      "start_date": "2026-10-24",
+      "status": "active",
+      "target": null,
+      "target_count": 1,
+      "target_minutes": null,
+      "timezone": "Asia/Shanghai",
+      "title": "D0隔离验证：列出一个问题",
+      "updated_at": "2026-10-24T15:25:06.654885+00:00"
+    }
+  ],
+  "executions": [
+    {
+      "activity_at": "2026-10-24T15:25:06.652119+00:00",
+      "activity_confirmed": true,
+      "activity_date": "2026-10-24",
+      "activity_timezone": "Asia/Shanghai",
+      "actual_minutes": 0,
+      "business_date": "2026-10-24",
+      "completion_effect": "none",
+      "completion_mode": "check",
+      "date_basis": "actual_confirmation",
+      "ended_at": "2026-10-24T15:25:06.652119+00:00",
+      "fact_version": 2,
+      "focus_day_id": "focus-1d872f288fdc4ae9aade230a12797b8a",
+      "focus_plan_id_snapshot": "action-94811fde144f4e75aacf7179bcc944ac",
+      "focus_selected_at_snapshot": "2026-10-24T15:25:02.345204+00:00",
+      "id": "execution-fe3b68d27bc740f0ac31868687712205",
+      "minimum_step_snapshot": "只列一个需要核对的问题",
+      "next_step": "D0合成验证：下次核对一条依据。",
+      "note": "D0合成验证：已列出问题，完整待办尚未完成。",
+      "outcome": "partial",
+      "plan_id": "action-94811fde144f4e75aacf7179bcc944ac",
+      "planned_date": "2026-10-24",
+      "planned_minutes": null,
+      "recap_history": [
+        {
+          "next_step": "",
+          "note": "",
+          "recap_kind": "gain",
+          "recap_revision": 0,
+          "recap_saved_at": null
+        }
+      ],
+      "recap_kind": "gain",
+      "recap_revision": 1,
+      "recap_saved_at": "2026-10-24T15:25:11.401309+00:00",
+      "record_kind": "step",
+      "rhythm_variant": "minimum",
+      "schema_version": 2,
+      "started_at": "2026-10-24T15:25:06.652119+00:00",
+      "target": null,
+      "timezone": "Asia/Shanghai",
+      "title": "D0隔离验证：列出一个问题",
+      "variant": "minimum"
+    },
+    {
+      "activity_at": "2026-10-24T15:27:57.853780+00:00",
+      "activity_confirmed": true,
+      "activity_date": "2026-10-24",
+      "activity_timezone": "Asia/Shanghai",
+      "actual_minutes": 1,
+      "business_date": "2026-10-24",
+      "completion_effect": "complete",
+      "completion_mode": "time",
+      "date_basis": "actual_start",
+      "ended_at": "2026-10-24T15:27:57.853780+00:00",
+      "fact_version": 2,
+      "focus_day_id": "focus-1d872f288fdc4ae9aade230a12797b8a",
+      "focus_plan_id_snapshot": "action-8306a1e9659f4f77bf035a550444b411",
+      "focus_selected_at_snapshot": "2026-10-24T15:27:07.728729+00:00",
+      "id": "execution-d5c1f89d2b054bd4a86b72f7a1f2bf37",
+      "minimum_step_snapshot": "",
+      "next_step": "D0合成验证：重新打开课程核对笔记。",
+      "note": "D0合成验证：模拟一分钟投入，仅用于隔离测试。",
+      "outcome": "completed",
+      "plan_id": "action-8306a1e9659f4f77bf035a550444b411",
+      "planned_date": "2026-10-24",
+      "planned_minutes": 1,
+      "recap_history": [],
+      "recap_kind": "gain",
+      "recap_revision": 1,
+      "recap_saved_at": "2026-10-24T15:27:57.853848+00:00",
+      "record_kind": "session",
+      "rhythm_variant": "standard",
+      "schema_version": 2,
+      "started_at": "2026-10-24T15:27:12.695861+00:00",
+      "target": {
+        "course": "2026-10-09-Day001-为什么天空是蓝色的.md",
+        "kind": "yingyu",
+        "lesson_no": 1,
+        "plan_id": ""
+      },
+      "timezone": "Asia/Shanghai",
+      "title": "Day 001｜Why Does the Sky Look Blue?｜为什么天空是蓝色的？",
+      "variant": "standard"
+    }
+  ],
+  "trial_reports": [
+    {
+      "participant_id": "participant-e09022f93e1c462ba839e1be6b0eba15",
+      "is_test": false,
+      "window_start": "2026-10-24",
+      "window_end": "2026-11-06",
+      "mature": false,
+      "d1_activated": false,
+      "stats": {
+        "action_days": 0,
+        "loop_days": 0,
+        "action_dates": [],
+        "loop_dates": [],
+        "minimum_days": 0,
+        "standard_days": 0,
+        "minimum_dates": [],
+        "action_units": 0,
+        "recap_units": 0,
+        "source_fact_ids": [],
+        "source_recap_revisions": {}
+      },
+      "w2_stats": {
+        "action_days": 0,
+        "loop_days": 0,
+        "action_dates": [],
+        "loop_dates": [],
+        "minimum_days": 0,
+        "standard_days": 0,
+        "minimum_dates": [],
+        "action_units": 0,
+        "recap_units": 0,
+        "source_fact_ids": [],
+        "source_recap_revisions": {}
+      },
+      "review_eligible": false,
+      "review_confirmed": false,
+      "adjustment_linked": false,
+      "adjustment_unlinked": false,
+      "adjustment_tried": false,
+      "clarity_score": null,
+      "progress_score": null,
+      "recovery_eligible": false,
+      "recovered": false,
+      "burdens": []
+    }
+  ]
+}

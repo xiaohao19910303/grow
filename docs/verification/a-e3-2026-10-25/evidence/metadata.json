@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-25",
+  "recorded_at": "2026-10-25T12:14:13.741454+08:00",
+  "implementation_base": "0c3e46a500003dc7559cb85d9880c3b66d1dbfda",
+  "branch": "codex/d0-rhythm-startup",
+  "tests": 65,
+  "skipped": 0,
+  "failed": 0,
+  "cli_smoke_checks": 4,
+  "postgres_version": "postgres (PostgreSQL) 15.17 (Homebrew)",
+  "scope": "localhost PostgreSQL, synthetic records, no external providers",
+  "tested_source_sha256": {
+    "知行成长/server/app.py": "487ad09b0672c89b0c135791cff250952825521e3ab37b0dd42b4b8c40bdab98",
+    "知行成长/server/knowledge/api.py": "d454d3dac10a41acf70b4f0cf6cc24ea879e913f89439b5ba7a68c31feb9c5ca",
+    "知行成长/server/knowledge/store.py": "be90d41112dbf8d461bbd73bd7f73eb5a17ebfa4ea0575764cf34ca43c6878f9",
+    "知行成长/server/knowledge/schema.py": "8f328aa7d165330d885dd202b6ca60f3f155305216aba6d726a8008c4f8f272c",
+    "知行成长/server/legacy_schema.py": "7017293a68a926f69a4c5075b51311a352cd4d37e22160c0a2655f6b2252a866",
+    "知行成长/server/migrate_knowledge_stable_ids.py": "e4eaf5d7049bd72d67fb305041664782eec1f0e88363d25f5fa78af2f3ff0e6c",
+    "知行成长/server/tests/test_knowledge_stable_ids.py": "b40e295dfaaea8d86ad0a743d985655eb22d10e4cbebbfcb41c6226c8d605072",
+    "知行成长/server/tests/test_accounts.py": "7f38e581ee2a0673be76bfd9c332238a5d22d3bfa3a4859e756d9fbb28ad3f14"
+  },
+  "static_checks": {
+    "python_ast_files": 8,
+    "git_diff_check": 0
+  },
+  "implementation_commit": "60923b27bc68e6e2b0799deae18fc6673eb9bf00",
+  "log_normalization": "Removed trailing whitespace only; diagnostic content and results retained."
+}

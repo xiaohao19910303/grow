@@ -1,0 +1,34 @@
+[
+  {
+    "flags": [
+      "--verify"
+    ],
+    "exit_code": 1,
+    "expected": 1,
+    "stdout": "schema=knowledge_cli_bbc153aa64ce46d68a288afe0e4f0b93：稳定 ID 验证未通过，请核对列、唯一索引、默认值与记录。\n",
+    "stderr": ""
+  },
+  {
+    "flags": [],
+    "exit_code": 0,
+    "expected": 0,
+    "stdout": "稳定 ID 迁移完成：schema=knowledge_cli_bbc153aa64ce46d68a288afe0e4f0b93，原节点及关系保留。\nschema=knowledge_cli_bbc153aa64ce46d68a288afe0e4f0b93：稳定 ID 验证通过。\n",
+    "stderr": ""
+  },
+  {
+    "flags": [
+      "--verify"
+    ],
+    "exit_code": 0,
+    "expected": 0,
+    "stdout": "schema=knowledge_cli_bbc153aa64ce46d68a288afe0e4f0b93：稳定 ID 验证通过。\n",
+    "stderr": ""
+  },
+  {
+    "flags": [],
+    "exit_code": 0,
+    "expected": 0,
+    "stdout": "稳定 ID 迁移完成：schema=knowledge_cli_bbc153aa64ce46d68a288afe0e4f0b93，原节点及关系保留。\nschema=knowledge_cli_bbc153aa64ce46d68a288afe0e4f0b93：稳定 ID 验证通过。\n",
+    "stderr": ""
+  }
+]

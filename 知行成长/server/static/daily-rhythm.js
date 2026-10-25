@@ -3,7 +3,7 @@
   'use strict';
   const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
   const card=document.getElementById('dailyRhythm'),settingsRoot=document.getElementById('rhythmSettings');
-  let client,state,capability,turn=0,ready,dialogOpen=null,accountId;
+  let client,state,capability,turn=0,ready,dialogOpen=null,accountId,settingsInitialized=false;
   card.hidden=false;card.append(node('h2','今日一件事'),node('p','正在读取日常节奏…'));
   const snap=()=>window.ActionPlans?.snapshot()||{plans:[]};
   const activeAccount=()=>!window.Account?.user?.id||window.Account.user.id===accountId;
@@ -25,11 +25,14 @@
       if(cap.contract_version!==1||typeof cap.supported!=='boolean'){state=null;render();return;}
       if(cap.reason&&cap.reason!=='FEATURE_DISABLED'){state=null;render();return;}
       const selected=date||document.getElementById('personalDate')?.value;
-      const next=await client.read('/today'+(selected?'?date='+encodeURIComponent(selected):''));if(current!==turn)return;state=next;render();client.flush();
+      const next=await client.read('/today'+(selected?'?date='+encodeURIComponent(selected):''));if(current!==turn)return;state=next;render();
+      // The first startup read may be superseded; initialize from the winning read.
+      // Later background reads must leave unsaved settings input in place.
+      if(!settingsInitialized)settings();client.flush();
     }catch(e){if(current!==turn)return;card.replaceChildren(node('p','日常节奏暂未读取：'+e.message));button(card,'重试日常节奏',()=>refresh(date));}
   }
   function render(){card.replaceChildren(node('h2','今日一件事'));card.hidden=false;
-    if(!state){card.append(node('p','当前连接端尚未支持日常节奏，已有行动仍可使用。','desc'));settingsRoot.replaceChildren(node('h2','日常节奏'),node('p','当前连接端暂不支持此功能。'));return;}
+    if(!state){settingsInitialized=false;card.append(node('p','当前连接端尚未支持日常节奏，已有行动仍可使用。','desc'));settingsRoot.replaceChildren(node('h2','日常节奏'),node('p','当前连接端暂不支持此功能。'));return;}
     if(!state.preferences.enabled){card.append(node('p','选一件事、做一点、留一句收获。可在设置中开启，随时可以关闭。','desc'));button(card,'设置日常节奏',()=>{goTab('settings');settings();});return;}
     const progress=state.progress||{},focus=state.focus,plan=snap().plans.find(p=>p.id===focus?.plan_id);
     card.append(node('p',`本周已行动 ${progress.action_days||0} / ${state.preferences.weekly_target_days} 天 · 闭环 ${progress.loop_days||0} 天`,'rhythm-progress'));
@@ -45,7 +48,7 @@
       if(state.continuation)button(card,'查看上次下一步',()=>{const d=modal('沿用下一步');d.append(node('p',state.continuation.next_step),node('p','请新建或选择今天的行动，旧安排不会自动改期。','desc'));button(d,'选择今日行动',()=>{d.close();focusForm(state.continuation.next_step);});button(d,'暂不沿用',()=>d.close());});}
     button(card,'回看本周成果',()=>window.WeeklyRhythm?.open());
   }
-  function settings(draft=null){if(!state)return;const p={...(state.pending_preferences||state.preferences),...draft};settingsRoot.replaceChildren(node('h2','日常节奏'));const form=node('form');settingsRoot.append(form);
+  function settings(draft=null){if(!state)return;settingsInitialized=true;const p={...(state.pending_preferences||state.preferences),...draft};settingsRoot.replaceChildren(node('h2','日常节奏'));const form=node('form');settingsRoot.append(form);
     const enabled=field(form,'开启日常节奏',null,'checkbox');enabled.checked=draft?.enabled??state.preferences.enabled;
     const zone=field(form,'时区',p.timezone),target=field(form,'每周行动目标天数',p.weekly_target_days,'number');target.min=1;target.max=7;
     const review=field(form,'周回顾星期（1周一至7周日）',p.review_weekday,'number');review.min=1;review.max=7;
@@ -94,6 +97,6 @@
   window.DailyRhythm={refresh,settings:()=>{settings();},recap,sourceSaved,claimReminder,event,burden,
     client:()=>client,state:()=>state,node,button,field,option,modal,recoverPending};
   ready=(window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{accountId=user.id;let storage;try{storage=window.localStorage;}catch{/* Browser storage can be unavailable. */}client=window.RhythmClient.create({account:user.id,storage,request:(...args)=>{if(!activeAccount())throw Error('账号已切换，请刷新页面。');return window.fetch(...args);}});});
-  ready.then(()=>refresh()).then(settings).catch(()=>{});
+  ready.then(()=>refresh()).catch(()=>{});
   window.EventBus?.on('plans:changed',()=>refresh());window.EventBus?.on('plans:loaded',()=>refresh());
 })();

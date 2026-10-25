@@ -1,0 +1,15 @@
+{
+  "runtime": "/Volumes/肖豪/project/grow/.venv/bin/python",
+  "python": "3.13.9",
+  "locked_dependencies": 48,
+  "all_locked_match": true,
+  "pip_check": 0,
+  "configuration_validation": {
+    "ok": false,
+    "message": "配置未通过，请核对：APP_PASSWORD, ACCOUNT_ENCRYPTION_KEY, LEARN_ROOT (use a prepared teaching directory)"
+  },
+  "database_connected": false,
+  "configuration_changed": false,
+  "old_venv_retained": true,
+  "root_uvicorn_shebang_current": true
+}

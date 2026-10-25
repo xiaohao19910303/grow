@@ -1,0 +1,103 @@
+.....FF.                                                                 [100%]
+=================================== FAILURES ===================================
+__ P0BrowserAcceptance.test_article_source_schedule_cancel_timer_and_confirm ___
+
+self = <tests.test_action_p0_browser.P0BrowserAcceptance testMethod=test_article_source_schedule_cancel_timer_and_confirm>
+
+>   def test_article_source_schedule_cancel_timer_and_confirm(self):self.source_flow('article')
+                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_action_p0_browser.py:280:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_action_p0_browser.py:222: in source_flow
+    self.page.reload();self.page.locator('[data-group="learning"]').click()
+    ^^^^^^^^^^^^^^^^^^
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/sync_api/_generated.py:19882: in reload
+    self._sync(
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_page.py:572: in reload
+    await self._channel.send(
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_connection.py:78: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <playwright._impl._connection.Connection object at 0x104be9160>
+cb = <function Channel.send.<locals>.<lambda> at 0x105f43100>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Page.reload: Timeout 10000ms exceeded.
+E           Call log:
+E             - waiting for navigation until "load"
+E               - navigated to "http://127.0.0.1:58934/"
+
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_connection.py:636: TimeoutError
+___ P0BrowserAcceptance.test_course_source_schedule_cancel_timer_and_confirm ___
+
+self = <tests.test_action_p0_browser.P0BrowserAcceptance testMethod=test_course_source_schedule_cancel_timer_and_confirm>
+
+    def setUp(self):
+        self.context=self.browser.new_context(viewport={'width':1280,'height':960})
+        self.addCleanup(self.context.close)
+        self.page=self.context.new_page();self.page.set_default_timeout(10000);self.errors=[]
+        self.page.on('pageerror',lambda error:self.errors.append(error.stack))
+        self.page.route('**/*',lambda route:route.continue_() if route.request.url.startswith(self.base+'/') else route.abort())
+>       self.page.goto(self.base)
+
+tests/test_action_p0_browser.py:46:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/sync_api/_generated.py:18528: in goto
+    self._sync(
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_page.py:564: in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_frame.py:157: in goto
+    await self._channel.send(
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_connection.py:78: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <playwright._impl._connection.Connection object at 0x104be9160>
+cb = <function Channel.send.<locals>.<lambda> at 0x105ca71a0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Page.goto: Timeout 10000ms exceeded.
+E           Call log:
+E             - navigating to "http://127.0.0.1:58934/", waiting until "load"
+
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_connection.py:636: TimeoutError
+=========================== short test summary info ============================
+FAILED tests/test_action_p0_browser.py::P0BrowserAcceptance::test_article_source_schedule_cancel_timer_and_confirm
+FAILED tests/test_action_p0_browser.py::P0BrowserAcceptance::test_course_source_schedule_cancel_timer_and_confirm
+2 failed, 6 passed in 149.02s (0:02:29)
+WEB_MODULE_RESULT {"tests": 8, "failed": 2, "skipped": 0, "exit_code": 1, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

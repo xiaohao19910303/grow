@@ -1,160 +1,54 @@
-"""知识图谱 ID 稳定性迁移脚本
+"""Offline stable-ID upgrade/verification for one selected PostgreSQL schema.
 
-为知识图谱添加稳定 ID 支持：
-- stable_id: UUID 格式的稳定标识符
-- source_hash: 内容哈希（用于幂等导入）
-- source_path: 来源路径（用于幂等导入）
+Normal startup upgrades each account through legacy_schema/store.
+This command never deletes nodes or replaces existing identities.
 """
-import sys
-import uuid
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent))
-
+import argparse
 import db
+from psycopg2 import sql
+from knowledge.schema import upgrade_stable_ids, verify_stable_ids
 
 
-def migrate_knowledge_stable_ids():
-    """执行知识图谱 ID 稳定性迁移"""
-    print("🚀 开始知识图谱 ID 稳定性迁移...")
-
-    conn = db.connect()
-
-    try:
-        # 1. 添加新列
-        print("📋 步骤 1/4: 添加 stable_id 列...")
-        conn.execute("""
-            ALTER TABLE knowledge
-            ADD COLUMN IF NOT EXISTS stable_id TEXT
-        """)
-
-        print("📋 步骤 2/4: 添加 source_hash 列...")
-        conn.execute("""
-            ALTER TABLE knowledge
-            ADD COLUMN IF NOT EXISTS source_hash TEXT
-        """)
-
-        print("📋 步骤 3/4: 添加 source_path 列...")
-        conn.execute("""
-            ALTER TABLE knowledge
-            ADD COLUMN IF NOT EXISTS source_path TEXT
-        """)
-
-        # 2. 为现有记录生成 stable_id
-        print("📋 步骤 4/4: 为现有知识生成 stable_id...")
-        records = conn.execute("SELECT id, stable_id FROM knowledge").fetchall()
-        count = 0
-        for record in records:
-            record_id = record[0]
-            stable_id = record[1]
-
-            # 如果没有 stable_id，生成一个
-            if not stable_id:
-                new_stable_id = str(uuid.uuid4())
-                conn.execute(
-                    "UPDATE knowledge SET stable_id = ? WHERE id = ?",
-                    (new_stable_id, record_id)
-                )
-                count += 1
-
-        print(f"✅ 为 {count} 条现有知识生成了 stable_id")
-
-        # 3. 创建索引
-        print("\n📋 创建索引...")
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_knowledge_stable_id
-            ON knowledge(stable_id)
-        """)
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_knowledge_source
-            ON knowledge(source_path, source_hash)
-        """)
-
-        conn.commit()
-
-        # 4. 验证迁移结果
-        print("\n📋 验证迁移结果...")
-        total = conn.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0]
-        with_stable_id = conn.execute(
-            "SELECT COUNT(*) FROM knowledge WHERE stable_id IS NOT NULL"
-        ).fetchone()[0]
-
-        print(f"\n✅ 迁移完成！")
-        print(f"   - 总知识数: {total}")
-        print(f"   - 已添加 stable_id: {with_stable_id}")
-
-    except Exception as e:
-        conn.rollback()
-        print(f"\n❌ 迁移失败: {e}")
-        raise
-    finally:
-        conn.close()
+def select_schema(conn, schema):
+    if schema is not None:
+        exists = conn.execute('SELECT 1 FROM pg_namespace WHERE nspname=?', (schema,)).fetchone()
+        if not exists:
+            raise ValueError('指定的 schema 不存在。')
+        conn._conn.cursor().execute(sql.SQL('SET LOCAL search_path TO {}').format(sql.Identifier(schema)))
+    return conn.execute('SELECT current_schema()').fetchone()[0]
 
 
-def verify_migration():
-    """验证迁移结果"""
-    print("\n🔍 验证迁移结果...")
-
-    conn = db.connect()
-    try:
-        # 检查列是否存在（PostgreSQL 语法）
-        columns = conn.execute(
-            """SELECT column_name FROM information_schema.columns
-               WHERE table_name = 'knowledge'"""
-        ).fetchall()
-        column_names = [col[0] for col in columns]
-
-        required_columns = ['stable_id', 'source_hash', 'source_path']
-        missing = [col for col in required_columns if col not in column_names]
-
-        if missing:
-            print(f"❌ 缺少列: {', '.join(missing)}")
-            return False
-
-        # 检查索引
-        indexes = conn.execute(
-            """SELECT indexname FROM pg_indexes
-               WHERE tablename = 'knowledge'"""
-        ).fetchall()
-        index_names = [idx[0] for idx in indexes]
-
-        required_indexes = ['idx_knowledge_stable_id', 'idx_knowledge_source']
-        missing_indexes = [idx for idx in required_indexes if idx not in index_names]
-
-        if missing_indexes:
-            print(f"⚠️ 缺少索引: {', '.join(missing_indexes)}")
-            return False
-
-        # 检查数据
-        total = conn.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0]
-        with_stable_id = conn.execute(
-            "SELECT COUNT(*) FROM knowledge WHERE stable_id IS NOT NULL"
-        ).fetchone()[0]
-
-        if total != with_stable_id:
-            print(f"⚠️ 警告: {total - with_stable_id} 条记录缺少 stable_id")
-            return False
-
-        print("✅ 验证通过！")
-        print(f"   - 总知识数: {total}")
-        print(f"   - 所有记录都有 stable_id")
-        print(f"   - 索引已创建")
-
-        return True
-
-    finally:
-        conn.close()
+def migrate_knowledge_stable_ids(schema=None):
+    with db.connect() as conn:
+        selected = select_schema(conn, schema)
+        upgrade_stable_ids(conn)
+        if not verify_stable_ids(conn):
+            raise ValueError('稳定 ID 迁移验证失败，已回滚。')
+    print(f'稳定 ID 迁移完成：schema={selected}，原节点及关系保留。')
 
 
-if __name__ == "__main__":
-    import argparse
+def verify_migration(schema=None):
+    with db.connect() as conn:
+        conn.execute('SET TRANSACTION READ ONLY')
+        selected = select_schema(conn, schema)
+        valid = verify_stable_ids(conn)
+    print(f'schema={selected}：' + ('稳定 ID 验证通过。' if valid else '稳定 ID 验证未通过，请核对列、唯一索引、默认值与记录。'))
+    return valid
 
-    parser = argparse.ArgumentParser(description="知识图谱 ID 稳定性迁移")
-    parser.add_argument("--verify", action="store_true", help="仅验证迁移结果")
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--verify', action='store_true', help='只读验证，失败时退出码为 1')
+    parser.add_argument('--schema', help='精确选择已有账号 schema；省略时使用连接当前 schema')
     args = parser.parse_args()
+    try:
+        if not args.verify:
+            migrate_knowledge_stable_ids(args.schema)
+        return 0 if verify_migration(args.schema) else 1
+    except (ValueError, db.psycopg2.Error):
+        print('稳定 ID 检查或迁移失败，请核对目标 schema、表结构及重复 ID；未提交的修改已回滚。')
+        return 1
 
-    if args.verify:
-        verify_migration()
-    else:
-        migrate_knowledge_stable_ids()
-        verify_migration()
+
+if __name__ == '__main__':
+    raise SystemExit(main())

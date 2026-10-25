@@ -1,0 +1,12 @@
+AssertionError [ERR_ASSERTION]: slow coach facts must not block saved completion feedback
+
+false !== true
+
+    at /Users/hao/Documents/grow/知行成长/server/tests/test_learning_completion_sync.cjs:19:59 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

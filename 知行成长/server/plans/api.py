@@ -32,14 +32,14 @@ def register(app, root, db):
     async def protect(request: Request, call_next):
         if not getattr(store,'remote',False) and request.url.path.startswith('/api/') and (store.runtime/'restore-pending.json').exists():
             return JSONResponse({'message':'计划恢复未完成，请核对恢复日志后再启动。'},status_code=503)
-        if request.url.path.startswith('/api/plans'):
+        if request.url.path.startswith(('/api/plans','/api/plan-actions')):
             if store.startup_error:
                 return JSONResponse({'message':getattr(store.startup_error,'message','计划模块初始化失败，请检查存储配置。')},status_code=503)
             if request.method not in ('GET','HEAD','OPTIONS'):
                 if request.headers.get('x-copilot-request')!='1':return JSONResponse({'message':'缺少同源写入标识。'},status_code=403)
                 if int(request.headers.get('content-length','0'))>400000:return JSONResponse({'message':'请求内容过长。'},status_code=413)
         response=await call_next(request)
-        if request.url.path.startswith('/api/plans'):response.headers['Cache-Control']='no-store'
+        if request.url.path.startswith(('/api/plans','/api/plan-actions')):response.headers['Cache-Control']='no-store'
         return response
 
     @router.get('')
@@ -79,7 +79,13 @@ def register(app, root, db):
         return store.draft_history(did,offset)
 
     @router.post('/drafts/{did}/adopt')
-    def adopt(did:str,body:Payload):return store.adopt(did,key(body.data),body.data.get('accept_over') is True,text(body.data.get('expected_hash'),'草稿校验值',100))
+    def adopt(did:str,body:Payload,request:Request):
+        from learning_actions import guard, after_save
+        opt_in=body.data.get('link_actions',False)
+        if type(opt_in) is not bool:fail('invalid','关联行动开关须为布尔值。',422)
+        if opt_in:guard(request)
+        result=store.adopt(did,key(body.data),body.data.get('accept_over') is True,text(body.data.get('expected_hash'),'草稿校验值',100))
+        return after_save(store,result,key(body.data),opt_in,request)
 
     @router.post('/drafts/{did}/edit-course')
     def edit_course(did:str,body:Payload):
@@ -101,7 +107,10 @@ def register(app, root, db):
         return generator.begin({**body.data,'operation':'refine','parent_draft_id':did,'kind':d['kind']})
 
     @router.post('/drafts/{did}/publish')
-    def publish(did:str,body:Payload):return store.publish_course(did,key(body.data),text(body.data.get('expected_hash'),'草稿校验值',100))
+    def publish(did:str,body:Payload,request:Request):
+        from learning_actions import after_save
+        result=store.publish_course(did,key(body.data),text(body.data.get('expected_hash'),'草稿校验值',100))
+        return after_save(store,result,key(body.data),request=request)
 
     @router.post('/generate')
     async def generate(body:Payload):
@@ -307,5 +316,7 @@ def register(app, root, db):
                 'history': [dict(r) for r in rows]
             }
 
+    from learning_actions import register as register_learning_actions
+    register_learning_actions(app,router,store,Payload)
     app.include_router(router)
     return store,generator

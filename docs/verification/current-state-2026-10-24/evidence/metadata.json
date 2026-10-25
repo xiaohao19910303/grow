@@ -1,0 +1,12 @@
+{
+  "code_revision": "3f0b83edbfafedd0bc68232c3c0e4ea8948cafd9",
+  "scope": "targeted-current-state",
+  "pattern": "test_rhythm_.*|test_weekly_rhythm_requests\\.cjs|test_action_p0(?:_sources|_closeout_sources|_browser)?\\.py|test_daily_arrangements\\.py|test_arrangement_sources\\.py|test_github_plans\\.py|test_plan_status_history\\.py|test_course_completion_loop\\.py|test_study_notes\\.py|test_learning_completion_sync\\.cjs|test_completion_producers\\.cjs|test_daily_agenda_capabilities\\.cjs",
+  "dedicated_postgres_port": 58359,
+  "business_database_accessed": false,
+  "real_model_or_github_used": false,
+  "production_source_changed": false,
+  "feature_enabled_for_real_accounts": false,
+  "disposable_postgres_stopped": true,
+  "reproduction_scope": "unchanged test_action_p0_browser.py, fresh schemas"
+}

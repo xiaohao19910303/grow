@@ -100,6 +100,23 @@ class AccountIntegrationTests(unittest.TestCase):
     def login(self, username, password='user-password-123'):
         return self.client.post('/api/auth/login', json={'username':username,'password':password}, headers=self.headers)
 
+    def test_learning_plan_actions_are_private_and_reject_stale_account_writes(self):
+        headers={**self.headers,'X-Copilot-Request':'1','X-Grow-Action-Schema':'2'}
+        self.assertEqual(self.client.get('/api/plan-actions').status_code,401)
+        self.login('owner',os.environ['APP_PASSWORD'])
+        owner=self.client.get('/api/auth/me').json()['user']['id']
+        draft=self.client.post('/api/plans/drafts',json={'data':{'brief':B,'document':D}},headers=headers).json()
+        adopted=self.client.post('/api/plans/drafts/'+draft['id']+'/adopt',json={'data':{'key':'private-plan-adopt','expected_hash':draft['content_hash'],'link_actions':True}},headers=headers)
+        self.assertEqual(adopted.status_code,200,adopted.text);pid=adopted.json()['plan_id']
+        self.assertEqual(len(self.client.get('/api/plan-actions').json()['plans']),1)
+        self.register('alice')
+        self.assertEqual(self.client.get('/api/plan-actions').json()['plans'],[])
+        self.assertEqual(self.client.get('/api/plans/'+pid+'/actions').status_code,404)
+        response=self.client.post('/api/plans/'+pid+'/actions',json={'data':{'key':'stale-account-plan-link','expected_version':1}},headers={**headers,'X-Account-Id':owner})
+        self.assertEqual(response.status_code,409,response.text)
+        self.login('owner',os.environ['APP_PASSWORD'])
+        self.assertEqual(len(self.client.get('/api/plan-actions').json()['plans']),1)
+
     def test_module_generation_jobs_and_published_courses_use_each_accounts_repository(self):
         from test_study_generation import AI, output
         directory = Path(os.environ['LEARN_ROOT']) / '结构化表达/每日练习'
@@ -326,6 +343,52 @@ class AccountIntegrationTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/reflections/' + ref['id']).json()['entry']['raw_text'],'ALICE REFLECTION')
         self.assertEqual(self.login('owner',os.environ['APP_PASSWORD']).status_code,200)
         self.assertEqual(self.client.get('/api/data').json()['todos'][0]['title'],'OWNER PRIVATE')
+
+    def test_coach_facts_are_private_and_require_no_ai_configuration(self):
+        self.assertEqual(self.client.get('/api/coach-facts').status_code, 401)
+        alice = self.register('alice')
+        state = self.client.get('/api/data').json()
+        from growth_statistics import shanghai_today
+        state['habits'] = {str(shanghai_today()): {'minutes':10, 'note':'ALICE PRIVATE HABIT'}}
+        response = self.client.put('/api/data', json=state,
+                                  headers={**self.headers,'X-Legacy-State-Protocol':'1'})
+        self.assertEqual(response.status_code, 200, response.text)
+        response = self.client.get('/api/coach-facts')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['fact']['evidence']['active_days'], 1)
+        self.assertFalse(response.json()['uses_model'])
+        self.assertNotIn('ALICE PRIVATE HABIT', response.text)
+        self.register('bob')
+        self.assertEqual(self.client.get('/api/coach-facts').json()['fact']['kind'], 'empty')
+        stale = self.client.get('/api/coach-facts',headers={'X-Account-Id':alice['id']})
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(self.login('alice').status_code, 200)
+        self.assertEqual(self.client.get('/api/coach-facts').json()['fact']['evidence']['active_days'], 1)
+
+    def test_knowledge_stable_ids_initialize_and_remain_private_across_accounts(self):
+        body = dict(name='账号私有知识', category='认知', summary='ALICE PRIVATE KNOWLEDGE',
+                    source='教材', kind='concept', date='2026-10-25',
+                    source_path='教材/同名.md', source_hash='same-hash')
+        self.assertEqual(self.client.get('/api/knowledge/by-stable-id/missing').status_code, 401)
+        self.register('alice')
+        self.assertEqual(self.client.post('/api/knowledge/upsert', json=body).status_code, 403)
+        self.assertEqual(self.client.post('/api/knowledge/upsert', json=body,
+            headers={**self.headers, 'Origin':'https://evil.example'}).status_code, 403)
+        response = self.client.post('/api/knowledge/upsert', json=body, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        first = response.json()['knowledge']
+        url = '/api/knowledge/by-stable-id/' + first['stable_id']
+        self.register('bob')
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.get(url + '/related').status_code, 404)
+        self.assertEqual(self.client.get('/api/knowledge/graph').json()['nodes'], [])
+        response = self.client.post('/api/knowledge/upsert', json=body | {'summary':'BOB PRIVATE KNOWLEDGE'}, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotEqual(first['stable_id'], response.json()['knowledge']['stable_id'])
+        self.assertEqual(self.login('alice').status_code, 200)
+        self.assertEqual(self.client.get(url).json()['summary'], 'ALICE PRIVATE KNOWLEDGE')
+        self.assertEqual(self.login('owner', os.environ['APP_PASSWORD']).status_code, 200)
+        self.assertEqual(self.client.get(url).status_code, 404)
 
     def test_article_feedback_is_private_and_isolated_for_same_article_id(self):
         self.register('alice')

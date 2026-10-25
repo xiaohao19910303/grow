@@ -141,7 +141,7 @@
   @media (max-width:680px){.wrap{padding:16px 14px 48px}.topbar{padding:12px 18px}.modal .form-grid{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
-<link rel="stylesheet" href="/static/growth.css?v=20261021-audit">
+<link rel="stylesheet" href="/static/growth.css?v=20261025-coach">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
 <link rel="stylesheet" href="/static/reading.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
@@ -153,7 +153,7 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
-<link rel="stylesheet" href="/static/action-plans.css?v=20261021-audit">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261025-e2">
 </head>
 <body>
 
@@ -224,7 +224,8 @@
     </details>
     <p class="desc">局部副本包含模块设置、打卡、习惯、自定义字段与记录、决策、预测、复盘、洞见和待办。不包含行动及执行事实、独立笔记与自由记录、课程/文章正文、生成任务、账号设置或浏览器草稿。</p><details><summary>清空局部表单记录</summary><p>仅清空上述旧版表单内容。建议先下载局部记录副本；完整恢复需管理员的 PostgreSQL 与内容备份。</p><button class="btn danger" onclick="resetData()">重置</button></details>
     <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
-    <h2 style="font-size:18px;margin:0 0 8px">课程生成配置</h2>
+    <button type="button" class="btn" onclick="showCompletionHelp()">完成与进度说明</button>
+    <h2 style="font-size:18px;margin:16px 0 8px">课程生成配置</h2>
     <p class="desc">配置按账号保存在当前浏览器，换浏览器或清除站点数据后需重新填写。生成和测试时经后端临时调用，不保存到远端数据库。已有内容无需配置即可阅读。</p>
     <div id="apiSettingsForm" class="cp-settings-form">
       <div class="field-row" style="flex-direction:column">
@@ -269,6 +270,7 @@
       <div><h2 id="dayHeading">今天，稳步向前</h2><p id="daySummary" class="desc">正在读取今日安排…</p></div>
       <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
     </div>
+    <section id="coachFactToday" class="section coach-fact" aria-label="教练今日提醒" aria-live="polite" hidden></section>
     <section id="dailyRhythm" class="section daily-rhythm" aria-label="今日一件事" aria-live="polite" hidden></section>
     <section id="actionHome" class="section action-home" aria-label="当日安排">
       <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay({date:document.getElementById('personalDate').value||today()})">新建行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
@@ -285,6 +287,7 @@
   </div>
   <div id="view-overview" style="display:none">
     <p class="desc">从学习、实践和复盘看近期变化。学习完成与投入时长分别统计，避免重复累计。</p>
+    <section id="coachFactOverview" class="section coach-fact" aria-label="教练今日提醒" aria-live="polite" hidden></section>
     <section id="actionGrowth" class="section" aria-label="行动积累"></section>
     <div class="cards" id="statCards"></div>
     <details class="section"><summary>学习变化与活动明细</summary>
@@ -568,6 +571,22 @@
 
 <div class="overlay" id="overlay"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
+<dialog id="completionHelpDialog" class="action-dialog" aria-labelledby="completionHelpTitle">
+  <h2 id="completionHelpTitle">完成与进度说明</h2>
+  <p>课程学完、行动完成和投入时间分别记录。打开内容、写笔记或生成成功，都不会自动算学完。</p>
+  <dl class="completion-rules">
+    <dt>计时行动</dt><dd>本人确认的实际投入累计达到标准分钟才达标。起步、未达标或中断投入会保留；计时到点不自动算学完课程。</dd>
+    <dt>内容行动</dt><dd>在关联文章／课程中确认读完／学完，再核对来源回执完成行动。只保存计时投入不会完成内容行动。当前自动回执支持历史文章与课程规划课程。</dd>
+    <dt>勾选待办</dt><dd>本人勾选完成，可撤销并保留历史。勾选不产生学习分钟，也不改变课程学完状态。</dd>
+  </dl>
+  <p>其他学习模块的学完确认更新各自的学习状态；对应计时行动仍按分钟达标。年／月／周目标的本人确认，也不代表某课已学完。</p>
+  <p>课程规划进度 = 已发布且本人确认学完的课数 ÷ 当前正式规划全部课数。未发布课程计入分母，草稿不计入；阶段按正式规划分组。</p>
+  <p>关联行动默认未安排日期。先“安排今日并开始”，再在原课程确认学完；直接学完课程会更新学习进度，但不会补造未安排或未来行动的执行。</p>
+  <p>安排日期是原计划，执行日期按实际确认时间与行动时区记录。分钟由本人确认；课程、行动和习惯记录可能重叠，分别展示、不相加。0 分钟的完成记录不代表没有学习。</p>
+  <p>例如标准 20 分钟、起步 5 分钟：确认投入 5 分钟记录起步，累计达到 20 分钟才达标，仍不替代课程学完确认。</p>
+  <button type="button" class="btn primary" onclick="this.closest('dialog').close()" autofocus>关闭说明</button>
+</dialog>
+
 
 <script src="/static/loading-state.js?v=web-batch1-20261023"></script>
 <script src="/static/event-bus.js?v=20261021-1"></script>
@@ -662,6 +681,7 @@ async function saveToServer(){
       }
     }
     state._revision = d.state._revision; saved = true;
+    window.CoachFacts?.invalidate();
     setStatus(editGeneration === generation ? '已保存 · 个人数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
   }catch(e){ setStatus('保存失败 · 本地修改保留，请重试；若有冲突请先导出副本','err'); }
   finally{
@@ -706,6 +726,8 @@ async function doReset(){
     setStatus(message,'err');if(result)result.textContent=message;return false;
   }finally{saveInFlight=false;buttons.forEach(b=>b.disabled=false);}
 }
+
+function showCompletionHelp(){const d=document.getElementById('completionHelpDialog');if(!d.open)d.showModal();}
 
 function apiSettingsValue(){
   return {api_base_url:document.getElementById('apiBaseUrl').value.trim(),
@@ -2111,6 +2133,7 @@ function goTab(name, options={}){
   ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='report') window.WeeklyRhythm?.load();
+  if(name==='personal'||name==='overview')window.CoachFacts?.refresh().catch(()=>{});
   if(name==='personal' && !options.restore){ window.ActionPlans?.refresh().catch(()=>{}); renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
   if(name==='action-plans')window.ActionPlans?.enter();
@@ -2305,14 +2328,15 @@ init();
 <script src="/static/floating-panels.js?v=20261021-audit"></script>
 <script src="/static/reading-tasks.js?v=20261021-audit"></script>
 <script src="/static/behavior-report.js?v=20261021-p1"></script>
-<script src="/static/learning-completion.js?v=20261021-p1"></script>
+<script src="/static/learning-completion.js?v=20261025-c1c3"></script>
 <script src="/static/copilot.js?v=20261021-p1-navigation"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
 <script src="/static/course-archive.js?v=20261019-1"></script>
 <script src="/static/course-summary.js?v=20261021-background"></script>
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
-<script src="/static/plans.js?v=20261021-audit"></script>
+<script src="/static/learning-plan-actions.js?v=20261025-c1c3"></script>
+<script src="/static/plans.js?v=20261025-e2"></script>
 <script src="/static/study-generation.js?v=20261021-unified"></script>
 <script src="/static/daily-learning.js?v=20261021-audit"></script>
 <script src="/static/reading-growth.js?v=20261021-tasks"></script>
@@ -2333,10 +2357,11 @@ init();
 <script src="/static/record-link.js?v=20261025"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>
 <script src="/static/daily-agenda.js?v=20261021-navigation-round3"></script>
-<script src="/static/daily-rhythm.js?v=20261024-merge"></script>
+<script src="/static/daily-rhythm.js?v=20261024-d0-settings"></script>
 <script src="/static/weekly-rhythm.js?v=20261023"></script>
 <script src="/static/rhythm-trial.js?v=20261023"></script>
 <script src="/static/action-quick-editor.js?v=20261024-merge"></script>
-<script src="/static/action-plans.js?v=20261024-merge"></script>
+<script src="/static/coach-facts.js?v=20261025"></script>
+<script src="/static/action-plans.js?v=20261025-e2"></script>
 </body>
 </html>

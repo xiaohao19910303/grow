@@ -4,6 +4,8 @@ from __future__ import annotations
 import db
 from pathlib import Path
 from typing import Optional
+from fastapi import HTTPException
+from .schema import upgrade_stable_ids
 
 
 TABLE_SQL = """
@@ -33,10 +35,47 @@ class KnowledgeGraphStore:
 
     def initialize(self):
         """启动时建表。"""
-        conn = self._conn()
-        conn.executescript(TABLE_SQL)
-        conn.commit()
-        conn.close()
+        with self._conn() as conn:
+            conn.executescript(TABLE_SQL)
+            upgrade_stable_ids(conn)
+
+    def get_by_stable_id(self, stable_id: str) -> Optional[dict]:
+        with self._conn() as conn:
+            row = conn.execute('SELECT * FROM knowledge WHERE stable_id=?', (stable_id,)).fetchone()
+            return dict(row) if row else None
+
+    def get_related_by_stable_id(self, stable_id: str, limit: int = 5) -> list[dict]:
+        with self._conn() as conn:
+            return [dict(row) for row in conn.execute("""
+                SELECT k.*, MAX(l.weight) AS weight FROM knowledge k
+                JOIN knowledge_links l ON l.source_id=k.id OR l.target_id=k.id
+                JOIN knowledge origin ON origin.stable_id=?
+                WHERE k.id<>origin.id AND
+                  ((l.source_id=origin.id AND l.target_id=k.id) OR
+                   (l.target_id=origin.id AND l.source_id=k.id))
+                GROUP BY k.id ORDER BY weight DESC,k.id LIMIT ?
+            """, (stable_id, limit))]
+
+    def upsert_knowledge(self, *, name, category, summary, source, kind, date, source_path, source_hash):
+        """Identity is path/name/kind; a changed content hash updates the same node."""
+        with self._conn() as conn:
+            conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':knowledge-write',0))")
+            matches = conn.execute('SELECT * FROM knowledge WHERE source_path=? AND name=? AND kind=? ORDER BY id FOR UPDATE',
+                                   (source_path, name, kind)).fetchall()
+            if not matches:
+                matches = conn.execute("""SELECT * FROM knowledge WHERE
+                    (source_path IS NULL OR source_path='') AND name=? AND COALESCE(source,'')=?
+                    AND COALESCE(kind,'')=? ORDER BY id FOR UPDATE""", (name, source, kind)).fetchall()
+            if len(matches) > 1:
+                raise HTTPException(409, '存在多个同源知识节点，请核对原记录后再导入；原节点和关系均已保留。')
+            values = (name, category, summary, source, kind, date, source_path, source_hash)
+            if matches:
+                row = conn.execute("""UPDATE knowledge SET name=?,category=?,summary=?,source=?,kind=?,date=?,
+                    source_path=?,source_hash=? WHERE id=? RETURNING *""", (*values, matches[0]['id'])).fetchone()
+            else:
+                row = conn.execute("""INSERT INTO knowledge(name,category,summary,source,kind,date,source_path,source_hash)
+                    VALUES (?,?,?,?,?,?,?,?) RETURNING *""", values).fetchone()
+            return dict(row)
 
     def get_graph(self, category: Optional[str] = None, limit: int = 500) -> dict:
         """获取图谱数据（nodes + links）。"""

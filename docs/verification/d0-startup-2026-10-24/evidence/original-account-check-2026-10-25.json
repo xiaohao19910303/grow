@@ -1,0 +1,26 @@
+{
+  "connected": true,
+  "transaction_read_only": true,
+  "account_count": 2,
+  "original_owner_exists": true,
+  "owner_record_counts": {
+    "reflection_entries": 1,
+    "learning_plans": 1,
+    "learning_lessons": 1,
+    "learning_feedback": 1,
+    "action_plans": 3,
+    "action_executions": 2,
+    "reading_records": 133,
+    "copilot_learning_records": 6,
+    "knowledge": 71
+  },
+  "writes_executed": false,
+  "checked_date": "2026-10-25",
+  "code_revision": "8b52654b1b4778a4e4d638429d0585a8d61d79c7",
+  "local_service_started": false,
+  "preflight_missing": [
+    "APP_PASSWORD",
+    "ACCOUNT_ENCRYPTION_KEY",
+    "LEARN_ROOT"
+  ]
+}

@@ -122,8 +122,10 @@ def migrate(connection=None):
     c.executescript(LEDGER)
     old=c.execute('SELECT data FROM platform_migrations WHERE id=?',(VERSION,)).fetchone()
     from copilot.schema import upgrade_learning_archive
+    from knowledge.schema import upgrade_stable_ids
     if old:
         upgrade_learning_archive(c)
+        upgrade_stable_ids(c)
         return json.loads(old[0])
     # Credentials are not migration records, and must not be copied to the archive.
     from copilot.ai_config import remove_server_config
@@ -211,5 +213,6 @@ def migrate(connection=None):
         if seq:
             maximum=c.execute(f'SELECT COALESCE(MAX(id),0) FROM {table}').fetchone()[0]
             c.execute('SELECT setval(?, GREATEST(?,nextval(?)), true)',(seq,maximum,seq))
+    upgrade_stable_ids(c)
     c.execute('INSERT INTO platform_migrations VALUES (?,?)',(VERSION,encoded(report)))
     return report

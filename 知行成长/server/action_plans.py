@@ -414,22 +414,25 @@ def schedule(body):
                      timezone=body.timezone, target=body.target, target_minutes=body.target_minutes,
                      minimum_minutes=None, estimated_minutes=body.estimated_minutes if body.estimated_minutes is not None else body.target_minutes, completion_mode='content', key=body.key)
     with connection(True) as c:
-        def work():
-            old = duplicate_schedule(c, fields.model_dump(mode='json'))
-            if old:
-                return {'plan': old, 'existing': True}
-            # The tenant write lock is reentrant in this transaction; create in
-            # this connection so different request keys cannot race duplicates.
-            data = fields.model_dump(mode='json', exclude={'key', 'repeat_dates'})
-            validate_parent(c, data)
-            if c.execute('SELECT count(*) FROM action_plans').fetchone()[0] >= 1000:
-                fail(422, '安排数量已达上限，请先整理历史安排。')
-            pid = 'action-' + uuid.uuid4().hex
-            plan = {**data, 'id': pid, 'schema_version':2,'completed_at':None,'completion_record_id':None,'revision': 1, 'status': 'active', 'created_at': clock().isoformat(),
-                    'updated_at': clock().isoformat(), 'reminder_at': due_at(data)}
-            c.execute('INSERT INTO action_plans VALUES (?,?,1)', (pid, encoded(plan)))
-            return {'plan': plan, 'existing': False}
-        return operation(c, body.key, {'op': 'schedule', **body.model_dump(mode='json')}, work)
+        return operation(c, body.key, {'op': 'schedule', **body.model_dump(mode='json')}, lambda: schedule_in_connection(c, fields))
+
+
+def schedule_in_connection(c, fields):
+    """Reuse validated schedule creation inside the caller's tenant write transaction."""
+    old = duplicate_schedule(c, fields.model_dump(mode='json'))
+    if old:
+        return {'plan': old, 'existing': True}
+    # The tenant write lock is reentrant in this transaction; create in
+    # this connection so different request keys cannot race duplicates.
+    data = fields.model_dump(mode='json', exclude={'key', 'repeat_dates'})
+    validate_parent(c, data)
+    if c.execute('SELECT count(*) FROM action_plans').fetchone()[0] >= 1000:
+        fail(422, '安排数量已达上限，请先整理历史安排。')
+    pid = 'action-' + uuid.uuid4().hex
+    plan = {**data, 'id': pid, 'schema_version':2,'completed_at':None,'completion_record_id':None,'revision': 1, 'status': 'active', 'created_at': clock().isoformat(),
+            'updated_at': clock().isoformat(), 'reminder_at': due_at(data)}
+    c.execute('INSERT INTO action_plans VALUES (?,?,1)', (pid, encoded(plan)))
+    return {'plan': plan, 'existing': False}
 
 
 def fact_public(data):
