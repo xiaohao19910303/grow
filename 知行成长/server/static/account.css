@@ -8,7 +8,7 @@
 .login-description{font-size:14px;line-height:1.7;color:var(--muted);margin:0 0 24px}
 .auth-tabs{display:flex;padding:4px;background:var(--bg);border-radius:10px;margin-bottom:24px;gap:4px}
 .auth-tabs button{flex:1;border:0;border-radius:7px;background:transparent;color:var(--muted);padding:10px;font:inherit;cursor:pointer;font-size:14px}
-.auth-tabs [aria-pressed=true]{background:white;color:var(--primary);box-shadow:0 1px 4px #20304a14;font-weight:600}
+.auth-tabs [aria-pressed=true]{background:var(--card);color:var(--primary);box-shadow:0 1px 4px #20304a14;font-weight:600}
 .login-card label{display:block;font-size:13px;font-weight:600;margin:16px 0 8px}
 .login-card input{width:100%;min-height:46px;padding:11px 12px;font:inherit;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text)}
 .login-card input:focus{outline:3px solid #4f6ef72b;border-color:#4f6ef7}
