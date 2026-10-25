@@ -4,9 +4,14 @@
 
 独立安装、配置预检、备份恢复请按[网页独立部署手册](docs/deployment/standalone-web.md)。当前候选尚需以本批验收报告核对外部发布阻塞。
 
+2026-10-24 文档口径：当前运行时为 FastAPI + PostgreSQL，正式新内容使用 GitHub，AI 按需配置；不设每日必学或连续打卡要求。代码、默认开关、当前专项验证与未验证状态见[版本与功能状态核查](docs/verification/current-state-2026-10-24/README.md)。下一步按[日常节奏 14 天使用验证计划](知行成长/docs/daily-rhythm-14-day-validation.md)收集真实案例，再确定改造切片。
+
 ## 入口导航
 
 - [知行成长平台说明](知行成长/README.md)
+- [当前版本与功能状态](docs/verification/current-state-2026-10-24/README.md)
+- [D0启动检查与设置竞态修复](docs/verification/d0-startup-2026-10-24/README.md)
+- [日常节奏 14 天使用验证计划](知行成长/docs/daily-rhythm-14-day-validation.md)
 - [内容生成与存储规则](知行成长/内容存储规则.md) — 模块目录、命名、课次、资料与索引约定
 - [Grow 统一产品方案与 App 改造计划](../project/plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — 后续 App 方向参考；当前网页优先，原生端与 Zook 暂缓
 - [Grow App G0 核验与 G1 任务](../project/plan/docs/04-planning/grow-app-g0-2026-10-18/README.md) — 历史基线与后续任务参考，不作为本轮网页交付前置条件

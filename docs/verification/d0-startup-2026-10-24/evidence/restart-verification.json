@@ -1,0 +1,12 @@
+{
+  "equal": {
+    "preferences": true,
+    "focus_days": true,
+    "weekly_cards": true,
+    "enrollments": true,
+    "plans": true,
+    "executions": true
+  },
+  "all_equal": true,
+  "synthetic_only": true
+}
