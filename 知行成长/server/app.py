@@ -346,6 +346,7 @@ def refresh_knowledge():
     nodes = scan_markdown()
     conn = get_conn()
     cur = conn.cursor()
+    cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':knowledge-write',0))")
     # Keep existing identities and imported nodes: knowledge links refer to these IDs.
     for n in nodes:
         existing = cur.execute("SELECT id FROM knowledge WHERE name=? AND COALESCE(source,'')=? AND COALESCE(kind,'')=?",

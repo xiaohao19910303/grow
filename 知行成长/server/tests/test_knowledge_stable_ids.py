@@ -91,6 +91,50 @@ class KnowledgeStableIDTests(PostgreSQLFixture):
         self.assertEqual(imported['id'], old)
         self.assertEqual(self.store.get_stats()['total_nodes'], 1)
 
+    def test_scanning_twice_preserves_imported_nodes_and_gives_new_nodes_ids(self):
+        import app
+        imported = self.node()
+        scanned = dict(name='扫描节点', category='认知', summary='教材概念', source='扫描教材', kind='concept', date='')
+        with patch('app.scan_markdown', return_value=[scanned]):
+            app.refresh_knowledge()
+            nodes = self.store.get_graph()['nodes']
+            scanned_node = next(n for n in nodes if n['name'] == scanned['name'])
+            uuid.UUID(scanned_node['stable_id'])
+            self.store.save_links([(imported['id'], scanned_node['id'], 'related', 2)])
+            app.refresh_knowledge()
+        self.assertEqual([(n['id'], n['stable_id']) for n in nodes],
+                         [(n['id'], n['stable_id']) for n in self.store.get_graph()['nodes']])
+        self.assertEqual(self.store.get_stats()['total_links'], 1)
+
+    def test_migration_rejects_duplicate_existing_ids_and_rolls_back(self):
+        from knowledge.schema import upgrade_stable_ids
+        with db.connect() as c:
+            c.execute('DROP INDEX uq_knowledge_stable_id')
+            c.execute('ALTER TABLE knowledge ALTER COLUMN stable_id DROP NOT NULL')
+            c.execute("INSERT INTO knowledge(name,stable_id) VALUES ('甲','duplicate'),('乙','duplicate'),('丙',NULL)")
+        with self.assertRaises(psycopg2.errors.UniqueViolation):
+            with db.connect() as c:
+                upgrade_stable_ids(c)
+        with db.connect() as c:
+            self.assertEqual(c.execute("SELECT count(*) FROM knowledge WHERE stable_id='duplicate'").fetchone()[0], 2)
+            self.assertIsNone(c.execute("SELECT stable_id FROM knowledge WHERE name='丙'").fetchone()[0])
+
+    def test_cli_verification_returns_failure_for_unmigrated_schema(self):
+        from migrate_knowledge_stable_ids import main
+        with db.connect() as c:
+            c.execute('ALTER TABLE knowledge ALTER COLUMN stable_id DROP DEFAULT')
+        with patch('sys.argv', ['migrate_knowledge_stable_ids.py', '--verify', '--schema', self.schema]):
+            self.assertEqual(main(), 1)
+        with db.connect() as c:
+            default = c.execute("SELECT column_default FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='knowledge' AND column_name='stable_id'").fetchone()[0]
+        self.assertIsNone(default, '--verify must not repair the schema')
+
+    def test_store_startup_failure_has_a_recoverable_http_status(self):
+        self.store.startup_error = RuntimeError('PRIVATE SCHEMA ERROR')
+        response = self.client.get('/api/knowledge/graph')
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('PRIVATE SCHEMA ERROR', response.text)
+
     def test_ambiguous_legacy_matches_are_not_silently_merged(self):
         with db.connect() as c:
             for _ in range(2):

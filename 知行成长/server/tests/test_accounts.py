@@ -327,6 +327,31 @@ class AccountIntegrationTests(unittest.TestCase):
         self.assertEqual(self.login('owner',os.environ['APP_PASSWORD']).status_code,200)
         self.assertEqual(self.client.get('/api/data').json()['todos'][0]['title'],'OWNER PRIVATE')
 
+    def test_knowledge_stable_ids_initialize_and_remain_private_across_accounts(self):
+        body = dict(name='账号私有知识', category='认知', summary='ALICE PRIVATE KNOWLEDGE',
+                    source='教材', kind='concept', date='2026-10-25',
+                    source_path='教材/同名.md', source_hash='same-hash')
+        self.assertEqual(self.client.get('/api/knowledge/by-stable-id/missing').status_code, 401)
+        self.register('alice')
+        self.assertEqual(self.client.post('/api/knowledge/upsert', json=body).status_code, 403)
+        self.assertEqual(self.client.post('/api/knowledge/upsert', json=body,
+            headers={**self.headers, 'Origin':'https://evil.example'}).status_code, 403)
+        response = self.client.post('/api/knowledge/upsert', json=body, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        first = response.json()['knowledge']
+        url = '/api/knowledge/by-stable-id/' + first['stable_id']
+        self.register('bob')
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.get(url + '/related').status_code, 404)
+        self.assertEqual(self.client.get('/api/knowledge/graph').json()['nodes'], [])
+        response = self.client.post('/api/knowledge/upsert', json=body | {'summary':'BOB PRIVATE KNOWLEDGE'}, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotEqual(first['stable_id'], response.json()['knowledge']['stable_id'])
+        self.assertEqual(self.login('alice').status_code, 200)
+        self.assertEqual(self.client.get(url).json()['summary'], 'ALICE PRIVATE KNOWLEDGE')
+        self.assertEqual(self.login('owner', os.environ['APP_PASSWORD']).status_code, 200)
+        self.assertEqual(self.client.get(url).status_code, 404)
+
     def test_article_feedback_is_private_and_isolated_for_same_article_id(self):
         self.register('alice')
         body={'data':{'title':'Evidence','content':'Evidence and careful decisions. '*30,'language':'en'}}

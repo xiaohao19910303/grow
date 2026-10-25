@@ -3,17 +3,40 @@ from __future__ import annotations
 
 from tenancy import scoped, learning_root, runtime_root
 import time
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+import db
 
 from .store import KnowledgeGraphStore
 from .graph import scan_links
 
 
+RequiredText = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=1, max_length=500)]
+
+
+class KnowledgeInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    name: RequiredText
+    category: str = Field(strict=True, max_length=500)
+    summary: str = Field(strict=True, max_length=100000)
+    source: str = Field(strict=True, max_length=2000)
+    kind: RequiredText
+    date: str = Field(strict=True, max_length=100)
+    source_path: RequiredText
+    source_hash: RequiredText
+
+
 def register(app: FastAPI, root, db_path) -> KnowledgeGraphStore:
     store = scoped(app, lambda: KnowledgeGraphStore(runtime_root(db_path)), initialize=True)
-    router = APIRouter(prefix="/api/knowledge")
+
+    def ready(response: Response):
+        response.headers['Cache-Control'] = 'no-store'
+        if store.startup_error:
+            raise HTTPException(503, '知识图谱存储暂不可用，请核对表结构和迁移状态。')
+
+    router = APIRouter(prefix="/api/knowledge", dependencies=[Depends(ready)])
 
     @router.get("/graph")
     def get_graph(category: Optional[str] = None, limit: int = 500):
@@ -55,23 +78,17 @@ def register(app: FastAPI, root, db_path) -> KnowledgeGraphStore:
         return {"node": node, "related": related, "count": len(related)}
 
     @router.post("/upsert")
-    def upsert_knowledge(data: dict):
+    def upsert_knowledge(data: KnowledgeInput):
         """幂等导入知识节点
 
         请求体应包含：name, category, summary, source, kind, date, source_path, source_hash
-        如果 source_path + source_hash 已存在，则更新；否则插入新记录。
+        source_path + name + kind 标识节点；source_hash 仅表示内容版本，更新时保留 ID。
         """
-        required_fields = ['name', 'category', 'summary', 'source', 'kind', 'date',
-                          'source_path', 'source_hash']
-        for field in required_fields:
-            if field not in data:
-                raise HTTPException(400, f"缺少必需字段: {field}")
-
         try:
-            result = store.upsert_knowledge(**data)
+            result = store.upsert_knowledge(**data.model_dump())
             return {"ok": True, "knowledge": result}
-        except Exception as e:
-            raise HTTPException(500, f"导入失败: {e}")
+        except db.psycopg2.Error:
+            raise HTTPException(503, '知识节点保存失败，请稍后重试。') from None
 
     app.include_router(router)
     return store
