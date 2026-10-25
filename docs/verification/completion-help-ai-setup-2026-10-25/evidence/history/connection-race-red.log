@@ -1,0 +1,9 @@
+AssertionError [ERR_ASSERTION]: Account changes must not leave a completed test labelled running
+    at /Volumes/肖豪/project/grow/知行成长/server/tests/test_ai_connection_client.cjs:21:151 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

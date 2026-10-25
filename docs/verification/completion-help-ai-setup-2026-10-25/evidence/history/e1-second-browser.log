@@ -1,0 +1,95 @@
+.FF..                                                                    [100%]
+=================================== FAILURES ===================================
+_ SetupHelpBrowserTests.test_missing_config_entry_respects_leave_guard_and_never_replays_generation _
+
+self = <tests.test_setup_help_browser.SetupHelpBrowserTests testMethod=test_missing_config_entry_respects_leave_guard_and_never_replays_generation>
+
+        self.page.get_by_role('button',name='保存配置',exact=True).click();expect(self.page.locator('#apiStatus')).to_contain_text('不允许保存')
+        self.page.screenshot(path=str(self.evidence/'ai-setup-storage-denied.png'))
+        self.page.reload();self.page.evaluate("goTab('settings')");expect(self.page.get_by_label('模型名称',exact=True)).to_have_value('old-model')
+
+    def test_missing_config_entry_respects_leave_guard_and_never_replays_generation(self):
+        self.page.evaluate("goTab('plans')")
+        configure=self.page.locator('#view-plans').get_by_role('button',name='配置个人模型',exact=True);expect(configure).to_be_visible()
+        self.page.evaluate("window.fixtureOriginalGuard=window.beforePlansLeave;window.beforePlansLeave=()=>false")
+        configure.click();expect(self.page.locator('#view-settings')).not_to_be_visible()
+        self.page.evaluate('window.beforePlansLeave=window.fixtureOriginalGuard')
+        configure.focus();self.page.keyboard.press('Enter');expect(self.page.locator('#aiSetupStep')).to_be_focused()
+        expect(self.page.locator('#aiSetupStep')).to_contain_text('1/3')
+        self.page.get_by_label('API Base URL',exact=True).fill('https://model.example/v1');self.page.get_by_role('button',name='下一步',exact=True).click()
+        self.page.get_by_label('API Key',exact=True).fill('TEST_SETUP_PRIVATE_KEY');self.page.get_by_label('模型名称',exact=True).fill('test-model')
+        self.page.get_by_role('button',name='直接编辑全部字段',exact=True).click()
+        expect(self.page.get_by_label('API Base URL',exact=True)).to_have_value('https://model.example/v1')
+>       expect(self.page.get_by_label('模型名称',exact=True)).to_have_value('test-model')
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_setup_help_browser.py:119:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../../.venv/lib/python3.13/site-packages/playwright/sync_api/_generated.py:11021: in click
+    self._sync(
+../../.venv/lib/python3.13/site-packages/playwright/_impl/_locator.py:174: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.venv/lib/python3.13/site-packages/playwright/_impl/_frame.py:598: in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+../../.venv/lib/python3.13/site-packages/playwright/_impl/_connection.py:78: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <playwright._impl._connection.Connection object at 0x1070b9550>
+cb = <function Channel.send.<locals>.<lambda> at 0x10756bec0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 12000ms exceeded.
+E           Call log:
+E             - waiting for get_by_role("button", name="下一步", exact=True)
+
+../../.venv/lib/python3.13/site-packages/playwright/_impl/_connection.py:636: TimeoutError
+_ SetupHelpBrowserTests.test_setup_save_without_model_request_and_new_browser_is_empty _
+
+self = <tests.test_setup_help_browser.SetupHelpBrowserTests testMethod=test_setup_save_without_model_request_and_new_browser_is_empty>
+
+    def test_setup_save_without_model_request_and_new_browser_is_empty(self):
+        self.guide();review=self.page.locator('#aiSetupReview')
+        expect(review).to_contain_text('test-model');expect(review).not_to_contain_text('TEST_SETUP_PRIVATE_KEY')
+        self.page.screenshot(path=str(self.evidence/'ai-setup-review-desktop.png'))
+        self.page.set_viewport_size({'width':320,'height':850});review.scroll_into_view_if_needed();self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'),320)
+        self.page.screenshot(path=str(self.evidence/'ai-setup-review-mobile.png'))
+        self.page.get_by_role('button',name='保存配置',exact=True).click();expect(self.page.locator('#apiStatus')).to_contain_text('已保存')
+        self.assertFalse(any(r['path']=='/api/ai/test' or '/generate' in r['path'] for r in self.requests))
+>       self.page.reload();self.page.evaluate("goTab('settings')");expect(self.page.get_by_label('模型名称',exact=True)).to_have_value('test-model')
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Locator expected to have Value 'test-model'
+E       Actual value:
+E       Call log:
+E         - Expect "to_have_value" get_by_label("模型名称", exact=True) with timeout 5000ms
+E         - waiting for get_by_label("模型名称", exact=True)
+E           13 × locator resolved to <input type="text" id="modelName" maxlength="100" autocomplete="off" spellcheck="false" placeholder="填写服务商提供的模型名称"/>
+E              - unexpected value ""
+E
+E       Aria snapshot:
+E       - textbox "模型名称":
+E         - /placeholder: 填写服务商提供的模型名称
+
+tests/test_setup_help_browser.py:73: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_setup_help_browser.py::SetupHelpBrowserTests::test_missing_config_entry_respects_leave_guard_and_never_replays_generation
+FAILED tests/test_setup_help_browser.py::SetupHelpBrowserTests::test_setup_save_without_model_request_and_new_browser_is_empty
+2 failed, 3 passed in 42.85s
+WEB_MODULE_RESULT {"tests": 5, "failed": 2, "skipped": 0, "exit_code": 1, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

@@ -1,0 +1,12 @@
+AssertionError [ERR_ASSERTION]: Reading before identity resolves must restore that account after login readiness
+
+'' !== 'saved-model'
+
+    at /Volumes/肖豪/project/grow/知行成长/server/tests/test_ai_connection_client.cjs:27:163 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '',
+  expected: 'saved-model',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

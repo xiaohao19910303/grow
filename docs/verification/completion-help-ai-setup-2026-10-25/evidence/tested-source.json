@@ -1,0 +1,22 @@
+{
+  "commits": [
+    "f370441",
+    "204a1a8"
+  ],
+  "algorithm": "sha256",
+  "files": {
+    "知行成长/server/static/index.html": "9152c7b03c615583046d44133bd7be63ece72c39db9c413bc58df5547dbf84cf",
+    "知行成长/server/static/action-plans.css": "8b76fd479b8ca237c9a11d9f6b362cf2ed4473ce7a0b1cc119425c2d3849f2e8",
+    "知行成长/server/static/action-plans.js": "e1b9c7388f2fd76b351a245034e685c365f619add3d7900669d56634f848afd5",
+    "知行成长/server/static/plans.js": "29491c897d662a5fb6b2ab28b59298e8cb090e3bf6e180e0ffc2c0b20fade7b7",
+    "知行成长/server/static/ai-config.js": "b142fcb78cf237ee6257700ec6e6149e37484d2693a8e1eae61ddcb3eca46743",
+    "知行成长/server/static/ai-setup.js": "c80b028572e494de4b28b548eefd645e54cd852f83dfa9b2e7814cce562b77af",
+    "知行成长/server/static/copilot.js": "a659941aee0fb2e4858346db912fa89f4d0559fcff9050899702f0d3d76ca72f",
+    "知行成长/server/static/reading-growth.js": "09c31319a64111141159c67d59034af07851ccb7f7cccbf757d95477e189b47b",
+    "知行成长/server/tests/test_setup_help_browser.py": "b279d75d909315c4f4d49f043ed6e1385ffae0ac54b96899d074850ef629e83a",
+    "知行成长/server/tests/serve_setup_help_fixture.py": "e7f4f3e36eef843b7517801356b051edef8a0fb4d2f317cdabfa11952b31a2c2",
+    "知行成长/server/tests/test_ai_config_client.cjs": "b3cb9997cb11d4bd59dcfadaffbea7636fc822a151e4297882491bd349b7a7fa",
+    "知行成长/server/tests/test_ai_connection_client.cjs": "d2ec2d6e2305651c2b0d7ccd2d1cc5c9a3e54f1a989a0e31e11a1c1709183f5c"
+  },
+  "basis": "Clean git archive of 204a1a8; concurrent design changes retained separately in working directory."
+}
