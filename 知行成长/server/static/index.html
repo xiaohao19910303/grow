@@ -96,7 +96,7 @@
   .note-card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:10px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
   .note-card .meta{font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between}
   .note-card .body{font-size:13px;white-space:pre-wrap}
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f2430;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;z-index:200;pointer-events:none}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;z-index:200;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .empty{text-align:center;color:var(--muted);padding:30px 0;font-size:13px}
 
@@ -111,7 +111,7 @@
   @media(max-width:760px){.personal-grid{grid-template-columns:1fr}}
   /* 学习完成检测样式 */
   .cp-reading-progress{margin:20px 0;padding:16px;background:var(--primary-soft);border-radius:10px;border:1px solid var(--border)}
-  .cp-progress-bar{width:100%;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin-bottom:8px}
+  .cp-progress-bar{width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:8px}
   .cp-progress-fill{height:100%;background:var(--gradient-brand);width:0%;transition:width 0.3s ease}
   .cp-reading-info{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
   .cp-review-section{margin:24px 0;padding:20px;background:var(--card);border:2px solid var(--primary);border-radius:12px;box-shadow:var(--shadow)}
