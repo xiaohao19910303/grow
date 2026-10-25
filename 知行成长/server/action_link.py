@@ -155,13 +155,23 @@ def register(app):
         source=identity()
         with connection() as c:
             from rhythm.store import has_data
-            if has_data(c) or c.execute('SELECT count(*) FROM action_content_events').fetchone()[0] or any(json.loads(r[0]).get('schema_version')==2 for r in c.execute('SELECT data FROM action_plans')):
-                fail(409,'P0接管合同尚待双端验证；计划继续保存在当前唯一写入方。','CONTRACT_UPGRADE_REQUIRED')
+            if has_data(c):
+                fail(409,'日常节奏尚未接入客户端，计划继续保存在当前唯一写入方。','CONTRACT_UPGRADE_REQUIRED')
         target=call(source,{'action':'preview','code':body.code})
+        v2=target.get('action_schema_version')==2 and target.get('v2_import_enabled') is True
+        if target.get('action_schema_version')==2 and not v2:
+            fail(409,'当前客户端连接服务尚未开放，原计划保持可用。','CONTRACT_UPGRADE_REQUIRED')
+        if v2:
+            from action_handoff import snapshot_v2
+            data=snapshot_v2(source)
         with connection(True,allow_link=True) as c:
             current,_=state(c)
             if current.get('phase')!='local':fail(409,'这个账号已开始接管，请刷新连接状态。')
-            data=snapshot(c);proposal=dict(preview_id=str(uuid.uuid4()),code_hash=fingerprint(body.code),snapshot_hash=fingerprint(data),target_user_id=target['target_user_id'],expires_at=target['expires_at'],counts=counts(data))
+            if not v2:
+                if c.execute('SELECT count(*) FROM action_content_events').fetchone()[0] or any(json.loads(r[0]).get('schema_version')==2 for r in c.execute('SELECT data FROM action_plans')):
+                    fail(409,'当前连接端尚不支持这些行动，原数据继续保存在 Grow。','CONTRACT_UPGRADE_REQUIRED')
+                data=snapshot(c)
+            proposal=dict(preview_id=str(uuid.uuid4()),code_hash=fingerprint(body.code),snapshot_hash=fingerprint(data),target_user_id=target['target_user_id'],expires_at=target['expires_at'],counts=counts(data),snapshot_version=2 if v2 else 1)
             put(c,{'phase':'local','preview':proposal})
         return {k:v for k,v in proposal.items() if k not in ('code_hash','snapshot_hash')}
 
@@ -174,6 +184,16 @@ def register(app):
         if link.get('phase')=='active':return public(link)
         if link.get('phase')=='pending':return finish_import(source)
         if proposal.get('preview_id')!=body.preview_id or proposal.get('code_hash')!=fingerprint(body.code):fail(409,'请重新预览并确认连接。')
+        if proposal.get('snapshot_version')==2:
+            from action_handoff import snapshot_v2
+            from action_handoff_coordinator import preflight_v2,stage_v2,finish_v2
+            if fingerprint(snapshot_v2(source))!=proposal['snapshot_hash']:fail(409,'预览后数据已变化，请重新预览。')
+            target=call(source,dict(action='claim',code=body.code))
+            if target.get('userId')!=proposal['target_user_id']:fail(409,'目标账户已变化，请重新核对。')
+            prepared=preflight_v2(source,target['binding_id'])
+            if prepared['snapshot_hash']!=proposal['snapshot_hash']:fail(409,'预览后数据已变化，请重新预览。')
+            stage_v2(source,prepared['preview_id'])
+            return finish_v2(source)
         with connection() as c:
             from rhythm.store import has_data
             if has_data(c):fail(409,'接管预览后新增了日常节奏数据，请等待连接端合同升级。','CONTRACT_UPGRADE_REQUIRED')

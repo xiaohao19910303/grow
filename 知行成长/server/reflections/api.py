@@ -10,6 +10,8 @@ from copilot.generation import availability
 from copilot.ai_config import require_config
 from .store import ReflectionsStore
 from .assist import ReflectionAssistant
+from starlette.concurrency import run_in_threadpool
+from record_handoff_api import register as register_handoff, proxy
 
 
 class Payload(BaseModel):
@@ -56,10 +58,11 @@ def register(app, root, db):
     store = scoped(app, lambda: ReflectionsStore(learning_root(root), runtime_root(db)), initialize=True)
     assistant = scoped(app, lambda: ReflectionAssistant(store))
     router = APIRouter(prefix='/api/reflections')
+    register_handoff(app, store)
 
     @app.middleware('http')
     async def protect(request: Request, call_next):
-        if request.url.path.startswith('/api/reflections'):
+        if request.url.path.startswith(('/api/reflections','/api/record-link')):
             if store.startup_error:
                 return JSONResponse({'message': '日常记录暂不可用，请核对磁盘与恢复日志。'}, status_code=503)
             if request.method not in ('GET', 'HEAD', 'OPTIONS'):
@@ -67,8 +70,16 @@ def register(app, root, db):
                     return JSONResponse({'message': '缺少同源写入标识。'}, status_code=403)
                 if int(request.headers.get('content-length', '0')) > 400000:
                     return JSONResponse({'message': '请求内容过长。'}, status_code=413)
-        response = await call_next(request)
         if request.url.path.startswith('/api/reflections'):
+            from copilot.core import Problem
+            try:
+                body=await request.json() if request.method not in ('GET','HEAD','OPTIONS') else {}
+                result=await run_in_threadpool(proxy,store,request.url.path,request.method,dict(request.query_params),body)
+                if result is not None:return JSONResponse(result,headers={'Cache-Control':'no-store'})
+            except Problem as error:return JSONResponse({'message':error.message,'error':error.code},status_code=error.status,headers={'Cache-Control':'no-store'})
+            except (ValueError,TypeError):return JSONResponse({'message':'请求格式无效。'},status_code=422)
+        response = await call_next(request)
+        if request.url.path.startswith(('/api/reflections','/api/record-link')):
             response.headers['Cache-Control'] = 'no-store'
         return response
 

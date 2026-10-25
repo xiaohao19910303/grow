@@ -54,7 +54,8 @@
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || '暂时无法登录，请稍后再试。');
       $('authMessage').textContent = mode === 'register' ? '账号已创建，正在打开学习首页…' : '登录成功，正在打开学习首页…';
-      location.replace('/');
+      const continuation=/^#(?:plans\/detail\/plan-[a-zA-Z0-9-]{1,70}|mobile\/action\/action-[a-zA-Z0-9-]+)$/.test(location.hash)?location.hash:'';
+      location.replace('/'+continuation);
     } catch (error) {
       $('authMessage').textContent = error.message === 'Failed to fetch' ? '连接中断，请检查网络后重试。' : error.message;
       submitting = false; controls.forEach(control => control.disabled = false);

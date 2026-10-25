@@ -13,6 +13,7 @@
   const label=n('label','客户端连接码'),input=n('input');input.autocomplete='off';input.maxLength=36;input.setAttribute('aria-label','客户端连接码');label.append(input);root.append(label);
   const preview=n('div');root.append(preview);
   button(root,'预览联动范围',async()=>{message.textContent='正在验证账号与待接管数据…';const proposal=await api('/preview',{code:input.value.trim()});message.textContent='';preview.replaceChildren(n('p','目标 LightTick 账号：'+proposal.target_user_id),n('p',`将接管 ${proposal.counts.plans} 项计划、${proposal.counts.records} 次执行、${proposal.counts.reviews} 次手动复盘和 ${proposal.counts.reports} 份 AI 历史。课程、笔记与学习完成状态不在此范围内。`));
+   if(proposal.snapshot_version===2)preview.append(n('p','同时允许手机查看正式学习计划的整体和阶段进度；课程正文、私人笔记仍由 Grow 保存。日常节奏尚不接管。'));
    const consentLabel=n('label','我确认两个账号都属于本人，同意将上述数据切换为 LightTick 统一保存'),consent=n('input');consent.type='checkbox';consent.setAttribute('aria-label','确认本人账号与接管范围');consentLabel.prepend(consent);preview.append(consentLabel);
    button(preview,'确认接管并联动',async()=>{if(!consent.checked){message.textContent='请先确认账号和接管范围。';return;}message.textContent='正在备份、接管并核对，期间请保留此页面…';await api('/confirm',{code:input.value.trim(),preview_id:proposal.preview_id,consent:true});input.value='';await refresh();await window.ActionPlans?.refresh();});
   });

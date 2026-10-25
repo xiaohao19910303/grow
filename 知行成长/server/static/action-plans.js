@@ -398,4 +398,11 @@
     setInterval(()=>{if(!document.hidden)load().then(remind).catch(()=>{});},30000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)load().then(remind).catch(()=>{});});
   });
+  async function openMobileAction(){
+    const match=location.hash.match(/^#mobile\/action\/(action-[a-zA-Z0-9-]+)$/);if(!match)return;
+    try{await initialized;await load(true);const p=planById(match[1]);if(!p)throw Error('当前 Grow 账号中没有这项行动，请核对连接账号。');if(goTab('action-plans')===false)return;await openTarget(p.target,p.id);}
+    catch(e){toast(e.message);}
+  }
+  window.addEventListener('hashchange',openMobileAction);
+  window.addEventListener('load',openMobileAction);
 })();
