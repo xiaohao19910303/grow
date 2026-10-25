@@ -500,7 +500,7 @@ async def lifespan(app: FastAPI):
     if empty:
         refresh_knowledge()
     from action_source_worker import run as run_source_delivery
-    source_delivery_task = asyncio.create_task(run_source_delivery(accounts,plans_store))
+    source_delivery_task = asyncio.create_task(run_source_delivery(accounts,plans_store,materials))
     try:
         yield
     finally:
@@ -538,6 +538,8 @@ stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
 from migration_api import register as register_migrations
 register_migrations(app, copilot_store, LEARN_ROOT)
 materials = register_materials(app, LEARN_ROOT)
+from mobile_library import register as register_mobile_library
+register_mobile_library(app, plans_store, materials)
 from study_notes import register as register_study_notes
 register_study_notes(app)
 from action_plans import register as register_action_plans

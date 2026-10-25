@@ -30,3 +30,5 @@ payload、revision 和待确认回执持久化；丢响应重试原 payload。Zo
 合成账号的真实 Grow→Zook HTTP 测试覆盖三模式、来源确认、阶段 100%/0% 与整体 50%、丢响应重试和异账号空投影；浏览器验证计划详情及来源深链，不因访问标完成。双端模拟器另验三模式和本机空间；完整证据保存在 plan `docs/04-planning/grow-mobile-execution-2026-10-25/`。
 
 未部署、未操作个人历史。真机/读屏/通知点击/自然后台送达继续待办；日常节奏 R20、原生阅读和私人学习状态接续另列任务。
+
+原生课程阅读已补齐，范围与连接方式见 [grow-native-reading.md](grow-native-reading.md)。

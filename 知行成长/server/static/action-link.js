@@ -1,11 +1,11 @@
 /* Pairing is explicit; connected plans have exactly one server writer. */
 (() => {
- const root=document.getElementById('actionLinkSettings');let phase='local';
+ const root=document.getElementById('actionLinkSettings');let phase='local',refreshRevision=0;
  const n=(tag,text)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;return el;};
  async function api(path='',body){const r=await fetch('/api/action-link'+path,{method:body?'POST':'GET',cache:'no-store',headers:body?{'Content-Type':'application/json','X-Copilot-Request':'1'}:{},body:body?JSON.stringify(body):undefined});let data;try{data=await r.json();}catch{throw Error('联动连接未完成，请稍后重试。');}if(!r.ok)throw Error(typeof data.detail==='string'?data.detail:data.message||'联动暂未完成。');return data;}
  function button(parent,text,action){const b=n('button',text);b.type='button';b.className='btn';b.onclick=async()=>{b.disabled=true;try{await action();}catch(e){message.textContent=e.message;}finally{b.disabled=false;}};parent.append(b);return b;}
  const message=n('p');message.setAttribute('role','status');
- async function refresh(){const data=await api();phase=data.phase;root.replaceChildren(n('h2','LightTick 客户端联动'),message);message.textContent='';
+ async function refresh(){const turn=++refreshRevision;const data=await api();if(turn!==refreshRevision)return;phase=data.phase;root.replaceChildren(n('h2','LightTick 客户端联动'),message);message.textContent='';window.MobileLearning?.mount(root);
   if(phase==='active'){root.append(n('p','计划已由 LightTick 统一保存。网页与客户端共享计划、执行记录和复盘，刷新即可查看另一端的更新。'),n('p','已连接账号：'+data.target_user_id),n('p','原网页数据已保留只读备份；断网不会切回另一份可编辑计划。'));button(root,'刷新同步状态',async()=>{await refresh();await window.ActionPlans?.refresh();});return;}
   if(phase==='pending'){root.append(n('p','正在核对接管结果。原数据已保留备份并暂停本地写入，请重试完成联动。'));button(root,'重试接管',async()=>{message.textContent='正在核对接管回执…';await api('/retry',{});await refresh();await window.ActionPlans?.refresh();});return;}
   if(!data.configured){root.append(n('p','联动服务尚未配置，请联系管理员。网页计划仍可正常使用。'));return;}

@@ -88,3 +88,57 @@ class MobileExecutionHTTPTests(CloudFixture):
         self.assertEqual(time['status'],'completed')
         snapshot=self.native('GET','action-plans');self.assertEqual(next(p for p in snapshot['plans'] if p['id']==time['id'])['progress']['minutes'],20)
         self.assertEqual(self.native('GET','action-plans',other=True)['plans'],[]);self.assertIsNone(self.native('GET','action-plans/learning-progress',other=True)['progress'])
+
+    def test_explicit_reading_scope_real_http_versions_privacy_response_loss_and_revoke(self):
+        import mobile_library
+        class Materials:
+            def lessons(self,module):return [dict(filename='Day001.md',lesson_no=1,topic='Day001 Reading',learning_state='unknown'),dict(filename='Day002.md',lesson_no=2,topic='Day002 Writing',learning_state='unknown')]
+            def lesson(self,module,filename):return {'content':'# '+filename+'\n\nPublished body.','record':{'summary_text':'PRIVATE ANSWER MUST NEVER BE MIRRORED'}}
+        material=Materials();mobile_library.register(self.app,self.s,material)
+        draft=self.s.draft({'brief':B,'document':copy.deepcopy(D)});pid=self.s.adopt(draft['id'],'reading-formal-plan')['plan_id']
+        self.s.save_sources(pid,S);ctx=self.s.course_context(pid);draft=self.s.course_draft(ctx,content(ctx),'Published references')
+        self.s.publish_course(draft['id'],'reading-formal-publish')
+        actions.create(actions.NewPlan(title='连接阅读',period='day',completion_mode='check',key='reading-fixture-plan'))
+        ticket=self.native('POST','action-link-tickets',{});preview=self.web('action-link/preview',{'code':ticket['code']})
+        self.web('action-link/confirm',{'code':ticket['code'],'preview_id':preview['preview_id'],'consent':True})
+        self.assertFalse(self.native('GET','learning-library')['consent_enabled'])
+        bad=self.client.post('/api/mobile-learning/consent',json={'enabled':True,'consent':True});self.assertEqual(bad.status_code,403)
+        self.web('mobile-learning/consent',{'enabled':True,'consent':True})
+        original=mobile_library.call;once=True
+        def lost(*args):
+            nonlocal once
+            receipt=original(*args)
+            if once:once=False;raise RuntimeError('synthetic lost reading receipt')
+            return receipt
+        with patch('mobile_library.call',side_effect=lost):
+            with self.assertRaises(RuntimeError):mobile_library.sync(self.s,material)
+            first=self.native('GET','learning-library');mobile_library.sync(self.s,material)
+        index=self.native('GET','learning-library');self.assertEqual(index,first);self.assertEqual(len(index['lessons']),3)
+        english=next(x for x in index['lessons'] if x['collection_id']=='yingyu' and x['number']==1)
+        formal=next(x for x in index['lessons'] if x['collection_id']==pid)
+        self.assertIn('Published references',self.native('GET','learning-library/'+formal['id'])['lesson']['references'])
+        lesson=self.native('GET','learning-library/'+english['id'])['lesson']
+        self.assertIn('Published body',lesson['content']);self.assertNotIn('PRIVATE',json.dumps(lesson));self.assertEqual(lesson['learning_state'],'unknown')
+        self.assertEqual(self.native('GET','learning-library',other=True)['lessons'],[])
+        target=self.client.get('/api/mobile-learning/source/'+lesson['id']);self.assertEqual(target.json()['filename'],'Day001.md')
+        self.web('mobile-learning/consent',{'enabled':False,'consent':True});mobile_library.sync(self.s,material)
+        self.assertFalse(self.native('GET','learning-library')['consent_enabled'])
+        r=httpx.get(self.url+'/api/v1/lighttick/learning-library/'+lesson['id'],headers={'Authorization':'Bearer '+self.owners[0]['token'],'X-App-Id':'lighttick'});self.assertEqual(r.status_code,404)
+
+    def test_reading_only_pairing_does_not_migrate_or_freeze_actions_even_with_rhythm(self):
+        import mobile_library
+        class Materials:
+            def lessons(self,module):return [dict(filename='Day001.md',lesson_no=1,topic='English',learning_state='unknown')]
+            def lesson(self,module,filename):return {'content':'# English\n\nPublished learning body.'}
+        material=Materials();mobile_library.register(self.app,self.s,material)
+        ticket=self.native('POST','action-link-tickets',{})
+        with patch('rhythm.store.has_data',return_value=True):
+            proposal=self.web('mobile-learning/preview',{'code':ticket['code']})
+            result=self.web('mobile-learning/connect',{'code':ticket['code'],'preview_id':proposal['preview_id'],'consent':True})
+        self.assertTrue(result['enabled']);mobile_library.sync(self.s,material)
+        self.assertEqual(len(self.native('GET','learning-library')['lessons']),1)
+        self.assertEqual(self.native('GET','action-plans')['plans'],[])
+        with actions.connection() as c:link,_=__import__('action_link').state(c)
+        self.assertEqual(link.get('phase','local'),'local')
+        local=actions.create(actions.NewPlan(title='网页继续本地行动',period='day',completion_mode='check',key='reading-keeps-actions-local'))
+        self.assertTrue(local['plans'][0]['id']);self.assertEqual(self.native('GET','action-plans')['plans'],[])

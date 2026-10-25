@@ -6,7 +6,7 @@ from tenancy import current_user
 log=logging.getLogger(__name__)
 
 
-def sweep(accounts,plans_store=None):
+def sweep(accounts,plans_store=None,materials=None):
     from action_source_delivery import retry_due
     # Enumerate only server-owned identities. No schema/account names from requests.
     with accounts.conn() as c:
@@ -24,13 +24,15 @@ def sweep(accounts,plans_store=None):
                 if plans_store is not None:
                     from mobile_progress import sync
                     sync(plans_store)
+                    from mobile_library import sync as sync_library
+                    sync_library(plans_store,materials)
         except Exception:
             log.warning('Source delivery sweep deferred for one account',exc_info=False)
         finally:current_user.reset(token)
 
 
-async def run(accounts,plans_store=None):
+async def run(accounts,plans_store=None,materials=None):
     while True:
-        try:await asyncio.to_thread(sweep,accounts,plans_store)
+        try:await asyncio.to_thread(sweep,accounts,plans_store,materials)
         except Exception:log.warning('Source delivery sweep deferred',exc_info=False)
         await asyncio.sleep(30)
