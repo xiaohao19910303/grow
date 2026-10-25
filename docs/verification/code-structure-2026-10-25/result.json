@@ -1,0 +1,149 @@
+{
+  "python_tests": 738,
+  "skipped": 0,
+  "failures": 0,
+  "errors": 0,
+  "javascript": [
+    {
+      "file": "test_action_p0_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_action_plan_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_action_storage_recovery.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_ai_config_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_ai_connection_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_background_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_behavior_report_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_coach_facts_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_completion_producers.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_daily_agenda_capabilities.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_daily_rhythm_settings.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_learning_actions_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_learning_completion_sync.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_learning_loading.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_legacy_state_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_loading_state.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_loading_state_contract.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_login_loading.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_navigation_layout.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_partial_records.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_plan_observer.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_reading_navigation.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_reading_startup_browser.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_reading_tasks.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_reflection_entrypoints.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_rhythm_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_search_autofill.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_search_loading.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_search_timeline_navigation.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_state_browser.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_study_note_session.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_theme_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_weekly_rhythm_requests.cjs",
+      "returncode": 0
+    }
+  ],
+  "isolation_audit": {
+    "blocked_network_access": 0,
+    "blocked_real_database_access": 0,
+    "blocked_workspace_writes": 0,
+    "sqlite_connections": 405
+  },
+  "temporary_database_remaining_schema_count": 1,
+  "temporary_postgresql_stopped": true,
+  "temporary_cluster_removed": true
+}
