@@ -500,7 +500,7 @@ async def lifespan(app: FastAPI):
     if empty:
         refresh_knowledge()
     from action_source_worker import run as run_source_delivery
-    source_delivery_task = asyncio.create_task(run_source_delivery(accounts))
+    source_delivery_task = asyncio.create_task(run_source_delivery(accounts,plans_store))
     try:
         yield
     finally:

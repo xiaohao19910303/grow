@@ -135,7 +135,7 @@
     button(root,'保存草稿并预览',async()=>{const turn=navigation;if(ack&&!ack.checked)throw new Error('请先核对规划文件的外部修改。');const saved=await api('/drafts',{brief:getBrief(),document:getDoc(),plan_id:d.plan_id||null,base_version:d.base_version||0,external_hash:ack?existing.external.hash:null,...(d.id?{parent_draft_id:d.id,parent_hash:d.content_hash}:{})});if(turn===navigation){dirtyCheck=null;await previewDraft(saved.id);}else toast('草稿已保存，可从计划列表查看。');},true);
   }
   async function detail(pid){
-    const status=shell('计划详情');status.textContent='正在读取课程规划…';const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
+    const status=shell('计划详情');route('detail',pid);status.textContent='正在读取课程规划…';const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
     root.querySelector('h2').textContent=data.plan.name;status.textContent=pid+' · 当前版本 v'+data.plan.version;
     window.PlanActions?.mount(root,pid);
     button(root,'返回列表',window.loadPlans);button(root,'调整后续规划',()=>create(data));
@@ -258,8 +258,8 @@
   document.addEventListener('visibilitychange',()=>{if(document.hidden)for(const o of observers.values()){o.auto=false;o.left=true;};});
   const route=(kind,id)=>history.replaceState(null,'',kind?'#plans/'+kind+'/'+encodeURIComponent(id):location.pathname+location.search);
   window.enterPlans=()=>{
-    const m=location.hash.match(/^#plans\/(attempt|draft)\/([\w-]+)$/);
-    return m?(m[1]==='attempt'?watch(m[2]):previewDraft(m[2])):window.loadPlans();
+    const m=location.hash.match(/^#plans\/(attempt|draft|detail)\/([\w-]+)$/);
+    return m?(m[1]==='attempt'?watch(m[2]):m[1]==='detail'?detail(m[2]):previewDraft(m[2])):window.loadPlans();
   };
   window.addEventListener('hashchange',()=>{if(location.hash.startsWith('#plans/'))goTab('plans');});
   function foreground(id){return page?.kind==='attempt'&&page.id===id&&root.style.display!=='none'&&!document.hidden;}

@@ -99,3 +99,24 @@ class LearningActionsBrowserTests(unittest.TestCase):
         expect(card.get_by_role('button',name='关联到行动',exact=True)).to_be_visible()
         pid=card.get_attribute('data-learning-plan')
         self.assertFalse(context.request.get(self.base+'/api/plans/'+pid+'/actions').json()['linked'])
+
+    def test_mobile_plan_and_source_links_open_without_marking_learning_complete(self):
+        context=self.browser.new_context(viewport={'width':375,'height':850});self.addCleanup(context.close)
+        page=context.new_page();page.set_default_timeout(15000);errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+        page.route('**/*',lambda route:route.continue_() if route.request.url.startswith(self.base+'/') else route.abort())
+        headers={'X-Copilot-Request':'1','X-Grow-Action-Schema':'2'}
+        draft=context.request.post(self.base+'/fixture/learning-draft').json()
+        response=context.request.post(self.base+'/api/plans/drafts/'+draft['id']+'/adopt',headers=headers,data={'data':{'key':'mobile-adopt-'+draft['id'],'expected_hash':draft['content_hash'],'link_actions':True}})
+        self.assertEqual(response.status,200,response.text());pid=response.json()['plan_id']
+        course=context.request.post(self.base+'/fixture/learning-course/'+pid).json()
+        response=context.request.post(self.base+'/api/plans/drafts/'+course['id']+'/publish',headers=headers,data={'data':{'key':'mobile-publish-'+course['id'],'expected_hash':course['content_hash']}})
+        self.assertEqual(response.status,200,response.text())
+        page.goto(self.base+'/#plans/detail/'+pid);page.evaluate('Account.ready')
+        expect(page.locator('#view-plans')).to_contain_text(pid);expect(page.locator('#view-plans .learning-plan-card')).to_contain_text('已学完 0/2 课')
+        page.reload();expect(page.locator('#view-plans')).to_contain_text(pid)
+        plans=context.request.get(self.base+'/api/action-plans').json()['plans'];p=next(p for p in plans if p.get('target',{}).get('plan_id')==pid)
+        page.goto(self.base+'/#mobile/action/'+p['id']);expect(page.locator('#dailyReader')).to_contain_text('本人确认学完')
+        progress=context.request.get(self.base+'/api/plans/'+pid+'/actions').json();self.assertEqual(progress['completed_lessons'],0)
+        self.assertEqual(page.evaluate('window.actionContentOrigin.actionId'),p['id'])
+        self.assertEqual(errors,[]);self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),375)
+        page.screenshot(path=str(self.evidence/'mobile-h5-learning-source.png'),full_page=True)

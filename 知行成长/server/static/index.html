@@ -2164,7 +2164,7 @@ function goTab(name, options={}){
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='progress' || name==='overview')refreshAutoCheckins();
   if(name==='stocks') window.initStocksModule?.();
-  if(!options.fromHistory && name!=='reader' && name!=='reading' && location.hash!=='#view/'+name){
+  if(!options.fromHistory && name!=='reader' && name!=='reading' && !(name==='plans'&&location.hash.startsWith('#plans/')) && location.hash!=='#view/'+name){
     history[options.restore?'replaceState':'pushState'](null,'',location.pathname+location.search+'#view/'+name);
   }
   return true;
