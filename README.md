@@ -17,11 +17,12 @@
 - [Grow App G0 核验与 G1 任务](../project/plan/docs/04-planning/grow-app-g0-2026-10-18/README.md) — 历史基线与后续任务参考，不作为本轮网页交付前置条件
 - [客户端功能规划](../project/plan/docs/02-design/grow-client-feature-plan.md)与[迭代计划](../project/plan/docs/04-planning/grow-client-iteration-plan.md) — 记录、学习、行动三条路径，CF01–CF40 和 I0–I7；本轮仅完成规划
 
-- `学习系统总览.md` — 系统说明书：7 大模块 + 四层闭环
-- `长期成长学习体系总规划.md` — 总纲：目标 + 路线图 + 度量系统
+- [学习系统总览](学习系统总览.md) — 系统说明书：7 大模块 + 四层闭环
+- [长期成长学习体系总规划](长期成长学习体系总规划.md) — 总纲：目标 + 路线图 + 度量系统
 - `高认知能力训练规划.md` — 底层主线：12 月规划 + 三套模板
 - `知识索引.md` — 知识总目录，随用随查
 - [热门与深度文章](热门与深度文章/README.md) — 按需搜集热门文章与认知深度阅读，保存原文链接、摘要和阅读建议
+- [A 文档收尾与 E3 稳定 ID 验收](docs/verification/a-e3-2026-10-25/README.md) — 本轮改动、隔离测试及部署边界
 
 ## 快速开始
 

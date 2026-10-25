@@ -4,6 +4,10 @@
 
 2026-10-24 的代码基线、功能接入、默认开关及专项结果见[当前版本与功能状态](../docs/verification/current-state-2026-10-24/README.md)。已有日常节奏的真实体验按[14天使用验证计划](docs/daily-rhythm-14-day-validation.md)观察，不能用历史测试通过或旧数据快照替代使用结论。
 
+学习体系与长期方向分别见[学习系统总览](../学习系统总览.md)和[长期成长学习体系总规划](../长期成长学习体系总规划.md)。两者与本平台统一采用 PostgreSQL 多账号、GitHub 正式内容、AI 按需和非强制学习节奏的口径。本轮改动与验证见[A / E3 专项验收](../docs/verification/a-e3-2026-10-25/README.md)。
+
+知识节点的旧数字 ID 与连线保留，稳定 ID 在账号初始化时增量补齐，新节点自动生成。导入更新、重复记录处理和离线只读核验见[知识节点稳定 ID 说明](docs/knowledge-stable-ids.md)。
+
 ## 🌐 在线访问
 
 **应用地址**: https://zhixingchengzhang.onrender.com

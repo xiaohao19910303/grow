@@ -1,0 +1,346 @@
+FFFFF.FFFFFFFF                                                     [100%]
+=================================== FAILURES ===================================
+_ KnowledgeStableIDTests.test_ambiguous_legacy_matches_are_not_silently_merged _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_ambiguous_legacy_matches_are_not_silently_merged>
+
+    def test_ambiguous_legacy_matches_are_not_silently_merged(self):
+        with db.connect() as c:
+            for _ in range(2):
+                c.execute('INSERT INTO knowledge(name,source,kind) VALUES (?,?,?)',
+                          (self.body['name'], self.body['source'], self.body['kind']))
+        response = self.upsert()
+>       self.assertEqual(response.status_code, 409, response.text)
+E       AssertionError: 500 != 409 : {"detail":"导入失败: 'KnowledgeGraphStore' object has no attribute 'upsert_knowledge'"}
+
+知行成长/server/tests/test_knowledge_stable_ids.py:100: AssertionError
+_ KnowledgeStableIDTests.test_completed_legacy_migration_also_upgrades_stable_columns _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_completed_legacy_migration_also_upgrades_stable_columns>
+
+    def test_completed_legacy_migration_also_upgrades_stable_columns(self):
+        from legacy_schema import migrate
+        migrate()
+        with db.connect() as c:
+>           c.execute('ALTER TABLE knowledge DROP COLUMN stable_id CASCADE')
+
+知行成长/server/tests/test_knowledge_stable_ids.py:139:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/db.py:201: in execute
+    cursor.execute(sql, params)
+知行成长/server/db.py:74: in execute
+    self._cursor.execute(translated)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <cursor object at 0x12507ba50; closed: 0>
+query = 'ALTER TABLE knowledge DROP COLUMN stable_id CASCADE', vars = None
+
+    def execute(self, query, vars=None):
+        self.column_mapping = []
+        self._query_executed = True
+>       return super().execute(query, vars)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       psycopg2.errors.UndefinedColumn: column "stable_id" of relation "knowledge" does not exist
+
+知行成长/.venv/lib/python3.13/site-packages/psycopg2/extras.py:236: UndefinedColumn
+______ KnowledgeStableIDTests.test_concurrent_imports_create_one_identity ______
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_concurrent_imports_create_one_identity>
+
+    def test_concurrent_imports_create_one_identity(self):
+        with ThreadPoolExecutor(4) as pool:
+            results = list(pool.map(lambda _: self.upsert(), range(8)))
+>       self.assertEqual([r.status_code for r in results], [200] * 8)
+E       AssertionError: Lists differ: [500, 500, 500, 500, 500, 500, 500, 500] != [200, 200, 200, 200, 200, 200, 200, 200]
+E
+E       First differing element 0:
+E       500
+E       200
+E
+E       - [500, 500, 500, 500, 500, 500, 500, 500]
+E       ?  ^    ^    ^    ^    ^    ^    ^    ^
+E
+E       + [200, 200, 200, 200, 200, 200, 200, 200]
+E       ?  ^    ^    ^    ^    ^    ^    ^    ^
+
+知行成长/server/tests/test_knowledge_stable_ids.py:69: AssertionError
+___ KnowledgeStableIDTests.test_http_import_lookup_and_graph_share_identity ____
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_http_import_lookup_and_graph_share_identity>
+
+    def test_http_import_lookup_and_graph_share_identity(self):
+>       node = self.node()
+               ^^^^^^^^^^^
+
+知行成长/server/tests/test_knowledge_stable_ids.py:41:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/tests/test_knowledge_stable_ids.py:37: in node
+    self.assertEqual(response.status_code, 200, response.text)
+E   AssertionError: 500 != 200 : {"detail":"导入失败: 'KnowledgeGraphStore' object has no attribute 'upsert_knowledge'"}
+_ KnowledgeStableIDTests.test_import_reuses_matching_legacy_node_without_losing_links _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_import_reuses_matching_legacy_node_without_losing_links>
+
+    def test_import_reuses_matching_legacy_node_without_losing_links(self):
+        with db.connect() as c:
+            old = c.execute('INSERT INTO knowledge(name,source,kind) VALUES (?,?,?) RETURNING id',
+                            (self.body['name'], self.body['source'], self.body['kind'])).fetchone()[0]
+>       imported = self.node()
+                   ^^^^^^^^^^^
+
+知行成长/server/tests/test_knowledge_stable_ids.py:90:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/tests/test_knowledge_stable_ids.py:37: in node
+    self.assertEqual(response.status_code, 200, response.text)
+E   AssertionError: 500 != 200 : {"detail":"导入失败: 'KnowledgeGraphStore' object has no attribute 'upsert_knowledge'"}
+_ KnowledgeStableIDTests.test_invalid_imports_are_rejected_without_creating_nodes (update={'source_path': ''}) _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_invalid_imports_are_rejected_without_creating_nodes>
+
+    def test_invalid_imports_are_rejected_without_creating_nodes(self):
+        for update in ({'source_path': ''}, {'source_hash': []}, {'name': '  '},
+                       {'stable_id': 'client-chosen'}, {'summary': {}}, {'name': 'x' * 501}):
+            with self.subTest(update=update):
+>               self.assertEqual(self.upsert(**update).status_code, 422)
+E               AssertionError: 500 != 422
+
+知行成长/server/tests/test_knowledge_stable_ids.py:126: AssertionError
+_ KnowledgeStableIDTests.test_invalid_imports_are_rejected_without_creating_nodes (update={'source_hash': []}) _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_invalid_imports_are_rejected_without_creating_nodes>
+
+    def test_invalid_imports_are_rejected_without_creating_nodes(self):
+        for update in ({'source_path': ''}, {'source_hash': []}, {'name': '  '},
+                       {'stable_id': 'client-chosen'}, {'summary': {}}, {'name': 'x' * 501}):
+            with self.subTest(update=update):
+>               self.assertEqual(self.upsert(**update).status_code, 422)
+E               AssertionError: 500 != 422
+
+知行成长/server/tests/test_knowledge_stable_ids.py:126: AssertionError
+_ KnowledgeStableIDTests.test_invalid_imports_are_rejected_without_creating_nodes (update={'name': '  '}) _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_invalid_imports_are_rejected_without_creating_nodes>
+
+    def test_invalid_imports_are_rejected_without_creating_nodes(self):
+        for update in ({'source_path': ''}, {'source_hash': []}, {'name': '  '},
+                       {'stable_id': 'client-chosen'}, {'summary': {}}, {'name': 'x' * 501}):
+            with self.subTest(update=update):
+>               self.assertEqual(self.upsert(**update).status_code, 422)
+E               AssertionError: 500 != 422
+
+知行成长/server/tests/test_knowledge_stable_ids.py:126: AssertionError
+_ KnowledgeStableIDTests.test_invalid_imports_are_rejected_without_creating_nodes (update={'stable_id': 'client-chosen'}) _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_invalid_imports_are_rejected_without_creating_nodes>
+
+    def test_invalid_imports_are_rejected_without_creating_nodes(self):
+        for update in ({'source_path': ''}, {'source_hash': []}, {'name': '  '},
+                       {'stable_id': 'client-chosen'}, {'summary': {}}, {'name': 'x' * 501}):
+            with self.subTest(update=update):
+>               self.assertEqual(self.upsert(**update).status_code, 422)
+E               AssertionError: 500 != 422
+
+知行成长/server/tests/test_knowledge_stable_ids.py:126: AssertionError
+_ KnowledgeStableIDTests.test_invalid_imports_are_rejected_without_creating_nodes (update={'summary': {}}) _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_invalid_imports_are_rejected_without_creating_nodes>
+
+    def test_invalid_imports_are_rejected_without_creating_nodes(self):
+        for update in ({'source_path': ''}, {'source_hash': []}, {'name': '  '},
+                       {'stable_id': 'client-chosen'}, {'summary': {}}, {'name': 'x' * 501}):
+            with self.subTest(update=update):
+>               self.assertEqual(self.upsert(**update).status_code, 422)
+E               AssertionError: 500 != 422
+
+知行成长/server/tests/test_knowledge_stable_ids.py:126: AssertionError
+_ KnowledgeStableIDTests.test_invalid_imports_are_rejected_without_creating_nodes (update={'name': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}) _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_invalid_imports_are_rejected_without_creating_nodes>
+
+    def test_invalid_imports_are_rejected_without_creating_nodes(self):
+        for update in ({'source_path': ''}, {'source_hash': []}, {'name': '  '},
+                       {'stable_id': 'client-chosen'}, {'summary': {}}, {'name': 'x' * 501}):
+            with self.subTest(update=update):
+>               self.assertEqual(self.upsert(**update).status_code, 422)
+E               AssertionError: 500 != 422
+
+知行成长/server/tests/test_knowledge_stable_ids.py:126: AssertionError
+_ KnowledgeStableIDTests.test_legacy_backfill_and_repeated_initialization_preserve_ids_and_links _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_legacy_backfill_and_repeated_initialization_preserve_ids_and_links>
+
+    def test_legacy_backfill_and_repeated_initialization_preserve_ids_and_links(self):
+        with db.connect() as c:
+>           c.execute('ALTER TABLE knowledge ALTER COLUMN stable_id DROP NOT NULL')
+
+知行成长/server/tests/test_knowledge_stable_ids.py:75:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/db.py:201: in execute
+    cursor.execute(sql, params)
+知行成长/server/db.py:74: in execute
+    self._cursor.execute(translated)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <cursor object at 0x1253a2950; closed: 0>
+query = 'ALTER TABLE knowledge ALTER COLUMN stable_id DROP NOT NULL'
+vars = None
+
+    def execute(self, query, vars=None):
+        self.column_mapping = []
+        self._query_executed = True
+>       return super().execute(query, vars)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       psycopg2.errors.UndefinedColumn: column "stable_id" of relation "knowledge" does not exist
+
+知行成长/.venv/lib/python3.13/site-packages/psycopg2/extras.py:236: UndefinedColumn
+__ KnowledgeStableIDTests.test_one_file_can_contain_multiple_nodes_and_kinds ___
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_one_file_can_contain_multiple_nodes_and_kinds>
+
+    def test_one_file_can_contain_multiple_nodes_and_kinds(self):
+>       nodes = [self.node(), self.node(name='反证'), self.node(kind='tool'),
+                 ^^^^^^^^^^^
+                 self.node(source_path='另一份教材.md')]
+
+知行成长/server/tests/test_knowledge_stable_ids.py:62:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/tests/test_knowledge_stable_ids.py:37: in node
+    self.assertEqual(response.status_code, 200, response.text)
+E   AssertionError: 500 != 200 : {"detail":"导入失败: 'KnowledgeGraphStore' object has no attribute 'upsert_knowledge'"}
+_ KnowledgeStableIDTests.test_related_nodes_are_unique_ranked_and_support_both_directions _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_related_nodes_are_unique_ranked_and_support_both_directions>
+
+    def test_related_nodes_are_unique_ranked_and_support_both_directions(self):
+>       origin = self.node()
+                 ^^^^^^^^^^^
+
+知行成长/server/tests/test_knowledge_stable_ids.py:104:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/tests/test_knowledge_stable_ids.py:37: in node
+    self.assertEqual(response.status_code, 200, response.text)
+E   AssertionError: 500 != 200 : {"detail":"导入失败: 'KnowledgeGraphStore' object has no attribute 'upsert_knowledge'"}
+_ KnowledgeStableIDTests.test_repeat_and_changed_hash_preserve_identity_and_links _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_repeat_and_changed_hash_preserve_identity_and_links>
+
+    def test_repeat_and_changed_hash_preserve_identity_and_links(self):
+>       first = self.node()
+                ^^^^^^^^^^^
+
+知行成长/server/tests/test_knowledge_stable_ids.py:50:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/tests/test_knowledge_stable_ids.py:37: in node
+    self.assertEqual(response.status_code, 200, response.text)
+E   AssertionError: 500 != 200 : {"detail":"导入失败: 'KnowledgeGraphStore' object has no attribute 'upsert_knowledge'"}
+_ KnowledgeStableIDTests.test_same_source_and_guessed_id_cannot_cross_tenants __
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_same_source_and_guessed_id_cannot_cross_tenants>
+
+    def test_same_source_and_guessed_id_cannot_cross_tenants(self):
+>       first = self.node()
+                ^^^^^^^^^^^
+
+知行成长/server/tests/test_knowledge_stable_ids.py:163:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/tests/test_knowledge_stable_ids.py:37: in node
+    self.assertEqual(response.status_code, 200, response.text)
+E   AssertionError: 500 != 200 : {"detail":"导入失败: 'KnowledgeGraphStore' object has no attribute 'upsert_knowledge'"}
+___________ KnowledgeStableIDTests.test_storage_failure_is_sanitized ___________
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_storage_failure_is_sanitized>
+
+    def test_storage_failure_is_sanitized(self):
+>       with patch.object(self.store, 'upsert_knowledge', side_effect=psycopg2.OperationalError('PRIVATE DATABASE SECRET')):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+知行成长/server/tests/test_knowledge_stable_ids.py:130:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/opt/anaconda3/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x1256898d0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+
+        original = DEFAULT
+        local = False
+
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <knowledge.store.KnowledgeGraphStore object at 0x12536a3f0> does not have the attribute 'upsert_knowledge'
+
+/opt/anaconda3/lib/python3.13/unittest/mock.py:1467: AttributeError
+_ KnowledgeStableIDTests.test_unknown_nodes_and_invalid_limits_have_client_errors _
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_unknown_nodes_and_invalid_limits_have_client_errors>
+
+    def test_unknown_nodes_and_invalid_limits_have_client_errors(self):
+        url = '/api/knowledge/by-stable-id/' + str(uuid.uuid4())
+>       self.assertEqual(self.client.get(url).status_code, 404)
+E       AssertionError: 500 != 404
+
+知行成长/server/tests/test_knowledge_stable_ids.py:118: AssertionError
+___ KnowledgeStableIDTests.test_verification_is_schema_scoped_and_read_only ____
+
+self = <知行成长.server.tests.test_knowledge_stable_ids.KnowledgeStableIDTests testMethod=test_verification_is_schema_scoped_and_read_only>
+
+    def test_verification_is_schema_scoped_and_read_only(self):
+        from migrate_knowledge_stable_ids import verify_migration
+        other = 'knowledge_other_' + uuid.uuid4().hex
+        with psycopg2.connect(self.dsn) as c:
+            c.cursor().execute('CREATE SCHEMA ' + other)
+            c.cursor().execute('CREATE TABLE ' + other + '.knowledge(id SERIAL PRIMARY KEY,name TEXT)')
+        try:
+>           self.assertTrue(verify_migration())
+E           AssertionError: False is not true
+
+知行成长/server/tests/test_knowledge_stable_ids.py:152: AssertionError
+----------------------------- Captured stdout call -----------------------------
+
+🔍 验证迁移结果...
+❌ 缺少列: stable_id, source_hash, source_path
+=============================== warnings summary ===============================
+知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_ambiguous_legacy_matches_are_not_silently_merged
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_completed_legacy_migration_also_upgrades_stable_columns
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_concurrent_imports_create_one_identity
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_http_import_lookup_and_graph_share_identity
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_import_reuses_matching_legacy_node_without_losing_links
+SUBFAILED(update={'source_path': ''}) 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_invalid_imports_are_rejected_without_creating_nodes
+SUBFAILED(update={'source_hash': []}) 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_invalid_imports_are_rejected_without_creating_nodes
+SUBFAILED(update={'name': '  '}) 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_invalid_imports_are_rejected_without_creating_nodes
+SUBFAILED(update={'stable_id': 'client-chosen'}) 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_invalid_imports_are_rejected_without_creating_nodes
+SUBFAILED(update={'summary': {}}) 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_invalid_imports_are_rejected_without_creating_nodes
+SUBFAILED(update={'name': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}) 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_invalid_imports_are_rejected_without_creating_nodes
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_legacy_backfill_and_repeated_initialization_preserve_ids_and_links
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_one_file_can_contain_multiple_nodes_and_kinds
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_related_nodes_are_unique_ranked_and_support_both_directions
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_repeat_and_changed_hash_preserve_identity_and_links
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_same_source_and_guessed_id_cannot_cross_tenants
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_storage_failure_is_sanitized
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_unknown_nodes_and_invalid_limits_have_client_errors
+FAILED 知行成长/server/tests/test_knowledge_stable_ids.py::KnowledgeStableIDTests::test_verification_is_schema_scoped_and_read_only
+19 failed, 1 passed, 1 warning in 1.16s
+WEB_MODULE_RESULT {"tests": 14, "failed": 19, "skipped": 0, "exit_code": 1, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}
