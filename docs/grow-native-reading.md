@@ -13,3 +13,8 @@ H5 制订、完善、发布计划，保留私人笔记、作答、学完确认�
 Android 原生显示段落、标题和参考文本；iOS 支持部分行内 Markdown。复杂图片、表格等可打开 H5 原文；H5 登录到期仍保留经过白名单校验的课程路径。跨设备阅读位置同步、手机笔记/作答和原生学完确认留到后续 I4。
 
 验收采用合成用户、独立 PostgreSQL、SE 模拟器和 360dp Android 模拟器；真实设备、读屏和自然后台通知另行验收。未部署生产，未迁移私人数据。
+
+## I4 private learning
+Private notes, answers, explicit completion and saved positions use separate consent in Grow's mobile settings. Grow remains their sole writer; H5 routes keep using the same records. Zook holds authorized snapshots and durable commands. Phone acceptance is pending until the source worker commits and returns an immutable receipt; no fake completion or learning time is created. Source CAS rejects concurrent H5 edits; the phone retains input for comparison. Old answers retain their course version and are not automatically assigned to new questions. Unknown legacy completion timestamps remain null.
+
+The existing 30-second source worker processes bounded pending commands; source outage keeps them pending. Revoking reading also revokes private learning; enabling reading again does not regrant private scope. Revocation clears online mirror/queue access while source personal records remain intact. Offline user drafts require device cleanup. This implementation does not migrate personal data or switch H5 to a second writer.

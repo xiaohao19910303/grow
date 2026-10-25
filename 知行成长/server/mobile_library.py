@@ -31,7 +31,14 @@ def status():
     return {'available':bool(source_url() and os.getenv('LIGHTTICK_BRIDGE_URL') and os.getenv('GROW_ACTION_BRIDGE_SECRET')),
             'connected':bool(current.get('binding_id')),
             'enabled':value.get('enabled',False) and value.get('binding_id')==current.get('binding_id'),
-            'pending':bool(value.get('payload') and not value.get('delivered'))}
+            'pending':bool(value.get('payload') and not value.get('delivered')),
+            'private_enabled':private_status(current)}
+
+
+def private_status(current):
+    from mobile_private import state as private_state
+    with actions.connection() as c:saved=private_state(c)
+    return bool(saved.get('enabled') and saved.get('binding_id')==current.get('binding_id'))
 
 
 def consent(enabled):
@@ -42,6 +49,9 @@ def consent(enabled):
         if value.get('enabled')==enabled and value.get('binding_id')==current['binding_id']:return
         value={**value,'enabled':enabled,'binding_id':current['binding_id'],'signature':None,'delivered':False}
         put(c,value)
+        if not enabled:
+            from mobile_private import state as private_state,put as private_put
+            private_value=private_state(c);private_put(c,{**private_value,'enabled':False,'payload':None})
 
 
 def preview(code):
@@ -121,6 +131,8 @@ def sync(store,materials=None):
 
 
 def register(app,store,materials):
+    from mobile_private import register as register_private
+    register_private(app)
     @app.get('/api/mobile-learning')
     def read():return status()
 

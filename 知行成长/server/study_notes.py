@@ -53,6 +53,25 @@ def public(row):
     return {**json.loads(row['data']), 'revision': row['revision'], 'updated_at': row['updated_at']} if row else None
 
 
+
+def save(kind, course, body):
+    data = body.model_dump(exclude={'key', 'revision'})
+    request_hash = hashlib.sha256(json.dumps(body.model_dump(exclude={'key'}), sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    with connection() as c:
+        c.execute('SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ?,0))', (':study-notes:' + kind + ':' + course,))
+        old = c.execute('SELECT * FROM course_study_notes WHERE kind=? AND course_id=? FOR UPDATE', (kind, course)).fetchone()
+        if old and old['request_key'] == body.key:
+            if old['request_hash'] != request_hash:
+                raise HTTPException(409, '重复请求内容不同，当前输入仍可保留在本机。')
+            return public(old)
+        if body.revision != (old['revision'] if old else 0):
+            raise HTTPException(409, '另一页面已更新笔记，请先核对；当前输入已保留在本机。')
+        row = c.execute('''INSERT INTO course_study_notes VALUES (?,?,?,?,?,?,?)
+            ON CONFLICT(kind,course_id) DO UPDATE SET data=excluded.data,revision=excluded.revision,
+            request_key=excluded.request_key,request_hash=excluded.request_hash,updated_at=excluded.updated_at
+            RETURNING *''', (kind, course, json.dumps(data, ensure_ascii=False), body.revision + 1, body.key, request_hash, now())).fetchone()
+        return public(row)
+
 def register(app):
     router = APIRouter(prefix='/api/study-notes')
 
@@ -68,22 +87,7 @@ def register(app):
             raise HTTPException(403, '暂存学习内容需要同源请求。')
         if body is None:
             raise HTTPException(422, '请提供笔记与练习答案。')
-        data = body.model_dump(exclude={'key', 'revision'})
-        request_hash = hashlib.sha256(json.dumps(body.model_dump(exclude={'key'}), sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-        with connection() as c:
-            c.execute('SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ?,0))', (':study-notes:' + kind + ':' + course,))
-            old = c.execute('SELECT * FROM course_study_notes WHERE kind=? AND course_id=? FOR UPDATE', (kind, course)).fetchone()
-            if old and old['request_key'] == body.key:
-                if old['request_hash'] != request_hash:
-                    raise HTTPException(409, '重复请求内容不同，当前输入仍可保留在本机。')
-                return public(old)
-            if body.revision != (old['revision'] if old else 0):
-                raise HTTPException(409, '另一页面已更新笔记，请先核对；当前输入已保留在本机。')
-            row = c.execute('''INSERT INTO course_study_notes VALUES (?,?,?,?,?,?,?)
-                ON CONFLICT(kind,course_id) DO UPDATE SET data=excluded.data,revision=excluded.revision,
-                request_key=excluded.request_key,request_hash=excluded.request_hash,updated_at=excluded.updated_at
-                RETURNING *''', (kind, course, json.dumps(data, ensure_ascii=False), body.revision + 1, body.key, request_hash, now())).fetchone()
-            return public(row)
+        return save(kind, course, body)
 
     @app.middleware('http')
     async def private(request: Request, call_next):

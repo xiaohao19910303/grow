@@ -26,6 +26,8 @@ def sweep(accounts,plans_store=None,materials=None):
                     sync(plans_store)
                     from mobile_library import sync as sync_library
                     sync_library(plans_store,materials)
+                    from mobile_private import sync as sync_private
+                    sync_private(plans_store,materials)
         except Exception:
             log.warning('Source delivery sweep deferred for one account',exc_info=False)
         finally:current_user.reset(token)
