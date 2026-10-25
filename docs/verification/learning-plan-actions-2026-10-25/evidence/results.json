@@ -1,0 +1,588 @@
+{
+  "profile": "targeted-regression-not-full-profile",
+  "source_commit": "81850f8",
+  "python_cases": 225,
+  "javascript_groups": 5,
+  "failed_modules": [],
+  "skipped": 0,
+  "account_group_coverage_verified": true,
+  "note": "Latest module/group result wins; inherited AccountBrowserTests cases are separate collected nodes. Supplemental reruns are not added again.",
+  "results": [
+    {
+      "run": "grow-c1c3-regression",
+      "tests": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_plans.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "tests": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_coach_facts.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "tests": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_coach_facts_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "tests": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_daily_arrangements.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_deployment_boot.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "tests": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_deployment_config.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final-r2",
+      "tests": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 59,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_github_plans.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "tests": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_growth_statistics.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final-r2",
+      "tests": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_learning_actions.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final-r2",
+      "tests": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_plan_refinement.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_plan_status_history.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final-r2",
+      "tests": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_plans.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "file": "test_action_p0_client.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "file": "test_action_plan_client.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "file": "test_coach_facts_client.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-regression",
+      "file": "test_learning_completion_sync.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-integration",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "node_ids": [
+        "tests/test_accounts.py::PasswordTests::test_password_hash_is_salted_and_never_plaintext"
+      ],
+      "all_node_ids": [
+        "tests/test_accounts.py::PasswordTests::test_password_hash_is_salted_and_never_plaintext",
+        "tests/test_accounts.py::AccountIntegrationTests::test_article_feedback_is_private_and_isolated_for_same_article_id",
+        "tests/test_accounts.py::AccountIntegrationTests::test_background_generation_keeps_identity_and_same_keys_are_independent",
+        "tests/test_accounts.py::AccountIntegrationTests::test_bundled_course_content_is_shared_but_progress_and_notes_are_private",
+        "tests/test_accounts.py::AccountIntegrationTests::test_coach_facts_are_private_and_require_no_ai_configuration",
+        "tests/test_accounts.py::AccountIntegrationTests::test_concurrent_invitation_redemption_creates_only_one_account",
+        "tests/test_accounts.py::AccountIntegrationTests::test_daily_schedule_identity_is_scoped_to_owner_schedule_only",
+        "tests/test_accounts.py::AccountIntegrationTests::test_default_and_custom_github_encryption_prefix_and_binding",
+        "tests/test_accounts.py::AccountIntegrationTests::test_duplicate_username_keeps_invitation_and_active_invites_are_limited",
+        "tests/test_accounts.py::AccountIntegrationTests::test_existing_legacy_cloud_content_keeps_repository_binding",
+        "tests/test_accounts.py::AccountIntegrationTests::test_invitation_is_single_use_expiring_and_revocable",
+        "tests/test_accounts.py::AccountIntegrationTests::test_knowledge_stable_ids_initialize_and_remain_private_across_accounts",
+        "tests/test_accounts.py::AccountIntegrationTests::test_learning_plan_actions_are_private_and_reject_stale_account_writes",
+        "tests/test_accounts.py::AccountIntegrationTests::test_learning_records_and_objects_are_isolated_from_users_and_owner",
+        "tests/test_accounts.py::AccountIntegrationTests::test_login_rate_limit_is_persistent",
+        "tests/test_accounts.py::AccountIntegrationTests::test_lost_encryption_key_can_be_repaired_and_default_restored",
+        "tests/test_accounts.py::AccountIntegrationTests::test_missing_tenant_table_does_not_fall_back_to_owner_schema",
+        "tests/test_accounts.py::AccountIntegrationTests::test_module_generation_jobs_and_published_courses_use_each_accounts_repository",
+        "tests/test_accounts.py::AccountIntegrationTests::test_owner_login_reuses_initialized_services_without_restarting_jobs",
+        "tests/test_accounts.py::AccountIntegrationTests::test_registration_requires_an_invitation_and_anonymous_cannot_invite",
+        "tests/test_accounts.py::AccountIntegrationTests::test_registration_session_logout_validation_and_csrf",
+        "tests/test_accounts.py::AccountIntegrationTests::test_same_plan_ids_in_shared_default_repository_have_separate_paths",
+        "tests/test_accounts.py::AccountBrowserTests::test_article_feedback_is_private_and_isolated_for_same_article_id",
+        "tests/test_accounts.py::AccountBrowserTests::test_background_generation_keeps_identity_and_same_keys_are_independent",
+        "tests/test_accounts.py::AccountBrowserTests::test_browser_register_records_storage_logout_and_mobile",
+        "tests/test_accounts.py::AccountBrowserTests::test_bundled_course_content_is_shared_but_progress_and_notes_are_private",
+        "tests/test_accounts.py::AccountBrowserTests::test_coach_facts_are_private_and_require_no_ai_configuration",
+        "tests/test_accounts.py::AccountBrowserTests::test_concurrent_invitation_redemption_creates_only_one_account",
+        "tests/test_accounts.py::AccountBrowserTests::test_daily_schedule_identity_is_scoped_to_owner_schedule_only",
+        "tests/test_accounts.py::AccountBrowserTests::test_default_and_custom_github_encryption_prefix_and_binding",
+        "tests/test_accounts.py::AccountBrowserTests::test_duplicate_username_keeps_invitation_and_active_invites_are_limited",
+        "tests/test_accounts.py::AccountBrowserTests::test_existing_legacy_cloud_content_keeps_repository_binding",
+        "tests/test_accounts.py::AccountBrowserTests::test_invitation_is_single_use_expiring_and_revocable",
+        "tests/test_accounts.py::AccountBrowserTests::test_knowledge_stable_ids_initialize_and_remain_private_across_accounts",
+        "tests/test_accounts.py::AccountBrowserTests::test_learning_plan_actions_are_private_and_reject_stale_account_writes",
+        "tests/test_accounts.py::AccountBrowserTests::test_learning_records_and_objects_are_isolated_from_users_and_owner",
+        "tests/test_accounts.py::AccountBrowserTests::test_login_rate_limit_is_persistent",
+        "tests/test_accounts.py::AccountBrowserTests::test_lost_encryption_key_can_be_repaired_and_default_restored",
+        "tests/test_accounts.py::AccountBrowserTests::test_missing_tenant_table_does_not_fall_back_to_owner_schema",
+        "tests/test_accounts.py::AccountBrowserTests::test_module_generation_jobs_and_published_courses_use_each_accounts_repository",
+        "tests/test_accounts.py::AccountBrowserTests::test_owner_login_reuses_initialized_services_without_restarting_jobs",
+        "tests/test_accounts.py::AccountBrowserTests::test_registration_requires_an_invitation_and_anonymous_cannot_invite",
+        "tests/test_accounts.py::AccountBrowserTests::test_registration_session_logout_validation_and_csrf",
+        "tests/test_accounts.py::AccountBrowserTests::test_same_plan_ids_in_shared_default_repository_have_separate_paths"
+      ],
+      "file": "test_accounts.py",
+      "returncode": 0,
+      "group": "PasswordTests"
+    },
+    {
+      "run": "grow-c1c3-integration",
+      "tests": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "node_ids": [
+        "tests/test_accounts.py::AccountIntegrationTests::test_article_feedback_is_private_and_isolated_for_same_article_id",
+        "tests/test_accounts.py::AccountIntegrationTests::test_background_generation_keeps_identity_and_same_keys_are_independent",
+        "tests/test_accounts.py::AccountIntegrationTests::test_bundled_course_content_is_shared_but_progress_and_notes_are_private",
+        "tests/test_accounts.py::AccountIntegrationTests::test_coach_facts_are_private_and_require_no_ai_configuration",
+        "tests/test_accounts.py::AccountIntegrationTests::test_concurrent_invitation_redemption_creates_only_one_account",
+        "tests/test_accounts.py::AccountIntegrationTests::test_daily_schedule_identity_is_scoped_to_owner_schedule_only",
+        "tests/test_accounts.py::AccountIntegrationTests::test_default_and_custom_github_encryption_prefix_and_binding",
+        "tests/test_accounts.py::AccountIntegrationTests::test_duplicate_username_keeps_invitation_and_active_invites_are_limited",
+        "tests/test_accounts.py::AccountIntegrationTests::test_existing_legacy_cloud_content_keeps_repository_binding",
+        "tests/test_accounts.py::AccountIntegrationTests::test_invitation_is_single_use_expiring_and_revocable",
+        "tests/test_accounts.py::AccountIntegrationTests::test_knowledge_stable_ids_initialize_and_remain_private_across_accounts",
+        "tests/test_accounts.py::AccountIntegrationTests::test_learning_plan_actions_are_private_and_reject_stale_account_writes",
+        "tests/test_accounts.py::AccountIntegrationTests::test_learning_records_and_objects_are_isolated_from_users_and_owner",
+        "tests/test_accounts.py::AccountIntegrationTests::test_login_rate_limit_is_persistent",
+        "tests/test_accounts.py::AccountIntegrationTests::test_lost_encryption_key_can_be_repaired_and_default_restored",
+        "tests/test_accounts.py::AccountIntegrationTests::test_missing_tenant_table_does_not_fall_back_to_owner_schema",
+        "tests/test_accounts.py::AccountIntegrationTests::test_module_generation_jobs_and_published_courses_use_each_accounts_repository",
+        "tests/test_accounts.py::AccountIntegrationTests::test_owner_login_reuses_initialized_services_without_restarting_jobs",
+        "tests/test_accounts.py::AccountIntegrationTests::test_registration_requires_an_invitation_and_anonymous_cannot_invite",
+        "tests/test_accounts.py::AccountIntegrationTests::test_registration_session_logout_validation_and_csrf",
+        "tests/test_accounts.py::AccountIntegrationTests::test_same_plan_ids_in_shared_default_repository_have_separate_paths"
+      ],
+      "all_node_ids": [
+        "tests/test_accounts.py::PasswordTests::test_password_hash_is_salted_and_never_plaintext",
+        "tests/test_accounts.py::AccountIntegrationTests::test_article_feedback_is_private_and_isolated_for_same_article_id",
+        "tests/test_accounts.py::AccountIntegrationTests::test_background_generation_keeps_identity_and_same_keys_are_independent",
+        "tests/test_accounts.py::AccountIntegrationTests::test_bundled_course_content_is_shared_but_progress_and_notes_are_private",
+        "tests/test_accounts.py::AccountIntegrationTests::test_coach_facts_are_private_and_require_no_ai_configuration",
+        "tests/test_accounts.py::AccountIntegrationTests::test_concurrent_invitation_redemption_creates_only_one_account",
+        "tests/test_accounts.py::AccountIntegrationTests::test_daily_schedule_identity_is_scoped_to_owner_schedule_only",
+        "tests/test_accounts.py::AccountIntegrationTests::test_default_and_custom_github_encryption_prefix_and_binding",
+        "tests/test_accounts.py::AccountIntegrationTests::test_duplicate_username_keeps_invitation_and_active_invites_are_limited",
+        "tests/test_accounts.py::AccountIntegrationTests::test_existing_legacy_cloud_content_keeps_repository_binding",
+        "tests/test_accounts.py::AccountIntegrationTests::test_invitation_is_single_use_expiring_and_revocable",
+        "tests/test_accounts.py::AccountIntegrationTests::test_knowledge_stable_ids_initialize_and_remain_private_across_accounts",
+        "tests/test_accounts.py::AccountIntegrationTests::test_learning_plan_actions_are_private_and_reject_stale_account_writes",
+        "tests/test_accounts.py::AccountIntegrationTests::test_learning_records_and_objects_are_isolated_from_users_and_owner",
+        "tests/test_accounts.py::AccountIntegrationTests::test_login_rate_limit_is_persistent",
+        "tests/test_accounts.py::AccountIntegrationTests::test_lost_encryption_key_can_be_repaired_and_default_restored",
+        "tests/test_accounts.py::AccountIntegrationTests::test_missing_tenant_table_does_not_fall_back_to_owner_schema",
+        "tests/test_accounts.py::AccountIntegrationTests::test_module_generation_jobs_and_published_courses_use_each_accounts_repository",
+        "tests/test_accounts.py::AccountIntegrationTests::test_owner_login_reuses_initialized_services_without_restarting_jobs",
+        "tests/test_accounts.py::AccountIntegrationTests::test_registration_requires_an_invitation_and_anonymous_cannot_invite",
+        "tests/test_accounts.py::AccountIntegrationTests::test_registration_session_logout_validation_and_csrf",
+        "tests/test_accounts.py::AccountIntegrationTests::test_same_plan_ids_in_shared_default_repository_have_separate_paths",
+        "tests/test_accounts.py::AccountBrowserTests::test_article_feedback_is_private_and_isolated_for_same_article_id",
+        "tests/test_accounts.py::AccountBrowserTests::test_background_generation_keeps_identity_and_same_keys_are_independent",
+        "tests/test_accounts.py::AccountBrowserTests::test_browser_register_records_storage_logout_and_mobile",
+        "tests/test_accounts.py::AccountBrowserTests::test_bundled_course_content_is_shared_but_progress_and_notes_are_private",
+        "tests/test_accounts.py::AccountBrowserTests::test_coach_facts_are_private_and_require_no_ai_configuration",
+        "tests/test_accounts.py::AccountBrowserTests::test_concurrent_invitation_redemption_creates_only_one_account",
+        "tests/test_accounts.py::AccountBrowserTests::test_daily_schedule_identity_is_scoped_to_owner_schedule_only",
+        "tests/test_accounts.py::AccountBrowserTests::test_default_and_custom_github_encryption_prefix_and_binding",
+        "tests/test_accounts.py::AccountBrowserTests::test_duplicate_username_keeps_invitation_and_active_invites_are_limited",
+        "tests/test_accounts.py::AccountBrowserTests::test_existing_legacy_cloud_content_keeps_repository_binding",
+        "tests/test_accounts.py::AccountBrowserTests::test_invitation_is_single_use_expiring_and_revocable",
+        "tests/test_accounts.py::AccountBrowserTests::test_knowledge_stable_ids_initialize_and_remain_private_across_accounts",
+        "tests/test_accounts.py::AccountBrowserTests::test_learning_plan_actions_are_private_and_reject_stale_account_writes",
+        "tests/test_accounts.py::AccountBrowserTests::test_learning_records_and_objects_are_isolated_from_users_and_owner",
+        "tests/test_accounts.py::AccountBrowserTests::test_login_rate_limit_is_persistent",
+        "tests/test_accounts.py::AccountBrowserTests::test_lost_encryption_key_can_be_repaired_and_default_restored",
+        "tests/test_accounts.py::AccountBrowserTests::test_missing_tenant_table_does_not_fall_back_to_owner_schema",
+        "tests/test_accounts.py::AccountBrowserTests::test_module_generation_jobs_and_published_courses_use_each_accounts_repository",
+        "tests/test_accounts.py::AccountBrowserTests::test_owner_login_reuses_initialized_services_without_restarting_jobs",
+        "tests/test_accounts.py::AccountBrowserTests::test_registration_requires_an_invitation_and_anonymous_cannot_invite",
+        "tests/test_accounts.py::AccountBrowserTests::test_registration_session_logout_validation_and_csrf",
+        "tests/test_accounts.py::AccountBrowserTests::test_same_plan_ids_in_shared_default_repository_have_separate_paths"
+      ],
+      "file": "test_accounts.py",
+      "returncode": 0,
+      "group": "AccountIntegrationTests"
+    },
+    {
+      "run": "grow-c1c3-integration",
+      "tests": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "node_ids": [
+        "tests/test_accounts.py::AccountBrowserTests::test_article_feedback_is_private_and_isolated_for_same_article_id",
+        "tests/test_accounts.py::AccountBrowserTests::test_background_generation_keeps_identity_and_same_keys_are_independent",
+        "tests/test_accounts.py::AccountBrowserTests::test_browser_register_records_storage_logout_and_mobile",
+        "tests/test_accounts.py::AccountBrowserTests::test_bundled_course_content_is_shared_but_progress_and_notes_are_private",
+        "tests/test_accounts.py::AccountBrowserTests::test_coach_facts_are_private_and_require_no_ai_configuration",
+        "tests/test_accounts.py::AccountBrowserTests::test_concurrent_invitation_redemption_creates_only_one_account",
+        "tests/test_accounts.py::AccountBrowserTests::test_daily_schedule_identity_is_scoped_to_owner_schedule_only",
+        "tests/test_accounts.py::AccountBrowserTests::test_default_and_custom_github_encryption_prefix_and_binding",
+        "tests/test_accounts.py::AccountBrowserTests::test_duplicate_username_keeps_invitation_and_active_invites_are_limited",
+        "tests/test_accounts.py::AccountBrowserTests::test_existing_legacy_cloud_content_keeps_repository_binding",
+        "tests/test_accounts.py::AccountBrowserTests::test_invitation_is_single_use_expiring_and_revocable",
+        "tests/test_accounts.py::AccountBrowserTests::test_knowledge_stable_ids_initialize_and_remain_private_across_accounts",
+        "tests/test_accounts.py::AccountBrowserTests::test_learning_plan_actions_are_private_and_reject_stale_account_writes",
+        "tests/test_accounts.py::AccountBrowserTests::test_learning_records_and_objects_are_isolated_from_users_and_owner",
+        "tests/test_accounts.py::AccountBrowserTests::test_login_rate_limit_is_persistent",
+        "tests/test_accounts.py::AccountBrowserTests::test_lost_encryption_key_can_be_repaired_and_default_restored",
+        "tests/test_accounts.py::AccountBrowserTests::test_missing_tenant_table_does_not_fall_back_to_owner_schema",
+        "tests/test_accounts.py::AccountBrowserTests::test_module_generation_jobs_and_published_courses_use_each_accounts_repository",
+        "tests/test_accounts.py::AccountBrowserTests::test_owner_login_reuses_initialized_services_without_restarting_jobs",
+        "tests/test_accounts.py::AccountBrowserTests::test_registration_requires_an_invitation_and_anonymous_cannot_invite",
+        "tests/test_accounts.py::AccountBrowserTests::test_registration_session_logout_validation_and_csrf",
+        "tests/test_accounts.py::AccountBrowserTests::test_same_plan_ids_in_shared_default_repository_have_separate_paths"
+      ],
+      "all_node_ids": [
+        "tests/test_accounts.py::PasswordTests::test_password_hash_is_salted_and_never_plaintext",
+        "tests/test_accounts.py::AccountIntegrationTests::test_article_feedback_is_private_and_isolated_for_same_article_id",
+        "tests/test_accounts.py::AccountIntegrationTests::test_background_generation_keeps_identity_and_same_keys_are_independent",
+        "tests/test_accounts.py::AccountIntegrationTests::test_bundled_course_content_is_shared_but_progress_and_notes_are_private",
+        "tests/test_accounts.py::AccountIntegrationTests::test_coach_facts_are_private_and_require_no_ai_configuration",
+        "tests/test_accounts.py::AccountIntegrationTests::test_concurrent_invitation_redemption_creates_only_one_account",
+        "tests/test_accounts.py::AccountIntegrationTests::test_daily_schedule_identity_is_scoped_to_owner_schedule_only",
+        "tests/test_accounts.py::AccountIntegrationTests::test_default_and_custom_github_encryption_prefix_and_binding",
+        "tests/test_accounts.py::AccountIntegrationTests::test_duplicate_username_keeps_invitation_and_active_invites_are_limited",
+        "tests/test_accounts.py::AccountIntegrationTests::test_existing_legacy_cloud_content_keeps_repository_binding",
+        "tests/test_accounts.py::AccountIntegrationTests::test_invitation_is_single_use_expiring_and_revocable",
+        "tests/test_accounts.py::AccountIntegrationTests::test_knowledge_stable_ids_initialize_and_remain_private_across_accounts",
+        "tests/test_accounts.py::AccountIntegrationTests::test_learning_plan_actions_are_private_and_reject_stale_account_writes",
+        "tests/test_accounts.py::AccountIntegrationTests::test_learning_records_and_objects_are_isolated_from_users_and_owner",
+        "tests/test_accounts.py::AccountIntegrationTests::test_login_rate_limit_is_persistent",
+        "tests/test_accounts.py::AccountIntegrationTests::test_lost_encryption_key_can_be_repaired_and_default_restored",
+        "tests/test_accounts.py::AccountIntegrationTests::test_missing_tenant_table_does_not_fall_back_to_owner_schema",
+        "tests/test_accounts.py::AccountIntegrationTests::test_module_generation_jobs_and_published_courses_use_each_accounts_repository",
+        "tests/test_accounts.py::AccountIntegrationTests::test_owner_login_reuses_initialized_services_without_restarting_jobs",
+        "tests/test_accounts.py::AccountIntegrationTests::test_registration_requires_an_invitation_and_anonymous_cannot_invite",
+        "tests/test_accounts.py::AccountIntegrationTests::test_registration_session_logout_validation_and_csrf",
+        "tests/test_accounts.py::AccountIntegrationTests::test_same_plan_ids_in_shared_default_repository_have_separate_paths",
+        "tests/test_accounts.py::AccountBrowserTests::test_article_feedback_is_private_and_isolated_for_same_article_id",
+        "tests/test_accounts.py::AccountBrowserTests::test_background_generation_keeps_identity_and_same_keys_are_independent",
+        "tests/test_accounts.py::AccountBrowserTests::test_browser_register_records_storage_logout_and_mobile",
+        "tests/test_accounts.py::AccountBrowserTests::test_bundled_course_content_is_shared_but_progress_and_notes_are_private",
+        "tests/test_accounts.py::AccountBrowserTests::test_coach_facts_are_private_and_require_no_ai_configuration",
+        "tests/test_accounts.py::AccountBrowserTests::test_concurrent_invitation_redemption_creates_only_one_account",
+        "tests/test_accounts.py::AccountBrowserTests::test_daily_schedule_identity_is_scoped_to_owner_schedule_only",
+        "tests/test_accounts.py::AccountBrowserTests::test_default_and_custom_github_encryption_prefix_and_binding",
+        "tests/test_accounts.py::AccountBrowserTests::test_duplicate_username_keeps_invitation_and_active_invites_are_limited",
+        "tests/test_accounts.py::AccountBrowserTests::test_existing_legacy_cloud_content_keeps_repository_binding",
+        "tests/test_accounts.py::AccountBrowserTests::test_invitation_is_single_use_expiring_and_revocable",
+        "tests/test_accounts.py::AccountBrowserTests::test_knowledge_stable_ids_initialize_and_remain_private_across_accounts",
+        "tests/test_accounts.py::AccountBrowserTests::test_learning_plan_actions_are_private_and_reject_stale_account_writes",
+        "tests/test_accounts.py::AccountBrowserTests::test_learning_records_and_objects_are_isolated_from_users_and_owner",
+        "tests/test_accounts.py::AccountBrowserTests::test_login_rate_limit_is_persistent",
+        "tests/test_accounts.py::AccountBrowserTests::test_lost_encryption_key_can_be_repaired_and_default_restored",
+        "tests/test_accounts.py::AccountBrowserTests::test_missing_tenant_table_does_not_fall_back_to_owner_schema",
+        "tests/test_accounts.py::AccountBrowserTests::test_module_generation_jobs_and_published_courses_use_each_accounts_repository",
+        "tests/test_accounts.py::AccountBrowserTests::test_owner_login_reuses_initialized_services_without_restarting_jobs",
+        "tests/test_accounts.py::AccountBrowserTests::test_registration_requires_an_invitation_and_anonymous_cannot_invite",
+        "tests/test_accounts.py::AccountBrowserTests::test_registration_session_logout_validation_and_csrf",
+        "tests/test_accounts.py::AccountBrowserTests::test_same_plan_ids_in_shared_default_repository_have_separate_paths"
+      ],
+      "file": "test_accounts.py",
+      "returncode": 0,
+      "group": "AccountBrowserTests"
+    },
+    {
+      "run": "grow-c1c3-integration",
+      "tests": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_p0_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-integration",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_github_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-integration",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_navigation_audit_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-integration",
+      "tests": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_rhythm_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final",
+      "tests": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_p0_closeout_sources.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final",
+      "tests": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_p0_sources.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final",
+      "tests": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_source_delivery.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final-r2",
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_learning_actions_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final",
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_rhythm_reminders.py",
+      "returncode": 0
+    },
+    {
+      "run": "grow-c1c3-final-r2",
+      "file": "test_learning_actions_client.cjs",
+      "returncode": 0
+    }
+  ]
+}

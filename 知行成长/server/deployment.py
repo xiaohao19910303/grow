@@ -98,9 +98,12 @@ def main():
     parser.add_argument('command', choices=('check', 'serve'))
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=int(os.getenv('PORT', '8756')))
+    parser.add_argument('--offline', action='store_true', help='仅用于 check：跳过数据库连接，仍检查配置、依赖和目录。')
     args = parser.parse_args()
+    if args.offline and args.command != 'check':
+        parser.error('--offline 仅适用于 check；启动服务必须完成数据库预检。')
     try:
-        report = preflight()
+        report = preflight(database=not args.offline)
     except ConfigurationError as error:
         print(str(error), file=sys.stderr)
         return 2

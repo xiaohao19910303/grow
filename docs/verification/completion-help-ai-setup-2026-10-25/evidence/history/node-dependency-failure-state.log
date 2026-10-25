@@ -1,0 +1,24 @@
+node:internal/modules/cjs/loader:1456
+  throw err;
+  ^
+
+Error: Cannot find module 'playwright'
+Require stack:
+- /Volumes/肖豪/project/grow/知行成长/server/tests/test_state_browser.cjs
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1453:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1064:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1069:22)
+    at Module._load (node:internal/modules/cjs/loader:1239:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1553:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (/Volumes/肖豪/project/grow/知行成长/server/tests/test_state_browser.cjs:7:20)
+    at Module._compile (node:internal/modules/cjs/loader:1809:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1940:10) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Volumes/肖豪/project/grow/知行成长/server/tests/test_state_browser.cjs'
+  ]
+}
+
+Node.js v25.6.0

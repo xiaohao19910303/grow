@@ -7,3 +7,8 @@ __pycache__/
 
 # Prepared public teaching assets for standalone builds
 .grow-public-materials/
+
+# Local environments, test caches and parallel checkouts
+.venv/
+.pytest_cache/
+.worktrees/

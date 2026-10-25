@@ -1,0 +1,212 @@
+FFFFFFFFFFFFFFF                                                          [100%]
+=================================== FAILURES ===================================
+___ LearningActionTests.test_adoption_opt_in_and_publication_auto_supplement ___
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_adoption_opt_in_and_publication_auto_supplement>
+
+    def test_adoption_opt_in_and_publication_auto_supplement(self):
+        draft=self.s.draft({'brief':B,'document':D})
+        result=self.post('/drafts/'+draft['id']+'/adopt',key='adopt-opt-in',expected_hash=draft['content_hash'],link_actions=True)
+        self.assertEqual(result.status_code,200,result.text);self.pid=result.json()['plan_id']
+>       self.assertTrue(self.projection()['linked'])
+                        ^^^^^^^^^^^^^^^^^
+
+知行成长/server/tests/test_learning_actions.py:93:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/tests/test_learning_actions.py:40: in projection
+    self.assertEqual(response.status_code,200,response.text)
+E   AssertionError: 404 != 200 : {"detail":"Not Found"}
+_ LearningActionTests.test_arranged_course_completion_reuses_existing_c2_receipt _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_arranged_course_completion_reuses_existing_c2_receipt>
+
+    def test_arranged_course_completion_reuses_existing_c2_receipt(self):
+>       self.course();self.link();p=actions.listing()['plans'][0]
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+知行成长/server/tests/test_learning_actions.py:127: IndexError
+_ LearningActionTests.test_cancelled_linked_action_is_not_resurrected_or_recreated _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_cancelled_linked_action_is_not_resurrected_or_recreated>
+
+    def test_cancelled_linked_action_is_not_resurrected_or_recreated(self):
+>       self.course();self.assertEqual(self.link().status_code,200)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: 404 != 200
+
+知行成长/server/tests/test_learning_actions.py:82: AssertionError
+_ LearningActionTests.test_completed_before_link_does_not_create_redundant_action _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_completed_before_link_does_not_create_redundant_action>
+
+    def test_completed_before_link_does_not_create_redundant_action(self):
+        self.course();self.s.feedback(self.pid,1,{'state':'completed','comment':'PRIVATE NOTE'},'done-before-link')
+>       self.assertEqual(self.link().status_code,200)
+E       AssertionError: 404 != 200
+
+知行成长/server/tests/test_learning_actions.py:112: AssertionError
+______ LearningActionTests.test_concurrent_different_keys_link_only_once _______
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_concurrent_different_keys_link_only_once>
+
+    def test_concurrent_different_keys_link_only_once(self):
+        self.course()
+        with ThreadPoolExecutor(3) as pool:results=list(pool.map(lambda _:self.link(),range(3)))
+>       self.assertEqual([r.status_code for r in results],[200]*3)
+E       AssertionError: Lists differ: [404, 404, 404] != [200, 200, 200]
+E
+E       First differing element 0:
+E       404
+E       200
+E
+E       - [404, 404, 404]
+E       + [200, 200, 200]
+
+知行成长/server/tests/test_learning_actions.py:70: AssertionError
+_ LearningActionTests.test_disabled_and_paused_plans_do_not_supplement_or_delete_actions _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_disabled_and_paused_plans_do_not_supplement_or_delete_actions>
+
+    def test_disabled_and_paused_plans_do_not_supplement_or_delete_actions(self):
+>       self.link();self.assertEqual(self.link(enabled=False).status_code,200)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: 404 != 200
+
+知行成长/server/tests/test_learning_actions.py:142: AssertionError
+_ LearningActionTests.test_existing_dated_action_is_reused_without_rescheduling_or_rewriting _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_existing_dated_action_is_reused_without_rescheduling_or_rewriting>
+
+    def test_existing_dated_action_is_reused_without_rescheduling_or_rewriting(self):
+        self.course()
+        prior=actions.schedule(actions.Schedule(title='本人安排',date='2026-10-30',target={'kind':'plan','plan_id':self.pid,'lesson_no':1},key='existing-course-schedule'))['plan']
+>       self.assertEqual(self.link().status_code,200)
+E       AssertionError: 404 != 200
+
+知行成长/server/tests/test_learning_actions.py:76: AssertionError
+_ LearningActionTests.test_external_ownership_never_falls_back_to_local_actions _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_external_ownership_never_falls_back_to_local_actions>
+
+    def test_external_ownership_never_falls_back_to_local_actions(self):
+        self.course()
+        with actions.connection() as c:c.execute('INSERT INTO action_link_state VALUES (1,?,NULL)',(json.dumps({'phase':'active'}),))
+>       self.assertEqual(self.link().status_code,409)
+E       AssertionError: 404 != 409
+
+知行成长/server/tests/test_learning_actions.py:153: AssertionError
+_ LearningActionTests.test_formal_save_survives_sync_failure_and_explicit_retry_recovers _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_formal_save_survives_sync_failure_and_explicit_retry_recovers>
+
+    def test_formal_save_survives_sync_failure_and_explicit_retry_recovers(self):
+>       self.assertEqual(self.link().status_code,200)
+E       AssertionError: 404 != 200
+
+知行成长/server/tests/test_learning_actions.py:100: AssertionError
+_ LearningActionTests.test_link_without_published_lessons_tracks_full_plan_without_fake_actions _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_link_without_published_lessons_tracks_full_plan_without_fake_actions>
+
+    def test_link_without_published_lessons_tracks_full_plan_without_fake_actions(self):
+>       response=self.link();self.assertEqual(response.status_code,200,response.text)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: 404 != 200 : {"detail":"Not Found"}
+
+知行成长/server/tests/test_learning_actions.py:51: AssertionError
+_ LearningActionTests.test_live_progress_get_does_not_create_or_change_action_records _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_live_progress_get_does_not_create_or_change_action_records>
+
+    def test_live_progress_get_does_not_create_or_change_action_records(self):
+        self.course();self.link()
+>       with db.connect() as c:before=[dict(r) for r in c.execute('SELECT * FROM action_plans')]
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+知行成长/server/tests/test_learning_actions.py:165:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+知行成长/server/db.py:201: in execute
+    cursor.execute(sql, params)
+知行成长/server/db.py:74: in execute
+    self._cursor.execute(translated)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <cursor object at 0x11532e250; closed: 0>
+query = 'SELECT * FROM action_plans', vars = None
+
+    def execute(self, query, vars=None):
+        self.column_mapping = []
+        self._query_executed = True
+>       return super().execute(query, vars)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       psycopg2.errors.UndefinedTable: relation "action_plans" does not exist
+E       LINE 1: SELECT * FROM action_plans
+E                             ^
+
+.venv/lib/python3.13/site-packages/psycopg2/extras.py:236: UndefinedTable
+_ LearningActionTests.test_published_course_creates_one_undated_content_action_and_reuses_on_repeat _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_published_course_creates_one_undated_content_action_and_reuses_on_repeat>
+
+    def test_published_course_creates_one_undated_content_action_and_reuses_on_repeat(self):
+>       self.course();first=self.link();self.assertEqual(first.status_code,200,first.text)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: 404 != 200 : {"detail":"Not Found"}
+
+知行成长/server/tests/test_learning_actions.py:59: AssertionError
+_ LearningActionTests.test_source_completion_updates_stage_without_manufacturing_undated_execution _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_source_completion_updates_stage_without_manufacturing_undated_execution>
+
+    def test_source_completion_updates_stage_without_manufacturing_undated_execution(self):
+>       self.course();self.link();p=actions.listing()['plans'][0]
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+知行成长/server/tests/test_learning_actions.py:119: IndexError
+___ LearningActionTests.test_stale_version_rejects_without_ledger_or_actions ___
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_stale_version_rejects_without_ledger_or_actions>
+
+    def test_stale_version_rejects_without_ledger_or_actions(self):
+        response=self.post('/'+self.pid+'/actions',key='stale-learning-version',expected_version=99)
+>       self.assertEqual(response.status_code,409,response.text)
+E       AssertionError: 404 != 409 : {"detail":"Not Found"}
+
+知行成长/server/tests/test_learning_actions.py:138: AssertionError
+_ LearningActionTests.test_wrong_origin_contract_and_guessed_plan_are_rejected _
+
+self = <知行成长.server.tests.test_learning_actions.LearningActionTests testMethod=test_wrong_origin_contract_and_guessed_plan_are_rejected>
+
+    def test_wrong_origin_contract_and_guessed_plan_are_rejected(self):
+        body={'data':{'key':'guard-learning-link','expected_version':1}}
+        path='/api/plans/'+self.pid+'/actions'
+>       self.assertEqual(self.client.post(path,json=body,headers={**self.headers,'Origin':'https://evil.example'}).status_code,403)
+E       AssertionError: 404 != 403
+
+知行成长/server/tests/test_learning_actions.py:159: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_adoption_opt_in_and_publication_auto_supplement
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_arranged_course_completion_reuses_existing_c2_receipt
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_cancelled_linked_action_is_not_resurrected_or_recreated
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_completed_before_link_does_not_create_redundant_action
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_concurrent_different_keys_link_only_once
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_disabled_and_paused_plans_do_not_supplement_or_delete_actions
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_existing_dated_action_is_reused_without_rescheduling_or_rewriting
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_external_ownership_never_falls_back_to_local_actions
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_formal_save_survives_sync_failure_and_explicit_retry_recovers
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_link_without_published_lessons_tracks_full_plan_without_fake_actions
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_live_progress_get_does_not_create_or_change_action_records
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_published_course_creates_one_undated_content_action_and_reuses_on_repeat
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_source_completion_updates_stage_without_manufacturing_undated_execution
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_stale_version_rejects_without_ledger_or_actions
+FAILED 知行成长/server/tests/test_learning_actions.py::LearningActionTests::test_wrong_origin_contract_and_guessed_plan_are_rejected
+15 failed, 1 warning in 6.90s
+WEB_MODULE_RESULT {"tests": 15, "failed": 15, "skipped": 0, "exit_code": 1, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

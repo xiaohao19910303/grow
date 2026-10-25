@@ -76,3 +76,11 @@ RUN_GITHUB_BROWSER=1 python -B 知行成长/server/tests/run_isolated_checks.py 
 跨端来源HTTP回归还需要显式设置 `TEST_ZOOK_WORKTREE`，指向含 `test/support/lighttick-source-http-fixture.ts` 的独立测试工作树。测试节点现在从专用测试DSN构造连接地址，不再使用写死的默认本机数据库。该原协议回归不代表节奏R20跨端合同已经开放。
 
 R19回归覆盖课程状态历史表的首次/旧账号初始化与历史保留、旧页面真实笔记依赖、认知课程计时回调、按课号继续学习、首次搜集偏好完整载入和编辑保护、账号切换保护。临时实例已停止，复现时请新建实例并使用自己的端口。
+
+## 应用入口拆分回归
+
+知识扫描的兼容入口由 `test_knowledge_scanning.py` 覆盖：表头与分类解析、文件排序与来源路径、缺省目录、不同账号的资料隔离。`test_knowledge_stable_ids.py` 验证扫描增量写入不会替换节点身份或破坏连线；`test_growth_statistics.py` 验证提取后的报告仍采用相同完成事实与时长口径。
+
+AI 路由缺少本人配置的拒绝用例位于 `GenerationRouteCredentials`，使用 PostgreSQL 夹具并初始化日常记录表，因为真实中间件会读取联动状态；纯配置校验仍在无需数据库的 `BrowserConfigTests`。JavaScript 状态保存沙箱提供浏览器 `window`，继续验证保存期间编辑、编号回填、冲突和失败保留。
+
+本轮完整结果与已修复的历史测试夹具问题见[代码结构回归报告](../../../docs/verification/code-structure-2026-10-25/README.md)。

@@ -1,0 +1,678 @@
+[
+  {
+    "method": "GET",
+    "url": "/"
+  },
+  {
+    "method": "GET",
+    "url": "/static/copilot.css?v=20261014-design2"
+  },
+  {
+    "method": "GET",
+    "url": "/static/growth.css?v=20261025-coach"
+  },
+  {
+    "method": "GET",
+    "url": "/static/plans.css?v=20261014-2"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading.css?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reflections.css?v=1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/stocks.css?v=1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/learning-history.css?v=20261021-p1-navigation"
+  },
+  {
+    "method": "GET",
+    "url": "/static/account.css"
+  },
+  {
+    "method": "GET",
+    "url": "/static/daily-rhythm.css"
+  },
+  {
+    "method": "GET",
+    "url": "/static/search.css?v=1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/timeline.css?v=1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/study-notes.css?v=20261018-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/loading-state.css?v=20261018-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-plans.css?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/loading-state.js?v=web-batch1-20261023"
+  },
+  {
+    "method": "GET",
+    "url": "/static/event-bus.js?v=20261021-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/account.js?v=20261018-loading"
+  },
+  {
+    "method": "GET",
+    "url": "/static/ai-config.js?v=20261017"
+  },
+  {
+    "method": "GET",
+    "url": "/static/floating-panels.js?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading-tasks.js?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/behavior-report.js?v=20261021-p1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/learning-completion.js?v=20261025-coach"
+  },
+  {
+    "method": "GET",
+    "url": "/static/copilot.js?v=20261021-p1-navigation"
+  },
+  {
+    "method": "GET",
+    "url": "/static/course-feedback.js?v=20261019-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/course-archive.js?v=20261019-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/course-summary.js?v=20261021-background"
+  },
+  {
+    "method": "GET",
+    "url": "/static/study-note-session.js?v=20261018-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/study-notes.js?v=20261018-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/plans.js?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/study-generation.js?v=20261021-unified"
+  },
+  {
+    "method": "GET",
+    "url": "/static/daily-learning.js?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading-growth.js?v=20261021-tasks"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading-body.js?v=20261017-onsite2"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading-position.js?v=20261021-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reflections.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/learning-history.js?v=20261021-p1-navigation"
+  },
+  {
+    "method": "GET",
+    "url": "/static/stocks.js?v=20261021-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/search.js?v=20261023-autofill"
+  },
+  {
+    "method": "GET",
+    "url": "/static/timeline.js?v=20261021-p1-navigation"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-recovery.css?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-plan-client.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-recovery.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/rhythm-client.js?v=20261023"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-reviews.js?v=20261021-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-link.js?v=20261021-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/daily-agenda.js?v=20261021-navigation-round3"
+  },
+  {
+    "method": "GET",
+    "url": "/static/daily-rhythm.js?v=20261024-d0-settings"
+  },
+  {
+    "method": "GET",
+    "url": "/static/weekly-rhythm.js?v=20261023"
+  },
+  {
+    "method": "GET",
+    "url": "/static/rhythm-trial.js?v=20261023"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-quick-editor.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/coach-facts.js?v=20261025"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-plans.js?v=20261025-coach"
+  },
+  {
+    "method": "GET",
+    "url": "/api/auth/me"
+  },
+  {
+    "method": "GET",
+    "url": "/api/learning-checkins"
+  },
+  {
+    "method": "GET",
+    "url": "/api/copilot/today-task"
+  },
+  {
+    "method": "GET",
+    "url": "/api/study-materials"
+  },
+  {
+    "method": "GET",
+    "url": "/api/plans"
+  },
+  {
+    "method": "GET",
+    "url": "/api/reflections"
+  },
+  {
+    "method": "GET",
+    "url": "/api/data"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-link"
+  },
+  {
+    "method": "GET",
+    "url": "/api/copilot/drafts"
+  },
+  {
+    "method": "GET",
+    "url": "/api/copilot/background-jobs"
+  },
+  {
+    "method": "GET",
+    "url": "/api/study-materials"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/api/reading/library?kind=jobs&page_size=50"
+  },
+  {
+    "method": "GET",
+    "url": "/api/coach-facts"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans"
+  },
+  {
+    "method": "GET",
+    "url": "/api/stocks"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/api/plans"
+  },
+  {
+    "method": "GET",
+    "url": "/static/favicon.svg"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/today?date=2026-10-25"
+  },
+  {
+    "method": "GET",
+    "url": "/api/learning-checkins"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans"
+  },
+  {
+    "method": "GET",
+    "url": "/api/behavior/stats?period=30"
+  },
+  {
+    "method": "GET",
+    "url": "/api/errors/stats?period=30"
+  },
+  {
+    "method": "GET",
+    "url": "/api/predictions/stats"
+  },
+  {
+    "method": "GET",
+    "url": "/api/behavior-report"
+  },
+  {
+    "method": "GET",
+    "url": "/static/favicon.svg"
+  },
+  {
+    "method": "GET",
+    "url": "/api/predictions/calibration"
+  },
+  {
+    "method": "GET",
+    "url": "/"
+  },
+  {
+    "method": "GET",
+    "url": "/static/copilot.css?v=20261014-design2"
+  },
+  {
+    "method": "GET",
+    "url": "/static/growth.css?v=20261025-coach"
+  },
+  {
+    "method": "GET",
+    "url": "/static/plans.css?v=20261014-2"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading.css?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reflections.css?v=1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/stocks.css?v=1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/learning-history.css?v=20261021-p1-navigation"
+  },
+  {
+    "method": "GET",
+    "url": "/static/account.css"
+  },
+  {
+    "method": "GET",
+    "url": "/static/daily-rhythm.css"
+  },
+  {
+    "method": "GET",
+    "url": "/static/search.css?v=1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/timeline.css?v=1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/study-notes.css?v=20261018-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/loading-state.css?v=20261018-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-plans.css?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/loading-state.js?v=web-batch1-20261023"
+  },
+  {
+    "method": "GET",
+    "url": "/static/event-bus.js?v=20261021-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/account.js?v=20261018-loading"
+  },
+  {
+    "method": "GET",
+    "url": "/static/ai-config.js?v=20261017"
+  },
+  {
+    "method": "GET",
+    "url": "/static/floating-panels.js?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading-tasks.js?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/behavior-report.js?v=20261021-p1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/learning-completion.js?v=20261025-coach"
+  },
+  {
+    "method": "GET",
+    "url": "/static/copilot.js?v=20261021-p1-navigation"
+  },
+  {
+    "method": "GET",
+    "url": "/static/course-feedback.js?v=20261019-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/course-archive.js?v=20261019-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/course-summary.js?v=20261021-background"
+  },
+  {
+    "method": "GET",
+    "url": "/static/study-note-session.js?v=20261018-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/study-notes.js?v=20261018-1"
+  },
+  {
+    "method": "GET",
+    "url": "/static/plans.js?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/study-generation.js?v=20261021-unified"
+  },
+  {
+    "method": "GET",
+    "url": "/static/daily-learning.js?v=20261021-audit"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading-growth.js?v=20261021-tasks"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading-body.js?v=20261017-onsite2"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading-position.js?v=20261021-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reading.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/reflections.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/learning-history.js?v=20261021-p1-navigation"
+  },
+  {
+    "method": "GET",
+    "url": "/static/stocks.js?v=20261021-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/search.js?v=20261023-autofill"
+  },
+  {
+    "method": "GET",
+    "url": "/static/timeline.js?v=20261021-p1-navigation"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-recovery.css?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-plan-client.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-recovery.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/rhythm-client.js?v=20261023"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-reviews.js?v=20261021-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-link.js?v=20261021-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/daily-agenda.js?v=20261021-navigation-round3"
+  },
+  {
+    "method": "GET",
+    "url": "/static/daily-rhythm.js?v=20261024-d0-settings"
+  },
+  {
+    "method": "GET",
+    "url": "/static/weekly-rhythm.js?v=20261023"
+  },
+  {
+    "method": "GET",
+    "url": "/static/rhythm-trial.js?v=20261023"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-quick-editor.js?v=20261024-merge"
+  },
+  {
+    "method": "GET",
+    "url": "/static/coach-facts.js?v=20261025"
+  },
+  {
+    "method": "GET",
+    "url": "/static/action-plans.js?v=20261025-coach"
+  },
+  {
+    "method": "GET",
+    "url": "/api/auth/me"
+  },
+  {
+    "method": "GET",
+    "url": "/api/learning-checkins"
+  },
+  {
+    "method": "GET",
+    "url": "/api/copilot/today-task"
+  },
+  {
+    "method": "GET",
+    "url": "/api/study-materials"
+  },
+  {
+    "method": "GET",
+    "url": "/api/plans"
+  },
+  {
+    "method": "GET",
+    "url": "/api/reflections"
+  },
+  {
+    "method": "GET",
+    "url": "/api/data"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-link"
+  },
+  {
+    "method": "GET",
+    "url": "/api/copilot/drafts"
+  },
+  {
+    "method": "GET",
+    "url": "/api/copilot/background-jobs"
+  },
+  {
+    "method": "GET",
+    "url": "/api/study-materials"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/api/reading/library?kind=jobs&page_size=50"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans"
+  },
+  {
+    "method": "GET",
+    "url": "/api/stocks"
+  },
+  {
+    "method": "GET",
+    "url": "/api/learning-checkins"
+  },
+  {
+    "method": "GET",
+    "url": "/api/behavior/stats?period=30"
+  },
+  {
+    "method": "GET",
+    "url": "/api/errors/stats?period=30"
+  },
+  {
+    "method": "GET",
+    "url": "/api/predictions/stats"
+  },
+  {
+    "method": "GET",
+    "url": "/api/behavior-report"
+  },
+  {
+    "method": "GET",
+    "url": "/api/plans"
+  },
+  {
+    "method": "GET",
+    "url": "/static/favicon.svg"
+  },
+  {
+    "method": "GET",
+    "url": "/api/behavior/stats?period=30"
+  },
+  {
+    "method": "GET",
+    "url": "/api/errors/stats?period=30"
+  },
+  {
+    "method": "GET",
+    "url": "/api/predictions/stats"
+  },
+  {
+    "method": "GET",
+    "url": "/api/behavior-report"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/api/action-plans/rhythm/capabilities"
+  },
+  {
+    "method": "GET",
+    "url": "/static/favicon.svg"
+  }
+]

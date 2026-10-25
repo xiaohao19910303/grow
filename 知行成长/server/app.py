@@ -9,10 +9,12 @@
 """
 import json
 import os
-import re
 import db
+import growth_reports
+from growth_reports import _ds
+from knowledge import catalog as knowledge_catalog, scanning as knowledge_scanning
+from knowledge.scanning import HEADER_KEYS, parse_index
 from contextlib import asynccontextmanager
-from datetime import date, timedelta
 from pathlib import Path
 from threading import RLock
 from tenancy import learning_root, shutdown_all
@@ -251,169 +253,34 @@ def import_pending_sync():
     return count
 
 
-# ================= v3：知识图谱扫描 =================
-
-HEADER_KEYS = {"概念", "工具", "框架", "方法", "词汇", "词汇/词组", "句式", "日期", "名称",
-               "一句话解释", "详细学习位置", "中文意思", "原句例子", "适用场景", "来源事件", "可用场景"}
-
-
-def parse_index(path: Path):
-    """解析 知识索引.md 的表格 → 概念/工具/框架节点。"""
-    nodes = []
-    text = path.read_text(encoding="utf-8")
-    cat = "未分类"
-    for line in text.splitlines():
-        s = line.strip()
-        if s.startswith("## "):
-            c = s[3:].strip()
-            c = re.sub(r"^[一二三四五六七八九十]+[、.．]\s*", "", c)
-            cat = c if c else cat
-        elif s.startswith("|"):
-            cells = [c.strip() for c in s.strip().strip("|").split("|")]
-            cells = [c for c in cells if c != ""]
-            if not cells:
-                continue
-            # 分隔行 |---|---|
-            if all(re.fullmatch(r":?-{2,}:?", c) for c in cells):
-                continue
-            name = cells[0]
-            if name in HEADER_KEYS:
-                continue
-            summary = cells[1] if len(cells) > 1 else ""
-            source = ""
-            for c in cells[2:]:
-                if ".md" in c or "/" in c:
-                    source = c
-            if not source and len(cells) > 2:
-                source = cells[-1]
-            nodes.append({"name": name, "category": cat, "summary": summary,
-                          "source": source, "kind": "concept", "date": ""})
-    return nodes
-
-
+# Compatibility entry points keep routes, scripts and existing test patches stable.
+# Account roots and connections are resolved when called, never cached at import.
 def parse_thinking_tools(directory: Path):
-    """解析 现代思维工具教程 的『第N课：工具名』标题。"""
-    nodes = []
-    for f in sorted(directory.glob("*.md")):
-        stage_name = f.stem
-        for line in f.read_text(encoding="utf-8").splitlines():
-            m = re.match(r"^##\s*第[一二三四五六七八九十百零]+课[：:]\s*(.+)$", line.strip())
-            if m:
-                name = re.sub(r"[（(].*?[）)]\s*$", "", m.group(1).strip()).strip()
-                nodes.append({"name": name, "category": "思维工具", "summary": stage_name,
-                              "source": str(f.relative_to(learning_root(LEARN_ROOT))), "kind": "tool", "date": ""})
-    return nodes
+    return knowledge_scanning.parse_thinking_tools(directory, learning_root(LEARN_ROOT))
 
 
 def parse_footprints():
-    """解析课程/文章/练习文件名 → 学习足迹节点。"""
-    nodes = []
-    patterns = [
-        (learning_root(LEARN_ROOT) / "每日认知与通识学习" / "每日课程", "认知课程"),
-        (learning_root(LEARN_ROOT) / "英文阅读" / "每日文章", "英文阅读"),
-        (learning_root(LEARN_ROOT) / "结构化表达" / "每日练习", "结构化表达"),
-    ]
-    for d, cat in patterns:
-        if not d.exists():
-            continue
-        for f in sorted(d.glob("*.md")):
-            name = f.stem
-            mdate = re.search(r"\d{4}-\d{2}-\d{2}", name)
-            date_s = mdate.group(0) if mdate else ""
-            title = re.sub(r"^\d{4}-\d{2}-\d{2}-", "", name)
-            title = re.sub(r"^第0*[0-9]+课-", "", title)
-            title = re.sub(r"^Day\s*0*[0-9]+\s*-\s*", "", title).strip()
-            if not title:
-                title = name
-            nodes.append({"name": title, "category": cat, "summary": "",
-                          "source": str(f.relative_to(learning_root(LEARN_ROOT))), "kind": "footprint", "date": date_s})
-    return nodes
+    return knowledge_scanning.parse_footprints(learning_root(LEARN_ROOT))
 
 
 def scan_markdown():
-    nodes = []
-    idx = learning_root(LEARN_ROOT) / "知识索引.md"
-    if idx.exists():
-        nodes += parse_index(idx)
-    tt = learning_root(LEARN_ROOT) / "现代思维工具教程"
-    if tt.exists():
-        nodes += parse_thinking_tools(tt)
-    nodes += parse_footprints()
-    return nodes
+    return knowledge_scanning.scan_markdown(learning_root(LEARN_ROOT))
 
 
 def refresh_knowledge():
-    nodes = scan_markdown()
-    conn = get_conn()
-    cur = conn.cursor()
-    # Keep existing identities and imported nodes: knowledge links refer to these IDs.
-    for n in nodes:
-        existing = cur.execute("SELECT id FROM knowledge WHERE name=? AND COALESCE(source,'')=? AND COALESCE(kind,'')=?",
-                               (n['name'], n.get('source',''), n.get('kind',''))).fetchone()
-        if existing:
-            continue
-        cur.execute("INSERT INTO knowledge(name,category,summary,source,kind,date) VALUES(?,?,?,?,?,?)",
-                    (n["name"], n["category"], n["summary"], n["source"], n["kind"], n.get("date", "")))
-    conn.commit()
-    conn.close()
-    return len(nodes)
+    return knowledge_catalog.refresh_knowledge(scan_markdown(), get_conn)
 
 
 def load_knowledge():
-    conn = get_conn()
-    nodes = [dict(r) for r in conn.execute("SELECT * FROM knowledge ORDER BY category, id")]
-    conn.close()
-    cats = {}
-    for n in nodes:
-        cats[n["category"]] = cats.get(n["category"], 0) + 1
-    return {"nodes": nodes, "categories": cats, "total": len(nodes)}
-
-
-# ================= v3：周报/月报 =================
-
-def _ds(d: date) -> str:
-    return d.isoformat()
+    return knowledge_catalog.load_knowledge(get_conn)
 
 
 def current_streak():
-    from growth_statistics import collect_activity
-    with get_conn() as conn:
-        return collect_activity(conn)['streak']
+    return growth_reports.current_streak(get_conn)
 
 
 def build_report(days: int):
-    from growth_statistics import collect_activity, count_reflections, shanghai_today
-    end = shanghai_today()
-    start = end - timedelta(days=days - 1)
-    dates = [_ds(start + timedelta(i)) for i in range(days)]
-    with get_conn() as conn:
-        facts = collect_activity(conn, dates[0], dates[-1], today=end)
-        mods = [dict(r) for r in conn.execute("SELECT id,name,color,ord FROM modules ORDER BY ord")]
-        known = {m['id'] for m in mods}
-        mods.extend(m for m in facts['modules'] if m['id'] not in known)
-        comp = []
-        for m in mods:
-            done = facts['module_stats'].get(m['id'], 0)
-            comp.append({"name": m["name"], "color": m["color"], "days": done,
-                         "pct": round(done / days * 100)})
-        def cnt(table):
-            return conn.execute(f"SELECT COUNT(*) FROM {table} WHERE date>=? AND date<=?",
-                                (dates[0], dates[-1])).fetchone()[0]
-        return {
-            "range": "week" if days == 7 else "month",
-            "start": dates[0], "end": dates[-1], "days": days,
-            "active_days": facts['active_days'],
-            "total_minutes": facts['total_minutes'],
-            "avg_minutes": round(facts['total_minutes'] / days),
-            "duration_sources": facts['duration_sources'],
-            "modules": comp,
-            "decisions": cnt("decisions"),
-            "predictions": cnt("predictions"),
-            "reviews": count_reflections(conn, dates[0], dates[-1]),
-            "insights": cnt("insights"),
-            "knowledge_count": conn.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0],
-            "streak": facts['streak'],
-        }
+    return growth_reports.build_report(days, get_conn)
 
 
 @asynccontextmanager
@@ -499,7 +366,7 @@ async def lifespan(app: FastAPI):
     if empty:
         refresh_knowledge()
     from action_source_worker import run as run_source_delivery
-    source_delivery_task = asyncio.create_task(run_source_delivery(accounts))
+    source_delivery_task = asyncio.create_task(run_source_delivery(accounts,plans_store,materials))
     try:
         yield
     finally:
@@ -510,6 +377,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="知行成长", lifespan=lifespan)
 app.state.multiuser = True
+
+from coach_facts import register as register_coach_facts
+register_coach_facts(app)
 
 @app.middleware('http')
 async def legacy_module_readiness(request: Request, call_next):
@@ -534,6 +404,8 @@ stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
 from migration_api import register as register_migrations
 register_migrations(app, copilot_store, LEARN_ROOT)
 materials = register_materials(app, LEARN_ROOT)
+from mobile_library import register as register_mobile_library
+register_mobile_library(app, plans_store, materials)
 from study_notes import register as register_study_notes
 register_study_notes(app)
 from action_plans import register as register_action_plans

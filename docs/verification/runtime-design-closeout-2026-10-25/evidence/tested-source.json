@@ -1,0 +1,22 @@
+{
+  "commits": [
+    "78b777b",
+    "ecfe80c"
+  ],
+  "algorithm": "sha256",
+  "files": {
+    "知行成长/manage.sh": "dbb88c573d0d7c9fb6d2eadd6512edfd425d749649f33494c7dee2b6704bebe4",
+    "知行成长/server/deployment.py": "cc3266c0b2512c744fda81f666aa92b9b8bef3bb203f0a73864af43a81a31ea7",
+    "知行成长/server/prepare_materials.py": "61377f6caa0073fbf2b0c2624c94f26b6b1859c83c0cbb3f9b20b545f941413e",
+    "知行成长/server/run_local.py": "bfe65c93aec202888020991174168034f9eb2fdb5d243a792a560948a2bb7b55",
+    "知行成长/server/static/design-tokens.css": "0ba50990de291fc97fd6d414ecdcb9d0b44d5392fda2150d1b45abd652eb49c2",
+    "知行成长/server/static/index.html": "9e43eb93a32474a3291f532ffaa656cfec21866baf6fe64906d805ce2aa5cf45",
+    "知行成长/server/tests/test_deployment_boot.py": "eb78b1a9f5757a95c7682b80b93ec82cbcae1317eb51cd7ccebfac8596dee917",
+    "知行成长/server/tests/test_design_tokens_browser.py": "2b2bd638b200904a3d37c1c2dc58a118a2f381d1be5525262530ff01bb04c24d",
+    "知行成长/server/tests/test_legacy_cloud_browser.py": "6b29082af1e1e005bc4deedc193b47ffd1cf27c4ec4f74ab357f64ae27b00f15",
+    "知行成长/server/tests/test_reading_growth_browser.py": "5bf7471957123bb2ff4f0ba46d5174a83963ee197095743d4da1b15d273d6330",
+    "知行成长/server/tests/test_reading_site_browser.py": "c2192a75a788127a87520e1bacd6fbb72b4dd63b7120f67b9e7317d8627bd5be",
+    "知行成长/server/tests/test_reading_startup_browser.cjs": "4071831f3fd0fe76802fd940783fc52dfbd5bf8df41c829bfd4a79a05acfea67",
+    "知行成长/server/tests/test_runtime_check.py": "c882f326dfef488fe2c628544f234966ec930bd6032da465fea6cdbe963b7afe"
+  }
+}

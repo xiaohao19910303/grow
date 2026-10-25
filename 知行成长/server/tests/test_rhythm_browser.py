@@ -68,6 +68,16 @@ class RhythmBrowserTests(unittest.TestCase):
         d.get_by_role('button',name='设为今日一件事',exact=True).click();expect(d).not_to_be_visible()
         expect(self.page.locator('#dailyRhythm')).to_contain_text(p['title'])
 
+    def test_settings_reload_initializes_form_and_preserves_unsaved_edits(self):
+        self.page.get_by_role('button',name='设置',exact=True).click()
+        self.page.reload()
+        settings=self.page.locator('#rhythmSettings')
+        expect(settings.get_by_role('button',name='保存节奏设置',exact=True)).to_be_visible()
+        zone=settings.get_by_label('时区',exact=True)
+        zone.fill('Europe/London')
+        self.page.evaluate('()=>window.DailyRhythm.refresh()')
+        expect(zone).to_have_value('Europe/London')
+
     def test_minimum_check_recap_reload_weekly_and_mobile(self):
         self.enable();p=self.seed();self.choose(p)
         self.page.locator('#dailyRhythm').get_by_role('button',name='今天轻一点',exact=True).click()

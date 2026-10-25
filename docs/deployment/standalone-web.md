@@ -16,11 +16,14 @@ chmod 600 知行成长/server/.env
 # LEARN_ROOT 设为下一步新导出的绝对路径，例如 /var/lib/grow/materials。
 cd 知行成长/server
 ../../.venv/bin/python prepare_materials.py /var/lib/grow/materials
+../../.venv/bin/python deployment.py check --offline
 ../../.venv/bin/python deployment.py check
 ../../.venv/bin/python deployment.py serve --host 127.0.0.1 --port 8756
 ```
 
 项目根 requirements.txt → requirements.lock 是唯一生产依赖入口；server/requirements.txt 仅兼容旧命令。requirements.in 记录直接约束，更新后须重新生成锁并跑验收，不能在线启动时自动升级依赖。测试依赖另装 server/requirements-test.txt。原 manage.sh / start.sh 改用相同预检与入口，可用 GROW_PYTHON 指定解释器；后台启动失败要检查其日志，不以启动脚本提示代替 HTTP 验证。
+
+`check --offline` 不连接数据库，但仍校验必填配置、依赖、教材目录以及运行目录可写性；会按配置创建运行目录并写入临时探测文件。离线通过不表示数据库已可连接，也不表示服务已启动。`serve --offline` 会明确拒绝，启动仍必须完成数据库预检。项目根也可运行 `bash 知行成长/manage.sh check --offline` 或 `bash 知行成长/manage.sh check`；预检不产生服务 PID 或后台日志。
 
 deployment.py 只读取进程环境、server/.env 和根 .env.local 中白名单存储变量；进程环境优先，不执行文件中的 shell 文本，不从旧共享配置导入管理密码。新安装推荐只用独立的 server/.env 或部署平台的受管秘密。错误提示只包含变量名；不要把 .env、数据库 URL、token 或含正文的服务日志提交到 Git。
 

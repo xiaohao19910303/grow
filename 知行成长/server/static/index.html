@@ -5,12 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>知行成长 · 个人学习与成长平台</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/design-tokens.css?v=20261025-dark-fix">
 <style>
-  :root{
-    --bg:#f5f6fa; --card:#ffffff; --border:#e6e8f0; --text:#1f2430; --muted:#626b7d;
-    --primary:#465ce0; --primary-soft:#eef1ff; --shadow:0 1px 3px rgba(20,26,51,.06),0 8px 24px rgba(20,26,51,.05);
-    --radius:14px; --green:#2FA84F; --red:#e5484d; --amber:#e8a33d;
-  }
+  /* Dark mode fix: 2026-10-25 */
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
@@ -22,22 +19,23 @@
     padding:16px 28px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:50;
   }
   .brand{display:flex; align-items:center; gap:10px}
-  .brand .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#4F6EF7,#7C5CF0);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+  .brand .logo{width:30px;height:30px;border-radius:8px;background:var(--gradient-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
   .brand h1{font-size:24px;margin:0;font-weight:700}
   .brand .sub{font-size:12px;color:var(--muted)}
   .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .btn{
-    display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:9px;border:1px solid var(--border);
-    background:#fff;color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--radius-md,10px);border:1px solid var(--border);
+    background:var(--card);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:var(--animation-fast,.15s);white-space:nowrap;
   }
   .btn:hover{border-color:var(--primary);color:var(--primary)}
+  .btn:active{transform:scale(0.98);opacity:0.9}
   .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
-  .btn.primary:hover{background:#3d5ce8;color:#fff}
-  .btn.danger:hover{border-color:var(--red);color:var(--red)}
-  .badge{font-size:12px;padding:4px 10px;border-radius:99px;background:var(--primary-soft);color:var(--primary);font-weight:600}
-  .badge.on{background:#e8f7ec;color:var(--green)}
-  .badge.warn{background:#fdf3e3;color:var(--amber)}
-  .badge.err{background:#fdeeee;color:var(--red)}
+  .btn.primary:hover{background:var(--primary-dark);color:#fff}
+  .btn.danger:hover{border-color:var(--error-text);color:var(--error-text)}
+  .badge{font-size:12px;padding:4px 10px;border-radius:var(--radius-pill);background:var(--primary-light);color:var(--primary);font-weight:600}
+  .badge.on{background:var(--success-light);color:var(--success-text)}
+  .badge.warn{background:var(--warning-light);color:var(--warning-text)}
+  .badge.err{background:var(--error-light);color:var(--error-text)}
   .wrap{max-width:1180px;margin:0 auto;padding:24px 28px 64px}
   .tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--card);padding:6px;border-radius:12px;border:1px solid var(--border);width:max-content;max-width:100%;overflow-x:auto}
   .tab{padding:8px 16px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:550;white-space:nowrap;border:1px solid transparent}
@@ -46,7 +44,7 @@
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
   .card .k{font-size:12px;color:var(--muted);margin-bottom:6px}
-  .card .v{font-size:24px;font-weight:700;letter-spacing:-.5px}
+  .card .v{font-size:24px;font-weight:700;letter-spacing:-.5px;font-family:var(--font-family)}
   .card .v small{font-size:13px;color:var(--muted);font-weight:500}
   .section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
   .section h2{font-size:15px;margin:0 0 4px;font-weight:650}
@@ -62,10 +60,10 @@
   .matrix td{padding:3px}
   .matrix .mname{font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;justify-content:flex-start;white-space:nowrap;padding-right:10px}
   .dot{width:10px;height:10px;border-radius:50%;flex:none}
-  .cell{width:26px;height:26px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:11px;border:1px solid var(--border);background:#fafbfc;transition:.12s;color:var(--text);user-select:none}
+  .cell{width:26px;height:26px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:11px;border:1px solid var(--border);background:var(--bg);transition:.12s;color:var(--text);user-select:none}
   .cell:hover{transform:scale(1.12)}
   .chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
-  .chip{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);cursor:pointer;font-size:13px;transition:.15s;background:#fff}
+  .chip{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);cursor:pointer;font-size:13px;transition:.15s;background:var(--card)}
   .chip .dot{width:12px;height:12px}
   .chip:hover{border-color:var(--primary)}
   #view-progress .chip,#view-progress .cell{cursor:default}
@@ -74,14 +72,15 @@
   .field-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
   .field-row label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px}
   input,select,textarea{
-    font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);
+    font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--card);color:var(--text);
+    transition:border-color var(--animation-fast,.15s),box-shadow var(--animation-fast,.15s);
   }
-  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
   textarea{resize:vertical;min-height:60px;width:100%}
   .record-table{width:100%;border-collapse:collapse;font-size:13px}
   .record-table th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
   .record-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
-  .record-table tr:hover td{background:#fafbfd}
+  .record-table tr:hover td{background:var(--bg)}
   .ellipsis{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .icon-btn{border:none;background:none;cursor:pointer;font-size:13px;color:var(--muted);padding:3px 6px;border-radius:6px}
   .icon-btn:hover{background:var(--primary-soft);color:var(--primary)}
@@ -90,15 +89,15 @@
   .manual-add input{flex:1;min-width:120px;max-width:200px}
   .overlay{position:fixed;inset:0;background:rgba(20,26,51,.4);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
   .overlay.show{display:flex}
-  .modal{background:#fff;border-radius:14px;padding:22px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(20,26,51,.25);max-height:88vh;overflow-y:auto}
+  .modal{background:var(--card);border-radius:14px;padding:22px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(20,26,51,.25);max-height:88vh;overflow-y:auto}
   .modal h3{margin:0 0 16px;font-size:16px}
   .modal .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .modal .form-grid .full{grid-column:1/-1}
   .modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
-  .note-card{background:#fff;border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:10px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .note-card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:10px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
   .note-card .meta{font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between}
   .note-card .body{font-size:13px;white-space:pre-wrap}
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f2430;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;z-index:200;pointer-events:none}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;z-index:200;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .empty{text-align:center;color:var(--muted);padding:30px 0;font-size:13px}
 
@@ -113,10 +112,10 @@
   @media(max-width:760px){.personal-grid{grid-template-columns:1fr}}
   /* 学习完成检测样式 */
   .cp-reading-progress{margin:20px 0;padding:16px;background:var(--primary-soft);border-radius:10px;border:1px solid var(--border)}
-  .cp-progress-bar{width:100%;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin-bottom:8px}
-  .cp-progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),#7C5CF0);width:0%;transition:width 0.3s ease}
+  .cp-progress-bar{width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:8px}
+  .cp-progress-fill{height:100%;background:var(--gradient-brand);width:0%;transition:width 0.3s ease}
   .cp-reading-info{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
-  .cp-review-section{margin:24px 0;padding:20px;background:#fff;border:2px solid var(--primary);border-radius:12px;box-shadow:var(--shadow)}
+  .cp-review-section{margin:24px 0;padding:20px;background:var(--card);border:2px solid var(--primary);border-radius:12px;box-shadow:var(--shadow)}
   .cp-review-section h3{margin:0 0 12px;font-size:18px;color:var(--primary)}
   .cp-review-section .desc{margin-bottom:16px;font-size:13px;color:var(--muted)}
   .cp-review-tabs{display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border)}
@@ -141,7 +140,7 @@
   @media (max-width:680px){.wrap{padding:16px 14px 48px}.topbar{padding:12px 18px}.modal .form-grid{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
-<link rel="stylesheet" href="/static/growth.css?v=20261021-audit">
+<link rel="stylesheet" href="/static/growth.css?v=20261025-coach">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
 <link rel="stylesheet" href="/static/reading.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
@@ -153,7 +152,7 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
-<link rel="stylesheet" href="/static/action-plans.css?v=20261021-audit">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261025-e1">
 </head>
 <body>
 
@@ -172,6 +171,7 @@
       <kbd class="search-shortcut">⌘K</kbd>
     </div>
     <span id="accountName" class="badge" aria-label="当前账号"></span>
+    <button class="btn" onclick="toggleTheme()" id="themeToggle" aria-label="切换主题">🌙</button>
     <button class="btn" onclick="Account.logout()">退出登录</button>
     <span class="badge" id="storageStatus" role="status">连接中…</span>
     <button class="btn" onclick="goTab('settings')">设置</button>
@@ -200,6 +200,7 @@
   </div>
   <div id="view-settings" style="display:none" class="section">
     <section id="rhythmSettings" class="account-settings" aria-label="日常节奏设置"><h2>日常节奏</h2><p>正在读取节奏设置…</p></section>
+    <section id="recordLinkSettings" class="account-settings" aria-label="Grow 记录客户端联动"><h2>Grow 记录客户端联动</h2><p>正在读取记录联动状态…</p></section>
     <section id="actionLinkSettings" class="account-settings" aria-label="LightTick 客户端联动"><h2>LightTick 客户端联动</h2><p>正在读取联动状态…</p></section>
     <h2>设置与数据</h2><p class="desc">旧版表单记录会自动保存。局部记录副本仅用于保留这些表单内容；服务器完整备份由管理员执行。</p>
     <section class="account-settings" aria-labelledby="invitationsTitle">
@@ -223,20 +224,29 @@
     </details>
     <p class="desc">局部副本包含模块设置、打卡、习惯、自定义字段与记录、决策、预测、复盘、洞见和待办。不包含行动及执行事实、独立笔记与自由记录、课程/文章正文、生成任务、账号设置或浏览器草稿。</p><details><summary>清空局部表单记录</summary><p>仅清空上述旧版表单内容。建议先下载局部记录副本；完整恢复需管理员的 PostgreSQL 与内容备份。</p><button class="btn danger" onclick="resetData()">重置</button></details>
     <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
-    <h2 style="font-size:18px;margin:0 0 8px">课程生成配置</h2>
+    <button type="button" class="btn" onclick="showCompletionHelp()">完成与进度说明</button>
+    <h2 style="font-size:18px;margin:16px 0 8px">课程生成配置</h2>
     <p class="desc">配置按账号保存在当前浏览器，换浏览器或清除站点数据后需重新填写。生成和测试时经后端临时调用，不保存到远端数据库。已有内容无需配置即可阅读。</p>
+    <div class="cp-actions"><button type="button" class="btn primary" onclick="AISetup.open()">开始配置引导</button></div>
     <div id="apiSettingsForm" class="cp-settings-form">
+      <div id="aiSetupHeader" hidden><h3 id="aiSetupStep" tabindex="-1"></h3><p id="aiSetupHint" class="desc"></p></div>
       <div class="field-row" style="flex-direction:column">
-        <label>API Base URL<input type="text" id="apiBaseUrl" placeholder="https://api.example.com/v1"></label>
+        <label>API Base URL<input type="url" id="apiBaseUrl" autocomplete="off" spellcheck="false" maxlength="2048" aria-describedby="aiAddressHelp" placeholder="https://api.example.com/v1"></label>
+        <p id="aiAddressHelp" class="desc">从服务商复制兼容 Chat Completions 的 HTTPS API 地址；不要填写聊天网页地址，也不要把密钥放在地址里。保留服务商要求的路径，末尾可带 /chat/completions。</p>
       </div>
       <div class="field-row" style="flex-direction:column">
-        <label>API Key<input type="password" id="apiKey" placeholder="sk-..."></label>
+        <label>API Key<input type="password" id="apiKey" autocomplete="off" spellcheck="false" maxlength="4096" placeholder="填写自己的 API Key"></label>
       </div>
       <div class="field-row" style="flex-direction:column">
-        <label>模型名称<input type="text" id="modelName" placeholder="填写服务商提供的模型名称"></label>
+        <label>模型名称<input type="text" id="modelName" autocomplete="off" spellcheck="false" maxlength="100" placeholder="填写服务商提供的模型名称"></label>
       </div>
-      <div id="apiStatus" style="font-size:13px;color:var(--muted)"></div>
-      <div class="cp-actions"><button class="btn primary" onclick="saveApiSettings()">保存配置</button><button class="btn" onclick="testApiConnection()">测试连接</button><button class="btn" onclick="loadApiSettings()">读取本地配置</button><button class="btn" onclick="clearApiSettings()">清除本地配置</button></div>
+      <p class="desc" id="aiCredentialsHelp">API Key 由服务商提供，请填写有权限使用该模型的密钥；模型名称应复制服务商的模型 ID，而非随意起名。配置仅属于当前账号的当前浏览器，换浏览器或清除站点数据后需重新填写。</p>
+      <div id="aiSetupReview" class="account-settings" hidden></div>
+      <p id="aiTestHelp" class="desc">保存不调用模型。点击“测试连接”会临时发送上述配置并请求一次简短模型响应，可能产生服务商费用；测试不自动保存。</p>
+      <div id="apiStatus" role="status" aria-live="polite" style="font-size:13px;color:var(--muted)"></div>
+      <div id="aiSetupNavigation" class="cp-actions" hidden><button type="button" class="btn" id="aiSetupBack" onclick="AISetup.back()">上一步</button><button type="button" class="btn primary" id="aiSetupNext" onclick="AISetup.next()">下一步</button><button type="button" class="btn" onclick="AISetup.close()">直接编辑全部字段</button></div>
+      <div id="aiSaveActions" class="cp-actions"><button type="button" class="btn primary" onclick="saveApiSettings()">保存配置</button><button type="button" class="btn" data-ai-test onclick="testApiConnection()">测试连接</button><button type="button" class="btn" id="apiCancelTest" onclick="cancelApiTest('测试已取消，配置尚未保存。')" hidden>取消测试</button></div>
+      <div id="aiLocalActions" class="cp-actions"><button type="button" class="btn" onclick="loadApiSettings()">读取本地配置</button><button type="button" class="btn" onclick="clearApiSettings()">清除本地配置</button></div>
     </div>
     <section class="account-settings" aria-labelledby="githubTitle">
       <h2 id="githubTitle">GitHub 内容存储</h2>
@@ -268,6 +278,7 @@
       <div><h2 id="dayHeading">今天，稳步向前</h2><p id="daySummary" class="desc">正在读取今日安排…</p></div>
       <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
     </div>
+    <section id="coachFactToday" class="section coach-fact" aria-label="教练今日提醒" aria-live="polite" hidden></section>
     <section id="dailyRhythm" class="section daily-rhythm" aria-label="今日一件事" aria-live="polite" hidden></section>
     <section id="actionHome" class="section action-home" aria-label="当日安排">
       <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay({date:document.getElementById('personalDate').value||today()})">新建行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
@@ -284,6 +295,7 @@
   </div>
   <div id="view-overview" style="display:none">
     <p class="desc">从学习、实践和复盘看近期变化。学习完成与投入时长分别统计，避免重复累计。</p>
+    <section id="coachFactOverview" class="section coach-fact" aria-label="教练今日提醒" aria-live="polite" hidden></section>
     <section id="actionGrowth" class="section" aria-label="行动积累"></section>
     <div class="cards" id="statCards"></div>
     <details class="section"><summary>学习变化与活动明细</summary>
@@ -567,12 +579,79 @@
 
 <div class="overlay" id="overlay"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
+<dialog id="completionHelpDialog" class="action-dialog" aria-labelledby="completionHelpTitle">
+  <h2 id="completionHelpTitle">完成与进度说明</h2>
+  <p>课程学完、行动完成和投入时间分别记录。打开内容、写笔记或生成成功，都不会自动算学完。</p>
+  <dl class="completion-rules">
+    <dt>计时行动</dt><dd>本人确认的实际投入累计达到标准分钟才达标。起步、未达标或中断投入会保留；计时到点不自动算学完课程。</dd>
+    <dt>内容行动</dt><dd>在关联文章／课程中确认读完／学完，再核对来源回执完成行动。只保存计时投入不会完成内容行动。当前自动回执支持历史文章与课程规划课程。</dd>
+    <dt>勾选待办</dt><dd>本人勾选完成，可撤销并保留历史。勾选不产生学习分钟，也不改变课程学完状态。</dd>
+  </dl>
+  <p>其他学习模块的学完确认更新各自的学习状态；对应计时行动仍按分钟达标。年／月／周目标的本人确认，也不代表某课已学完。</p>
+  <p>课程规划进度 = 已发布且本人确认学完的课数 ÷ 当前正式规划全部课数。未发布课程计入分母，草稿不计入；阶段按正式规划分组。</p>
+  <p>关联行动默认未安排日期。先“安排今日并开始”，再在原课程确认学完；直接学完课程会更新学习进度，但不会补造未安排或未来行动的执行。</p>
+  <p>安排日期是原计划，执行日期按实际确认时间与行动时区记录。分钟由本人确认；课程、行动和习惯记录可能重叠，分别展示、不相加。0 分钟的完成记录不代表没有学习。</p>
+  <p>例如标准 20 分钟、起步 5 分钟：确认投入 5 分钟记录起步，累计达到 20 分钟才达标，仍不替代课程学完确认。</p>
+  <button type="button" class="btn primary" onclick="this.closest('dialog').close()" autofocus>关闭说明</button>
+</dialog>
+
 
 <script src="/static/loading-state.js?v=web-batch1-20261023"></script>
 <script src="/static/event-bus.js?v=20261021-1"></script>
 <script src="/static/account.js?v=20261018-loading"></script>
-<script src="/static/ai-config.js?v=20261017"></script>
+<script src="/static/ai-config.js?v=20261025-e1"></script>
 <script>
+/* ================= 主题切换 ================= */
+function initTheme() {
+  // 从 localStorage 读取主题偏好,如果没有则跟随系统
+  const saved = localStorage.getItem('theme');
+  if (saved === 'dark' || saved === 'light') {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+  updateThemeButton();
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let newTheme;
+
+  if (current === 'dark') {
+    newTheme = 'light';
+  } else if (current === 'light') {
+    newTheme = 'dark';
+  } else {
+    // 没有手动设置,跟随系统偏好反向切换
+    newTheme = prefersDark ? 'light' : 'dark';
+  }
+
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  updateThemeButton();
+}
+
+function updateThemeButton() {
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return;
+
+  const current = document.documentElement.getAttribute('data-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = current === 'dark' || (current === null && prefersDark);
+
+  btn.textContent = isDark ? '☀️' : '🌙';
+  btn.setAttribute('aria-label', isDark ? '切换到明亮模式' : '切换到暗黑模式');
+}
+
+// 监听系统主题变化
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (!localStorage.getItem('theme')) {
+    updateThemeButton();
+  }
+});
+
+// 初始化主题
+initTheme();
+
 /* ================= 工具 ================= */
 const DAY = 86400000;
 const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
@@ -661,6 +740,7 @@ async function saveToServer(){
       }
     }
     state._revision = d.state._revision; saved = true;
+    window.CoachFacts?.invalidate();
     setStatus(editGeneration === generation ? '已保存 · 个人数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
   }catch(e){ setStatus('保存失败 · 本地修改保留，请重试；若有冲突请先导出副本','err'); }
   finally{
@@ -706,37 +786,70 @@ async function doReset(){
   }finally{saveInFlight=false;buttons.forEach(b=>b.disabled=false);}
 }
 
+function showCompletionHelp(){const d=document.getElementById('completionHelpDialog');if(!d.open)d.showModal();}
+
 function apiSettingsValue(){
-  return {api_base_url:document.getElementById('apiBaseUrl').value.trim(),
-    api_key:document.getElementById('apiKey').value.trim(),
-    model_name:document.getElementById('modelName').value.trim()};
+  return {api_base_url:document.getElementById('apiBaseUrl').value,
+    api_key:document.getElementById('apiKey').value,
+    model_name:document.getElementById('modelName').value};
+}
+let apiTestController=null,apiTestTurn=0,apiSettingsReadTurn=0;
+function cancelApiTest(message=''){
+  const wasPending=!!apiTestController;
+  ++apiTestTurn;apiTestController?.abort();apiTestController=null;
+  document.querySelectorAll('[data-ai-test]').forEach(button=>button.disabled=false);
+  const cancel=document.getElementById('apiCancelTest');if(cancel)cancel.hidden=true;
+  if(message&&(wasPending||message.includes('已变化')))document.getElementById('apiStatus').textContent=message;
 }
 function loadApiSettings(){
-  const d=AIConfig.read();
-  document.getElementById('apiBaseUrl').value=d.api_base_url;
-  document.getElementById('modelName').value=d.model_name;
-  document.getElementById('apiKey').value=d.api_key;
-  document.getElementById('apiStatus').textContent=AIConfig.status()||'已读取本浏览器配置，生成时使用自己的密钥。';
+  cancelApiTest();const turn=++apiSettingsReadTurn;
+  const apply=()=>{
+    if(turn!==apiSettingsReadTurn)return;
+    const d=AIConfig.read();
+    document.getElementById('apiBaseUrl').value=d.api_base_url;
+    document.getElementById('modelName').value=d.model_name;
+    document.getElementById('apiKey').value=d.api_key;
+    document.getElementById('apiStatus').textContent=AIConfig.status()||'已读取本浏览器配置；这不代表已通过连接测试。';
+    window.AISetup?.changed();
+  };
+  if(window.Account?.ready&&!window.Account.user){
+    document.getElementById('apiStatus').textContent='正在等待账号就绪以读取本地配置…';
+    window.Account.ready.then(apply).catch(()=>{if(turn===apiSettingsReadTurn)document.getElementById('apiStatus').textContent='账号尚未就绪，请重新连接后读取配置。';});
+  }else apply();
 }
 async function testApiConnection(){
-  const body=apiSettingsValue();
-  const el=document.getElementById('apiStatus');
-  if(!body.api_base_url||!body.api_key||!body.model_name){el.textContent='请完整填写 Base URL、API Key 和模型名称。';return;}
-  el.textContent='正在测试连接…';
+  if(apiTestController)return false;
+  const el=document.getElementById('apiStatus');let body;
+  try{body=AIConfig.validate(apiSettingsValue());}catch(error){el.textContent=error.message;return false;}
+  const account=window.Account?.user?.id,turn=++apiTestTurn,snapshot=JSON.stringify(apiSettingsValue());
+  const controller=apiTestController=new AbortController();
+  document.querySelectorAll('[data-ai-test]').forEach(button=>button.disabled=true);
+  const cancel=document.getElementById('apiCancelTest');if(cancel)cancel.hidden=false;
+  const timer=setTimeout(()=>controller.abort(),95000);el.textContent='正在测试连接…';
+  const current=()=>turn===apiTestTurn&&account===window.Account?.user?.id&&snapshot===JSON.stringify(apiSettingsValue());
   try{
-    const r=await fetch('/api/ai/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body)});
-    const d=await r.json();
-    el.textContent=d.message||'连接测试失败，请检查配置。';
-  }catch(e){el.textContent='测试失败，请检查网络与配置。';}
+    const r=await fetch('/api/ai/test',{method:'POST',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:JSON.stringify(body),signal:controller.signal});
+    const d=await r.json();if(!current())return false;
+    if(controller.signal.aborted){el.textContent='连接测试超时，请稍后重试。';return false;}
+    const ok=r.ok&&d.ok===true;
+    el.textContent=ok?'连接成功，仅验证本次简短响应；配置尚未保存。':'连接失败：请核对地址、密钥、模型和服务商状态，可修改后重试；已有配置未被改写。';
+    return ok;
+  }catch(error){if(current())el.textContent=controller.signal.aborted?'连接测试超时，请稍后重试。':'测试失败，请检查网络与配置后重试；已有配置未被改写。';return false;}
+  finally{clearTimeout(timer);if(turn===apiTestTurn){if(!current())el.textContent='配置或账号已变化，请重新核对后测试。';apiTestController=null;document.querySelectorAll('[data-ai-test]').forEach(button=>button.disabled=false);if(cancel)cancel.hidden=true;}}
 }
 function saveApiSettings(){
-  try{AIConfig.save(apiSettingsValue());loadApiSettings();toast('配置已保存到本浏览器');}
-  catch(e){toast(e.message);}
+  cancelApiTest();
+  const status=document.getElementById('apiStatus');
+  try{AIConfig.save(apiSettingsValue());loadApiSettings();status.textContent='配置已保存到本浏览器；保存本身不调用模型。';toast('配置已保存到本浏览器');window.AISetup?.saved();return true;}
+  catch(error){status.textContent=error.message;toast(error.message);return false;}
 }
 function clearApiSettings(){
-  try{AIConfig.clear();loadApiSettings();toast('本地 AI 配置已清除');}
-  catch(e){toast('无法清除，请检查浏览器存储权限。');}
+  cancelApiTest();
+  try{AIConfig.clear();loadApiSettings();document.getElementById('apiStatus').textContent='本地 AI 配置已清除；已有学习内容和记录保留。';toast('本地 AI 配置已清除');}
+  catch(error){document.getElementById('apiStatus').textContent='无法清除，请检查浏览器存储权限。';toast('无法清除，请检查浏览器存储权限。');}
 }
+document.getElementById('apiSettingsForm')?.addEventListener('input',()=>{++apiSettingsReadTurn;cancelApiTest('配置已变化，请重新核对；此前测试结果不再适用。');window.AISetup?.changed();});
+window.addEventListener('ai-config-changed',()=>cancelApiTest(''));
 
 /* ================= 个人日程 ================= */
 function renderPersonal(){
@@ -2092,6 +2205,7 @@ function goTab(name, options={}){
   window.studyReaderRequest=(window.studyReaderRequest||0)+1;
   if(window.leaveCopilot && currentTab==='copilot' && name!=='copilot') window.leaveCopilot();
   if(currentTab==='knowledge'&&name!=='knowledge'&&typeof stopKnowledgeGraph==='function')stopKnowledgeGraph();
+  if(currentTab==='settings'&&name!=='settings'){cancelApiTest();window.AISetup?.close(false);}
   currentTab=name;
   const parentTab=navParents[name] || name;
   const group=Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===parentTab));
@@ -2110,6 +2224,7 @@ function goTab(name, options={}){
   ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='report') window.WeeklyRhythm?.load();
+  if(name==='personal'||name==='overview')window.CoachFacts?.refresh().catch(()=>{});
   if(name==='personal' && !options.restore){ window.ActionPlans?.refresh().catch(()=>{}); renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
   if(name==='action-plans')window.ActionPlans?.enter();
@@ -2140,7 +2255,7 @@ function goTab(name, options={}){
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='progress' || name==='overview')refreshAutoCheckins();
   if(name==='stocks') window.initStocksModule?.();
-  if(!options.fromHistory && name!=='reader' && name!=='reading' && location.hash!=='#view/'+name){
+  if(!options.fromHistory && name!=='reader' && name!=='reading' && !(name==='plans'&&location.hash.startsWith('#plans/')) && location.hash!=='#view/'+name){
     history[options.restore?'replaceState':'pushState'](null,'',location.pathname+location.search+'#view/'+name);
   }
   return true;
@@ -2304,17 +2419,19 @@ init();
 <script src="/static/floating-panels.js?v=20261021-audit"></script>
 <script src="/static/reading-tasks.js?v=20261021-audit"></script>
 <script src="/static/behavior-report.js?v=20261021-p1"></script>
-<script src="/static/learning-completion.js?v=20261021-p1"></script>
-<script src="/static/copilot.js?v=20261021-p1-navigation"></script>
+<script src="/static/learning-completion.js?v=20261025-c1c3"></script>
+<script src="/static/copilot.js?v=20261025-e1"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
 <script src="/static/course-archive.js?v=20261019-1"></script>
 <script src="/static/course-summary.js?v=20261021-background"></script>
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
-<script src="/static/plans.js?v=20261021-audit"></script>
+<script src="/static/learning-plan-actions.js?v=20261025-c1c3"></script>
+<script src="/static/ai-setup.js?v=20261025-e1"></script>
+<script src="/static/plans.js?v=20261025-e1"></script>
 <script src="/static/study-generation.js?v=20261021-unified"></script>
 <script src="/static/daily-learning.js?v=20261021-audit"></script>
-<script src="/static/reading-growth.js?v=20261021-tasks"></script>
+<script src="/static/reading-growth.js?v=20261025-e1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
 <script src="/static/reading-position.js?v=20261021-merge"></script>
 <script src="/static/reading.js?v=20261024-merge"></script>
@@ -2329,12 +2446,15 @@ init();
 <script src="/static/action-recovery.js?v=20261024-merge"></script>
 <script src="/static/rhythm-client.js?v=20261023"></script>
 <script src="/static/action-reviews.js?v=20261021-merge"></script>
+<script src="/static/record-link.js?v=20261025"></script>
+<script src="/static/mobile-learning.js?v=20261025-reader"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>
 <script src="/static/daily-agenda.js?v=20261021-navigation-round3"></script>
-<script src="/static/daily-rhythm.js?v=20261024-merge"></script>
+<script src="/static/daily-rhythm.js?v=20261024-d0-settings"></script>
 <script src="/static/weekly-rhythm.js?v=20261023"></script>
 <script src="/static/rhythm-trial.js?v=20261023"></script>
 <script src="/static/action-quick-editor.js?v=20261024-merge"></script>
-<script src="/static/action-plans.js?v=20261024-merge"></script>
+<script src="/static/coach-facts.js?v=20261025"></script>
+<script src="/static/action-plans.js?v=20261025-e2"></script>
 </body>
 </html>

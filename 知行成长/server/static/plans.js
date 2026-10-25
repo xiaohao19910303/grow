@@ -8,12 +8,13 @@
   const canonical = x => JSON.stringify(x, (_, value) => value && !Array.isArray(value) && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k=>[k,value[k]])) : value);
   async function api(path, data) {
     if(data!==undefined && (path==='/generate'||/^\/drafts\/[^/]+\/refine$/.test(path))) data={...data,ai_config:AIConfig.require()};
-    const r=await fetch('/api/plans'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1'},body:data===undefined?undefined:JSON.stringify({data})});
+    const r=await fetch('/api/plans'+path,{method:data===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Copilot-Request':'1','X-Grow-Action-Schema':'2'},body:data===undefined?undefined:JSON.stringify({data})});
     let d;try{d=await r.json();}catch{throw new Error(r.ok?'返回的数据暂时无法读取，请重试。':`服务暂时无法完成请求（${r.status}），请稍后重试。`);}
-    if(!r.ok)throw new Error(typeof d.message==='string'?d.message:'请求未完成，请检查输入或重新读取。');
+    if(!r.ok)throw new Error(typeof d.message==='string'?d.message:typeof d.detail==='string'?d.detail:'请求未完成，请检查输入或重新读取。');
     if(data!==undefined && /\/lessons\/\d+\/feedback$/.test(path))await window.refreshLearningCompletion?.(d);
     if(d.id&&d.state&&['plan','course'].includes(d.kind)&&(path==='/generate'||path.startsWith('/attempts/')||/^\/drafts\/[^/]+\/refine$/.test(path)))trackGeneration(d);
     if(/^\/drafts\/[^/]+$/.test(path)&&d.id)window.GenerationTasks?.forget('plans:'+d.id);
+    if(data!==undefined)window.PlanActions?.refresh();
     return d;
   }
   function planTask(a){const context=a.context;return window.GenerationTasks?.external('plans',a,{label:a.kind==='plan'?'学习计划生成':'计划课程生成',...(context?.brief?.title?{title:context.brief.title+(context.lesson?' · 第 '+context.lesson.number+' 课':' · 规划草稿')}:{})});}
@@ -62,6 +63,8 @@
       }
       if(data.pending_publications?.length)root.append(node('p',`有 ${data.pending_publications.length} 项保存尚未完成。请点击“检查未完成保存”重试；草稿仍然保留。`,'desc'));
       status.textContent=data.generation_unavailable||AIConfig.status()||('AI 模型：'+AIConfig.read().model_name+'；点击生成才会调用，可能产生费用。');
+      if(AIConfig.status())window.AISetup?.entry(root);
+      button(root,'完成与进度说明',()=>window.showCompletionHelp?.());
       const budget=node('details');budget.append(node('summary','每周总时间预算'));root.append(budget);
       budget.append(node('p',`已登记投入 ${data.budget.known_minutes} 分钟/周${data.budget.legacy_unknown?'；旧模块投入尚未登记':''}。新增计划默认不启用定时任务。`));
       const limit=field(budget,'总预算（分钟/周，留空为未知）',data.budget.weekly,'number');
@@ -133,8 +136,9 @@
     button(root,'保存草稿并预览',async()=>{const turn=navigation;if(ack&&!ack.checked)throw new Error('请先核对规划文件的外部修改。');const saved=await api('/drafts',{brief:getBrief(),document:getDoc(),plan_id:d.plan_id||null,base_version:d.base_version||0,external_hash:ack?existing.external.hash:null,...(d.id?{parent_draft_id:d.id,parent_hash:d.content_hash}:{})});if(turn===navigation){dirtyCheck=null;await previewDraft(saved.id);}else toast('草稿已保存，可从计划列表查看。');},true);
   }
   async function detail(pid){
-    const status=shell('计划详情');status.textContent='正在读取课程规划…';const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
+    const status=shell('计划详情');route('detail',pid);status.textContent='正在读取课程规划…';const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
     root.querySelector('h2').textContent=data.plan.name;status.textContent=pid+' · 当前版本 v'+data.plan.version;
+    window.PlanActions?.mount(root,pid);
     button(root,'返回列表',window.loadPlans);button(root,'调整后续规划',()=>create(data));
     button(root,'修改显示名称',async()=>{const name=prompt('新的显示名称',data.plan.name);if(name){await api('/'+pid+'/metadata',{name,key:uuid()});await detail(pid);refresh();}});
 
@@ -255,8 +259,8 @@
   document.addEventListener('visibilitychange',()=>{if(document.hidden)for(const o of observers.values()){o.auto=false;o.left=true;};});
   const route=(kind,id)=>history.replaceState(null,'',kind?'#plans/'+kind+'/'+encodeURIComponent(id):location.pathname+location.search);
   window.enterPlans=()=>{
-    const m=location.hash.match(/^#plans\/(attempt|draft)\/([\w-]+)$/);
-    return m?(m[1]==='attempt'?watch(m[2]):previewDraft(m[2])):window.loadPlans();
+    const m=location.hash.match(/^#plans\/(attempt|draft|detail)\/([\w-]+)$/);
+    return m?(m[1]==='attempt'?watch(m[2]):m[1]==='detail'?detail(m[2]):previewDraft(m[2])):window.loadPlans();
   };
   window.addEventListener('hashchange',()=>{if(location.hash.startsWith('#plans/'))goTab('plans');});
   function foreground(id){return page?.kind==='attempt'&&page.id===id&&root.style.display!=='none'&&!document.hidden;}
@@ -377,13 +381,21 @@
       button(confirmBox,'确认改为今天日期并预览',async()=>{const child=await api('/drafts/'+id+'/redate',{parent_hash:d.content_hash,confirm_date:true});await previewDraft(child.id);},true);return;
     }
     const check=field(confirmBox,'已阅读这份草稿，确认将其正式保存','','checkbox');
+    const linkActions=d.kind==='plan'?field(confirmBox,'同时关联到行动（不指定学习日期）','','checkbox'):null;if(linkActions)linkActions.checked=true;
     button(confirmBox,d.kind==='plan'?'采用这份规划':'保存正式课程',async()=>{
       const turn=navigation;if(!check.checked)throw new Error('请先阅读草稿并勾选确认。');let result;
       if(d.kind==='plan'){
-        try{result=await api('/drafts/'+id+'/adopt',{key:id+':adopt',expected_hash:d.content_hash,accept_over:false});}
-        catch(e){if(!e.message.includes('预算')||!confirm(e.message+' 仍然采用并接受超额？'))throw e;result=await api('/drafts/'+id+'/adopt',{key:id+':over',expected_hash:d.content_hash,accept_over:true});}
+        try{result=await api('/drafts/'+id+'/adopt',{key:id+':adopt',expected_hash:d.content_hash,accept_over:false,link_actions:!!linkActions?.checked});}
+        catch(e){if(!e.message.includes('预算')||!confirm(e.message+' 仍然采用并接受超额？'))throw e;result=await api('/drafts/'+id+'/adopt',{key:id+':over',expected_hash:d.content_hash,accept_over:true,link_actions:!!linkActions?.checked});}
       }else result=await api('/drafts/'+id+'/publish',{key:id+':publish',expected_hash:d.content_hash});
-      toast(result.storage==='github'?'已提交 GitHub，可立即阅读；学习状态仍待本人记录。':'已正式保存；学习状态仍待本人记录。');refresh();if(turn===navigation)await detail(result.plan_id);
+      toast(result.learning_action_sync_error||(result.storage==='github'?'已提交 GitHub，可立即阅读；学习状态仍待本人记录。':'已正式保存；学习状态仍待本人记录。'));
+      refresh();
+      if(turn===navigation){
+        await detail(result.plan_id);
+        if(result.learning_action_sync_error&&turn+1===navigation){
+          const warning=node('p',result.learning_action_sync_error);warning.setAttribute('role','status');root.prepend(warning);
+        }
+      }
     },true);
   }
   function refineEditor(d){
@@ -437,4 +449,5 @@
       button(notes.actions,'本人确认学完',async()=>{await notes.flush();await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:feedback?.comment||'',...(window.actionContentOrigin?.target?.kind==='plan'&&window.actionContentOrigin.target.plan_id===pid&&window.actionContentOrigin.target.lesson_no===n?{origin_action_id:window.actionContentOrigin.actionId}:{})});d.lesson.learning_state='completed';status.textContent='本课已完成，笔记与练习答案已独立暂存。';refresh();},true);
     }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,(window.lessonReturnLabel?.() || '返回我的课程'),returnFromLesson);button(reader,'重试读取课程',()=>window.openPlanCourse(pid,n));}finally{loading?.finish();}
   };
+  window.openLearningPlan=async pid=>{if(goTab('plans')===false)return false;await detail(pid);return true;};
 })();

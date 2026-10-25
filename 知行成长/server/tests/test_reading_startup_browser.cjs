@@ -5,7 +5,7 @@ const path=require('node:path');
 const http=require('node:http');
 const {chromium}=require('playwright');
 const staticRoot=path.resolve(__dirname,'../static');
-const styles=fs.readFileSync(path.join(staticRoot,'index.html'),'utf8').match(/<style>([\s\S]*?)<\/style>/)[1];
+const styles=fs.readFileSync(path.join(staticRoot,'design-tokens.css'),'utf8')+'\n'+fs.readFileSync(path.join(staticRoot,'index.html'),'utf8').match(/<style>([\s\S]*?)<\/style>/)[1];
 const preferences={enabled:false,hour:10,minute:0,count:2,mode:'recent',topics:['科技'],languages:['en'],query:'AI',auto_guide:false};
 const requests=[],jobs=new Map(),pending=[],pendingSaves=[];
 let rejectNext=false,jobReads=0,holdListing=true,rejectSetup=false;const heldListings=[],heldSetups=[];

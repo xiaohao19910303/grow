@@ -1,0 +1,1 @@
+AI config client passed: safe address/length/control validation, no side effects, account isolation, denied storage and owner migration.

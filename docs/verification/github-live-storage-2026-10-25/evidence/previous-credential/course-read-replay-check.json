@@ -1,0 +1,20 @@
+{
+  "uses_existing_published_commit": "8796bbaf4605974a8b59715189412b434e52da0b",
+  "new_remote_files_created": false,
+  "course_read_status": 200,
+  "readback_matches_published_format": true,
+  "references_backlink_matches": true,
+  "content_sha256": "fba78c959c8c53d1d914fc5d9a80f84b4ca312d582d246f53d5ab32c13ca9057",
+  "hash_matches_publication_journal": true,
+  "learning_state": "unknown",
+  "replay_status": 200,
+  "idempotent_replay_same_commit": true,
+  "replay_head_unchanged": true,
+  "journal_states": [
+    "done",
+    "done",
+    "done"
+  ],
+  "ok": true,
+  "local_postgres_stopped": true
+}

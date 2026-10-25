@@ -1,0 +1,29 @@
+{
+  "repository": "xiaohao19910303/zhixing",
+  "branch": "main",
+  "verification_prefix": "_grow_verification/0921acff5f6944f4976bd643baee81db/",
+  "initial_head": "5f196a6096acdb2da2a67856f917e8d1622ba759",
+  "model_called": false,
+  "business_records_created": false,
+  "phase": "complete",
+  "api_statuses": [
+    {
+      "path": "/drafts",
+      "status": 200
+    },
+    {
+      "path": "/drafts/1b365e0d-fb69-4f32-a478-0d41af0faf54/adopt",
+      "status": 503
+    }
+  ],
+  "last_api_error": {
+    "code": "github_access",
+    "message": "GitHub 暂不可访问，请检查内容仓库、分支、凭证权限或 API 限流。"
+  },
+  "course_save_ok": false,
+  "error_type": "RuntimeError",
+  "tracked_test_files": 5,
+  "remaining_test_files": 0,
+  "cleanup_ok": true,
+  "local_postgres_stopped": true
+}

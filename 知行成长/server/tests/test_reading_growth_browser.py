@@ -50,7 +50,7 @@ class ReadingGrowthBrowser(CloudHTTPFixture):
         @self.app.get('/')
         def home():
             source=(static/'index.html').read_text()
-            style=source[source.index('<style>'):source.index('</style>')+8]
+            style='<style>'+(static/'design-tokens.css').read_text()+'</style>'+source[source.index('<style>'):source.index('</style>')+8]
             return HTMLResponse('<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'+style+'''
             <link rel="stylesheet" href="/static/reading.css"><body><main><p id="notice"></p><div id="view-copilot" style="display:none"></div><div id="view-reading"></div></main>
             <script>window.Account={user:{id:'test-owner',is_owner:true}};

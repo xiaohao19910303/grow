@@ -90,7 +90,7 @@ class ActionLinkTests(PostgreSQLFixture):
             c.execute('UPDATE action_plans SET data=? WHERE id=?',(actions.encoded(value),plan['id']))
         response=self.post('/preview',{'code':self.code});self.assertEqual(response.status_code,422,response.text)
         self.assertEqual(self.client.get('/api/action-link').json()['phase'],'local');self.assertEqual(self.imports,[])
-    def test_current_p0_plan_keeps_handoff_closed_and_data_local(self):
+    def test_current_p0_plan_rejects_legacy_target_without_claim_or_freeze(self):
         payload=dict(title='当前P0计时计划',period='day',start_date='2026-10-20',end_date='2026-10-20',key=str(uuid.uuid4()))
         old_client=self.client.post('/api/action-plans',json=payload,headers={'X-Copilot-Request':'1'})
         self.assertEqual(old_client.status_code,409,old_client.text)
@@ -101,7 +101,9 @@ class ActionLinkTests(PostgreSQLFixture):
         response=self.post('/preview',{'code':self.code})
         self.assertEqual(response.status_code,409,response.text)
         self.assertEqual(response.json()['code'],'CONTRACT_UPGRADE_REQUIRED')
-        self.assertEqual(self.sources,[]);self.assertEqual(self.imports,[])
+        # A read-only capability preview is now necessary to distinguish v1/v2;
+        # the unsupported target must never be claimed or receive an import.
+        self.assertEqual(self.sources,['grow-test-alice']);self.assertEqual(self.imports,[])
         with actions.connection() as c:
             metadata,backup=link.state(c)
             self.assertEqual(metadata,{'phase':'local'});self.assertIsNone(backup)

@@ -71,7 +71,7 @@
     else if(a.language==='en'&&!ready&&data.reading_preferences?.auto_guide){
       if(AIConfig.status()){
         status.textContent='配置个人模型后，再次打开英文文章即可自动生成中文导读。';
-        button(actions,'配置个人模型',()=>goTab('settings'));
+        button(actions,'配置个人模型',()=>window.AISetup?window.AISetup.open():goTab('settings'));
       }else queueMicrotask(()=>{if(isCurrent())start(true);});
     }
   }

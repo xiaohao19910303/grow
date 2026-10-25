@@ -9,7 +9,7 @@ function setup() {
   const alert = {hidden:true}; let next = 0;
   const ctx = {
     state:{modules:[],checkins:{},habits:{},customFields:[],customRecords:[],decisions:[],predictions:[],reviews:[],insights:[],todos:[],_revision:'r0'},
-    dataLoaded:true, crypto:{randomUUID:()=> 'draft-' + (++next)},
+    window:{}, dataLoaded:true, crypto:{randomUUID:()=> 'draft-' + (++next)},
     document:{getElementById:()=>alert},
     setTimeout:fn=>{const id=++next;timers.set(id,fn);return id},clearTimeout:id=>timers.delete(id),
     setStatus:msg=>statuses.push(msg),render:()=>{},refreshModuleNames:()=>{},

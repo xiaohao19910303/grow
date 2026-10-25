@@ -1,0 +1,10 @@
+{
+  "misplaced_github_token_detected": true,
+  "new_token_equals_previous_effective": false,
+  "new_token_repo_read_ok": true,
+  "new_token_branch_read_ok": true,
+  "token_moved_to_correct_field": true,
+  "encryption_key_generated": true,
+  "other_config_preserved": true,
+  "secret_echoed": false
+}

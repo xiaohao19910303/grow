@@ -1,0 +1,32 @@
+{
+  "sources": [
+    {
+      "file": ".env.local",
+      "exists": true,
+      "APP_PASSWORD_present": true,
+      "ACCOUNT_ENCRYPTION_KEY_present": false,
+      "LEARN_ROOT_present": false,
+      "DATABASE_URL_present": true
+    },
+    {
+      "file": "知行成长/server/.env",
+      "exists": true,
+      "APP_PASSWORD_present": false,
+      "ACCOUNT_ENCRYPTION_KEY_present": false,
+      "LEARN_ROOT_present": false,
+      "DATABASE_URL_present": true
+    }
+  ],
+  "effective_present": {
+    "APP_PASSWORD": false,
+    "ACCOUNT_ENCRYPTION_KEY": false,
+    "LEARN_ROOT": false,
+    "DATABASE_URL": true,
+    "GITHUB_CONTENT_REPO": true,
+    "GITHUB_CONTENT_TOKEN": true
+  },
+  "shared_password_imported": false,
+  "prepared_learn_root": "/Volumes/肖豪/project/grow/.grow-public-materials",
+  "real_database_connected": false,
+  "configuration_written": false
+}

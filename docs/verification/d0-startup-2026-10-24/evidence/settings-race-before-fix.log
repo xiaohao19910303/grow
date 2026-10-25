@@ -1,0 +1,9 @@
+AssertionError [ERR_ASSERTION]: The latest successful startup request must make the settings form available.
+    at /Users/hao/Documents/grow/知行成长/server/tests/test_daily_rhythm_settings.cjs:27:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

@@ -1,0 +1,2 @@
+Unified generation checks passed: concurrent producers, terminal notifications, no automatic navigation, exact results and recovery.
+Reading task checks passed: duplicate start, background completion, retry, refresh recovery, result link and account isolation.

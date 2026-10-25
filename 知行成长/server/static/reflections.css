@@ -1,49 +1,49 @@
 /* 日常记录样式 */
 .ref-label{font-size:12px;color:var(--muted);margin-bottom:6px}
-.ref-field{margin-bottom:14px}
+.ref-field{margin-bottom:var(--spacing-md)}
 .ref-field input[type="date"]{width:100%;max-width:220px}
 .ref-field textarea{min-height:90px}
-.ref-lead{font-size:13px;color:var(--text);font-weight:600;margin-bottom:8px}
-.ref-limit{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
-.ref-sec-label{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600}
-.ref-details{margin-bottom:14px;border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.ref-lead{font-size:13px;color:var(--text);font-weight:600;margin-bottom:var(--spacing-sm)}
+.ref-limit{font-size:11px;color:var(--muted);text-align:right;margin-top:var(--spacing-xs)}
+.ref-sec-label{font-size:12px;color:var(--muted);margin-bottom:var(--spacing-sm);font-weight:600}
+.ref-details{margin-bottom:var(--spacing-md);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px var(--spacing-md)}
 .ref-details summary{cursor:pointer;font-size:13px;color:var(--text);font-weight:550}
-.ref-q{margin-bottom:12px}
+.ref-q{margin-bottom:var(--spacing-md)}
 .ref-q-text{font-size:12px;color:var(--muted);margin-bottom:5px}
 .ref-q textarea{min-height:44px}
 .ref-empty{color:var(--muted);font-size:13px;padding:10px 0}
-.ref-err{color:var(--red);font-size:13px;margin:8px 0;min-height:18px}
+.ref-err{color:var(--error);font-size:13px;margin:var(--spacing-sm) 0;min-height:18px}
 
 /* 今日卡片 */
-.ref-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px}
-.ref-card-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:6px}
+.ref-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px var(--spacing-md);margin-bottom:10px}
+.ref-card-meta{display:flex;align-items:center;gap:var(--spacing-sm);font-size:11px;color:var(--muted);margin-bottom:6px}
 .ref-card-body{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
-.ref-card-actions{display:flex;justify-content:flex-end;gap:4px;margin-top:8px}
+.ref-card-actions{display:flex;justify-content:flex-end;gap:var(--spacing-xs);margin-top:var(--spacing-sm)}
 
 /* 记录列表 */
-.ref-day{font-size:13px;margin:18px 0 8px;color:var(--text)}
+.ref-day{font-size:13px;margin:var(--spacing-lg) 0 var(--spacing-sm);color:var(--text)}
 .ref-day-count{font-weight:400;color:var(--muted);font-size:12px}
-.ref-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.ref-row{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--spacing-md);padding:10px 0;border-bottom:1px solid var(--border)}
 .ref-row-body{flex:1;min-width:0}
-.ref-row-kind{margin-left:8px;font-size:12px;color:var(--muted)}
-.ref-row-preview{font-size:13px;margin-top:4px;overflow-wrap:anywhere}
+.ref-row-kind{margin-left:var(--spacing-sm);font-size:12px;color:var(--muted)}
+.ref-row-preview{font-size:13px;margin-top:var(--spacing-xs);overflow-wrap:anywhere}
 .ref-row-actions{display:flex;gap:2px;flex:none}
 
 /* 详情 */
-.ref-detail-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:12px}
-.ref-detail-raw{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;background:#fafbfd;border:1px solid var(--border);border-radius:10px;padding:12px}
-.ref-sect{margin-bottom:10px;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.ref-detail-meta{display:flex;align-items:center;gap:var(--spacing-sm);font-size:12px;color:var(--muted);margin-bottom:var(--spacing-md)}
+.ref-detail-raw{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:var(--spacing-md)}
+.ref-sect{margin-bottom:10px;border:1px solid var(--border);border-radius:var(--radius-md);padding:10px var(--spacing-md)}
 .ref-sect-label{font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px}
 .ref-sect-body{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
 .ref-sect textarea{width:100%;min-height:44px;margin-top:5px}
 
 /* AI 辅助 */
-.ref-ai-section{margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
+.ref-ai-section{margin-top:var(--spacing-lg);border-top:1px solid var(--border);padding-top:var(--spacing-md)}
 .ref-ai-desc{font-size:12px;color:var(--muted);margin-bottom:10px}
-.ref-ai-actions{display:flex;gap:8px;margin:10px 0}
-.ref-preview{border:1px solid var(--primary);background:var(--primary-soft);border-radius:10px;padding:12px;margin-top:10px}
-.ref-preview-title{font-size:12px;font-weight:600;color:var(--primary);margin-bottom:8px}
+.ref-ai-actions{display:flex;gap:var(--spacing-sm);margin:10px 0}
+.ref-preview{border:1px solid var(--primary);background:var(--primary-light);border-radius:var(--radius-md);padding:var(--spacing-md);margin-top:10px}
+.ref-preview-title{font-size:12px;font-weight:600;color:var(--primary);margin-bottom:var(--spacing-sm)}
 .ref-preview textarea{width:100%;min-height:70px;margin-bottom:6px}
-.ref-preview-desc{font-size:11px;color:var(--muted);margin-bottom:8px}
+.ref-preview-desc{font-size:11px;color:var(--muted);margin-bottom:var(--spacing-sm)}
 .ref-ai-result{margin-top:10px}
-.ref-ai-result-title{font-size:13px;font-weight:600;margin-bottom:8px}
+.ref-ai-result-title{font-size:13px;font-weight:600;margin-bottom:var(--spacing-sm)}

@@ -142,6 +142,8 @@
     const reminderOpen=root.querySelector('.action-reminder-help')?.open;root.replaceChildren();const head=n('div',undefined,'section-heading');root.append(head);
     const title=n('div');title.append(n('h2','目标与计划'),n('p','年目标定方向，月周计划拆解，日行动从小处开始；随时查看进度并复盘。','desc'));head.append(title);
     const controls=n('div',undefined,'action-buttons');head.append(controls);for(const kind of ['year','month','week','day'])button(controls,'新建'+label[kind],()=>editor(kind),kind==='day');button(controls,'刷新计划',()=>load(true));button(controls,'LightTick 联动',()=>window.ActionLink.show());
+    button(controls,'完成与进度说明',()=>window.showCompletionHelp?.());
+    window.PlanActions?.mount(root);
     const tabs=n('div',undefined,'action-buttons');root.append(tabs);for(const [value,text] of [['all','全部'],['year','年目标'],['month','月计划'],['week','周计划'],['day','日行动']]){const b=button(tabs,text,()=>{period=value;page=1;renderWorkspace();},period===value);b.setAttribute('aria-pressed',String(period===value));}
     const horizonFilter=field(root,'规划视角','select');for(const [value,text] of [['all','全部长短期'],['long','长期规划'],['short','短期计划']])option(horizonFilter,value,text);horizonFilter.value=horizon;horizonFilter.onchange=()=>{horizon=horizonFilter.value;page=1;renderWorkspace();};
     const filter=field(root,'计划状态','select');for(const [value,text] of Object.entries(statusLabel))option(filter,value,text);option(filter,'all','全部状态');filter.value=status;filter.onchange=()=>{status=filter.value;page=1;renderWorkspace();};
@@ -364,6 +366,7 @@
     const banner=document.getElementById('actionReminder'),identity=due.length?JSON.stringify([due[0].id,due[0].revision]):'';
     if(banner.dataset.reminder!==identity){banner.dataset.reminder=identity;banner.replaceChildren();banner.hidden=!due.length;
       if(due.length){const p=due[0];banner.append(n('strong','你留给自己的行动时间到了：'+p.title));button(banner,p.completion_mode==='check'?'完成事项':'现在开始',()=>p.completion_mode==='check'?change(p,'complete'):p.completion_mode==='content'?openTarget(p.target,p.id):start(p,'standard'),true);button(banner,'延后 15 分钟',()=>change(p,'snooze'));}}
+    window.CoachFacts?.tick(!!due.length).catch(()=>{});
     await window.DailyRhythm?.claimReminder(!!due.length);
     if(!client.get('notifications')||!('Notification' in window)||Notification.permission!=='granted')return;
     for(const p of due.slice(0,3)){const claim=await client.read('/'+p.id+'/reminder-claim',{device_id:client.device,reminder_at:p.reminder_at});if(claim.notify){try{const notice=new Notification('留一点时间给自己',{body:p.title+(p.minimum_minutes?' · 先开始 '+p.minimum_minutes+' 分钟也可以':' · 按本人确认记录完成'),tag:p.id});notice.onclick=()=>{window.focus();openWorkspace();notice.close();};}catch{client.put('notifications',false);}}}
@@ -395,4 +398,11 @@
     setInterval(()=>{if(!document.hidden)load().then(remind).catch(()=>{});},30000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)load().then(remind).catch(()=>{});});
   });
+  async function openMobileAction(){
+    const match=location.hash.match(/^#mobile\/action\/(action-[a-zA-Z0-9-]+)$/);if(!match)return;
+    try{await initialized;await load(true);const p=planById(match[1]);if(!p)throw Error('当前 Grow 账号中没有这项行动，请核对连接账号。');if(goTab('action-plans')===false)return;await openTarget(p.target,p.id);}
+    catch(e){toast(e.message);}
+  }
+  window.addEventListener('hashchange',openMobileAction);
+  window.addEventListener('load',openMobileAction);
 })();

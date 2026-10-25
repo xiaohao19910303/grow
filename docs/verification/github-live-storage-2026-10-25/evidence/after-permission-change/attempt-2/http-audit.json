@@ -1,0 +1,129 @@
+[
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/commits/5f196a6096acdb2da2a67856f917e8d1622ba759",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/trees",
+    "status": 403,
+    "accepted_permissions": "contents=write",
+    "message": "Resource not accessible by personal access token"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/0921acff5f6944f4976bd643baee81db/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  }
+]

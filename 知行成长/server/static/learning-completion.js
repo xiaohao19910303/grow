@@ -14,6 +14,8 @@
       status.hidden = !warning;
       document.getElementById('learningSyncMessage').textContent = warning;
     }
+    try{Promise.resolve(window.PlanActions?.refresh()).catch(()=>{});}catch{}
+    try{Promise.resolve(window.CoachFacts?.refresh(true)).catch(()=>{});}catch{}
     try{await window.DailyRhythm?.sourceSaved(result);}catch{}
     return warning;
   }

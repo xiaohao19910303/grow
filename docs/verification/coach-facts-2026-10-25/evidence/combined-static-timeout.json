@@ -1,0 +1,10 @@
+{
+  "overall_timeout_seconds": 400,
+  "completed_modules": [
+    "test_coach_facts_browser.py",
+    "test_navigation_audit_browser.py"
+  ],
+  "completed_modules_passed": true,
+  "remaining_group": "test_rhythm_browser.py",
+  "resolution": "Repeat remaining group independently with a 700 second budget; no product assertion failure was logged in completed groups."
+}

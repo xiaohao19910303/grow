@@ -1,0 +1,302 @@
+[
+  {
+    "file": "README.md",
+    "target": "docs/deployment/standalone-web.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "docs/verification/current-state-2026-10-24/README.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "知行成长/docs/daily-rhythm-14-day-validation.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "知行成长/README.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "docs/verification/current-state-2026-10-24/README.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "docs/verification/d0-startup-2026-10-24/README.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "知行成长/docs/daily-rhythm-14-day-validation.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "知行成长/内容存储规则.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "../project/plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "../project/plan/docs/04-planning/grow-app-g0-2026-10-18/README.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "../project/plan/docs/02-design/grow-client-feature-plan.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "../project/plan/docs/04-planning/grow-client-iteration-plan.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "学习系统总览.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "长期成长学习体系总规划.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "热门与深度文章/README.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "docs/verification/a-e3-2026-10-25/README.md",
+    "exists": true
+  },
+  {
+    "file": "README.md",
+    "target": "docs/verification/coach-facts-2026-10-25/README.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/deployment/standalone-web.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/verification/current-state-2026-10-24/README.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "docs/daily-rhythm-14-day-validation.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../学习系统总览.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../长期成长学习体系总规划.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/verification/a-e3-2026-10-25/README.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "docs/knowledge-stable-ids.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "docs/coach-fact-reminders.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/verification/coach-facts-2026-10-25/README.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "docs/daily-rhythm-14-day-validation.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "设计审查/2026-10-21-p1-fixes/验收报告.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/deployment/standalone-web.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../.env.github.example",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "GitHub课程链路验收.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/deployment/standalone-web.md#完整备份离线管理员命令",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/deployment/standalone-web.md#隔离验收",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/verification/web-standalone-batch1/acceptance.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "浏览器AI配置与云端存储验收.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../docs/multi-user-accounts.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "旧模块云端迁移说明.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "docs/action-plans-v1.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../openspec/changes/action-plans-p0-clarity/verification.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/README.md",
+    "target": "../openspec/changes/action-plans-p0-clarity/contract-gaps.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/docs/coach-fact-reminders.md",
+    "target": "../../docs/verification/coach-facts-2026-10-25/README.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/设计审查/2026-10-24-全系统评审/待办改造清单.md",
+    "target": "../../../docs/verification/a-e3-2026-10-25/README.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/设计审查/2026-10-24-全系统评审/待办改造清单.md",
+    "target": "../../../docs/verification/coach-facts-2026-10-25/README.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/设计审查/2026-10-24-全系统评审/待办改造清单.md",
+    "target": "../../docs/coach-fact-reminders.md",
+    "exists": true
+  },
+  {
+    "file": "知行成长/设计审查/2026-10-24-全系统评审/待办改造清单.md",
+    "target": "../../docs/knowledge-stable-ids.md",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "../../../知行成长/docs/coach-fact-reminders.md",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "../../../openspec/changes/coach-fact-reminders/design.md",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/results.json",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/metadata.json",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/backend-red.log",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/completion-latency-red.log",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/completion-latency-green.log",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/combined-static-timeout.json",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/browser/growth-desktop.png",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/browser/growth-mobile.png",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/browser/prediction-fact.png",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/tested-source.json",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/doc-links.json",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "evidence/test-database-cleanup.json",
+    "exists": true
+  },
+  {
+    "file": "docs/verification/coach-facts-2026-10-25/README.md",
+    "target": "../../deployment/standalone-web.md#隔离验收",
+    "exists": true
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "dedicated_postgres_port": 63552,
+  "dedicated_postgres_stopped": true,
+  "real_database_connected": false,
+  "business_configuration_changed": false,
+  "external_design_working_changes_preserved": true,
+  "preexisting_worktrees_preserved": true,
+  "pushed": false,
+  "deployed": false
+}

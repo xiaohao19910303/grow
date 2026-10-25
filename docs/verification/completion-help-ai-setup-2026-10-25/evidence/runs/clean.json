@@ -1,0 +1,292 @@
+{
+  "inventory": {
+    "profile": "standalone-web",
+    "python": [
+      "test_accounts.py",
+      "test_action_cold_start_browser.py",
+      "test_action_handoff.py",
+      "test_action_handoff_cutover.py",
+      "test_action_link.py",
+      "test_action_p0.py",
+      "test_action_p0_browser.py",
+      "test_action_p0_closeout.py",
+      "test_action_p0_closeout_sources.py",
+      "test_action_p0_sources.py",
+      "test_action_plans.py",
+      "test_action_reviews.py",
+      "test_action_source_delivery.py",
+      "test_action_storage_recovery_browser.py",
+      "test_action_storage_recovery_ui.py",
+      "test_archive.py",
+      "test_arrangement_sources.py",
+      "test_background_generations.py",
+      "test_background_http.py",
+      "test_behavior_report.py",
+      "test_browser_ai_config.py",
+      "test_cloud_auth.py",
+      "test_coach_facts.py",
+      "test_coach_facts_browser.py",
+      "test_copilot.py",
+      "test_course_completion_loop.py",
+      "test_course_review_cloud_api.py",
+      "test_cycle_review_api.py",
+      "test_cycle_review_browser.py",
+      "test_daily_arrangements.py",
+      "test_daily_reading_schedule.py",
+      "test_deployment_boot.py",
+      "test_deployment_config.py",
+      "test_feedback.py",
+      "test_feedback_schema.py",
+      "test_generation_responsiveness.py",
+      "test_github_browser.py",
+      "test_github_cloud_app.py",
+      "test_github_plans.py",
+      "test_growth_statistics.py",
+      "test_isolation_boundary.py",
+      "test_knowledge_stable_ids.py",
+      "test_learning_actions.py",
+      "test_learning_actions_browser.py",
+      "test_learning_checkins.py",
+      "test_learning_checkins_browser.py",
+      "test_learning_consistency.py",
+      "test_legacy_cloud_api.py",
+      "test_legacy_cloud_browser.py",
+      "test_legacy_cloud_content.py",
+      "test_legacy_cloud_schema.py",
+      "test_legacy_sqlite.py",
+      "test_legacy_state.py",
+      "test_legacy_stream_responsiveness.py",
+      "test_local_server_environment.py",
+      "test_navigation_audit_browser.py",
+      "test_navigation_organization_browser.py",
+      "test_offline_backup_boundary.py",
+      "test_packaged_materials.py",
+      "test_partial_records_browser.py",
+      "test_plan_read_errors.py",
+      "test_plan_refinement.py",
+      "test_plan_status_history.py",
+      "test_plans.py",
+      "test_platform_backup.py",
+      "test_postgres_legacy_migration.py",
+      "test_readable_collection.py",
+      "test_readable_collection_browser.py",
+      "test_reading.py",
+      "test_reading_content.py",
+      "test_reading_growth.py",
+      "test_reading_growth_browser.py",
+      "test_reading_library.py",
+      "test_reading_local_startup.py",
+      "test_reading_migration.py",
+      "test_reading_reader_latency.py",
+      "test_reading_responsiveness.py",
+      "test_reading_site_browser.py",
+      "test_reading_startup.py",
+      "test_reflection_protection.py",
+      "test_reflections_local_startup.py",
+      "test_request_limit.py",
+      "test_rhythm_accounts.py",
+      "test_rhythm_browser.py",
+      "test_rhythm_contracts.py",
+      "test_rhythm_events.py",
+      "test_rhythm_export.py",
+      "test_rhythm_facts.py",
+      "test_rhythm_focus.py",
+      "test_rhythm_initialization.py",
+      "test_rhythm_link_boundary.py",
+      "test_rhythm_metrics.py",
+      "test_rhythm_private_data.py",
+      "test_rhythm_recap.py",
+      "test_rhythm_reminders.py",
+      "test_rhythm_schema.py",
+      "test_rhythm_sources.py",
+      "test_rhythm_trial_report.py",
+      "test_rhythm_weekly.py",
+      "test_search_timeline.py",
+      "test_sequential_learning_browser.py",
+      "test_settings_independence.py",
+      "test_setup_help_browser.py",
+      "test_standalone_backup.py",
+      "test_standalone_recovery.py",
+      "test_study_generation.py",
+      "test_study_materials.py",
+      "test_study_notes.py",
+      "test_summary.py",
+      "test_web_regression_profile.py"
+    ],
+    "python_groups": {
+      "test_accounts.py": [
+        "PasswordTests",
+        "AccountIntegrationTests",
+        "AccountBrowserTests"
+      ]
+    },
+    "python_timeout_seconds": {
+      "test_accounts.py": 600
+    },
+    "javascript": [
+      "test_action_p0_client.cjs",
+      "test_action_plan_client.cjs",
+      "test_action_storage_recovery.cjs",
+      "test_ai_config_client.cjs",
+      "test_ai_connection_client.cjs",
+      "test_background_client.cjs",
+      "test_behavior_report_client.cjs",
+      "test_coach_facts_client.cjs",
+      "test_completion_producers.cjs",
+      "test_daily_agenda_capabilities.cjs",
+      "test_daily_rhythm_settings.cjs",
+      "test_learning_actions_client.cjs",
+      "test_learning_completion_sync.cjs",
+      "test_learning_loading.cjs",
+      "test_legacy_state_client.cjs",
+      "test_loading_state.cjs",
+      "test_loading_state_contract.cjs",
+      "test_login_loading.cjs",
+      "test_navigation_layout.cjs",
+      "test_partial_records.cjs",
+      "test_plan_observer.cjs",
+      "test_reading_navigation.cjs",
+      "test_reading_startup_browser.cjs",
+      "test_reading_tasks.cjs",
+      "test_reflection_entrypoints.cjs",
+      "test_rhythm_client.cjs",
+      "test_search_autofill.cjs",
+      "test_search_loading.cjs",
+      "test_search_timeline_navigation.cjs",
+      "test_state_browser.cjs",
+      "test_study_note_session.cjs",
+      "test_weekly_rhythm_requests.cjs"
+    ],
+    "deferred_connection": [
+      {
+        "file": "test_action_source_http.py",
+        "reason": "Requires the separate Zook HTTP/PG fixture; deferred connection profile."
+      }
+    ]
+  },
+  "full_profile": false,
+  "results": [
+    {
+      "tests": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_p0_browser.py",
+      "returncode": 0
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_github_browser.py",
+      "returncode": 0
+    },
+    {
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_learning_actions_browser.py",
+      "returncode": 0
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_navigation_audit_browser.py",
+      "returncode": 0
+    },
+    {
+      "tests": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_rhythm_browser.py",
+      "returncode": 0
+    },
+    {
+      "tests": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_setup_help_browser.py",
+      "returncode": 0
+    },
+    {
+      "file": "test_ai_config_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_ai_connection_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_background_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_completion_producers.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_learning_actions_client.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_learning_completion_sync.cjs",
+      "returncode": 0
+    },
+    {
+      "file": "test_reading_startup_browser.cjs",
+      "returncode": 1
+    },
+    {
+      "file": "test_state_browser.cjs",
+      "returncode": 1
+    }
+  ],
+  "python_tests": 23,
+  "skipped": 0,
+  "failed_modules": [
+    "test_reading_startup_browser.cjs",
+    "test_state_browser.cjs"
+  ]
+}

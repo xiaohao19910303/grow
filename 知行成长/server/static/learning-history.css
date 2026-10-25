@@ -13,9 +13,9 @@
 .completed-today {
   margin: 1rem 0;
   padding: 1rem;
-  background: #fafbfc;
-  border-radius: 10px;
-  border-left: 4px solid var(--green);
+  background: var(--bg);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--success);
 }
 
 .completed-today summary {
@@ -35,7 +35,7 @@
 }
 
 .completed-today .todo-row.lesson-row.completed .desc {
-  color: var(--green);
+  color: var(--success);
 }
 
 /* Learning record dialog */
@@ -73,8 +73,8 @@
 .record-section {
   margin: 1.5rem 0;
   padding: 1rem;
-  background: #fafbfc;
-  border-radius: 10px;
+  background: var(--bg);
+  border-radius: var(--radius-md);
 }
 
 .record-section h4 {
@@ -156,7 +156,7 @@
   font-size: 13px;
   border-radius: 9px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--text);
   cursor: pointer;
   transition: 0.15s;
@@ -180,11 +180,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--animation-fast);
   font-size: 13px;
-  background: #fafbfc;
+  background: var(--bg);
   color: var(--text);
   border: 1px solid transparent;
 }
@@ -221,20 +221,20 @@
 }
 
 .calendar-cell.has-records {
-  background: #e8f7ec;
-  border: 1px solid var(--green);
+  background: var(--success-light);
+  border: 1px solid var(--success);
   color: var(--text);
 }
 
 .calendar-cell.has-records:hover {
-  background: var(--green);
+  background: var(--success);
   color: white;
-  border-color: var(--green);
+  border-color: var(--success);
 }
 
 .calendar-cell.has-records.selected {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--success);
+  border-color: var(--success);
   color: white;
 }
 
@@ -254,8 +254,8 @@
 
 .history-stats {
   padding: 0.75rem 1rem;
-  background: #fafbfc;
-  border-radius: 8px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
   border-left: 4px solid var(--primary);
   font-size: 13px;
   color: var(--text);
@@ -341,15 +341,15 @@
 
 /* 热力图颜色 - 使用系统主色调 */
 .heatmap-cell {
-  transition: all 0.15s ease;
+  transition: all var(--animation-fast);
 }
 
 .heatmap-cell.level-0 {
-  background: #fafbfc;
+  background: var(--bg);
 }
 
 .heatmap-cell.level-1 {
-  background: #eef1ff;
+  background: var(--primary-light);
 }
 
 .heatmap-cell.level-2 {
@@ -369,7 +369,7 @@
 .calendar-cell:focus-visible { outline:3px solid var(--primary); outline-offset:2px; }
 .calendar-cell.empty,.calendar-cell.weekday-header { aspect-ratio:auto; min-height:24px; padding:0; min-width:0; }
 .calendar-cell { min-height:40px; max-height:64px; aspect-ratio:auto; }
-.history-stats { color:var(--text); background:var(--primary-soft); }
+.history-stats { color:var(--text); background:var(--primary-light); }
 @media(max-width:600px){
   .learning-calendar{padding:12px;}
   .calendar-grid{gap:4px;}

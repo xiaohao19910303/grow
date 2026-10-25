@@ -66,7 +66,7 @@
   padding: 7px 13px;
   border-radius: 9px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
@@ -87,7 +87,7 @@
 }
 
 .stocks-actions .btn.primary:hover {
-  background: #3d5ce8;
+  background: var(--primary-dark);
   color: #fff;
 }
 
@@ -109,7 +109,7 @@
   cursor: pointer;
   font-size: 13px;
   transition: 0.15s;
-  background: #fff;
+  background: var(--card);
   color: var(--text);
   font-weight: 500;
 }
@@ -193,18 +193,18 @@
 }
 
 .stock-action.buy {
-  background: #e8f7ec;
-  color: var(--green);
+  background: var(--success-light);
+  color: var(--success);
 }
 
 .stock-action.sell {
-  background: #fdeeee;
-  color: var(--red);
+  background: var(--error-light);
+  color: var(--error);
 }
 
 .stock-action.hold {
-  background: #fdf3e3;
-  color: var(--amber);
+  background: var(--warning-light);
+  color: var(--warning);
 }
 
 .stock-rationale {
@@ -213,7 +213,7 @@
   margin: 12px 0;
   line-height: 1.6;
   padding: 10px 12px;
-  background: #fafbfc;
+  background: var(--bg);
   border-radius: 8px;
   border-left: 3px solid var(--primary);
 }
@@ -252,18 +252,18 @@
 }
 
 .outcome-badge.pending {
-  background: #fdf3e3;
-  color: var(--amber);
+  background: var(--warning-light);
+  color: var(--warning);
 }
 
 .outcome-badge.success {
-  background: #e8f7ec;
-  color: var(--green);
+  background: var(--success-light);
+  color: var(--success);
 }
 
 .outcome-badge.failure {
-  background: #fdeeee;
-  color: var(--red);
+  background: var(--error-light);
+  color: var(--error);
 }
 
 .profit-loss {
@@ -295,7 +295,7 @@
   font-size: 13px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--text);
   cursor: pointer;
   transition: 0.15s;
@@ -316,7 +316,7 @@
 }
 
 .btn-small.primary:hover {
-  background: #3d5ce8;
+  background: var(--primary-dark);
   color: #fff;
 }
 
@@ -364,7 +364,7 @@
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--card);
   color: var(--text);
   transition: 0.15s;
 }
@@ -400,7 +400,7 @@
   padding: 7px 13px;
   border-radius: 9px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
@@ -420,7 +420,7 @@
 }
 
 .form-actions .btn.primary:hover {
-  background: #3d5ce8;
+  background: var(--primary-dark);
   color: #fff;
 }
 

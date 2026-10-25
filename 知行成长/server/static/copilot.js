@@ -324,6 +324,7 @@
       if (window.AIConfig?.status()) reasons.push(AIConfig.status());
       if (!currentTask.writer_coordinated) reasons.push('正式保存或学习反馈前，请确认其他程序已暂停写入。阅读不受影响。');
       reasons.forEach(s => blockers.append(el('li', s)));
+      if(window.AIConfig?.status())window.AISetup?.entry(blockers);
       generateButton.disabled = !currentTask.can_generate || !!aborter || !!window.AIConfig?.status();
       generateButton.textContent = currentTask.next_generation_lesson ? `生成第${currentTask.next_generation_lesson}课草稿` : '第一轮已生成完毕';
       history.replaceChildren();

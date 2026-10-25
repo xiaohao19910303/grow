@@ -1,0 +1,19 @@
+{
+  "project": "/Volumes/肖豪/project/grow",
+  "python": "/Volumes/肖豪/project/grow/.venv/bin/python",
+  "postgres": "dedicated localhost PG15",
+  "port": 63552,
+  "models": "injected transport only; fake TEST_SETUP credentials",
+  "github": "HTTP simulator",
+  "node_packages": "Codex bundled Playwright via NODE_PATH for two .cjs browser groups",
+  "clean_browser_source": "git archive 204a1a8 知行成长/server",
+  "preserved_changes": [
+    ".worktrees/",
+    "知行成长/server/static/index.html concurrent design styles",
+    "知行成长/server/static/design-tokens.css"
+  ],
+  "configuration_changed": false,
+  "real_database_connected": false,
+  "pushed": false,
+  "deployed": false
+}

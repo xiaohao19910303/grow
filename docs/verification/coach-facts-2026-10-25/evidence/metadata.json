@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-25",
+  "recorded_at": "2026-10-25T12:52:54.132037+08:00",
+  "base_revision": "bca92aa",
+  "branch": "codex/d0-rhythm-startup",
+  "python_tests": 65,
+  "browser_tests_included": 10,
+  "javascript_groups": 7,
+  "skipped": 0,
+  "failed": 0,
+  "scope": "affected modules, disposable localhost PostgreSQL, synthetic records, no providers",
+  "log_normalization": "Trailing whitespace removed only.",
+  "postgres": "postgres (PostgreSQL) 15.17 (Homebrew)",
+  "review_delta": "Non-blocking completion fact refresh, autosave invalidation and cache-busted assets verified with targeted final browser/client runs. One combined 400s attempt timed out; remaining rhythm group completed independently.",
+  "implementation_commit": "d756cb21e4e97f2880b0e2a0c7422ee7e331104a",
+  "syntax_checked_files": 11,
+  "browser_rendered_files": [
+    "知行成长/server/static/index.html",
+    "知行成长/server/static/growth.css"
+  ]
+}

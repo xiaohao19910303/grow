@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "health": {
+    "ok": true,
+    "revision": "local",
+    "plan_storage": "github",
+    "learning_plans_ready": true
+  }
+}

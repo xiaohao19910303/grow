@@ -1,0 +1,30 @@
+{
+  "repository": "xiaohao19910303/zhixing",
+  "branch": "main",
+  "calls": [
+    {
+      "method": "GET",
+      "endpoint": "git/ref/heads/main",
+      "status": 200,
+      "accepted_permissions": "contents=read",
+      "rate_remaining": "4912"
+    },
+    {
+      "method": "GET",
+      "endpoint": "git/commits/5f196a6096acdb2da2a67856f917e8d1622ba759",
+      "status": 200,
+      "accepted_permissions": "contents=read",
+      "rate_remaining": "4911"
+    },
+    {
+      "method": "POST",
+      "endpoint": "git/trees",
+      "status": 403,
+      "accepted_permissions": "contents=write",
+      "rate_remaining": "4987",
+      "message": "Resource not accessible by personal access token"
+    }
+  ],
+  "git_tree_write_allowed": false,
+  "branch_modified": false
+}

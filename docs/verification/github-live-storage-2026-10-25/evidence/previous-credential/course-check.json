@@ -1,0 +1,40 @@
+{
+  "repository": "xiaohao19910303/zhixing",
+  "branch": "main",
+  "verification_prefix": "_grow_verification/e22486669f234613b9dde42f80d293d5/",
+  "initial_head": "b5b38e529b3593f7a6b7f2afbc9f87659021efda",
+  "model_called": false,
+  "business_records_created": false,
+  "phase": "complete",
+  "api_statuses": [
+    {
+      "path": "/drafts",
+      "status": 200
+    },
+    {
+      "path": "/drafts/2c7df892-9e2a-49f0-8980-027e96d98a1f/adopt",
+      "status": 200
+    },
+    {
+      "path": "/plan-20261025-001/sources",
+      "status": 200
+    },
+    {
+      "path": "/drafts/5a966e6f-6cae-48f7-903c-7998218d6377/publish",
+      "status": 200
+    }
+  ],
+  "adopt_commit": "be6b5788394c6a4c13d16ccbdd465ab046e5b39c",
+  "course_commit": "8796bbaf4605974a8b59715189412b434e52da0b",
+  "formal_storage": "github",
+  "course_read_status": 200,
+  "course_save_ok": false,
+  "error_type": "AssertionError",
+  "tracked_test_files": 8,
+  "cleanup_candidate": "5f196a6096acdb2da2a67856f917e8d1622ba759",
+  "cleanup_commit": "5f196a6096acdb2da2a67856f917e8d1622ba759",
+  "remaining_test_files": 0,
+  "final_tree_matches_initial": true,
+  "cleanup_ok": true,
+  "local_postgres_stopped": true
+}
