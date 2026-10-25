@@ -1,0 +1,17 @@
+{
+  "config_token_present": true,
+  "server_env_token_is_effective": true,
+  "process_token_preexisted": false,
+  "repository": "xiaohao19910303/zhixing",
+  "branch": "main",
+  "repository_read_ok": true,
+  "repository_archived": false,
+  "repository_role_allows_push": true,
+  "branch_read_ok": true,
+  "initial_head": "5f196a6096acdb2da2a67856f917e8d1622ba759",
+  "empty_repository": false,
+  "ok": true,
+  "owner_storage_mode": "default",
+  "active_repository_matches_configured": true,
+  "existing_plan_binding_matches": true
+}
