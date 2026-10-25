@@ -1,0 +1,57 @@
+test_failed_list_can_retry_without_losing_saved_notes (test_learning_notebook_browser.LearningNotebookBrowser.test_failed_list_can_retry_without_losing_saved_notes) ... ok
+test_pagination_answer_search_empty_results_and_narrow_layout (test_learning_notebook_browser.LearningNotebookBrowser.test_pagination_answer_search_empty_results_and_narrow_layout) ... ok
+test_saved_unfinished_note_opens_edits_and_returns_to_filtered_notebook (test_learning_notebook_browser.LearningNotebookBrowser.test_saved_unfinished_note_opens_edits_and_returns_to_filtered_notebook) ... FAIL
+
+======================================================================
+FAIL: test_saved_unfinished_note_opens_edits_and_returns_to_filtered_notebook (test_learning_notebook_browser.LearningNotebookBrowser.test_saved_unfinished_note_opens_edits_and_returns_to_filtered_notebook)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_learning_notebook_browser.py", line 81, in test_saved_unfinished_note_opens_edits_and_returns_to_filtered_notebook
+    expect(reader.locator('.study-notes-form [role=status]')).to_contain_text('已暂存到云端')
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/sync_api/_generated.py", line 14961, in to_contain_text
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.to_contain_text(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        )
+        ^
+    )
+    ^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_sync_base.py", line 111, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 303, in to_contain_text
+    await self._expect_impl(
+    ...<9 lines>...
+    )
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 128, in _expect_impl
+    _record_soft_or_raise(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        AssertionError(
+        ^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        self._is_soft,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 60, in _record_soft_or_raise
+    raise error
+AssertionError: Locator expected to contain text '已暂存到云端'
+Actual value: None
+Error: strict mode violation: locator("#dailyReader").locator(".study-notes-form [role=status]") resolved to 2 elements:
+    1) <p class="desc" role="status">本课尚未完成；暂存笔记不会标记学完。</p> aka get_by_text("本课尚未完成；暂存笔记不会标记学完。")
+    2) <p class="desc" role="status" aria-live="polite">正在同步笔记与练习答案…</p> aka get_by_text("正在同步笔记与练习答案…")
+ 
+Call log:
+  - Expect "to_contain_text" locator("#dailyReader").locator(".study-notes-form [role=status]") with timeout 5000ms
+  - waiting for locator("#dailyReader").locator(".study-notes-form [role=status]")
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 5.303s
+
+FAILED (failures=1)
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 3, "skipped": 0, "failures": 1, "errors": 0, "javascript": []}

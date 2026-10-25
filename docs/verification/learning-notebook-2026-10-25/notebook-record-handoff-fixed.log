@@ -1,0 +1,15 @@
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_01_preserves_history_gaps_ai_and_cross_end_edits (test_record_handoff.RecordHandoffTests.test_01_preserves_history_gaps_ai_and_cross_end_edits) ... ok
+test_02_preview_stale_and_no_consent_leave_source_writable (test_record_handoff.RecordHandoffTests.test_02_preview_stale_and_no_consent_leave_source_writable) ... ok
+test_03_activation_response_loss_does_not_overwrite_newer_target (test_record_handoff.RecordHandoffTests.test_03_activation_response_loss_does_not_overwrite_newer_target) ... ok
+test_04_stage_response_loss_can_cancel_before_activation (test_record_handoff.RecordHandoffTests.test_04_stage_response_loss_can_cancel_before_activation) ... ok
+test_05_confirmed_cancel_can_start_a_new_real_handoff (test_record_handoff.RecordHandoffTests.test_05_confirmed_cancel_can_start_a_new_real_handoff) ... ok
+test_06_multiple_adoptions_preserve_unknown_old_basis_without_invention (test_record_handoff.RecordHandoffTests.test_06_multiple_adoptions_preserve_unknown_old_basis_without_invention) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 5.304s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 6, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

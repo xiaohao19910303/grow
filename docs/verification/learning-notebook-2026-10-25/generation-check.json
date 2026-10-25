@@ -1,0 +1,12 @@
+{
+  "checked_at": "2026-10-25T23:15:25.877537+08:00",
+  "url": "http://127.0.0.1:8000",
+  "active_generation_counts": {
+    "copilot_drafts": 0,
+    "learning_ai_attempts": 0,
+    "reflection_ai_attempts": 0,
+    "reading_records": 0,
+    "copilot_background_jobs": 0
+  },
+  "active_generation_total": 0
+}

@@ -1,0 +1,10 @@
+test_failed_list_can_retry_without_losing_saved_notes (test_learning_notebook_browser.LearningNotebookBrowser.test_failed_list_can_retry_without_losing_saved_notes) ... ok
+test_pagination_answer_search_empty_results_and_narrow_layout (test_learning_notebook_browser.LearningNotebookBrowser.test_pagination_answer_search_empty_results_and_narrow_layout) ... ok
+test_saved_unfinished_note_opens_edits_and_returns_to_filtered_notebook (test_learning_notebook_browser.LearningNotebookBrowser.test_saved_unfinished_note_opens_edits_and_returns_to_filtered_notebook) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 4.822s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 3, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}
