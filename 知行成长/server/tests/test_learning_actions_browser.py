@@ -120,3 +120,33 @@ class LearningActionsBrowserTests(unittest.TestCase):
         self.assertEqual(page.evaluate('window.actionContentOrigin.actionId'),p['id'])
         self.assertEqual(errors,[]);self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),375)
         page.screenshot(path=str(self.evidence/'mobile-h5-learning-source.png'),full_page=True)
+
+    def test_reading_scope_requires_target_preview_and_explicit_consent_in_real_h5(self):
+        context=self.browser.new_context(viewport={'width':375,'height':850});self.addCleanup(context.close)
+        page=context.new_page();page.set_default_timeout(15000);errors=[];writes=[]
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        def mobile(route):
+            path=route.request.url.split('/api/mobile-learning',1)[1]
+            if path=='':data={'available':True,'connected':False,'enabled':False,'pending':False}
+            elif path=='/preview':
+                self.assertEqual(route.request.post_data_json,{'code':'READ-ONLY-CODE'});writes.append('preview');data={'preview_id':'reader-preview','target_user_id':'fixture-mobile-owner','expires_at':'2026-10-26T00:00:00Z'}
+            elif path=='/connect':
+                self.assertEqual(route.request.post_data_json,{'code':'READ-ONLY-CODE','preview_id':'reader-preview','consent':True});writes.append('connect');data={'available':True,'connected':True,'enabled':True,'pending':True}
+            else:raise AssertionError(path)
+            route.fulfill(status=200,content_type='application/json',body=json.dumps(data))
+        page.route('**/api/mobile-learning**',mobile)
+        page.goto(self.base);page.evaluate('Account.ready');page.evaluate('ActionLink.show()')
+        area=page.locator('#actionLinkSettings');expect(area).to_contain_text('手机原生课程阅读')
+        area.get_by_role('button',name='连接并允许课程阅读',exact=True).click();self.assertEqual(writes,[])
+        area.get_by_label('手机课程连接码',exact=True).fill('READ-ONLY-CODE');area.get_by_role('button',name='验证课程连接码',exact=True).click()
+        expect(area).to_contain_text('fixture-mobile-owner');area.get_by_label('确认课程正文阅读范围',exact=True).check()
+        area.get_by_role('button',name='连接并允许课程阅读',exact=True).click();expect(area).to_contain_text('范围已保存，后台正在同步')
+        self.assertEqual(writes,['preview','connect']);self.assertEqual(errors,[])
+        page.screenshot(path=str(self.evidence/'native-reading-consent-mobile.png'),full_page=True)
+
+    def test_expired_h5_session_keeps_only_safe_native_lesson_continuation(self):
+        context=self.browser.new_context();self.addCleanup(context.close)
+        page=context.new_page();page.route('**/api/auth/me',lambda route:route.fulfill(status=401,content_type='application/json',body='{}'))
+        page.goto(self.base+'/#mobile/learn/lesson-fixture')
+        page.wait_for_url('**/login#mobile/learn/lesson-fixture');self.assertNotIn('token=',page.url)
+        page.goto(self.base+'/#token=must-not-be-forwarded');page.wait_for_url('**/login');self.assertNotIn('must-not-be-forwarded',page.url)

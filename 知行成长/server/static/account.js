@@ -6,6 +6,10 @@
   document.querySelector('.topbar').after(identityBox);
   const identityLoading = window.LoadingState?.start(identityBox, '正在验证登录信息…', '验证后会恢复你的学习内容与记录。');
   let switched = false;
+  function loginRedirect(){
+    const fragment=/^#(?:plans\/detail\/plan-[a-zA-Z0-9-]{1,70}|mobile\/action\/action-[a-zA-Z0-9-]+|mobile\/learn\/lesson-[a-z0-9-]{1,70})$/.test(location.hash)?location.hash:'';
+    location.replace('/login'+fragment);
+  }
   function accountChanged() {
     if (switched) return;
     switched = true;
@@ -18,7 +22,7 @@
     notice.querySelector('a').focus();
   }
   account.ready = originalFetch('/api/auth/me', {cache:'no-store'}).then(async response => {
-    if (!response.ok) { location.replace('/login'); throw new Error('请先登录。'); }
+    if (!response.ok) { loginRedirect(); throw new Error('请先登录。'); }
     account.user = (await response.json()).user;
     document.getElementById('accountName').textContent = account.user.username;
     window.dispatchEvent(new Event('ai-config-changed'));
@@ -41,7 +45,7 @@
     const method = (options.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
     if (!['GET','HEAD','OPTIONS'].includes(method)) headers.set('X-Copilot-Request', '1');
     const response = await originalFetch(input, {...options, headers});
-    if (response.status === 401) { location.replace('/login'); throw new Error('登录已过期，请重新登录。'); }
+    if (response.status === 401) { loginRedirect(); throw new Error('登录已过期，请重新登录。'); }
     if (response.headers.get('X-Account-Changed') === '1') { accountChanged(); throw new Error('账号已变更。'); }
     return response;
   };
