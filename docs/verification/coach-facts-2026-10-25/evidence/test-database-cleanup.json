@@ -1,0 +1,9 @@
+{
+  "dedicated_test_instance_stopped": true,
+  "remaining_fixture_schemas_at_stop": [
+    "legacy_cloud_4f069d7992af456a8859745be6f91305"
+  ],
+  "stop_exit_code": 0,
+  "other_instances_touched": false,
+  "note": "Only this temporary cluster was stopped; no production database was opened."
+}

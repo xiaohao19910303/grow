@@ -1,0 +1,167 @@
+FFFFFFFFFFFF                                                             [100%]
+=================================== FAILURES ===================================
+____ CoachFactTests.test_course_gap_threshold_and_existing_learning_record _____
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_course_gap_threshold_and_existing_learning_record>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+__ CoachFactTests.test_course_gap_uses_local_date_instead_of_timestamp_prefix __
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_course_gap_uses_local_date_instead_of_timestamp_prefix>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+__ CoachFactTests.test_database_failure_does_not_return_empty_or_leak_details __
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_database_failure_does_not_return_empty_or_leak_details>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+_ CoachFactTests.test_empty_account_and_uninitialized_optional_tables_have_explicit_empty_fact _
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_empty_account_and_uninitialized_optional_tables_have_explicit_empty_fact>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+_ CoachFactTests.test_future_malformed_dates_and_zero_levels_do_not_create_activity _
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_future_malformed_dates_and_zero_levels_do_not_create_activity>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+___ CoachFactTests.test_missing_or_equal_days_cannot_produce_a_decline_claim ___
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_missing_or_equal_days_cannot_produce_a_decline_claim>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+_______ CoachFactTests.test_no_ai_configuration_or_model_call_is_needed ________
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_no_ai_configuration_or_model_call_is_needed>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+_ CoachFactTests.test_plan_feedback_requires_completed_active_course_and_latest_confirmation _
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_plan_feedback_requires_completed_active_course_and_latest_confirmation>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+_ CoachFactTests.test_prediction_sample_ignores_pending_invalid_and_outside_current_week _
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_prediction_sample_ignores_pending_invalid_and_outside_current_week>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+_____ CoachFactTests.test_projection_is_read_only_even_when_records_exist ______
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_projection_is_read_only_even_when_records_exist>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+_ CoachFactTests.test_streak_and_activity_include_manual_notes_without_summing_minutes _
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_streak_and_activity_include_manual_notes_without_summing_minutes>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+_ CoachFactTests.test_three_complete_positive_days_decline_is_about_records_only _
+
+self = <知行成长.server.tests.test_coach_facts.CoachFactTests testMethod=test_three_complete_positive_days_decline_is_about_records_only>
+
+    def setUp(self):
+        super().setUp()
+        with db.connect() as c:
+            c.executescript(TABLES)
+>       from coach_facts import register
+E       ModuleNotFoundError: No module named 'coach_facts'
+
+知行成长/server/tests/test_coach_facts.py:20: ModuleNotFoundError
+=============================== warnings summary ===============================
+知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /Users/hao/Documents/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_course_gap_threshold_and_existing_learning_record
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_course_gap_uses_local_date_instead_of_timestamp_prefix
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_database_failure_does_not_return_empty_or_leak_details
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_empty_account_and_uninitialized_optional_tables_have_explicit_empty_fact
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_future_malformed_dates_and_zero_levels_do_not_create_activity
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_missing_or_equal_days_cannot_produce_a_decline_claim
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_no_ai_configuration_or_model_call_is_needed
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_plan_feedback_requires_completed_active_course_and_latest_confirmation
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_prediction_sample_ignores_pending_invalid_and_outside_current_week
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_projection_is_read_only_even_when_records_exist
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_streak_and_activity_include_manual_notes_without_summing_minutes
+FAILED 知行成长/server/tests/test_coach_facts.py::CoachFactTests::test_three_complete_positive_days_decline_is_about_records_only
+12 failed, 1 warning in 1.02s
+WEB_MODULE_RESULT {"tests": 12, "failed": 12, "skipped": 0, "exit_code": 1, "isolation": {"sqlite_connections": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "blocked_network_access": 0}}

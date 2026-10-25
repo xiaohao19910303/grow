@@ -8,6 +8,8 @@
 
 知识节点的旧数字 ID 与连线保留，稳定 ID 在账号初始化时增量补齐，新节点自动生成。导入更新、重复记录处理和离线只读核验见[知识节点稳定 ID 说明](docs/knowledge-stable-ids.md)。
 
+「今日」和「成长总览」自动展示一条[教练事实提醒](docs/coach-fact-reminders.md)：只读本人已保存的数据，列出依据与阈值，无需模型配置。复用前台提醒刷新，到时行动优先；可选择今天先不显示。记录不足或读取失败会明确说明，不据此判断退步或没有学习。实现与测试见[D1/D2 验收](../docs/verification/coach-facts-2026-10-25/README.md)。
+
 ## 🌐 在线访问
 
 **应用地址**: https://zhixingchengzhang.onrender.com
