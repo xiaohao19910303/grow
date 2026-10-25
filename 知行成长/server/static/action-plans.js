@@ -364,6 +364,7 @@
     const banner=document.getElementById('actionReminder'),identity=due.length?JSON.stringify([due[0].id,due[0].revision]):'';
     if(banner.dataset.reminder!==identity){banner.dataset.reminder=identity;banner.replaceChildren();banner.hidden=!due.length;
       if(due.length){const p=due[0];banner.append(n('strong','你留给自己的行动时间到了：'+p.title));button(banner,p.completion_mode==='check'?'完成事项':'现在开始',()=>p.completion_mode==='check'?change(p,'complete'):p.completion_mode==='content'?openTarget(p.target,p.id):start(p,'standard'),true);button(banner,'延后 15 分钟',()=>change(p,'snooze'));}}
+    window.CoachFacts?.tick(!!due.length).catch(()=>{});
     await window.DailyRhythm?.claimReminder(!!due.length);
     if(!client.get('notifications')||!('Notification' in window)||Notification.permission!=='granted')return;
     for(const p of due.slice(0,3)){const claim=await client.read('/'+p.id+'/reminder-claim',{device_id:client.device,reminder_at:p.reminder_at});if(claim.notify){try{const notice=new Notification('留一点时间给自己',{body:p.title+(p.minimum_minutes?' · 先开始 '+p.minimum_minutes+' 分钟也可以':' · 按本人确认记录完成'),tag:p.id});notice.onclick=()=>{window.focus();openWorkspace();notice.close();};}catch{client.put('notifications',false);}}}

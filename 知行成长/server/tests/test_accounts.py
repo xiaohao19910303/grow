@@ -327,6 +327,27 @@ class AccountIntegrationTests(unittest.TestCase):
         self.assertEqual(self.login('owner',os.environ['APP_PASSWORD']).status_code,200)
         self.assertEqual(self.client.get('/api/data').json()['todos'][0]['title'],'OWNER PRIVATE')
 
+    def test_coach_facts_are_private_and_require_no_ai_configuration(self):
+        self.assertEqual(self.client.get('/api/coach-facts').status_code, 401)
+        alice = self.register('alice')
+        state = self.client.get('/api/data').json()
+        from growth_statistics import shanghai_today
+        state['habits'] = {str(shanghai_today()): {'minutes':10, 'note':'ALICE PRIVATE HABIT'}}
+        response = self.client.put('/api/data', json=state,
+                                  headers={**self.headers,'X-Legacy-State-Protocol':'1'})
+        self.assertEqual(response.status_code, 200, response.text)
+        response = self.client.get('/api/coach-facts')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['fact']['evidence']['active_days'], 1)
+        self.assertFalse(response.json()['uses_model'])
+        self.assertNotIn('ALICE PRIVATE HABIT', response.text)
+        self.register('bob')
+        self.assertEqual(self.client.get('/api/coach-facts').json()['fact']['kind'], 'empty')
+        stale = self.client.get('/api/coach-facts',headers={'X-Account-Id':alice['id']})
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(self.login('alice').status_code, 200)
+        self.assertEqual(self.client.get('/api/coach-facts').json()['fact']['evidence']['active_days'], 1)
+
     def test_knowledge_stable_ids_initialize_and_remain_private_across_accounts(self):
         body = dict(name='账号私有知识', category='认知', summary='ALICE PRIVATE KNOWLEDGE',
                     source='教材', kind='concept', date='2026-10-25',

@@ -141,7 +141,7 @@
   @media (max-width:680px){.wrap{padding:16px 14px 48px}.topbar{padding:12px 18px}.modal .form-grid{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
-<link rel="stylesheet" href="/static/growth.css?v=20261021-audit">
+<link rel="stylesheet" href="/static/growth.css?v=20261025-coach">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
 <link rel="stylesheet" href="/static/reading.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
@@ -268,6 +268,7 @@
       <div><h2 id="dayHeading">今天，稳步向前</h2><p id="daySummary" class="desc">正在读取今日安排…</p></div>
       <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
     </div>
+    <section id="coachFactToday" class="section coach-fact" aria-label="教练今日提醒" aria-live="polite" hidden></section>
     <section id="dailyRhythm" class="section daily-rhythm" aria-label="今日一件事" aria-live="polite" hidden></section>
     <section id="actionHome" class="section action-home" aria-label="当日安排">
       <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay({date:document.getElementById('personalDate').value||today()})">新建行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
@@ -284,6 +285,7 @@
   </div>
   <div id="view-overview" style="display:none">
     <p class="desc">从学习、实践和复盘看近期变化。学习完成与投入时长分别统计，避免重复累计。</p>
+    <section id="coachFactOverview" class="section coach-fact" aria-label="教练今日提醒" aria-live="polite" hidden></section>
     <section id="actionGrowth" class="section" aria-label="行动积累"></section>
     <div class="cards" id="statCards"></div>
     <details class="section"><summary>学习变化与活动明细</summary>
@@ -661,6 +663,7 @@ async function saveToServer(){
       }
     }
     state._revision = d.state._revision; saved = true;
+    window.CoachFacts?.invalidate();
     setStatus(editGeneration === generation ? '已保存 · 个人数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
   }catch(e){ setStatus('保存失败 · 本地修改保留，请重试；若有冲突请先导出副本','err'); }
   finally{
@@ -2110,6 +2113,7 @@ function goTab(name, options={}){
   ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='report') window.WeeklyRhythm?.load();
+  if(name==='personal'||name==='overview')window.CoachFacts?.refresh().catch(()=>{});
   if(name==='personal' && !options.restore){ window.ActionPlans?.refresh().catch(()=>{}); renderPersonal(); if(window.loadDailyLearning) window.loadDailyLearning(); }
   if(name==='reading')window.enterReading?.();
   if(name==='action-plans')window.ActionPlans?.enter();
@@ -2304,7 +2308,7 @@ init();
 <script src="/static/floating-panels.js?v=20261021-audit"></script>
 <script src="/static/reading-tasks.js?v=20261021-audit"></script>
 <script src="/static/behavior-report.js?v=20261021-p1"></script>
-<script src="/static/learning-completion.js?v=20261021-p1"></script>
+<script src="/static/learning-completion.js?v=20261025-coach"></script>
 <script src="/static/copilot.js?v=20261021-p1-navigation"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
 <script src="/static/course-archive.js?v=20261019-1"></script>
@@ -2335,6 +2339,7 @@ init();
 <script src="/static/weekly-rhythm.js?v=20261023"></script>
 <script src="/static/rhythm-trial.js?v=20261023"></script>
 <script src="/static/action-quick-editor.js?v=20261024-merge"></script>
-<script src="/static/action-plans.js?v=20261024-merge"></script>
+<script src="/static/coach-facts.js?v=20261025"></script>
+<script src="/static/action-plans.js?v=20261025-coach"></script>
 </body>
 </html>

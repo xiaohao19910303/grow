@@ -13,5 +13,9 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,'../static/learning-completi
  vm.runInContext('let checkinRequest=0,automaticCheckins={},automaticCheckinModules=[];'+html.slice(html.indexOf('async function refreshAutoCheckins()'),html.indexOf('function activityOf(date)')),context);
  context.window.refreshAutoCheckins=context.refreshAutoCheckins;const caughtWarning=await context.window.refreshLearningCompletion({});assert(caughtWarning.includes('完成记录已保存'),'caught checkin failures must show a completion warning');assert.equal(node('learningSyncStatus').hidden,false);
  context.fetch=async()=>({ok:true,json:async()=>({checkins:{},modules:[]})});await context.window.retryLearningCompletion();assert.equal(node('learningSyncStatus').hidden,true);
- console.log('Completion synchronization passed: immediate refresh, warning, retry and server reconciliation failure.');
+ // Coach facts are auxiliary: a stalled read must never delay source completion.
+ context.window.CoachFacts={refresh:()=>new Promise(()=>{})};
+ let completed=false;const completion=context.window.refreshLearningCompletion({}).then(()=>{completed=true;});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(completed,true,'slow coach facts must not block saved completion feedback');await completion;
+ console.log('Completion synchronization passed: immediate refresh, warning, retry, server reconciliation failure and non-blocking coach facts.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

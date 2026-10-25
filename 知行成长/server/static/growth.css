@@ -1,6 +1,7 @@
 /* Keep the existing visual language while bringing daily actions forward. */
 [hidden]{display:none!important}
 button{font-family:inherit}
+.coach-fact{overflow-wrap:anywhere}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var(--primary);outline-offset:3px}
 .btn,.tab,summary{min-height:44px}
 .btn:disabled{background:#f0f1f5!important;color:#626b7d!important;border-color:var(--border)!important;cursor:not-allowed}

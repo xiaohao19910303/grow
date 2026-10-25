@@ -512,6 +512,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="知行成长", lifespan=lifespan)
 app.state.multiuser = True
 
+from coach_facts import register as register_coach_facts
+register_coach_facts(app)
+
 @app.middleware('http')
 async def legacy_module_readiness(request: Request, call_next):
     for prefix, store in (('/api/behavior', behavior_store), ('/api/errors', error_store),
