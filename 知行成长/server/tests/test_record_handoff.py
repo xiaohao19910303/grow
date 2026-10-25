@@ -2,11 +2,13 @@
 import json
 import os
 import subprocess
+import select
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 import httpx
 from cloud_fixtures import CloudFixture
+from test_action_source_http import source_database_url
 from copilot.core import Problem
 from reflections.store import ReflectionsStore
 from tenancy import current_user
@@ -19,16 +21,24 @@ class RecordHandoffTests(CloudFixture):
     def setUpClass(cls):
         super().setUpClass()
         zook=Path(os.environ['TEST_ZOOK_WORKTREE']);cls.stderr=tempfile.TemporaryFile(mode='w+')
-        cls.server=subprocess.Popen(['node','--experimental-transform-types','test/support/lighttick-record-handoff-http-fixture.ts'],cwd=zook,stdout=subprocess.PIPE,stderr=cls.stderr,text=True,env={**os.environ,'LIGHTTICK_RECORD_HANDOFF_ENABLED':'1','GROW_RECORDS_SOURCE_ID':'grow-source-test','GROW_RECORDS_BRIDGE_SECRET':SECRET,'LIGHTTICK_TEST_DATABASE_URL':'postgresql://localhost:55439/postgres'})
+        cls.addClassCleanup(cls.stderr.close)
+        database=source_database_url(os.environ.get('TEST_POSTGRES_DSN') or os.environ['TEST_LEGACY_PG_DSN'])
+        cls.server=subprocess.Popen(['node','--experimental-transform-types','test/support/lighttick-record-handoff-http-fixture.ts'],cwd=zook,stdout=subprocess.PIPE,stderr=cls.stderr,text=True,env={**os.environ,'LIGHTTICK_RECORD_HANDOFF_ENABLED':'1','GROW_RECORDS_SOURCE_ID':'grow-source-test','GROW_RECORDS_BRIDGE_SECRET':SECRET,'LIGHTTICK_TEST_DATABASE_URL':database})
+        cls.addClassCleanup(cls.stop_fixture)
         while True:
+            if not select.select([cls.server.stdout],[],[],30)[0]:raise RuntimeError('Record handoff fixture startup timed out')
             line=cls.server.stdout.readline()
             if line.startswith('READY '):cls.fixture=json.loads(line[6:]);break
             if not line:
                 cls.stderr.seek(0);raise RuntimeError(cls.stderr.read())
         cls.url='http://127.0.0.1:'+str(cls.fixture['port'])
     @classmethod
-    def tearDownClass(cls):
-        cls.server.terminate();cls.server.wait(timeout=20);cls.stderr.close();super().tearDownClass()
+    def stop_fixture(cls):
+        if cls.server.poll() is None:
+            cls.server.terminate()
+            try:cls.server.wait(timeout=20)
+            except subprocess.TimeoutExpired:cls.server.kill();cls.server.wait(timeout=5)
+        cls.server.stdout.close()
     def setUp(self):
         super().setUp()
         self.env=patch.dict(os.environ,{'LIGHTTICK_BRIDGE_URL':self.url,'GROW_RECORDS_SOURCE_ID':'grow-source-test','GROW_RECORDS_BRIDGE_SECRET':SECRET});self.env.start();self.addCleanup(self.env.stop)
