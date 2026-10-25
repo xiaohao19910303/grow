@@ -1,0 +1,292 @@
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_all_generation_routes_require_browser_config (test_browser_ai_config.BrowserConfigTests.test_all_generation_routes_require_browser_config) ... ERROR
+test_http_settings_do_not_read_write_or_echo_credentials (test_browser_ai_config.BrowserConfigTests.test_http_settings_do_not_read_write_or_echo_credentials) ... ok
+test_no_environment_or_database_fallback (test_browser_ai_config.BrowserConfigTests.test_no_environment_or_database_fallback) ... ok
+test_removes_obsolete_credentials_without_other_settings (test_browser_ai_config.BrowserConfigTests.test_removes_obsolete_credentials_without_other_settings) ... ok
+test_model_receives_only_request_config_and_journal_has_no_secret (test_browser_ai_config.GenerationCredentials.test_model_receives_only_request_config_and_journal_has_no_secret) ... ok
+
+======================================================================
+ERROR: test_all_generation_routes_require_browser_config (test_browser_ai_config.BrowserConfigTests.test_all_generation_routes_require_browser_config)
+----------------------------------------------------------------------
+  + Exception Group Traceback (most recent call last):
+  |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/_utils.py", line 104, in create_collapsing_task_group
+  |     async with anyio.create_task_group() as tg:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/opt/anaconda3/lib/python3.13/unittest/case.py", line 58, in testPartExecutor
+    |     yield
+    |   File "/opt/anaconda3/lib/python3.13/unittest/case.py", line 651, in run
+    |     self._callTestMethod(testMethod)
+    |     ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+    |   File "/opt/anaconda3/lib/python3.13/unittest/case.py", line 606, in _callTestMethod
+    |     if method() is not None:
+    |        ~~~~~~^^
+    |   File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_browser_ai_config.py", line 65, in test_all_generation_routes_require_browser_config
+    |     r = client.post(path, json=body, headers={'X-Copilot-Request':'1'})
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 1144, in post
+    |     return self.request(
+    |            ~~~~~~~~~~~~^
+    |         "POST",
+    |         ^^^^^^^
+    |     ...<11 lines>...
+    |         extensions=extensions,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/testclient.py", line 518, in request
+    |     return super().request(
+    |            ~~~~~~~~~~~~~~~^
+    |         method,
+    |         ^^^^^^^
+    |     ...<11 lines>...
+    |         extensions=extensions,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 825, in request
+    |     return self.send(request, auth=auth, follow_redirects=follow_redirects)
+    |            ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 928, in send
+    |     raise exc
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 922, in send
+    |     response.read()
+    |     ~~~~~~~~~~~~~^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_models.py", line 881, in read
+    |     self._content = b"".join(self.iter_bytes())
+    |                     ~~~~~~~~^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_models.py", line 897, in iter_bytes
+    |     for raw_bytes in self.iter_raw():
+    |                      ~~~~~~~~~~~~~^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_models.py", line 951, in iter_raw
+    |     for raw_stream_bytes in self.stream:
+    |                             ^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 153, in __iter__
+    |     for chunk in self._stream:
+    |                  ^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/testclient.py", line 384, in iter_body
+    |     exit_stack.close()
+    |     ~~~~~~~~~~~~~~~~^^
+    |   File "/opt/anaconda3/lib/python3.13/contextlib.py", line 627, in close
+    |     self.__exit__(None, None, None)
+    |     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+    |   File "/opt/anaconda3/lib/python3.13/contextlib.py", line 619, in __exit__
+    |     raise exc
+    |   File "/opt/anaconda3/lib/python3.13/contextlib.py", line 604, in __exit__
+    |     if cb(*exc_details):
+    |        ~~^^^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/testclient.py", line 399, in close_app
+    |     raise exception
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/from_thread.py", line 265, in _call_func
+    |     retval = await retval_or_awaitable
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/testclient.py", line 366, in run_app
+    |     await self.app(scope, receive, send)
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/applications.py", line 1194, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/applications.py", line 96, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    |     raise exc
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Volumes/肖豪/project/grow/知行成长/server/plans/api.py", line 41, in protect
+    |     response=await call_next(request)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 179, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Volumes/肖豪/project/grow/知行成长/server/reading/api.py", line 36, in protect
+    |     r=await call_next(request)
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 179, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Volumes/肖豪/project/grow/知行成长/server/reflections/api.py", line 77, in protect
+    |     result=await run_in_threadpool(proxy,store,request.url.path,request.method,dict(request.query_params),body)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    |     return await anyio.to_thread.run_sync(func)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/to_thread.py", line 65, in run_sync
+    |     return await get_async_backend().run_sync_in_worker_thread(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    |     return await future
+    |            ^^^^^^^^^^^^
+    |   File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    |     result = context.run(func, *args)
+    |   File "/Volumes/肖豪/project/grow/知行成长/server/record_handoff_api.py", line 49, in proxy
+    |     phase=state(store)['phase']
+    |           ~~~~~^^^^^^^
+    |   File "/Volumes/肖豪/project/grow/知行成长/server/record_handoff.py", line 65, in state
+    |     with store.conn() as c:row=c.execute('SELECT data FROM reflection_link_state WHERE id=1').fetchone()
+    |          ~~~~~~~~~~^^
+    |   File "/opt/anaconda3/lib/python3.13/contextlib.py", line 141, in __enter__
+    |     return next(self.gen)
+    |   File "/Volumes/肖豪/project/grow/知行成长/server/reflections/store.py", line 92, in conn
+    |     with closing(db.connect()) as c:
+    |                  ~~~~~~~~~~^^
+    |   File "/Volumes/肖豪/project/grow/知行成长/server/db.py", line 250, in connect
+    |     raise OperationalError('请在服务端配置 DATABASE_URL。')
+    | db.OperationalError: 请在服务端配置 DATABASE_URL。
+    +------------------------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_browser_ai_config.py", line 65, in test_all_generation_routes_require_browser_config
+    r = client.post(path, json=body, headers={'X-Copilot-Request':'1'})
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 1144, in post
+    return self.request(
+           ~~~~~~~~~~~~^
+        "POST",
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/testclient.py", line 518, in request
+    return super().request(
+           ~~~~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 928, in send
+    raise exc
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 922, in send
+    response.read()
+    ~~~~~~~~~~~~~^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_models.py", line 881, in read
+    self._content = b"".join(self.iter_bytes())
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_models.py", line 897, in iter_bytes
+    for raw_bytes in self.iter_raw():
+                     ~~~~~~~~~~~~~^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_models.py", line 951, in iter_raw
+    for raw_stream_bytes in self.stream:
+                            ^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/httpx/_client.py", line 153, in __iter__
+    for chunk in self._stream:
+                 ^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/testclient.py", line 384, in iter_body
+    exit_stack.close()
+    ~~~~~~~~~~~~~~~~^^
+  File "/opt/anaconda3/lib/python3.13/contextlib.py", line 627, in close
+    self.__exit__(None, None, None)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/contextlib.py", line 619, in __exit__
+    raise exc
+  File "/opt/anaconda3/lib/python3.13/contextlib.py", line 604, in __exit__
+    if cb(*exc_details):
+       ~~^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/testclient.py", line 399, in close_app
+    raise exception
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/from_thread.py", line 265, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/testclient.py", line 366, in run_app
+    await self.app(scope, receive, send)
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/applications.py", line 1194, in __call__
+    await super().__call__(scope, receive, send)
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/肖豪/project/grow/知行成长/server/plans/api.py", line 41, in protect
+    response=await call_next(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 179, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/肖豪/project/grow/知行成长/server/reading/api.py", line 36, in protect
+    r=await call_next(request)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 179, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/middleware/base.py", line 203, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/肖豪/project/grow/知行成长/server/reflections/api.py", line 77, in protect
+    result=await run_in_threadpool(proxy,store,request.url.path,request.method,dict(request.query_params),body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/tmp/grow-web-batch1-env/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+  File "/Volumes/肖豪/project/grow/知行成长/server/record_handoff_api.py", line 49, in proxy
+    phase=state(store)['phase']
+          ~~~~~^^^^^^^
+  File "/Volumes/肖豪/project/grow/知行成长/server/record_handoff.py", line 65, in state
+    with store.conn() as c:row=c.execute('SELECT data FROM reflection_link_state WHERE id=1').fetchone()
+         ~~~~~~~~~~^^
+  File "/opt/anaconda3/lib/python3.13/contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "/Volumes/肖豪/project/grow/知行成长/server/reflections/store.py", line 92, in conn
+    with closing(db.connect()) as c:
+                 ~~~~~~~~~~^^
+  File "/Volumes/肖豪/project/grow/知行成长/server/db.py", line 250, in connect
+    raise OperationalError('请在服务端配置 DATABASE_URL。')
+db.OperationalError: 请在服务端配置 DATABASE_URL。
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.356s
+
+FAILED (errors=1)
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 2}
+REGRESSION_RESULT {"python_tests": 5, "skipped": 0, "failures": 0, "errors": 1, "javascript": []}

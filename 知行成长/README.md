@@ -98,17 +98,25 @@
 
 ## 📂 项目结构
 
+```text
+grow/                       # 仓库根目录：部署配置、锁定依赖、学习源资料
+├── docs/                   # 跨端说明、部署手册和验收证据
+├── scripts/                # 仓库级任务脚本
+├── openspec/               # 变更规格
+└── 知行成长/               # 网页应用
+    ├── server/             # FastAPI 入口、业务模块、静态资源和测试
+    │   ├── app.py          # 应用与路由组装
+    │   ├── deployment.py   # 配置预检和启动入口
+    │   ├── static/         # 浏览器 HTML / CSS / JavaScript
+    │   └── tests/          # 隔离回归与测试夹具
+    ├── docs/               # 应用功能说明与设计记录
+    │   └── archive/        # 历史交付与审查文档
+    ├── 学习资料/            # 运行时读取的课程资料
+    ├── v1-legacy/          # 旧版本归档与迁移来源
+    └── manage.sh           # 本地后台服务管理
 ```
-知行成长/
-├── server/              # 后端代码
-│   ├── app.py          # 主应用
-│   ├── db.py           # 数据库层
-│   ├── requirements.txt # 依赖
-│   └── ...             # 其他模块
-├── render.yaml         # Render 配置
-├── Procfile            # 进程配置
-└── README.md           # 本文件
-```
+
+完整职责、路径约束和常用命令见[仓库结构说明](../docs/project-structure.md)；历史报告见[归档索引](docs/archive/README.md)。
 
 ## 💻 本地开发与独立部署
 

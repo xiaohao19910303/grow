@@ -29,11 +29,11 @@
 }
 
 .stat-value.profit {
-  color: #10b981;
+  color: var(--success);
 }
 
 .stat-value.loss {
-  color: #ef4444;
+  color: var(--error);
 }
 
 .stat-label {
@@ -162,18 +162,18 @@
 }
 
 .stock-action.buy {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--success-light);
+  color: var(--success-text);
 }
 
 .stock-action.sell {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--error-light);
+  color: var(--error-text);
 }
 
 .stock-action.hold {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-light);
+  color: var(--warning-text);
 }
 
 .stock-price {
@@ -225,18 +225,18 @@
 }
 
 .outcome-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-light);
+  color: var(--warning-text);
 }
 
 .outcome-badge.success {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--success-light);
+  color: var(--success-text);
 }
 
 .outcome-badge.failure {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--error-light);
+  color: var(--error-text);
 }
 
 .profit-loss {
@@ -246,11 +246,11 @@
 }
 
 .profit-loss.positive {
-  color: #10b981;
+  color: var(--success);
 }
 
 .profit-loss.negative {
-  color: #ef4444;
+  color: var(--error);
 }
 
 .stock-actions-bar {

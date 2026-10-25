@@ -8,6 +8,8 @@
 
 ## 入口导航
 
+- [仓库结构与维护约定](docs/project-structure.md)
+
 - [知行成长平台说明](知行成长/README.md)
 - [当前版本与功能状态](docs/verification/current-state-2026-10-24/README.md)
 - [D0启动检查与设置竞态修复](docs/verification/d0-startup-2026-10-24/README.md)
