@@ -1,0 +1,18 @@
+{
+  "project": "/Volumes/肖豪/project/grow",
+  "runtime": "/Volumes/肖豪/project/grow/.venv/bin/python",
+  "python": "3.13.9",
+  "locked_dependencies": 48,
+  "all_locked_match": true,
+  "configuration_validation": {
+    "ok": false,
+    "message": "配置未通过，请核对：APP_PASSWORD, ACCOUNT_ENCRYPTION_KEY, LEARN_ROOT (use a prepared teaching directory)"
+  },
+  "real_database_connected": false,
+  "business_config_changed": false,
+  "prepared_root_present": false,
+  "baseline_style_hashes": {
+    "知行成长/server/static/index.html": "253e6a1d07e847ba638f0db4320c4bf85012ee597da3cbad42775458ecb77cda",
+    "知行成长/server/static/design-tokens.css": "7ecdf08821842bd2df674ee56cfd066cf63d818186b754f1ea0a022c3e39258a"
+  }
+}

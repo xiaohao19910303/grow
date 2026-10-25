@@ -1,0 +1,279 @@
+{
+  "profile": "targeted-runtime-and-styles",
+  "source_commits": [
+    "78b777b",
+    "ecfe80c"
+  ],
+  "python_cases": 46,
+  "javascript_groups": 8,
+  "skipped": 0,
+  "failed_modules": [],
+  "counting": "Latest file/group result wins; repeated runs are not added.",
+  "results": [
+    {
+      "run": "final",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_deployment_boot.py",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "tests": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_deployment_config.py",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "tests": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_runtime_check.py",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "tests": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_design_tokens_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "style",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_legacy_cloud_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "style",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_navigation_audit_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "style",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_reading_growth_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "style",
+      "tests": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_reading_site_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "tests": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_setup_help_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "style",
+      "file": "test_reading_startup_browser.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "tests": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_action_p0_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_github_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_learning_actions_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "tests": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_rhythm_browser.py",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "file": "test_action_p0_client.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "file": "test_action_plan_client.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "file": "test_ai_config_client.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "file": "test_ai_connection_client.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "file": "test_learning_actions_client.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "file": "test_learning_completion_sync.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "final",
+      "file": "test_state_browser.cjs",
+      "returncode": 0
+    },
+    {
+      "run": "materials-env",
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_local_server_environment.py",
+      "returncode": 0
+    },
+    {
+      "run": "materials-env",
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_packaged_materials.py",
+      "returncode": 0
+    }
+  ]
+}

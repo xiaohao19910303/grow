@@ -1,0 +1,11 @@
+{
+  "dedicated_postgres_port": 52401,
+  "dedicated_postgres_stopped": true,
+  "business_database_connected": false,
+  "business_configuration_changed": false,
+  "real_password_or_encryption_key_generated": false,
+  "public_materials_prepared": true,
+  "preexisting_worktrees_preserved": true,
+  "pushed": false,
+  "deployed": false
+}

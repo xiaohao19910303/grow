@@ -13,6 +13,7 @@
 - [D0启动检查与设置竞态修复](docs/verification/d0-startup-2026-10-24/README.md)
 - [课程规划关联行动与阶段进度验收（C1/C2/C3）](docs/verification/learning-plan-actions-2026-10-25/README.md)
 - [完成语义与 AI 配置引导验收（E2/E1）](docs/verification/completion-help-ai-setup-2026-10-25/README.md)
+- [运行环境核验与设计样式收尾](docs/verification/runtime-design-closeout-2026-10-25/README.md)
 - [日常节奏 14 天使用验证计划](知行成长/docs/daily-rhythm-14-day-validation.md)
 - [内容生成与存储规则](知行成长/内容存储规则.md) — 模块目录、命名、课次、资料与索引约定
 - [Grow 统一产品方案与 App 改造计划](../plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — 后续 App 方向参考；当前网页优先，原生端与 Zook 暂缓
