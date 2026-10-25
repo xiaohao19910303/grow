@@ -79,12 +79,12 @@ def apply(store,materials,command):
         from action_handoff_coordinator import source_fence
         with source_fence(),store.lock():
             library.sync(store,materials)
-            return _apply(store,materials,command)
+            return _apply(store,materials,command,fenced=True)
     library.sync(store,materials)
     return _apply(store,materials,command)
 
 
-def _apply(store,materials,command):
+def _apply(store,materials,command,fenced=False):
     key=command['id'];signature=hashlib.sha256(actions.encoded(command).encode()).hexdigest()
     with actions.connection(True,allow_link=True) as c:
         saved=state(c);journal=saved.setdefault('journal',{});old=journal.get(key)
@@ -115,9 +115,12 @@ def _apply(store,materials,command):
                 record=course.get('record')
                 actions.with_content_completion(materials.save('yingyu',course['course'],Completion(summary_text=record.get('summary_text','') if record else '',time_spent_seconds=0,version=course['raw_version'],revision=record.get('revision',0) if record else 0,key=source_key)),dict(kind='yingyu',course=course['course']))
             else:
-                from action_content import confirm_source
+                from action_content import confirm_source,_confirm_source
                 target=dict(kind='plan',**course['identity']);data=dict(key=source_key,state='completed',comment=(course.get('record') or {}).get('comment',''))
-                confirm_source(store,target,data,lambda:store.feedback(course['identity']['plan_id'],course['identity']['lesson_no'],data,source_key))
+                # The outer shared fence is already held; reacquiring on another DB session
+                # can deadlock behind a queued exclusive handoff lock.
+                confirm=_confirm_source if fenced else confirm_source
+                confirm(store,target,data,lambda:store.feedback(course['identity']['plan_id'],course['identity']['lesson_no'],data,source_key))
         if command['action'] in ('save','position'):
             with actions.connection(True,allow_link=True) as c:
                 saved=state(c);saved.setdefault('positions',{})[course['id']]=dict(version=course['content_version'],position=command['position']);put(c,saved)
