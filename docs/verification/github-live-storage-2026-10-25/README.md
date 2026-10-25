@@ -1,37 +1,46 @@
 # 真实 GitHub 仓库读写与课程保存核验
 
-2026-10-25，目标为 xiaohao19910303/zhixing 的 main 分支。**新 Token 的读取通过，实际写入被 GitHub 拒绝，课程保存尚不能以新 Token 验收通过。**
+2026-10-25，最终更新的 Token 已通过 xiaohao19910303/zhixing 的 main 分支真实读写与课程保存验收。本机服务已重启加载新配置，连接及已有课程读取通过。
 
-## 当前 Token 结果
+## 最终验收结果
 
-配置已从 .env 中实际加载，管理员使用默认仓库，与已有规划存储绑定一致。仓库元数据、分支 ref 和 commit 读取成功。本机服务重载后，登录、仓库连接测试、已有课程与参考资料读取以及健康检查均返回 200。
+| 验收项 | 结果 |
+| --- | --- |
+| 实际生效配置 | server/.env 的 GITHUB_CONTENT_TOKEN；默认仓库与已有规划绑定一致 |
+| 仓库与分支读取 | 通过 |
+| 创建规划草稿、采用规划、保存资料 | 全部返回 200 |
+| 正式课程发布与读回 | 返回 200；正文哈希、参考资料链接一致 |
+| 同 key 重复发布 | 返回同一 commit，分支未新增提交 |
+| 写入日志 | 三项均为 done |
+| 测试内容清理 | 8 个文件全部删除；最终仓库 Git 树与测试前完全一致 |
+| 本机服务 | 预检通过；登录、连接测试、已有课程与资料读取、健康检查均为 200 |
+| 运行模块 | 9 项均 ready；页面、4 项静态资源与3项业务读取接口均为 200 |
 
-实际写入请求 POST git/trees 返回 403，GitHub 消息为 Resource not accessible by personal access token，响应明确列出需要 contents=write。API 限额仍有余量。fine-grained Token 的目标仓库授权及 Contents Read and write 需补齐。仅有仓库用户角色的 push=true 不能证明该 Token 获得写权限。
+课程保存使用生产 API 处理函数和 GitHub 存储实现，真实写入目标仓库；本地数据库为一次性 localhost PostgreSQL，课程正文为人工构造的验收样本，未调用模型。远端仅使用随机 `_grow_verification/` 子目录，不覆盖已有课程，真实账号课程列表未新增测试规划。
 
-需在 GitHub Token 设置中确认 Repository access 包含此仓库，并把 Repository permissions 的 Contents 设为 Read and write，保存后重验。如果重新生成 Token，只更新本地 GITHUB_CONTENT_TOKEN。
+最新一轮的 4 个验收及清理提交保留在 main 历史，没有 force push。清理后剩余测试文件为 0，专用 PostgreSQL 已停止。课程学习状态仍为 unknown，不能把存储链路通过等同于本人学完第一课；B2 真实学习验证继续待办。
 
-## 配置位置修正
+## 配置与服务
 
-发现新 GitHub Token 曾误填到 ACCOUNT_ENCRYPTION_KEY，使服务重载预检失败。已把它移到 GITHUB_CONTENT_TOKEN。只读核对无已加密个人 GitHub 凭证后，按用户此前授权生成合法固定 Fernet 密钥并写入账号加密字段。其他配置保留，.env 权限 600，未在聊天、报告或 Git 中输出密钥。服务随后重新启动，当前保持运行于 http://127.0.0.1:8000。
+ACCOUNT_ENCRYPTION_KEY 是加密账号凭据的固定 Fernet 密钥，不是 GitHub Token。早前误填已修正；本轮再次发现字段格式无效后，从本机仍在运行的本项目服务内存环境恢复原密钥，没有重新生成，也没有改变用户新填的 GitHub Token。当前密钥已配置好，应保持不变并安全备份。后续 GitHub Token 只更新 GITHUB_CONTENT_TOKEN。
 
-ACCOUNT_ENCRYPTION_KEY 应保持固定并安全备份；其用途是加密账号凭证。GitHub 访问权限由 GITHUB_CONTENT_TOKEN 提供，后续权限调整不应覆盖账号加密字段。
+.env 权限为 600，密钥、Token、Cookie 未写入证据或 Git。服务已重新加载当前配置，保持运行于 http://127.0.0.1:8000，仅监听本机。未发布远端应用，本次未修改应用代码，用户进行中的 CSS 与已有工作树未纳入提交。
 
-## 先前凭证与课程链路
+## 历史失败与本轮修正
 
-最初因新 Token 放错字段，程序实际加载了此前共享配置中的凭证。该凭证真实完成了规划采用、资料保存、课程发布，课程及参考资料读取 200，内容哈希与发布日志一致，双向链接正确；同 key 重放返回相同 commit 且分支不再前进。
+早期新 Token 放错配置字段，程序曾使用共享配置中的旧凭证完成课程写入；该轮脚本最初遗漏发布时自动追加的参考资料链接，修正复核后读回及幂等通过，8 个文件也已清理。结果保留在 [此前凭证证据](evidence/previous-credential/)，不作为当前 Token 的证明。
 
-首轮验收脚本遗漏发布时自动追加的参考资料链接，误报正文差异；复核按正式发布格式通过。失败记录和修正后的结果均保留在 evidence/previous-credential 中。这些成功结果不能代替新 Token 的写权限验证。
+随后正确字段中的 Token 仍被 GitHub 拒绝写入。用户首次确认 Read and write 后，两轮独立请求依然在 POST git/trees 返回 403，普通 Contents PUT 也为 403。GET /user 确认账号归属正确，但目标仓库公开可读不足以证明 Token 写权限。[失败证据](evidence/after-permission-change/)仅作历史记录，已由最终通过结果取代。
 
-测试使用一次性 localhost PG 和仓库随机 _grow_verification 前缀，没有往真实账号课程列表增加测试规划。先前凭证测试的 8 个文件已经清理，清理后 Git 树与验收前完全相同；4 个真实验收／清理提交保留在仓库历史，不做 force push。新 Token 的课程采用返回 503，未在目标分支留下测试文件。权限诊断只尝试创建未引用 Git 树，返回 403，没有改动分支。两轮专用 PG 均已停止。
+用户再次更新 Token 后，首次只读请求出现临时网络中断；重试读取成功，继而完成上述真实写入、读回、幂等及清理。最终结果未使用旧凭证替代。
 
-本次未调用模型、未覆盖已有课程、未发布远端应用。用户当前正在修改的 CSS 和已有工作树未纳入此次提交。
+## 最终证据
 
-## 证据
+- [配置来源、仓库及绑定读取](evidence/final/read-check.json)
+- [课程保存、幂等及清理](evidence/final/course-check.json)
+- [脱敏 GitHub 请求审计](evidence/final/http-audit.json)
+- [服务重载后的连接及已有课程读取](evidence/final/service-check.json)
+- [启动预检与接口检查](evidence/final/startup-check.json)
+- [加密字段恢复及文件权限](evidence/final/configuration-check.json)
 
-- [新 Token 读取](evidence/read-check.json)
-- [新 Token 课程接口结果](evidence/course-check.json)
-- [GitHub 403 与所需权限](evidence/permission-diagnostic.json)
-- [重载服务及已有课程读取](evidence/service-check.json)
-- [此前凭证链路及清理](evidence/previous-credential/)
-
-后续收到权限已调整的确认后，需重新跑实际写入、读回、同 key 重放及临时文件清理；目前不能把 B2 的真实学习或新凭证课程保存标为完成。
+验收范围为本次配置、真实存储链路和服务启动专项；未以此替代全量回归、远端部署或 B 项真实使用验证。

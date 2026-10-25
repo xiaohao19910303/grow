@@ -1,0 +1,27 @@
+{
+  "repository": "xiaohao19910303/zhixing",
+  "branch": "main",
+  "calls": [
+    {
+      "method": "GET",
+      "status": 200,
+      "permission_requirement": "allows_permissionless_access=true"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "permission_requirement": "metadata=read"
+    },
+    {
+      "method": "PUT",
+      "status": 403,
+      "permission_requirement": "contents=write; contents=write,workflows=write",
+      "message": "Resource not accessible by personal access token"
+    }
+  ],
+  "branch_modified": false,
+  "authenticated_login": "xiaohao19910303",
+  "repository_private": false,
+  "contents_write_ok": false,
+  "cleanup_ok": true
+}

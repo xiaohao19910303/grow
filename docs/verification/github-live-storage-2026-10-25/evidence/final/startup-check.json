@@ -1,0 +1,75 @@
+{
+  "preflight": {
+    "ok": true,
+    "warnings": [],
+    "workers": 1,
+    "action_owner": "grow",
+    "database_checked": true
+  },
+  "health": {
+    "ok": true,
+    "revision": "local",
+    "plan_storage": "github",
+    "learning_plans_ready": true
+  },
+  "login_status": 200,
+  "page_status": 200,
+  "storage_status": 200,
+  "storage": {
+    "records": "postgresql",
+    "formal_markdown": "github",
+    "ai_config": "browser",
+    "requires_own_ai_config": true,
+    "modules": {
+      "plans": {
+        "ready": true,
+        "reason": null
+      },
+      "copilot": {
+        "ready": true,
+        "reason": null
+      },
+      "reading": {
+        "ready": true,
+        "reason": null
+      },
+      "reflections": {
+        "ready": true,
+        "reason": null
+      },
+      "stocks": {
+        "ready": true,
+        "reason": null
+      },
+      "behavior": {
+        "ready": true,
+        "reason": null
+      },
+      "errors": {
+        "ready": true,
+        "reason": null
+      },
+      "behavior_report": {
+        "ready": true,
+        "reason": null
+      },
+      "knowledge": {
+        "ready": true,
+        "reason": null
+      }
+    }
+  },
+  "assets": {
+    "design-tokens.css": 200,
+    "ai-config.js": 200,
+    "ai-setup.js": 200,
+    "learning-plan-actions.js": 200
+  },
+  "read_endpoints": {
+    "/api/study-materials": 200,
+    "/api/action-plans": 200,
+    "/api/plan-actions": 200
+  },
+  "logout_status": 200,
+  "process_running": true
+}

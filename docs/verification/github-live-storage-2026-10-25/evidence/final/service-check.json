@@ -1,0 +1,17 @@
+{
+  "url": "http://127.0.0.1:8000",
+  "reloaded_current_configuration": true,
+  "login_status": 200,
+  "settings_status": 200,
+  "repository": "xiaohao19910303/zhixing",
+  "branch": "main",
+  "storage_mode": "default",
+  "token_configured": true,
+  "github_test_status": 200,
+  "github_test_ok": true,
+  "plans_list_status": 200,
+  "existing_course_read_status": 200,
+  "existing_course_and_sources_nonempty": true,
+  "logout_status": 200,
+  "health_status": 200
+}

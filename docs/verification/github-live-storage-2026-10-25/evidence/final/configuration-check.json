@@ -1,0 +1,7 @@
+{
+  "account_encryption_key_restored_from_own_running_service": true,
+  "new_encryption_key_generated_this_round": false,
+  "github_token_preserved_during_restore": true,
+  "env_permissions": "0o600",
+  "secret_values_recorded": false
+}

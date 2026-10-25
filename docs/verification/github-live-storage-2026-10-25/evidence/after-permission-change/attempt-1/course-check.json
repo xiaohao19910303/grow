@@ -1,0 +1,25 @@
+{
+  "repository": "xiaohao19910303/zhixing",
+  "branch": "main",
+  "verification_prefix": "_grow_verification/40802ca13dc04e31888bb417299138ca/",
+  "initial_head": "5f196a6096acdb2da2a67856f917e8d1622ba759",
+  "model_called": false,
+  "business_records_created": false,
+  "phase": "complete",
+  "api_statuses": [
+    {
+      "path": "/drafts",
+      "status": 200
+    },
+    {
+      "path": "/drafts/bd1afb10-2eb8-4205-82fe-6e5b3a68b301/adopt",
+      "status": 503
+    }
+  ],
+  "course_save_ok": false,
+  "error_type": "RuntimeError",
+  "tracked_test_files": 5,
+  "remaining_test_files": 0,
+  "cleanup_ok": true,
+  "local_postgres_stopped": true
+}

@@ -1,0 +1,512 @@
+[
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/commits/5f196a6096acdb2da2a67856f917e8d1622ba759",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/trees",
+    "status": 201,
+    "accepted_permissions": "contents=write"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/commits",
+    "status": 201,
+    "accepted_permissions": "contents=write"
+  },
+  {
+    "method": "PATCH",
+    "endpoint": "git/refs/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=write; contents=write,workflows=write"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%A4%87%E8%AF%BE%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%A4%87%E8%AF%BE%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/commits/9fe23b77f926c2e1f64d4f2d2bfb3f83979f5bea",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/trees",
+    "status": 201,
+    "accepted_permissions": "contents=write"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/commits",
+    "status": 201,
+    "accepted_permissions": "contents=write"
+  },
+  {
+    "method": "PATCH",
+    "endpoint": "git/refs/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=write; contents=write,workflows=write"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%A4%87%E8%AF%BE%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE.json",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%A4%87%E8%AF%BE%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE.json",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%A4%87%E8%AF%BE%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE.json",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E6%AF%8F%E6%97%A5%E8%AF%BE%E7%A8%8B/2026-10-25-%E7%AC%AC001%E8%AF%BE-%E5%AD%98%E5%82%A8%E9%AA%8C%E6%94%B6.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E6%AF%8F%E6%97%A5%E8%AF%BE%E7%A8%8B/2026-10-25-%E7%AC%AC001%E8%AF%BE-%E5%AD%98%E5%82%A8%E9%AA%8C%E6%94%B6.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E6%AF%8F%E6%97%A5%E8%AF%BE%E7%A8%8B/2026-10-25-%E7%AC%AC001%E8%AF%BE-%E5%AD%98%E5%82%A8%E9%AA%8C%E6%94%B6.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/commits/f2ba26a75a4037f7c026ccca0dd83de0c7dbb047",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/trees",
+    "status": 201,
+    "accepted_permissions": "contents=write"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/commits",
+    "status": 201,
+    "accepted_permissions": "contents=write"
+  },
+  {
+    "method": "PATCH",
+    "endpoint": "git/refs/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=write; contents=write,workflows=write"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E6%AF%8F%E6%97%A5%E8%AF%BE%E7%A8%8B/2026-10-25-%E7%AC%AC001%E8%AF%BE-%E5%AD%98%E5%82%A8%E9%AA%8C%E6%94%B6.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%A4%87%E8%AF%BE%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE.json",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/commits/e801d2284d3ad67b43b9dfbbdb05ddf7b5ba33c7",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/trees",
+    "status": 201,
+    "accepted_permissions": "contents=write"
+  },
+  {
+    "method": "POST",
+    "endpoint": "git/commits",
+    "status": 201,
+    "accepted_permissions": "contents=write"
+  },
+  {
+    "method": "PATCH",
+    "endpoint": "git/refs/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=write; contents=write,workflows=write"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/ref/heads/main",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/README.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%AD%A6%E4%B9%A0%E8%A7%84%E5%88%92.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%A7%84%E5%88%92%E5%8E%86%E5%8F%B2/v001.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AE%A1%E5%88%92%E4%BF%A1%E6%81%AF.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E8%AF%BE%E7%A8%8B%E7%9B%AE%E5%BD%95.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%A4%87%E8%AF%BE%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE.json",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99/%E7%AC%AC001%E8%AF%BE-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "contents/_grow_verification/7db1653d1b7a4fb2915ccc7da614f4a9/%E5%AD%A6%E4%B9%A0%E8%AE%A1%E5%88%92/plan-20261025-001/%E6%AF%8F%E6%97%A5%E8%AF%BE%E7%A8%8B/2026-10-25-%E7%AC%AC001%E8%AF%BE-%E5%AD%98%E5%82%A8%E9%AA%8C%E6%94%B6.md",
+    "status": 404,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/commits/5f196a6096acdb2da2a67856f917e8d1622ba759",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  },
+  {
+    "method": "GET",
+    "endpoint": "git/commits/d94487114ec4bffae956fba5776ee1f0bfa26e1b",
+    "status": 200,
+    "accepted_permissions": "contents=read"
+  }
+]
