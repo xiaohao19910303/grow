@@ -150,3 +150,18 @@ class LearningActionsBrowserTests(unittest.TestCase):
         page.goto(self.base+'/#mobile/learn/lesson-fixture')
         page.wait_for_url('**/login#mobile/learn/lesson-fixture');self.assertNotIn('token=',page.url)
         page.goto(self.base+'/#token=must-not-be-forwarded');page.wait_for_url('**/login');self.assertNotIn('must-not-be-forwarded',page.url)
+
+    def test_private_learning_scope_is_separate_and_requires_own_confirmation(self):
+        context=self.browser.new_context(viewport={'width':375,'height':850});self.addCleanup(context.close)
+        page=context.new_page();page.set_default_timeout(15000);writes=[]
+        def mobile(route):
+            path=route.request.url.split('/api/mobile-learning',1)[1]
+            if path=='':data={'available':True,'connected':True,'enabled':True,'private_enabled':False,'pending':False}
+            elif path=='/private-consent':
+                self.assertEqual(route.request.post_data_json,{'enabled':True,'consent':True});writes.append('private-consent');data={'saved':True}
+            else:raise AssertionError(path)
+            route.fulfill(status=200,content_type='application/json',body=json.dumps(data))
+        page.route('**/api/mobile-learning**',mobile);page.goto(self.base);page.evaluate('Account.ready');page.evaluate('ActionLink.show()')
+        area=page.locator('#actionLinkSettings');button=area.get_by_role('button',name='允许私人学习同步',exact=True)
+        button.click();self.assertEqual(writes,[]);area.get_by_label('确认私人学习范围',exact=True).check();button.click();expect(area).to_contain_text('私人学习范围已保存');self.assertEqual(writes,['private-consent'])
+        page.screenshot(path=str(self.evidence/'native-private-learning-consent-mobile.png'),full_page=True)

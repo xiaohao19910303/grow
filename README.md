@@ -1,6 +1,6 @@
 # 知行成长 · 个人学习与成长平台
 
-「有思考 · 有执行 · 判断准确」的网页学习与成长平台。网页优先独立交付；App 已支持免登录记录、行动联动和已发布课程原生阅读；完整私人学习写入按阶段完善。
+「有思考 · 有执行 · 判断准确」的网页学习与成长平台。网页优先独立交付；App 已支持免登录记录、行动联动和已发布课程原生阅读；私人笔记、作答和显式学完通过单独授权同步。
 
 独立安装、配置预检、备份恢复请按[网页独立部署手册](docs/deployment/standalone-web.md)。当前候选尚需以本批验收报告核对外部发布阻塞。
 
@@ -20,7 +20,7 @@
 - [内容生成与存储规则](知行成长/内容存储规则.md) — 模块目录、命名、课次、资料与索引约定
 - [Grow 统一产品方案与 App 改造计划](../plan/docs/04-planning/grow-app-product-and-migration-plan-2026-10-18.md) — H5 负责规划与发布，App 负责学习、查看和日常记录，Zook 负责账户及连接
 - [Grow App G0 核验与 G1 任务](../plan/docs/04-planning/grow-app-g0-2026-10-18/README.md) — 历史基线与后续任务参考，不作为本轮网页交付前置条件
-- [客户端功能规划](../plan/docs/02-design/grow-client-feature-plan.md)与[迭代计划](../plan/docs/04-planning/grow-client-iteration-plan.md) — 记录、学习、行动三条路径，CF01–CF40 和 I0–I7；免登录、记录、行动与 I3 原生阅读已实现，I4 私人学习写入待续
+- [客户端功能规划](../plan/docs/02-design/grow-client-feature-plan.md)与[迭代计划](../plan/docs/04-planning/grow-client-iteration-plan.md) — 记录、学习、行动三条路径，CF01–CF40 和 I0–I7；免登录、记录、行动与 I3 原生阅读已实现，I4 私人学习经来源回执同步，真机与发布待办
 
 - [学习系统总览](学习系统总览.md) — 系统说明书：7 大模块 + 四层闭环
 - [长期成长学习体系总规划](长期成长学习体系总规划.md) — 总纲：目标 + 路线图 + 度量系统
