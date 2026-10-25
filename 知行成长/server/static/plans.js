@@ -63,6 +63,7 @@
       }
       if(data.pending_publications?.length)root.append(node('p',`有 ${data.pending_publications.length} 项保存尚未完成。请点击“检查未完成保存”重试；草稿仍然保留。`,'desc'));
       status.textContent=data.generation_unavailable||AIConfig.status()||('AI 模型：'+AIConfig.read().model_name+'；点击生成才会调用，可能产生费用。');
+      button(root,'完成与进度说明',()=>window.showCompletionHelp?.());
       const budget=node('details');budget.append(node('summary','每周总时间预算'));root.append(budget);
       budget.append(node('p',`已登记投入 ${data.budget.known_minutes} 分钟/周${data.budget.legacy_unknown?'；旧模块投入尚未登记':''}。新增计划默认不启用定时任务。`));
       const limit=field(budget,'总预算（分钟/周，留空为未知）',data.budget.weekly,'number');

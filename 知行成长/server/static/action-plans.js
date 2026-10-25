@@ -142,6 +142,7 @@
     const reminderOpen=root.querySelector('.action-reminder-help')?.open;root.replaceChildren();const head=n('div',undefined,'section-heading');root.append(head);
     const title=n('div');title.append(n('h2','目标与计划'),n('p','年目标定方向，月周计划拆解，日行动从小处开始；随时查看进度并复盘。','desc'));head.append(title);
     const controls=n('div',undefined,'action-buttons');head.append(controls);for(const kind of ['year','month','week','day'])button(controls,'新建'+label[kind],()=>editor(kind),kind==='day');button(controls,'刷新计划',()=>load(true));button(controls,'LightTick 联动',()=>window.ActionLink.show());
+    button(controls,'完成与进度说明',()=>window.showCompletionHelp?.());
     window.PlanActions?.mount(root);
     const tabs=n('div',undefined,'action-buttons');root.append(tabs);for(const [value,text] of [['all','全部'],['year','年目标'],['month','月计划'],['week','周计划'],['day','日行动']]){const b=button(tabs,text,()=>{period=value;page=1;renderWorkspace();},period===value);b.setAttribute('aria-pressed',String(period===value));}
     const horizonFilter=field(root,'规划视角','select');for(const [value,text] of [['all','全部长短期'],['long','长期规划'],['short','短期计划']])option(horizonFilter,value,text);horizonFilter.value=horizon;horizonFilter.onchange=()=>{horizon=horizonFilter.value;page=1;renderWorkspace();};
