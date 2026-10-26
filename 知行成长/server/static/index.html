@@ -162,6 +162,24 @@
   .toast.warning{border-left:4px solid var(--warning);background:var(--warning-light)}
   .toast.error{border-left:4px solid var(--error);background:var(--error-light)}
   .toast-icon{font-size:16px;flex-shrink:0}
+  .toast-action{background:transparent;border:1px solid currentColor;border-radius:var(--radius-sm);padding:4px 10px;font-size:12px;cursor:pointer;color:inherit;margin-left:8px;transition:all var(--animation-fast)}
+  .toast-action:hover{background:rgba(0,0,0,0.1)}
+  /* 庆祝动画 */
+  .celebration-overlay{position:fixed;inset:0;pointer-events:none;z-index:9999}
+  .confetti{position:absolute;width:10px;height:10px;opacity:0;animation:confetti-fall 3s ease-out forwards}
+  @keyframes confetti-fall{
+    0%{transform:translateY(-100vh) rotate(0deg);opacity:1}
+    100%{transform:translateY(100vh) rotate(720deg);opacity:0}
+  }
+  /* 里程碑弹窗 */
+  .milestone-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:1000;opacity:0;visibility:hidden;transition:all var(--animation-medium)}
+  .milestone-modal.show{opacity:1;visibility:visible}
+  .milestone-content{background:var(--card);border-radius:var(--radius-xl);padding:32px;text-align:center;max-width:360px;transform:scale(0.9);transition:transform var(--animation-spring)}
+  .milestone-modal.show .milestone-content{transform:scale(1)}
+  .milestone-icon{font-size:64px;margin-bottom:16px}
+  .milestone-title{font-size:20px;font-weight:700;margin-bottom:8px;color:var(--text)}
+  .milestone-message{font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6}
+  .milestone-close{background:var(--primary);color:#fff;border:none;padding:10px 24px;border-radius:var(--radius-md);cursor:pointer;font-size:14px;font-weight:600}
   /* 空状态 */
   .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:13px}
   .empty-icon{font-size:48px;margin-bottom:12px;opacity:0.5}
@@ -798,6 +816,73 @@ document.addEventListener('click', function(e){
   }
 });
 
+/* ================= 庆祝与里程碑 ================= */
+function showConfetti(){
+  const overlay = document.createElement('div');
+  overlay.className = 'celebration-overlay';
+  document.body.appendChild(overlay);
+  const colors = ['#4F6EF7','#7C5CF0','#2FA84F','#E8A33D','#D63940'];
+  for(let i = 0; i < 50; i++){
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti';
+    confetti.style.left = Math.random() * 100 + '%';
+    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+    confetti.style.animationDelay = Math.random() * 2 + 's';
+    confetti.style.animationDuration = (2 + Math.random() * 2) + 's';
+    overlay.appendChild(confetti);
+  }
+  setTimeout(() => overlay.remove(), 4000);
+}
+function showMilestone(icon, title, message){
+  const modal = document.createElement('div');
+  modal.className = 'milestone-modal';
+  modal.innerHTML = `
+    <div class="milestone-content">
+      <div class="milestone-icon">${icon}</div>
+      <div class="milestone-title">${title}</div>
+      <div class="milestone-message">${message}</div>
+      <button class="milestone-close" onclick="this.closest('.milestone-modal').remove()">太棒了！</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('show'));
+  showConfetti();
+}
+function checkMilestone(streak){
+  const milestones = {
+    3: { icon: '🌱', title: '3天连续！', message: '好的开始，继续保持' },
+    7: { icon: '🔥', title: '一周达成！', message: '习惯正在形成，你很棒' },
+    14: { icon: '⭐', title: '两周坚持！', message: '进步明显，继续前进' },
+    30: { icon: '🏆', title: '一个月！', message: '这是了不起的成就' },
+    100: { icon: '💎', title: '百天里程碑！', message: '你是真正的行动者' }
+  };
+  if(milestones[streak]){
+    const m = milestones[streak];
+    setTimeout(() => showMilestone(m.icon, m.title, m.message), 500);
+  }
+}
+/* ================= 撤销功能 ================= */
+let lastDeletedItem = null;
+let undoTimer = null;
+function toast(msg, type, options){
+  const t=document.getElementById('toast');
+  t.className='toast';
+  let icon='', cls='';
+  if(type==='success' || type==='on'){ icon='✓'; cls='success'; }
+  else if(type==='warn' || type==='warning'){ icon='⚠'; cls='warning'; }
+  else if(type==='err' || type==='error'){ icon='✕'; cls='error'; }
+  else { icon='ℹ'; }
+  let html = `<span class="toast-icon">${icon}</span><span>${msg}</span>`;
+  if(options && options.undo){
+    html += `<button class="toast-action" onclick="(${options.undo.toString()})();this.closest('.toast').classList.remove('show')">撤销</button>`;
+  }
+  t.innerHTML = html;
+  if(cls) t.classList.add(cls);
+  t.classList.add('show');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(()=>t.classList.remove('show'), options?.undo ? 5000 : 2800);
+}
+
 /* ================= 工具 ================= */
 const DAY = 86400000;
 const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
@@ -1018,7 +1103,16 @@ function renderPersonal(){
   const tasks=(date,day)=>{
     const label=day?'明日':'当日';
     const items=state.todos.map((item,index)=>({item,index})).filter(x=>x.item.date===date);
+    const emptyState = items.length === 0 && date === today() ? `
+      <div class="empty" style="padding:24px 20px">
+        <div class="empty-icon">🌱</div>
+        <div class="empty-title">今天还没有待办</div>
+        <div class="empty-desc">从一件小事开始，记录你想完成的事</div>
+        <p style="font-size:12px;color:var(--muted);margin-top:12px">💡 例如：阅读10分钟、写一段反思、散步20分钟</p>
+      </div>
+    ` : '';
     return `<form class="manual-add" onsubmit="addTodo(event,'${date}',${day})"><input id="todoInput${day}" data-date="${date}" value="${esc(drafts[date] || '')}" aria-label="${label}待办内容" placeholder="添加一件想完成的事" required maxlength="160" style="max-width:none"><button class="btn primary" ${dataLoaded?'':'disabled'}>添加待办</button></form>
+      ${emptyState}
       ${items.map(({item,index})=>`<div class="todo-row"><label><input type="checkbox" ${item.done?'checked':''} onchange="toggleTodo(${index})"><span class="${item.done?'todo-done':''}">${esc(item.title)}</span></label><span class="desc">待办</span><button class="icon-btn" onclick="editTodo(${index})">改期／编辑</button><button class="icon-btn del" onclick="delItem('todos',${index})">删除</button></div>`).join('')}`;
   };
   document.getElementById('dayHeading').textContent=selected===today()?'今天，稳步向前':fmtDateCN(selected)+'的安排';
@@ -1063,7 +1157,18 @@ async function addTodo(event,date,day){
   catch(error){toast(error.message);}
   finally{submit.disabled=false;}
 }
-function toggleTodo(index){ state.todos[index].done=!state.todos[index].done; persist(); renderPersonal(); }
+function toggleTodo(index){
+  const wasCompleted = state.todos.every(t => t.done);
+  state.todos[index].done=!state.todos[index].done;
+  persist();
+  renderPersonal();
+  // Check if all todos are now completed
+  const todayTodos = state.todos.filter(t => t.date === today());
+  if(todayTodos.length > 0 && todayTodos.every(t => t.done)){
+    showConfetti();
+    toast('今日待办全部完成！太棒了 🎉', 'success');
+  }
+}
 function editTodo(index){
   const item=state.todos[index];
   openFormModal('编辑待办', [{key:'date',label:'计划日期',type:'date',full:false},{key:'title',label:'待办内容',type:'textarea',full:true}],item,obj=>{
@@ -1165,6 +1270,11 @@ function heatmap(el, levelMap, weeks){
 /* ================= 渲染 ================= */
 function renderOverview(){
   const {cur,best,total}=streakInfo();
+  // Check for milestone (only show once per session)
+  if(!window.milestoneShown && [3,7,14,30,100].includes(cur)){
+    window.milestoneShown = true;
+    checkMilestone(cur);
+  }
   const tc=checkinsOn(today()); const done=Object.values(tc).filter(v=>v>=2).length;
   const pending=state.decisions.filter(d=>!(d.actual&&d.actual.trim())).length;
   document.getElementById('statCards').innerHTML=`
@@ -2541,7 +2651,20 @@ function openInsightForm(idx){ const isEdit=(idx!=null); const rec=isEdit?state.
 function delItem(collection, idx){
   openModal('<h3>删除记录</h3><p style="color:var(--muted);font-size:13px">确定删除这条记录？</p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doDelItem(\''+collection+'\','+idx+')">删除</button></div>');
 }
-function doDelItem(collection, idx){ state[collection].splice(idx,1); persist(); render(); closeModal(); toast('已删除'); }
+function doDelItem(collection, idx){
+  const deleted = JSON.parse(JSON.stringify(state[collection][idx]));
+  state[collection].splice(idx,1);
+  persist();
+  render();
+  closeModal();
+  toast('已删除', 'success', {
+    undo: function(){
+      state[collection].splice(idx, 0, deleted);
+      persist();
+      render();
+    }
+  });
+}
 
 /* ================= 弹窗 / 提示 ================= */
 let modalTrigger=null;
@@ -2570,22 +2693,6 @@ document.getElementById('overlay').addEventListener('keydown',event=>{
   else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
 });
 document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
-let toastTimer=null;
-function toast(msg, type){
-  const t=document.getElementById('toast');
-  t.className='toast';
-  // Determine icon and class based on type
-  let icon='', cls='';
-  if(type==='success' || type==='on'){ icon='✓'; cls='success'; }
-  else if(type==='warn' || type==='warning'){ icon='⚠'; cls='warning'; }
-  else if(type==='err' || type==='error'){ icon='✕'; cls='error'; }
-  else { icon='ℹ'; }
-  t.innerHTML=`<span class="toast-icon">${icon}</span><span>${msg}</span>`;
-  if(cls) t.classList.add(cls);
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
-}
 
 /* ================= 初始化 ================= */
 async function init(){
@@ -2633,6 +2740,7 @@ init();
 <script src="/static/learning-history.js?v=20261021-p1-navigation"></script>
 <script src="/static/stocks.js?v=20261021-merge"></script>
 <script src="/static/investments.js?v=20261026"></script>
+<script src="/static/investment-analysis.js?v=20261026"></script>
 <script src="/static/search.js?v=20261023-autofill"></script>
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
