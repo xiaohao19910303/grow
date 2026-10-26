@@ -239,6 +239,7 @@
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
 <link rel="stylesheet" href="/static/growth.css?v=20261025-coach">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
+<link rel="stylesheet" href="/static/course-library.css?v=20261026-1">
 <link rel="stylesheet" href="/static/reading.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
 <link rel="stylesheet" href="/static/stocks.css?v=1">
@@ -251,7 +252,7 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
-<link rel="stylesheet" href="/static/action-plans.css?v=20261025-e1">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261026-course">
 </head>
 <body>
 
@@ -336,6 +337,7 @@
     <button class="btn" onclick="retryLearningCompletion()">刷新状态</button>
     <button class="btn" onclick="goTab('action-schedule')">查看日程并核对完成</button>
   </div>
+  <aside id="courseActivityNotice" class="section course-source-error" role="status" hidden></aside>
   <div id="view-settings" style="display:none" class="section">
     <section id="rhythmSettings" class="account-settings" aria-label="日常节奏设置"><h2>日常节奏</h2><p>正在读取节奏设置…</p></section>
     <section id="recordLinkSettings" class="account-settings" aria-label="Grow 记录客户端联动"><h2>Grow 记录客户端联动</h2><p>正在读取记录联动状态…</p></section>
@@ -404,9 +406,11 @@
     </section>
   </div>
   <div id="view-library" style="display:none" class="section">
-    <div class="section-heading"><div><h2>我的课程</h2><p class="desc">按模块继续学习，学习状态以本人反馈为准。</p></div><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新课程</button></div>
-    <div id="learningLibrary"></div>
+    <div class="section-heading"><div><h2>我的课程</h2><p class="desc">按课程继续学习，进入课程查看规划与课次。</p></div><div class="course-actions"><button class="btn primary" onclick="window.createLearningPlan()">新建课程</button><button class="btn" onclick="window.loadDailyLearning({force:true});window.CourseLibrary.loadActivity()">刷新课程</button></div></div>
+    <div id="learningLibrary" aria-live="polite"></div>
+    <details class="course-inactive"><summary>草稿与课程设置</summary><p class="desc">创建中的课程、生成记录与学习时间预算。</p><button class="btn" onclick="goTab('plans')">打开草稿与课程设置</button></details>
   </div>
+  <div id="view-course" style="display:none" class="section"></div>
   <div id="view-reader" style="display:none"><section class="section cp-reader" id="dailyReader" hidden></section></div>
   <div id="view-action-schedule" style="display:none" class="section"></div>
   <div id="view-action-records" style="display:none" class="section"></div>
@@ -584,7 +588,7 @@
 
   <div id="view-archive" style="display:none">
     <div class="section">
-      <button class="btn" onclick="goTab('library')">返回我的课程</button>
+      <button class="btn" onclick="window.CourseLibrary.open('renzhi')">返回课程详情</button>
       <p class="desc">我的课程 / 认知与通识 / 课程归档</p>
       <div id="archiveRoot"></div>
     </div>
@@ -592,7 +596,7 @@
 
   <div id="view-summary" style="display:none">
     <div class="section">
-      <button class="btn" onclick="goTab('library')">返回我的课程</button>
+      <button class="btn" onclick="window.CourseLibrary.open('renzhi')">返回课程详情</button>
       <p class="desc">我的课程 / 认知与通识 / 课程总结</p>
       <div id="summaryRoot"></div>
     </div>
@@ -2332,11 +2336,11 @@ function exportReportMarkdown(){
 const navGroups={
   personal:[['personal','今日']],
   actions:[['action-schedule','日程安排'],['action-plans','目标与计划'],['action-records','执行记录']],
-  learning:[['library','我的课程'],['learning-notes','学习笔记'],['reading','阅读'],['plans','课程规划']],
+  learning:[['library','我的课程'],['learning-notes','学习笔记'],['reading','阅读']],
   records:[['reviews','日常记录'],['timeline','时间线'],['applications','实践记录'],['decisions','决策与预测'],['insights','个人洞察'],['custom','专题记录']],
   growth:[['overview','成长总览'],['learning-history','学习回顾'],['knowledge','知识图谱'],['report','周期复盘']]
 };
-const navParents={reader:'library',archive:'library',summary:'library',copilot:'library',errors:'applications',predictions:'decisions',stocks:'custom',progress:'learning-history',habits:'learning-history','ai-report':'report'};
+const navParents={course:'library',plans:'library',reader:'library',archive:'library',summary:'library',copilot:'library',errors:'applications',predictions:'decisions',stocks:'custom',progress:'learning-history',habits:'learning-history','ai-report':'report'};
 const contextGroups={
   applications:[['applications','应用记录'],['errors','错误记录']],
   decisions:[['decisions','决策日志'],['predictions','预测校准']],
@@ -2350,12 +2354,12 @@ function goGroup(group){ goTab(lastGroupTab[group] || navGroups[group][0][0]); }
 function rememberLearningOrigin(){ lessonOrigin={tab:currentTab,scroll:window.scrollY,focus:document.activeElement}; }
 function lessonReturnLabel(){
   const origin=lessonOrigin?.tab || 'personal';
-  return origin==='personal'?'返回今日安排':origin==='learning-notes'?'返回学习笔记':origin.startsWith('action-')?'返回行动安排':origin==='search'?'返回搜索结果':'返回我的课程';
+  return origin==='course'?'返回课程详情':origin==='personal'?'返回今日安排':origin==='learning-notes'?'返回学习笔记':origin.startsWith('action-')?'返回行动安排':origin==='search'?'返回搜索结果':'返回我的课程';
 }
 function returnFromLesson(){
   const origin=lessonOrigin || {tab:'personal',scroll:0};
   goTab(origin.tab,{restore:true});
-  if(origin.tab==='personal' || origin.tab==='library')window.loadDailyLearning?.();
+  if(origin.tab==='personal' || origin.tab==='library' || origin.tab==='course')window.loadDailyLearning?.();
   requestAnimationFrame(()=>{window.scrollTo({top:origin.scroll,behavior:'instant'});if(origin.focus?.isConnected)origin.focus.focus({preventScroll:true});});
 }
 function goTab(name, options={}){
@@ -2370,7 +2374,7 @@ function goTab(name, options={}){
   currentTab=name;
   const parentTab=navParents[name] || name;
   const group=Object.keys(navGroups).find(key=>navGroups[key].some(item=>item[0]===parentTab));
-  if(group && !options.reading) lastGroupTab[group]=['reader','archive','summary'].includes(name)?parentTab:name;
+  if(group && !options.reading) lastGroupTab[group]=['reader','course','plans','copilot','archive','summary'].includes(name)?parentTab:name;
   document.querySelectorAll('[data-group]').forEach(button=>{
     const active=button.dataset.group===group;button.classList.toggle('active',active);
     if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
@@ -2382,7 +2386,7 @@ function goTab(name, options={}){
   const contextnav=document.getElementById('contextnav'), contexts=contextGroups[parentTab] || [];
   contextnav.hidden=!contexts.length || !!options.reading || ['reader','archive','summary'].includes(name);
   contextnav.innerHTML=contexts.map(([key,label])=>`<button class="btn ${key===name?'primary':''}" ${key===name?'aria-current="page"':''} onclick="goTab('${key}')">${label}</button>`).join('');
-  ['reading','plans','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','learning-notes','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
+  ['reading','plans','course','action-plans','action-schedule','action-records','personal','library','reader','settings','overview','copilot','progress','habits','decisions','predictions','reviews','insights','stocks','custom','applications','errors','knowledge','report','ai-report','learning-history','learning-notes','archive','summary','timeline','search'].forEach(n=>{ document.getElementById('view-'+n).style.display=n===name?'':'none'; });
   if(!options.restore)window.scrollTo({top:0,behavior:'instant'});
   if(name==='report') window.WeeklyRhythm?.load();
   if(name==='personal'||name==='overview')window.CoachFacts?.refresh().catch(()=>{});
@@ -2391,8 +2395,9 @@ function goTab(name, options={}){
   if(name==='action-plans')window.ActionPlans?.enter();
   if(name==='action-schedule')window.DailyAgenda?.enter();
   if(name==='action-records')window.ActionPlans?.records();
-  if(name==='plans')window.enterPlans?.();
+  if(name==='plans'&&!options.create)window.enterPlans?.();
   if(name==='library')window.renderDailyLearning?.();
+  if(name==='course')window.CourseLibrary?.renderDetail();
   if(name==='copilot' && !options.reading){window.showCopilotManagement?.();window.loadCopilot();}
   if(name==='knowledge') loadKnowledge();
   if(name==='report') loadReport(reportRange);
@@ -2419,11 +2424,14 @@ function goTab(name, options={}){
   if(name==='progress' || name==='overview')refreshAutoCheckins();
   if(name==='stocks') window.Investments?.open();
   if(!options.fromHistory && name!=='reader' && name!=='reading' && !(name==='plans'&&location.hash.startsWith('#plans/')) && location.hash!=='#view/'+name){
-    history[options.restore?'replaceState':'pushState'](null,'',location.pathname+location.search+'#view/'+name);
+    const target=name==='course'?'#course/'+encodeURIComponent(window.CourseLibrary.currentKey()):'#view/'+name;
+    if(location.hash!==target)history[options.restore?'replaceState':'pushState'](null,'',location.pathname+location.search+target);
   }
   return true;
 }
 function restoreNavigation(){
+  const course=location.hash.match(/^#course\/([^/]+)$/);
+  if(course){try{window.CourseLibrary?.open(decodeURIComponent(course[1]),{fromHistory:true});}catch{}return;}
   const match=(!location.hash ? '#view/personal' : location.hash).match(/^#view\/([a-z-]+)$/);
   if(!match)return;
   const view=document.getElementById('view-'+match[1]);
@@ -2603,7 +2611,7 @@ init();
 <script src="/static/reading-tasks.js?v=20261021-audit"></script>
 <script src="/static/behavior-report.js?v=20261021-p1"></script>
 <script src="/static/learning-completion.js?v=20261025-c1c3"></script>
-<script src="/static/copilot.js?v=20261025-e1"></script>
+<script src="/static/copilot.js?v=20261026-1"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
 <script src="/static/course-archive.js?v=20261019-1"></script>
 <script src="/static/course-summary.js?v=20261021-background"></script>
@@ -2611,9 +2619,11 @@ init();
 <script src="/static/study-notes.js?v=20261018-1"></script>
 <script src="/static/learning-plan-actions.js?v=20261025-c1c3"></script>
 <script src="/static/ai-setup.js?v=20261025-e1"></script>
-<script src="/static/plans.js?v=20261025-e1"></script>
+<script src="/static/plans.js?v=20261026-1"></script>
 <script src="/static/study-generation.js?v=20261021-unified"></script>
-<script src="/static/daily-learning.js?v=20261021-audit"></script>
+<script src="/static/course-library-model.js?v=20261026-1"></script>
+<script src="/static/course-library.js?v=20261026-1"></script>
+<script src="/static/daily-learning.js?v=20261026-1"></script>
 <script src="/static/reading-growth.js?v=20261025-e1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
 <script src="/static/reading-position.js?v=20261021-merge"></script>

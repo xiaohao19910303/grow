@@ -229,7 +229,9 @@ class P0BrowserAcceptance(unittest.TestCase):
         else:
             plans=self.context.request.get(self.base+'/api/plans').json()['plans']
             name=next(p['name'] for p in plans if p['id']==target['plan_id'])
-            root=self.page.locator('#learningLibrary .learning-module').filter(has=self.page.get_by_role('heading',name=name+' · 20 分钟',exact=True))
+            self.page.locator('#learningLibrary [data-filter="pending"]').click()
+            self.page.locator('[data-course-key="plan:'+target['plan_id']+'"]').get_by_role('button',name='课程详情',exact=True).click()
+            root=self.page.locator('#view-course')
             controls=root.locator('.agenda-content-controls').first
         controls.get_by_role('button',name='安排到明日',exact=True).click()
         expect(controls.get_by_text('已在明日安排',exact=True)).to_be_visible()

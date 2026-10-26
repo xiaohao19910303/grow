@@ -1,0 +1,14 @@
+/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_activity_is_private_to_database_tenant (test_course_library.CourseActivityTests.test_activity_is_private_to_database_tenant) ... ok
+test_resume_preserves_start_and_does_not_create_completion (test_course_library.CourseActivityTests.test_resume_preserves_start_and_does_not_create_completion) ... ok
+test_writes_require_same_origin_and_valid_course_identity (test_course_library.CourseActivityTests.test_writes_require_same_origin_and_valid_course_identity) ... ok
+test_listing_includes_unpublished_curriculum_and_completion_dates (test_course_library.CourseSummaryTests.test_listing_includes_unpublished_curriculum_and_completion_dates) ... ok
+test_hierarchy_resume_completion_history_and_responsive_layout (test_course_library_browser.CourseLibraryBrowserTests.test_hierarchy_resume_completion_history_and_responsive_layout) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 5.622s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 5, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

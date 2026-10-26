@@ -169,14 +169,14 @@
     const requestId=++readingRequest;
     stopReading();root.classList.add('reading-mode');management.open=false;
     reader.hidden=false;reader.replaceChildren();
-    button('返回学习列表',()=>returnFromLesson(),reader);
+    button(window.lessonReturnLabel?.() || '返回学习列表',()=>returnFromLesson(),reader);
     readerStatus.textContent='正在读取课程…';reader.append(readerStatus);
     const loading = window.LoadingState?.start(reader, '正在读取课程…', '正在读取 Markdown 正文和你的学习记录。');
     const [lesson, record] = await Promise.all([request('/lessons/' + number), request('/lessons/' + number + '/learning-record')]).finally(() => loading?.finish());
     if(requestId!==readingRequest)return;
     root.classList.add('reading-mode');management.open=false;
     reader.hidden = false; reader.replaceChildren();
-    button('返回学习列表', () => returnFromLesson(), reader);
+    button(window.lessonReturnLabel?.() || '返回学习列表', () => returnFromLesson(), reader);
     readerStatus.textContent='';reader.append(readerStatus);
     const actions = el('div', undefined, 'cp-actions');
     button('课程正文', () => { markdown(content, lesson.content); notes.bind(content); }, actions);
@@ -208,6 +208,7 @@
       readingTracker.start();
     }
 
+    window.CourseLibrary?.recordOpened('renzhi',number);
     reader.scrollIntoView({behavior: 'smooth', block: 'start'});
   }
 

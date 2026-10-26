@@ -1,0 +1,39 @@
+/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_cancel_and_incomplete (test_plans.GenerationTests.test_cancel_and_incomplete) ... Executing <Task pending name='Task-2' coro=<GenerationTests.test_cancel_and_incomplete() running at /Volumes/肖豪/project/grow/知行成长/server/tests/test_plans.py:235> wait_for=<Future pending cb=[Task.task_wakeup()] created at /opt/anaconda3/lib/python3.13/asyncio/base_events.py:459> cb=[_run_until_complete_cb() at /opt/anaconda3/lib/python3.13/asyncio/base_events.py:181] created at /opt/anaconda3/lib/python3.13/asyncio/runners.py:100> took 0.101 seconds
+ok
+test_generation_only_once (test_plans.GenerationTests.test_generation_only_once) ... ok
+test_no_private_notes_and_restarts (test_plans.GenerationTests.test_no_private_notes_and_restarts) ... Executing <Task finished name='Task-15' coro=<GenerationTests.test_no_private_notes_and_restarts() done, defined at /Volumes/肖豪/project/grow/知行成长/server/tests/test_plans.py:236> result=None created at /opt/anaconda3/lib/python3.13/asyncio/runners.py:100> took 0.192 seconds
+ok
+test_answer_separator_must_precede_analysis (test_plans.StoreTests.test_answer_separator_must_precede_analysis) ... ok
+test_api_metadata_and_auth (test_plans.StoreTests.test_api_metadata_and_auth) ... ok
+test_backup_redacts_database_api_key (test_plans.StoreTests.test_backup_redacts_database_api_key) ... ok
+test_backup_restore (test_plans.StoreTests.test_backup_restore) ... ok
+test_budget (test_plans.StoreTests.test_budget) ... ok
+test_concurrent_plan_ids (test_plans.StoreTests.test_concurrent_plan_ids) ... ok
+test_course_and_day_rules (test_plans.StoreTests.test_course_and_day_rules) ... ok
+test_course_draft_version_conflict (test_plans.StoreTests.test_course_draft_version_conflict) ... ok
+test_external_import (test_plans.StoreTests.test_external_import) ... ok
+test_full_api_lifecycle_with_simulated_model (test_plans.StoreTests.test_full_api_lifecycle_with_simulated_model) ... ok
+test_gap_keeps_continuous_numbering (test_plans.StoreTests.test_gap_keeps_continuous_numbering) ... ok
+test_identity_and_idempotency (test_plans.StoreTests.test_identity_and_idempotency) ... ok
+test_legacy_sync_keeps_plans (test_plans.StoreTests.test_legacy_sync_keeps_plans) ... ok
+test_missing_tracked_file_blocks_writes (test_plans.StoreTests.test_missing_tracked_file_blocks_writes) ... ok
+test_notes_and_feedback_idempotency (test_plans.StoreTests.test_notes_and_feedback_idempotency) ... ok
+test_path_protection (test_plans.StoreTests.test_path_protection) ... ok
+test_recovery_after_partial_write (test_plans.StoreTests.test_recovery_after_partial_write) ... ok
+test_recovery_stops_unknown_hash (test_plans.StoreTests.test_recovery_stops_unknown_hash) ... ok
+test_revision_freezes_published (test_plans.StoreTests.test_revision_freezes_published) ... ok
+test_server_model_settings_are_rejected (test_plans.StoreTests.test_server_model_settings_are_rejected) ... ok
+test_source_boundaries (test_plans.StoreTests.test_source_boundaries) ... ok
+test_stale_backup_preview_and_offline_block (test_plans.StoreTests.test_stale_backup_preview_and_offline_block) ... ok
+test_validation (test_plans.StoreTests.test_validation) ... ok
+test_sse_completion_and_usage (test_plans.TransportTests.test_sse_completion_and_usage) ... ok
+test_sse_rejects_truncation (test_plans.TransportTests.test_sse_rejects_truncation) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 13.519s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 28, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

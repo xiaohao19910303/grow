@@ -1,0 +1,78 @@
+{
+  "python_tests": 61,
+  "javascript_groups": 5,
+  "modules": [
+    {
+      "module": "all-library.log",
+      "python_tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "sequential.log",
+      "python_tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "navigation.log",
+      "python_tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "plans.log",
+      "python_tests": 28,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "action-p0.log",
+      "python_tests": 8,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "learning-actions.log",
+      "python_tests": 6,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "notebook.log",
+      "python_tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "study-materials.log",
+      "python_tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "completion-loop.log",
+      "python_tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    }
+  ]
+}

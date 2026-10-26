@@ -237,6 +237,7 @@
         link.target = '_blank'; link.rel = 'noopener noreferrer'; reader.append(link);
       }
       if (['yingyu', 'biaoda'].includes(module.id)) renderStudyRecord(module, lesson, data, content);
+      window.CourseLibrary?.recordOpened(module.id, lesson.lesson_no);
       reader.scrollIntoView({behavior: 'smooth', block: 'start'});
     } catch (error) {
       if (request !== reading || turn !== window.studyReaderRequest) return;
@@ -338,7 +339,7 @@
     document.getElementById('dailyLearningTitle').textContent='继续学习';root.replaceChildren();
     if(!loaded){root.append(node('p','正在读取学习内容…'));return;}
     errors.forEach(error=>root.append(node('p',error)));
-    const available=modules.map(module=>({module,lesson:[...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).find(l=>l.learning_state!=='completed')})).filter(({module,lesson})=>lesson&&!window.DailyAgenda?.isScheduled(lessonTarget(module,lesson))).slice(0,3);
+    const available=modules.filter(module=>!['paused','archived'].includes(module.status)).map(module=>({module,lesson:[...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).find(l=>l.learning_state!=='completed')})).filter(({module,lesson})=>lesson&&!window.DailyAgenda?.isScheduled(lessonTarget(module,lesson))).slice(0,3);
     for(const {module,lesson} of available){const section=node('section',undefined,'learning-module');section.append(node('h3',module.name));lessonRow(section,module,lesson);root.append(section);}
     if(!available.length)root.append(node('p',pendingModules.length?'正在读取可继续的课程…':'暂无未安排的可继续课程。已安排课程请在今日安排或日程中查看，全部课程在「学习」中查看。','desc'));
     button(root,'查看全部课程',()=>goTab('library'));
@@ -429,30 +430,8 @@
       alert('加载记录失败：' + e.message);
     }
   }
-  function renderLibrary() {
-    const library=document.getElementById('learningLibrary');
-    library.replaceChildren();
-    if(!loaded){library.append(node('p','正在读取课程…'));return;}
-    errors.forEach(error=>library.append(node('p',error)));
-    pendingModules.forEach(name=>library.append(node('p','正在读取'+name+'…','desc reading-loading')));
-    modules.forEach(module=>{
-      const section=node('section',undefined,'learning-module');
-      section.append(node('h3',module.name+' · '+module.duration));
-      if(module.id==='renzhi'){
-        const actions=node('div',undefined,'cp-actions');
-        actions.setAttribute('role','group');
-        actions.setAttribute('aria-label',module.name+'课程工具');
-        button(actions,'认知课程管理',()=>goTab('copilot'));
-        button(actions,'课程归档',()=>goTab('archive'));
-        button(actions,'课程总结',()=>goTab('summary'));
-        section.append(actions);
-      }
-      [...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).forEach(lesson=>lessonRow(section,module,lesson));
-      if(!module.lessons.length)section.append(node('p','尚无已保存课程。','desc'));
-      if(module.lessons.every(lesson=>lesson.learning_state==='completed'))window.renderStudyGeneration?.(section,module);
-      library.append(section);
-    });
-  }
+  function renderLibrary() { window.CourseLibrary?.render(); }
+  window.DailyLearning = {read, lessonRow, snapshot:()=>({modules,errors,pending:pendingModules,loaded})};
   const renderHome=window.renderDailyLearning;
   window.renderOptionalLearning=renderHome;
   window.renderDailyLearning=()=>{renderHome();renderLibrary();};
@@ -463,7 +442,7 @@
     const groups=[modules.filter(m=>m.id==='renzhi'),modules.filter(m=>['yingyu','biaoda'].includes(m.id)),modules.filter(m=>m.kind==='plan')];
     const sources=[['认知课程','/api/copilot/today-task',data=>[{id:'renzhi',name:'认知与通识',duration:'15–20 分钟',lessons:data.lessons}]],
       ['英文阅读与结构化表达','/api/study-materials',data=>data.modules],
-      ['课程规划','/api/plans',data=>data.plans.map(p=>({id:p.id,kind:'plan',name:p.name,duration:p.brief.minutes+' 分钟',lessons:p.lessons}))]];
+      ['课程规划','/api/plans',data=>data.plans.map(p=>({...p,kind:'plan',duration:p.brief.minutes+' 分钟'}))]];
     pendingModules=sources.map(s=>s[0]);errors=[];loaded=true;window.renderDailyLearning();
     const task=Promise.all(sources.map(async([name,path,decode],index)=>{
       try{const data=await get(path);if(request!==generation)return;groups[index]=decode(data);}

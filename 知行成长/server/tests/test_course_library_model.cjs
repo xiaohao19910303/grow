@@ -1,0 +1,22 @@
+const assert = require('node:assert/strict');
+require('../static/course-library-model.js');
+const {describe} = globalThis.CourseCatalog;
+const lesson = (n, done=false) => ({lesson_no:n, topic:'课 '+n, learning_state:done?'completed':'unknown'});
+const plan = {id:'p', kind:'plan', lessons:[lesson(1,true)], curriculum:{stages:[{title:'基础'}], lessons:[{number:1,stage:1},{number:2,stage:1}]}};
+let item=describe(plan);
+assert.equal(item.completed,1);assert.equal(item.total,2);assert.equal(item.percent,50);
+assert.equal(item.status,'learning');assert.equal(item.caughtUp,true);
+item=describe({...plan,lessons:[lesson(1,true),lesson(2,true)]});
+assert.equal(item.status,'completed');assert.equal(item.percent,100);
+assert.equal(describe({...plan,status:'archived'}).status,'archived');
+assert.equal(describe({...plan,status:'paused'}).status,'paused');
+const continuous={id:'biaoda',lessons:[lesson(1,true),lesson(2,true)]};
+assert.equal(describe(continuous).status,'learning');assert.equal(describe(continuous).caughtUp,true);
+assert.equal(describe({id:'yingyu',lessons:[]}).status,'pending');
+const ongoing={id:'renzhi',lessons:[lesson(1,true),lesson(2),lesson(3)]};
+assert.equal(describe(ongoing,{lesson_no:3}).next.lesson_no,3);
+assert.equal(describe(ongoing,{lesson_no:1}).next.lesson_no,2);
+assert.equal(describe({id:'renzhi',lessons:[lesson(1)]},{lesson_no:1}).status,'learning');
+// A stray saved lesson outside the formal curriculum cannot complete the plan.
+assert.equal(describe({...plan,lessons:[lesson(1,true),lesson(99,true)]}).completed,1);
+console.log('course library model: status, denominator, resume and lifecycle passed');

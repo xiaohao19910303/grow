@@ -6,7 +6,7 @@ const context={window:{loadCopilot(){},addEventListener(){},scrollTo(){},studyRe
 for(const name of ['renderErrors','renderApplications','renderPredictionAnalysis','loadReport','renderKnowledgeGraph','loadKnowledge','renderOverview','renderPersonal','renderBehaviorStats','renderErrorStats','renderPredictionCalibration','renderAIReportLatest','renderAIReports','refreshAutoCheckins','loadApiSettings'])context[name]=()=>{};
 context.Account={loadStorage(){},loadInvitations(){}};context.window.loadLearningHistory=()=>{};
 vm.createContext(context);vm.runInContext(html.slice(html.indexOf('const navGroups='),html.indexOf('/* ================= 学习进度 / 习惯')),context);
-assert.equal(vm.runInContext('navGroups.records.length',context),6);assert.equal(vm.runInContext('navGroups.growth.length',context),4);assert.equal(vm.runInContext('navGroups.learning.length',context),4);
+assert.equal(vm.runInContext('navGroups.records.length',context),6);assert.equal(vm.runInContext('navGroups.growth.length',context),4);assert.equal(vm.runInContext('navGroups.learning.length',context),3);
 context.goTab('learning-notes');assert(element('subnav').innerHTML.includes('学习笔记'));assert.equal(element('view-learning-notes').style.display,'');
 context.goTab('errors');assert(element('subnav').innerHTML.includes('实践记录'));assert(element('contextnav').innerHTML.includes('错误记录'));assert(element('contextnav').innerHTML.includes('aria-current="page"'));assert.equal(buttons[3]['aria-current'],'page');
 context.goTab('progress');assert(element('subnav').innerHTML.includes('学习回顾'));assert.equal(element('view-progress').style.display,'');
@@ -16,5 +16,8 @@ context.goTab('search');assert.equal(element('subnav').hidden,true,'global searc
 context.goTab('copilot');assert.equal(buttons[2]['aria-current'],'page');assert(element('subnav').innerHTML.includes('我的课程'));
 context.location.hash='#view/habits';context.restoreNavigation();assert.equal(context.currentTab,'habits','refresh restores the exact nested view');
 context.location.hash='';context.restoreNavigation();assert.equal(context.currentTab,'personal','first back to an empty hash restores Today');
+context.window.CourseLibrary={currentKey:()=> 'plan:test',renderDetail(){},open(key,options){context.restoredCourse={key,options};}};
+context.goTab('course');assert.equal(element('view-course').style.display,'');assert.equal(buttons[2]['aria-current'],'page');
+context.location.hash='#course/plan%3Atest';context.restoreNavigation();assert.equal(context.restoredCourse.key,'plan:test');
 context.goTab('reader',{reading:true});assert.equal(element('contextnav').hidden,true);
 console.log('Navigation grouping passed: five main tabs, reduced secondary groups, preserved legacy destinations and standalone global search.');

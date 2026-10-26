@@ -1,0 +1,8 @@
+test_resume_by_course_number_independent_of_calendar (test_sequential_learning_browser.SequentialLearningBrowser.test_resume_by_course_number_independent_of_calendar) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 3.474s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 1, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

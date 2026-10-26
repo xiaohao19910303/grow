@@ -41,13 +41,20 @@ class SequentialLearningBrowser(unittest.TestCase):
             {'topic': '表达第一课', 'date': '2000-01-01', 'learning_state': 'unknown', 'learning_label': '待本人反馈', 'filename': 'Day 001 - 一.md'},
         ]
         mutations, errors = [], []
+        activity = {}
 
         def fixture(route):
             request = route.request
             endpoint = request.url.split(base)[-1].split('?')[0]
             if request.method != 'GET':
                 mutations.append(endpoint)
-            if endpoint == '/api/copilot/today-task':
+            if endpoint == '/api/study-materials/library/activity':
+                if request.method == 'POST':
+                    value = request.post_data_json
+                    activity[value['course_key']] = value
+                    result = value
+                else: result = {'items': list(activity.values())}
+            elif endpoint == '/api/copilot/today-task':
                 result = {'lessons': lessons}
             elif endpoint == '/api/study-materials':
                 result = {'modules': [
@@ -92,20 +99,24 @@ class SequentialLearningBrowser(unittest.TestCase):
                     self.assertNotIn('undefined', home.inner_text())
                     page.locator('[data-group="learning"]').click()
                     library = page.locator('#learningLibrary')
-                    cognitive_library = library.locator('.learning-module').first
-                    expect(cognitive_library.locator('.lesson-title')).to_have_text(['第一课', '第二课', '第三课', '第十课'])
-                    self.assertEqual(cognitive_library.get_by_role('button', name='再次阅读', exact=True).count(), 1)
-                    expression_library = library.locator('.learning-module').nth(1)
-                    expect(expression_library.locator('.lesson-title')).to_have_text(['表达第一课', '表达第十课'])
-                    self.assertIn('尚无已保存课程', library.locator('.learning-module').nth(2).inner_text())
-                    self.assertEqual(library.locator('.learning-module').nth(3).locator('.lesson-title').inner_text(), '计划第一课')
+                    expect(library.locator('.lesson-row')).to_have_count(0)
+                    library.locator('[data-course-key="renzhi"]').get_by_role('button', name='课程详情').click()
+                    course = page.locator('#view-course')
+                    expect(course.locator('.lesson-title')).to_have_text(['第一课', '第二课', '第三课', '第十课'])
+                    self.assertEqual(course.get_by_role('button', name='再次阅读', exact=True).count(), 1)
+                    course.get_by_role('button', name='返回我的课程').click()
+                    library.locator('[data-filter="pending"]').click()
+                    expect(library.locator('[data-course-key="yingyu"]')).to_contain_text('待准备课程')
+                    expect(library.locator('[data-course-key="plan:plan"]')).to_contain_text('计划第一课')
+                    library.locator('[data-course-key="biaoda"]').get_by_role('button', name='课程详情').click()
+                    expect(course.locator('.lesson-title')).to_have_text(['表达第一课', '表达第十课'])
                     # Returning from the actual reader reloads saved completion state.
-                    expression_library.locator('.lesson-row').first.get_by_role('button', name='开始学习', exact=True).click()
+                    course.locator('.lesson-row').first.get_by_role('button', name='开始学习', exact=True).click()
                     page.locator('#dailyReader').get_by_role('heading', name='表达第一课', exact=True).wait_for()
                     expression[1]['learning_state'] = 'completed'
-                    page.locator('#dailyReader').get_by_role('button', name=re.compile(r'返回(今日安排|我的课程|搜索结果|行动安排)')).click()
-                    expect(expression_library.locator('.lesson-row').first).to_have_class(re.compile(r'completed'))
-                    self.assertEqual(expression_library.locator('.lesson-row').first.get_by_role('button', name='再次阅读', exact=True).count(), 1)
+                    page.locator('#dailyReader').get_by_role('button', name='返回课程详情').click()
+                    expect(course.locator('.lesson-row').first).to_have_class(re.compile(r'completed'))
+                    self.assertEqual(course.locator('.lesson-row').first.get_by_role('button', name='再次阅读', exact=True).count(), 1)
                     page.locator('[data-group="personal"]').click()
                     expect(home.locator('.learning-module').nth(1).locator('.lesson-title')).to_have_text(['表达第十课'])
                     self.assertIn('第 10 课', home.locator('.learning-module').nth(1).inner_text())
@@ -126,11 +137,14 @@ class SequentialLearningBrowser(unittest.TestCase):
                     page.locator('.continue-learning').get_by_role('button', name='刷新', exact=True).click()
                     expect(cognitive).to_have_count(0)
                     page.locator('[data-group="learning"]').click()
-                    expect(cognitive_library.locator('.lesson-row.completed')).to_have_count(4)
-                    self.assertEqual(cognitive_library.get_by_role('button', name='开始学习').count(), 0)
+                    library.locator('[data-filter="learning"]').click()
+                    expect(library.locator('[data-course-key="renzhi"]')).to_contain_text('已学至最新')
+                    library.locator('[data-course-key="renzhi"]').get_by_role('button', name='课程详情').click()
+                    expect(course.locator('.lesson-row.completed')).to_have_count(4)
+                    self.assertEqual(course.get_by_role('button', name='开始学习').count(), 0)
                     page.set_viewport_size({'width': 390, 'height': 844})
                     self.assertFalse(page.evaluate('document.documentElement.scrollWidth > window.innerWidth'))
-                    self.assertEqual(mutations, [], 'Displaying or refreshing courses must never mark them completed')
+                    self.assertTrue(all(path == '/api/study-materials/library/activity' for path in mutations), 'Reading may save resume activity but must never mark courses completed')
                     self.assertEqual(errors, [])
                 finally:
                     browser.close()

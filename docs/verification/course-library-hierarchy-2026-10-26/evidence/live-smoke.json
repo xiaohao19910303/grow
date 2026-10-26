@@ -1,0 +1,26 @@
+{
+  "health_status": 200,
+  "health": {
+    "ok": true,
+    "revision": "local",
+    "plan_storage": "github",
+    "learning_plans_ready": true
+  },
+  "login_status": 200,
+  "page_status": 200,
+  "course_assets_present": true,
+  "/api/study-materials/library/activity": {
+    "status": 200
+  },
+  "/api/plans": {
+    "status": 200,
+    "all_plans_have_curriculum": true
+  },
+  "/static/course-library.js": {
+    "status": 200
+  },
+  "/static/course-library.css": {
+    "status": 200
+  },
+  "logout_status": 200
+}

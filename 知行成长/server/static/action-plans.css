@@ -1,5 +1,7 @@
 .action-home{border-left:4px solid var(--primary);box-shadow:none}
 .action-buttons{display:flex;gap:var(--spacing-sm);align-items:center;flex-wrap:wrap;margin:var(--spacing-sm) 0}
+#view-action-plans>.section-heading{flex-wrap:wrap}
+#view-action-plans>.section-heading>.action-buttons{max-width:100%;flex-shrink:1}
 .action-row{padding:var(--spacing-xl) 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
 .action-row h3{font-size:18px;margin:var(--spacing-xs) 0 var(--spacing-sm)}
 .action-row p{margin:var(--spacing-sm) 0}
