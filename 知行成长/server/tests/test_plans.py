@@ -89,7 +89,7 @@ class StoreTests(CloudFixture):
         with self.assertRaises(Problem):self.s.adopt(stale['id'],'stale')
     def test_gap_keeps_continuous_numbering(self):
         from datetime import date,timedelta
-        pid=self.adopt();self.course(pid)
+        pid=self.adopt();self.course(pid);self.s.feedback(pid,1,{'state':'completed'},'gap-completed')
         later=(date.fromisoformat(now()[:10])+timedelta(days=3)).isoformat()+'T10:00:00+08:00'
         with patch('plans.store.now',return_value=later):
             self.s.save_sources(pid,S);ctx=self.s.course_context(pid)

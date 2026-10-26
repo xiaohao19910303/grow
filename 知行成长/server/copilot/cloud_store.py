@@ -54,6 +54,16 @@ class CloudStore(Store):
     def require_writer(self):pass
     def writer_session(self,confirmed):return {'coordinated':True,'storage':'database'}
 
+    def readiness(self, data=None):
+        data,plan,sources,blockers=super().readiness(data)
+        blockers=[b for b in blockers if b['code']!='already_generated_today']
+        if any(l['learning_state']!='completed' for l in data.get('lessons',[])):
+            blockers.append({'code':'learning_pending','message':'请先学完已发布课次。'})
+        with self.conn() as c:
+            ready=c.execute("SELECT id FROM copilot_drafts WHERE status='ready' LIMIT 1").fetchone()
+        if ready:blockers.append({'code':'draft_pending','message':'已有下一课草稿，请先预览保存或放弃。','draft_id':ready[0]})
+        return data,plan,sources,blockers
+
     def _scan(self):
         revision=digest(encoded({path:item['hash'] for path,item in self.documents.rows('cloud_documents') if path.startswith(MODULE+'/')}))
         cached=self.meta('cloud-scan')
@@ -129,6 +139,7 @@ class CloudStore(Store):
             d=self.draft(draft_id)
             if d['version']!=version or d['status']!='ready' or self.validate_draft(d):fail('conflict','草稿版本已改变或尚未通过校验。')
             state,plan,sources,blockers=self.readiness()
+            blockers=[b for b in blockers if not (b['code']=='draft_pending' and b.get('draft_id')==draft_id)]
             if blockers:fail(blockers[0]['code'],blockers[0]['message'])
             if state['next_generation_lesson']!=d['lesson_no'] or plan['hash']!=d['plan_snapshot']['hash'] or sources['hash']!=d['source_snapshot']['hash']:
                 fail('conflict','课次、规划或备课资料已变化，请重新生成。')

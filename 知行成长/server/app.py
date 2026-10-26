@@ -412,6 +412,8 @@ investments_store = register_investments(app)
 from migration_api import register as register_migrations
 register_migrations(app, copilot_store, LEARN_ROOT)
 materials = register_materials(app, LEARN_ROOT)
+from course_continuations import register as register_course_continuations
+continuations = register_course_continuations(app, plans_store, plans_generator, materials, copilot_store)
 from mobile_library import register as register_mobile_library
 register_mobile_library(app, plans_store, materials)
 from study_notes import register as register_study_notes

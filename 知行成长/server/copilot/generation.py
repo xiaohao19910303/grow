@@ -115,8 +115,8 @@ class Generator:
         if task:
             task.cancel()
         with self.store.conn() as c:
-            c.execute("UPDATE copilot_drafts SET status='cancelled' WHERE id=? AND status='generating'", (draft_id,))
-            c.execute("UPDATE copilot_generation_attempts SET status='cancelled' WHERE id=? AND status='generating'", (draft_id,))
+            c.execute("UPDATE copilot_drafts SET status='cancelled' WHERE id=? AND status IN ('generating','ready')", (draft_id,))
+            c.execute("UPDATE copilot_generation_attempts SET status='cancelled' WHERE id=? AND status IN ('generating','ready')", (draft_id,))
         return {'id': draft_id, 'cancel_requested': True}
 
     def persist(self, draft_id, d, status, metrics):

@@ -21,6 +21,8 @@ class CourseChecks(CloudFixture):
     def update_document(self,path,text):
         with self.store.lock():self.store.documents.publish('test-'+digest(path+text),{'text':text},{MODULE+'/'+path:text})
     def ready_draft(self):
+        for lesson in self.store.scan()['lessons']:
+            if lesson['learning_state']!='completed':self.store.learning(lesson['lesson_no'],'completed',lesson['version'],'fixture-complete-'+str(lesson['lesson_no']))
         from test_legacy_cloud_api import COURSE
         folder=self.root/MODULE/'备课资料';folder.mkdir(exist_ok=True)
         (folder/'第003课-摘要.md').write_text('已核验教学摘要。')
@@ -38,7 +40,7 @@ class CourseChecks(CloudFixture):
         self.assertEqual((state['generated_count'],state['completed_count']),(2,0));self.assertEqual(state['next_generation_lesson'],3)
         self.assertFalse(state['blockers']);self.assertEqual(self.repo.head,head);self.assertFalse(self.runtime.exists())
     def test_same_day_and_missing_volume(self):
-        with patch('copilot.core.now',return_value='2026-10-13T20:00:00+08:00'),patch('copilot.cloud_store.now',return_value='2026-10-13T20:00:00+08:00'):self.assertIn('already_generated_today',[b['code'] for b in self.store.readiness()[3]])
+        with patch('copilot.core.now',return_value='2026-10-13T20:00:00+08:00'),patch('copilot.cloud_store.now',return_value='2026-10-13T20:00:00+08:00'):self.assertNotIn('already_generated_today',[b['code'] for b in self.store.readiness()[3]]);self.assertIn('learning_pending',[b['code'] for b in self.store.readiness()[3]])
         (self.root/MODULE).rename(self.root/'unmounted-source');fresh=self.new_course();fresh.initialize()
         self.assertEqual(fresh.scan()['generated_count'],2)
     def test_duplicate_missing_sources_and_short_filename(self):
@@ -53,8 +55,8 @@ class CourseChecks(CloudFixture):
         self.ready_draft();original=self.store.path('学习记录.md').read_text().split('## 个人记录区',1)[1]
         self.assertEqual(self.publish(),self.publish());self.assertEqual(self.store.scan()['generated_count'],3)
         lesson=self.store.lesson(3);head=self.repo.head;self.store.learning(3,'completed',lesson['version'],'learning-key')
-        self.assertEqual(self.store.scan()['completed_count'],1)
-        self.store.learning(3,'unknown',self.store.lesson(3)['version'],'undo-key');self.assertEqual(self.store.scan()['completed_count'],0)
+        self.assertEqual(self.store.scan()['completed_count'],3)
+        self.store.learning(3,'unknown',self.store.lesson(3)['version'],'undo-key');self.assertEqual(self.store.scan()['completed_count'],2)
         self.assertEqual(self.repo.head,head);self.assertEqual(self.store.path('学习记录.md').read_text().split('## 个人记录区',1)[1],original)
         with self.assertRaises(Problem):self.store.publish('draft',2,'publish-key')
     def test_conflict_preserves_external_notes(self):
@@ -85,6 +87,7 @@ class CourseChecks(CloudFixture):
         g=Generator(self.store,transport);did,fresh=g.begin(3,'generation-key');self.assertEqual(g.begin(3,'generation-key'),(did,False))
         async def run():return [e async for e in g.stream(did,fresh)]
         self.assertTrue(any('event: completed' in e for e in asyncio.run(run())))
+        g.cancel(did)
         did,_=g.begin(3,'generation-key-2');g.cancel(did);self.assertEqual(self.store.draft(did)['status'],'cancelled')
     def test_gap_unknown_date_and_round_end(self):
         text=self.store.path('每日课程/2026-10-13-第002课-什么样的证据更可信.md').read_text()

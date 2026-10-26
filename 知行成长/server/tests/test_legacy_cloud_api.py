@@ -36,6 +36,8 @@ class LegacyCloudAPITests(CloudHTTPFixture):
         with TestClient(self.app,base_url='http://localhost') as client:
             h={'X-Copilot-Request':'1'}
             self.assertEqual(client.get('/api/copilot/today-task').status_code,200)
+            for existing in self.course.scan()['lessons']:
+                self.course.learning(existing['lesson_no'],'completed',existing['version'],'http-complete-'+str(existing['lesson_no']))
             r=client.post('/api/copilot/generations',json={'lesson_no':3,'key':'http-generate','ai_config':OWN},headers=h)
             self.assertEqual(r.status_code,200,r.text);self.assertIn('event: completed',r.text)
             draft=client.get('/api/copilot/drafts').json()['items'][0]

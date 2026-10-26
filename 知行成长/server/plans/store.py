@@ -65,10 +65,18 @@ def integer(value, low, high, label):
 def brief(data):
     if not isinstance(data, dict):
         fail('invalid', '学习条件格式不正确。', 422)
-    return {**{k: text(data.get(k), label) for k, label in [('title', '名称'), ('goal', '目的'), ('level', '基础')]},
-            'weeks': integer(data.get('weeks'), 1, 52, '周数'),
-            'sessions': integer(data.get('sessions'), 1, 7, '每周次数'),
-            'minutes': integer(data.get('minutes'), 5, 120, '每次分钟数')}
+    base={k:text(data.get(k),label) for k,label in [('title','名称'),('goal','目的'),('level','基础')]}
+    base['minutes']=integer(data.get('minutes'),5,120,'每次分钟数')
+    pacing=data.get('pacing','weekly')
+    if pacing=='self_paced':
+        return {**base,'pacing':pacing,'lesson_count':integer(data.get('lesson_count'),2,364,'总课数')}
+    if pacing!='weekly':fail('invalid','学习节奏无效。',422)
+    return {**base,'weeks':integer(data.get('weeks'),1,52,'周数'),'sessions':integer(data.get('sessions'),1,7,'每周次数')}
+
+
+def lesson_count(conditions):
+    return conditions['lesson_count'] if conditions.get('pacing')=='self_paced' else conditions['weeks']*conditions['sessions']
+
 
 
 def document(data, conditions):
@@ -76,14 +84,14 @@ def document(data, conditions):
         fail('invalid', '规划须为完整对象。', 422)
     result = {'prerequisites': text(data.get('prerequisites'), '先修说明'), 'stages': [], 'lessons': []}
     stages = data.get('stages')
-    if not isinstance(stages, list) or not 1 <= len(stages) <= conditions['weeks']:
+    if not isinstance(stages, list) or not 1 <= len(stages) <= (lesson_count(conditions) if conditions.get('pacing')=='self_paced' else conditions['weeks']):
         fail('invalid', '需要阶段目标，阶段数不能超过周数。', 422)
     for stage in stages:
         if not isinstance(stage, dict): fail('invalid', '阶段格式错误。', 422)
         result['stages'].append({k: text(stage.get(k), k) for k in ('title', 'goal')})
     lessons = data.get('lessons')
-    if not isinstance(lessons, list) or len(lessons) != conditions['weeks'] * conditions['sessions']:
-        fail('invalid', '课次数量须等于周数乘每周次数，复盘包含在内。', 422)
+    if not isinstance(lessons, list) or len(lessons) != lesson_count(conditions):
+        fail('invalid', '课次数量须与规划总课数一致，复盘包含在内。', 422)
     for n, lesson in enumerate(lessons, 1):
         if not isinstance(lesson, dict) or type(lesson.get('number')) is not int or lesson['number'] != n:
             fail('invalid', '课号须从1开始连续且唯一。', 422)
@@ -101,6 +109,8 @@ def document(data, conditions):
         result['lessons'].append(row)
     if not any(x['kind'] == 'review' for x in result['lessons']):
         fail('invalid', '规划至少包含一次复盘。', 422)
+    if conditions.get('pacing')=='self_paced' and result['lessons'][-1]['kind']!='review':
+        fail('invalid','自由节奏规划最后一课须包含综合练习与复盘。',422)
     return result
 
 
@@ -120,8 +130,9 @@ def sources(entries):
 
 
 def plan_markdown(b, doc):
+    schedule=(f'自由节奏：共{b["lesson_count"]}课，每次{b["minutes"]}分钟，不指定学习日期。' if b.get('pacing')=='self_paced' else f'安排：{b["weeks"]}周，每周{b["sessions"]}次，每次{b["minutes"]}分钟。')
     lines = [f'# {b["title"]}', '', f'学习目的：{b["goal"]}', f'当前基础：{b["level"]}',
-             f'安排：{b["weeks"]}周，每周{b["sessions"]}次，每次{b["minutes"]}分钟。',
+             schedule,
              '', '## 先修说明', doc['prerequisites'], '', '## 阶段目标']
     for i, stage in enumerate(doc['stages'], 1):
         lines += [f'### 阶段{i}：{stage["title"]}', stage['goal']]
@@ -404,6 +415,8 @@ class Plans:
                     if n>len(doc['lessons']) or doc['lessons'][n-1]!=old[n-1]:fail('conflict','已发布课次不能修改或移动。')
             d = {'id': str(uuid.uuid4()), 'kind': 'plan', 'brief': b, 'document': doc, 'plan_id': pid,
                  'base_version': base_version, 'overrides': overrides, 'state': 'ready', 'created_at': now()}
+            for k in ('continuation_id','continuation_form_hash'):
+                if (parent or data).get(k):d[k]=(parent or data)[k]
             return self.save_draft_locked(d,parent,data.get('operation','manual'),data.get('instruction'),data.get('scope'))
 
     def draft_history(self, did, offset=0, limit=20):
@@ -417,12 +430,14 @@ class Plans:
         settings = {r['id']: r for r in self.rows('learning_settings')}
         setting = settings.get('budget', {'weekly': None, 'legacy_weekly': None})
         total = sum(p['brief']['sessions'] * p['brief']['minutes'] for p in self.rows('learning_plans')
-                    if p['id'] != replacing and p['status'] == 'active')
-        if candidate: total += candidate['sessions'] * candidate['minutes']
+                    if p['id'] != replacing and p['status'] == 'active' and p['brief'].get('pacing')!='self_paced')
+        if candidate and candidate.get('pacing')!='self_paced': total += candidate['sessions'] * candidate['minutes']
+        unallocated=sum(p['id']!=replacing and p['status']=='active' and p['brief'].get('pacing')=='self_paced' for p in self.rows('learning_plans'))
+        if candidate and candidate.get('pacing')=='self_paced':unallocated+=1
         legacy = setting.get('legacy_weekly')
         total += legacy or 0
         limit = setting.get('weekly')
-        return {'weekly': limit, 'legacy_weekly': legacy, 'known_minutes': total,
+        return {'weekly': limit, 'legacy_weekly': legacy, 'known_minutes': total, 'self_paced_count':unallocated,
                 'legacy_unknown': legacy is None, 'over': max(0, total - limit) if limit is not None else None}
 
     def adopt(self, did, key, accept_over=False, expected_hash=None):
@@ -493,7 +508,8 @@ class Plans:
         p = self.plan(pid); self.check_files(p)
         if p['status'] != 'active': fail('conflict', '计划已暂停，请先恢复。')
         lessons = self.lessons(pid); n = len(lessons)+1
-        if any(l['date'] == now()[:10] for l in lessons): fail('conflict', '本计划今天已有完整课程，请明天继续或选择其他计划。')
+        if not getattr(self,'remote',False) and any(l['date'] == now()[:10] for l in lessons): fail('conflict', '本计划今天已有完整课程，请明天继续或选择其他计划。')
+        if getattr(self,'remote',False) and any(l['learning_state']!='completed' for l in lessons):fail('conflict','请先学完已发布课次。')
         doc = self.version(pid)['document']
         if n > len(doc['lessons']): fail('conflict', '当前规划课程已生成完毕，请修订或新建计划。')
         rel = f'{self.base(pid)}/备课资料/第{n:03d}课.json'
@@ -523,6 +539,8 @@ class Plans:
             if not urls or not urls <= allowed_urls: fail('invalid','引用链接必须来自已准备资料清单。',422)
             for target in re.findall(r'\]\(([^)]+)\)', content+'\n'+notes):
                 if target not in allowed_urls: fail('invalid','正文与摘要只能引用清单内链接。',422)
+        if not allowed_urls and d['context'].get('strict_sources') and re.search(r'https?://|\]\(',content+'\n'+notes):
+            fail('invalid','本课未提供链接资料，不能加入未经提供的引用链接。',422)
         if '<script' in content.lower() or '<script' in notes.lower(): fail('invalid','内容含不可接受的脚本。',422)
 
     def course_draft(self, context, content, notes, complete=True, parent_id=None, parent_hash=None, operation='manual', instruction=None, scope=None):
@@ -563,7 +581,10 @@ class Plans:
             if expected_hash and content_hash(d)!=expected_hash:fail('conflict','草稿已变化，请重新预览。')
             self.validate_course(d)
             ctx=d['context']; pid=ctx['plan_id']; n=ctx['lesson_no']; p=self.plan(pid)
-            current=self.course_context(pid)
+            if ctx.get('extension'):
+                from .continuation import extension_context
+                current=extension_context(self,pid)
+            else:current=self.course_context(pid)
             if current['base_version']!=ctx['base_version'] or current['lesson_no']!=n or current['source_hash']!=ctx['source_hash']:
                 fail('conflict','规划、课次或备课资料已变更，请重新核对。')
             if ctx['date']!=now()[:10]:fail('conflict','草稿日期已过期，请编辑为今天日期后保存。')
@@ -575,14 +596,18 @@ class Plans:
             index=base+'/课程目录.md'
             topic=ctx['lesson']['topic'].replace('|','／').replace('\n',' ')
             files[index]=self.read_text(index)+f'| {n:03d} | {ctx["date"]} | [{topic}]({course}) | [资料]({source}) |\n'
+            extension_sql=[]
+            if ctx.get('extension'):
+                from .continuation import extension_publication
+                extra,extension_sql=extension_publication(self,p,ctx);files.update(extra)
             p['hashes'].update({k:digest(v) for k,v in files.items()})
             lesson={'lesson_no':n,'topic':ctx['lesson']['topic'],'date':ctx['date'],'path':course,'source':source,
-                    'version':ctx['base_version'],'learning_state':'unknown','learning_label':'待本人反馈'}
+                    'version':p['version'],'learning_state':'unknown','learning_label':'待本人反馈'}
             d['state']='published'
             return self.publish(key,request,files,[('INSERT INTO learning_lessons VALUES (?,?,?)',[pid,n,encoded(lesson)]),
                 ('UPDATE learning_plans SET data=? WHERE id=?',[encoded(p),pid]),
                 ('UPDATE learning_drafts SET data=? WHERE id=?',[encoded(d),did]),
-                self.family_sql(d,{'plan_id':pid,'lesson_no':n})],{'plan_id':pid,'lesson_no':n,'path':self.file_location(base+'/'+course)})
+                self.family_sql(d,{'plan_id':pid,'lesson_no':n}),*extension_sql],{'plan_id':pid,'lesson_no':n,'path':self.file_location(base+'/'+course)})
 
     def feedback(self, pid, n, data, key):
         state=data.get('state')
