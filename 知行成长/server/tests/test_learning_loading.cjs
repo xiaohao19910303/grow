@@ -7,6 +7,7 @@ class Element{
   set textContent(value){this.text=String(value);this.children=[];}
   get textContent(){return this.text+this.children.map(n=>n.textContent||'').join('');}
   querySelectorAll(){return [];}
+  querySelector(){return null;}
   setAttribute(){}
 }
 const elements=new Map(),requests=[];
@@ -37,11 +38,24 @@ const courseModule=(title)=>({id:'biaoda',name:title,duration:'15 分钟',lesson
   const rerender=()=>context.window.DailyAgenda.render();
   for(const date of ['2026-10-19','2026-10-20','2026-10-21']){
     plans=[{...scheduled,start_date:date}];rerender();
-    assert(!element('dailyLearning').textContent.includes('第一课'),'a dated course is excluded from optional learning');
+    assert.equal(element('dailyLearning').textContent.includes('第一课'),date!=='2026-10-20','only the displayed date excludes an arranged course');
+    if(date==='2026-10-19')assert(element('dailyLearning').textContent.includes('过去安排待处理'));
+    if(date==='2026-10-21')assert(element('dailyLearning').textContent.includes('已安排明日'));
     assert(element('learningLibrary').textContent.includes('第一课'),'the full library keeps scheduled courses');
   }
   plans=[scheduled];rerender();
   assert(element('agendaList').textContent.includes('第一课'),'today keeps the scheduled course');
+  plans=[{...scheduled,completion_mode:'time'}];rerender();
+  assert(!element('dailyLearning').textContent.includes('第一课'),'a timed course scheduled today also stays in the agenda');
+  for(const status of ['paused','completed']){
+    plans=[{...scheduled,status}];rerender();
+    assert(!element('dailyLearning').textContent.includes('第一课'),'paused and completed same-date arrangements remain in the upper agenda');
+  }
+  element('personalDate').value='2026-10-21';rerender();
+  assert(element('dailyLearning').textContent.includes('第一课'),'viewing another date retains the other-date course as a candidate');
+  plans=[{...scheduled,start_date:'2026-10-21'}];rerender();
+  assert(!element('dailyLearning').textContent.includes('第一课'),'the selected date is used rather than always hiding today');
+  element('personalDate').value='';
   for(const replacement of [[],[{...scheduled,status:'archived'}],[{...scheduled,start_date:null}],[{...scheduled,target:{kind:'biaoda',course:'other.md'}}]]){
     plans=replacement;rerender();
     assert(element('dailyLearning').textContent.includes('第一课'),'cancelling or an unrelated arrangement restores optional learning');

@@ -1,4 +1,4 @@
-/* One read-only fact, shared across Today/Growth and the foreground reminder loop. */
+/* 近期学习动态（原教练今日提醒）：今日／成长共用一条只读事实，复用前台提醒循环。 */
 (() => {
   'use strict';
   const cards=['coachFactToday','coachFactOverview'].map(id=>document.getElementById(id)).filter(Boolean);
@@ -14,15 +14,18 @@
     if(!active()){for(const card of cards){card.hidden=true;card.replaceChildren();card.dataset.signature='';}return;}
     const current=data?.date===day()?data:null;
     for(const card of cards){
-      card.hidden=taskDue||hiddenToday();
+      // 学习动态始终截至今天；查看历史／未来安排时隐藏，避免日期口径混淆。
+      const selected=document.getElementById('personalDate')?.value;
+      card.hidden=taskDue||hiddenToday()||(card.id==='coachFactToday'&&!!selected&&selected!==day());
       const signature=JSON.stringify([current,error]);
       if(card.dataset.signature===signature)continue;
-      card.dataset.signature=signature;card.replaceChildren(node('h2','教练今日提醒'));
+      card.dataset.signature=signature;card.replaceChildren(node('h2','近期学习动态'));
       if(error){card.append(node('p','教练事实暂未读取，可稍后重试。','desc'));button(card,'重试',()=>refresh(true));continue;}
       if(!current){card.append(node('p','正在读取已保存的记录…','desc'));continue;}
       const fact=current.fact;
-      card.append(node('p',fact.message),node('p',`依据：${fact.start} 至 ${fact.end}（北京时间） · ${fact.source}`,'desc'),node('p',fact.basis,'desc'));
-      const actions=node('div',undefined,'action-buttons');card.append(actions);
+      card.append(node('p',fact.message,'coach-fact-message'));
+      const basis=node('details',undefined,'coach-fact-basis');basis.append(node('summary','查看依据'),node('p',`依据：${fact.start} 至 ${fact.end}（北京时间） · ${fact.source}`,'desc'),node('p',fact.basis,'desc'));
+      const footer=node('div',undefined,'coach-fact-footer'),actions=node('div',undefined,'action-buttons');footer.append(basis,actions);card.append(footer);
       button(actions,fact.kind==='empty'?'选择学习内容':'查看记录',()=>window.goTab(destinations[fact.kind]));
       button(actions,'今天先不显示',dismiss);
     }
@@ -65,7 +68,7 @@
   }
   async function tick(due){taskDue=!!due;render();if(!document.hidden&&!taskDue)return refresh();}
   const ready=(window.Account?.ready||Promise.reject(Error('Login required'))).then(user=>{accountId=user.id;});
-  window.CoachFacts={refresh,tick,invalidate:()=>{attemptDay='';}};
+  window.CoachFacts={refresh,tick,updateDate:render,invalidate:()=>{attemptDay='';}};
   window.addEventListener('storage',event=>{if(active()&&event.key===key()){dismissed=event.newValue||'';render();}});
   ready.then(()=>refresh()).catch(()=>{for(const card of cards)card.hidden=true;});
 })();

@@ -317,13 +317,17 @@
   function lessonTarget(module, lesson) {
     return module.kind==='plan'?{kind:'plan',plan_id:module.id,lesson_no:lesson.lesson_no}:module.id==='renzhi'?{kind:'renzhi',lesson_no:lesson.lesson_no}:{kind:module.id,course:lesson.filename};
   }
-  function lessonRow(parent, module, lesson) {
+  function lessonRow(parent, module, lesson, continuing = false) {
     const row = node('div', undefined, 'todo-row lesson-row' + (lesson.learning_state === 'completed' ? ' completed' : ''));
     const text = node('div'); text.style.flex = '1'; text.style.minWidth = '0'; text.style.overflowWrap = 'anywhere';
     text.append(node('strong', lesson.topic, 'lesson-title'));
     text.append(node('p', `第 ${lesson.lesson_no} 课 · ${lesson.learning_label}${lesson.complete === false ? ' · 资料待修复' : ''}`, 'desc'));
     row.append(text);
-    button(row, lesson.learning_state==='completed'?'再次阅读':'开始学习', () => read(module, lesson));
+    const start=button(row, lesson.learning_state==='completed'?'再次阅读':continuing?'继续学习':'开始学习', () => {
+      if(continuing)window.actionContentOrigin=null;
+      return read(module, lesson);
+    });
+    if(continuing)start.classList.add('primary');
     if (module.id === 'renzhi' && lesson.learning_state === 'completed') {
       if (!lesson.completed_at) button(row, '标记完成', () => quickComplete(module, lesson));
       button(row, '查看记录', () => viewLearningRecord(module, lesson));
@@ -332,15 +336,17 @@
       button(row, '查看记录', () => viewLearningRecord(module, lesson));
     }
     parent.append(row);
-    const scheduleControls=node('div');parent.append(scheduleControls);window.DailyAgenda?.mount(scheduleControls,lessonTarget(module,lesson),lesson.topic,parseInt(module.duration,10)||20);
+    const scheduleControls=node('div');parent.append(scheduleControls);window.DailyAgenda?.mount(scheduleControls,lessonTarget(module,lesson),lesson.topic,parseInt(module.duration,10)||20,{compact:continuing});
   }
+  // 待继续课程按学习进度选课；仅排除当前日期已安排的课程，不按内容生成日期推断今日任务。
   window.renderDailyLearning = () => {
-    document.getElementById('dailyLearningTitle').textContent='继续学习';root.replaceChildren();
+    document.getElementById('dailyLearningTitle').textContent='待继续课程';root.replaceChildren();
     if(!loaded){root.append(node('p','正在读取学习内容…'));return;}
     errors.forEach(error=>root.append(node('p',error)));
-    const available=modules.map(module=>({module,lesson:[...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).find(l=>l.learning_state!=='completed')})).filter(({module,lesson})=>lesson&&!window.DailyAgenda?.isScheduled(lessonTarget(module,lesson))).slice(0,3);
-    for(const {module,lesson} of available){const section=node('section',undefined,'learning-module');section.append(node('h3',module.name));lessonRow(section,module,lesson);root.append(section);}
-    if(!available.length)root.append(node('p',pendingModules.length?'正在读取可继续的课程…':'暂无未安排的可继续课程。已安排课程请在今日安排或日程中查看，全部课程在「学习」中查看。','desc'));
+    const selected=document.getElementById('personalDate')?.value||window.ActionPlans?.day();
+    const available=modules.map(module=>({module,lesson:[...module.lessons].sort((a,b)=>a.lesson_no-b.lesson_no).find(l=>l.learning_state!=='completed')})).filter(({module,lesson})=>lesson&&!window.DailyAgenda?.isScheduled(lessonTarget(module,lesson),selected)).slice(0,3);
+    for(const {module,lesson} of available){const section=node('section',undefined,'learning-module');section.append(node('h3',module.name));lessonRow(section,module,lesson,true);root.append(section);}
+    if(!available.length)root.append(node('p',pendingModules.length?'正在读取可继续的课程…':'当前日期已安排的课程在上方列表中；暂无其他待继续课程。全部课程可在「学习」中查看。','desc'));
     button(root,'查看全部课程',()=>goTab('library'));
   };
 
