@@ -45,6 +45,9 @@
   /* 图标按钮 */
   .btn.icon-only{width:36px;padding:0;font-size:16px}
   .btn.icon-only.sm{width:30px;height:30px;font-size:14px}
+  /* 焦点样式增强 - 无障碍 */
+  .btn:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .btn:focus:not(:focus-visible){outline:none}
   .badge{font-size:12px;padding:4px 10px;border-radius:var(--radius-pill);background:var(--primary-light);color:var(--primary);font-weight:600}
   .badge.on{background:var(--success-light);color:var(--success-text)}
   .badge.warn{background:var(--warning-light);color:var(--warning-text)}
@@ -83,11 +86,13 @@
   .tab-icon{font-size:15px;line-height:1;opacity:0.8}
   .tab.active .tab-icon{opacity:1}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-sm);transition:all var(--animation-fast)}
+  .card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
   .card .k{font-size:12px;color:var(--muted);margin-bottom:6px}
   .card .v{font-size:24px;font-weight:700;letter-spacing:-.5px;font-family:var(--font-family)}
   .card .v small{font-size:13px;color:var(--muted);font-weight:500}
-  .section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
+  .section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:20px;transition:box-shadow var(--animation-fast)}
+  .section:hover{box-shadow:var(--shadow-md)}
   .section h2{font-size:15px;margin:0 0 4px;font-weight:650}
   .section .desc{font-size:12px;color:var(--muted);margin:0 0 16px}
   details.section>summary, #statisticsCategorySettings>summary{cursor:pointer;font-weight:650}
@@ -147,7 +152,8 @@
   .modal .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .modal .form-grid .full{grid-column:1/-1}
   .modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
-  .note-card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:10px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .note-card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:10px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow-sm);transition:all var(--animation-fast)}
+  .note-card:hover{box-shadow:var(--shadow-md);transform:translateX(4px)}
   .note-card .meta{font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between}
   .note-card .body{font-size:13px;white-space:pre-wrap}
   .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--card);color:var(--text);padding:12px 20px;border-radius:var(--radius-md);font-size:13px;opacity:0;transition:all var(--animation-medium);z-index:200;pointer-events:none;box-shadow:var(--shadow-md);display:flex;align-items:center;gap:8px;border:1px solid var(--border);max-width:90vw}
@@ -167,6 +173,19 @@
   .skeleton-text{height:14px;margin-bottom:8px}
   .skeleton-title{height:20px;width:60%;margin-bottom:12px}
   .skeleton-card{height:80px;margin-bottom:12px}
+  /* 页面视图过渡动画 */
+  [id^="view-"]{animation:viewFadeIn var(--animation-medium) ease-out}
+  @keyframes viewFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  /* Section heading consistency */
+  .section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+  .section-heading h2{margin:0;font-size:16px;font-weight:650;color:var(--text)}
+  .section-heading .desc{margin:4px 0 0;font-size:12px;color:var(--muted)}
+  .section-heading .action-buttons{flex-shrink:0;display:flex;gap:6px;align-items:center}
+  /* Day heading for personal view */
+  .day-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .day-heading h2{font-size:20px;font-weight:700;margin:0 0 4px;color:var(--text)}
+  .day-heading .desc{margin:0;font-size:13px;color:var(--muted)}
+  .day-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
 
   .personal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
   .personal-grid .section{min-width:0}
