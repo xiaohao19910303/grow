@@ -175,6 +175,8 @@ def register(app, root):
             raise HTTPException(403, '保存和生成课程需要同源请求。')
 
     router = APIRouter(prefix='/api/study-materials', dependencies=[Depends(private)])
+    from course_activity import install_routes as install_activity
+    install_activity(router)
 
     @router.get('')
     def modules():

@@ -45,8 +45,16 @@ def register(app, root, db):
     @router.get('')
     def listing():
         plans=[]
+        with store.conn() as c:
+            feedback = {(r[0], r[1]): json.loads(r[2]) for r in c.execute(
+                'SELECT plan_id,lesson_no,data FROM learning_feedback')}
         for p in store.rows('learning_plans'):
-            plans.append({k:v for k,v in p.items() if k!='hashes'} | {'lessons':store.lessons(p['id'])})
+            lessons = store.lessons(p['id'])
+            for lesson in lessons:
+                fact = feedback.get((p['id'], lesson['lesson_no']), {})
+                lesson['completed_at'] = fact.get('date') if lesson['learning_state'] == 'completed' else None
+            plans.append({k:v for k,v in p.items() if k!='hashes'} | {
+                'lessons': lessons, 'curriculum': store.version(p['id'])['document']})
         attempts=[{k:v for k,v in a.items() if k not in ('raw','context','request')} for a in store.rows('learning_ai_attempts')]
         pending=[{'id':r['id'],'state':json.loads(r['data'])['state']} for r in publication_rows() if json.loads(r['data'])['state']!='done']
         return {'plans':plans,'legacy':[dict(x,kind='legacy') for x in LEGACY], 'budget':store.budget(),
