@@ -1,11 +1,18 @@
 """Authenticated-account investment HTTP contracts; execution remains user-owned."""
+import json
+
+import db
 from fastapi import APIRouter, Header, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import Field
+from fastapi.routing import APIRoute
+from pydantic import AwareDatetime, Field
 
 from copilot.core import Problem
 from tenancy import scoped
-from .contracts import Contract, RESOURCE_MODELS, StateCommand
+from .contracts import AnalysisInput, Contract, FundConfirmation, RESOURCE_MODELS, StateCommand
+from .analysis import InvestmentAnalysis
+from .screening import ScreenInput
 from .store import InvestmentStore
 
 
@@ -14,9 +21,72 @@ class UpdateInput(Contract):
     data: dict
 
 
+class CSVInput(Contract):
+    account_id: str = Field(min_length=1,max_length=100)
+    text: str = Field(max_length=250000)
+    token: str | None = Field(default=None,max_length=100)
+
+
+class CorrectionInput(UpdateInput):
+    reason: str = Field(min_length=1,max_length=2000)
+
+
+class FundConfirmInput(FundConfirmation):
+    version: int = Field(ge=1)
+
+
+class FundSettleInput(Contract):
+    version: int = Field(ge=1)
+    received_at: AwareDatetime
+
+
+class AnalysisSubmit(Contract):
+    preview_id: str = Field(min_length=1,max_length=100)
+    snapshot_hash: str = Field(min_length=64,max_length=64)
+    ai_config: dict = Field(repr=False)
+
+
+class RecommendationInput(Contract):
+    state: str = Field(max_length=30)
+    note: str = Field(default='',max_length=4000)
+
+
+class DailyFetchInput(Contract):
+    instrument_id: str = Field(min_length=1,max_length=100)
+    account_id: str | None = Field(default=None,max_length=100)
+    start_date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
+    end_date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
+    token: str = Field(min_length=8,max_length=4096,repr=False)
+    licensed_use_confirmed: bool
+
+
+class HistoryCSVInput(Contract):
+    instrument_id: str = Field(min_length=1,max_length=100)
+    account_id: str | None = Field(default=None,max_length=100)
+    text: str = Field(max_length=250000)
+    volume_unit: str = Field(max_length=30)
+    amount_unit: str = Field(max_length=30)
+    source_label: str = Field(min_length=1,max_length=100)
+    use_confirmed: bool
+
+
+class PrivateRoute(APIRoute):
+    def get_route_handler(self):
+        original=super().get_route_handler()
+        async def safe_handler(request):
+            try:
+                return await original(request)
+            except RequestValidationError:
+                # Default validation details can echo an entire input containing AI credentials.
+                return JSONResponse({'error':'validation_error','message':'请核对输入字段、数值精度与时间格式。'},422,
+                                    headers={'Cache-Control':'no-store'})
+        return safe_handler
+
+
 def register(app):
     store=scoped(app,InvestmentStore,initialize=True)
-    router=APIRouter(prefix='/api/investments',tags=['investments'])
+    analysis=scoped(app,lambda:InvestmentAnalysis(store))
+    router=APIRouter(prefix='/api/investments',tags=['investments'],route_class=PrivateRoute)
 
     @app.middleware('http')
     async def boundary(request: Request,call_next):
@@ -44,6 +114,69 @@ def register(app):
             'realtime':{'enabled':False,'reason':'实时权限、时效和规则尚未验收。'},
             'ai':{'requires_own_config':True,'unattended':False}}
 
+    @router.post('/provider/daily')
+    async def daily_fetch(payload: DailyFetchInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .providers import DailyProvider
+        return await DailyProvider(store).fetch(payload.instrument_id,payload.start_date,payload.end_date,
+            payload.token,payload.licensed_use_confirmed,idempotency_key,payload.account_id)
+
+    @router.get('/data-sources')
+    def data_sources():
+        return {'sources':[
+            {'id':'tushare','name':'Tushare Pro','status':'adapter_ready','scope':'股票/ETF盘后行情、交易日历；账号权限待核验','url':'https://tushare.pro/document/2'},
+            {'id':'akshare','name':'AKShare','status':'planned','scope':'采集库候选；逐项核验上游接口、时效与使用范围','url':'https://akshare.akfamily.xyz/'},
+            {'id':'baostock','name':'BaoStock','status':'planned','scope':'历史行情候选；当前服务和具体品种覆盖待实测','url':'https://baostock.com/api/'},
+            {'id':'ifind','name':'同花顺iFinD','status':'planned','scope':'授权数据接口候选；账号、额度与用途需配置','url':'https://quantapi.51ifind.com/'},
+            {'id':'cninfo','name':'巨潮资讯','status':'external','scope':'公告与财报原文核对；非实时行情承诺','url':'https://www.cninfo.com.cn/'},
+            {'id':'iwencai','name':'同花顺问财','status':'external','scope':'在官网进行条件查询；未接入其私有接口','url':'https://www.iwencai.com/'},
+            {'id':'eastmoney','name':'东方财富条件选股','status':'external','scope':'官网查看/筛选；未接入其私有接口','url':'https://xuangu.eastmoney.com/'}]}
+
+    @router.post('/screen')
+    def screening(payload: ScreenInput):
+        from .screening import screen
+        return screen(store,payload)
+
+    @router.post('/market/import')
+    def history_import(payload: HistoryCSVInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .market_import import import_history
+        return import_history(store,payload.instrument_id,payload.text,payload.volume_unit,
+            payload.amount_unit,payload.source_label,payload.use_confirmed,idempotency_key,payload.account_id)
+
+    @router.post('/analysis/preview')
+    def analysis_preview(payload: AnalysisInput):
+        return analysis.preview(payload.model_dump(mode='json'))
+
+    @router.post('/analysis/jobs',status_code=202)
+    async def analysis_submit(payload: AnalysisSubmit,idempotency_key: str=Header(min_length=1,max_length=160)):
+        return await analysis.submit(payload.preview_id,payload.snapshot_hash,payload.ai_config,idempotency_key)
+
+    @router.get('/analysis/jobs')
+    def analysis_listing():
+        return analysis.listing()
+
+    @router.get('/analysis/jobs/{object_id}')
+    def analysis_get(object_id: str):
+        return analysis.get(object_id)
+
+    @router.post('/analysis/jobs/{object_id}/cancel')
+    async def analysis_cancel(object_id: str):
+        return await analysis.cancel(object_id)
+
+    @router.get('/analysis/previews/{object_id}')
+    def analysis_preview_get(object_id: str):
+        return store.get('analysis-previews',object_id)
+
+    @router.post('/analysis/jobs/{object_id}/suggestions/{index}/decision')
+    def recommendation_decision(object_id: str,index: int,payload: RecommendationInput,
+                                idempotency_key: str=Header(min_length=1,max_length=160)):
+        return analysis.decide(object_id,index,payload.state,payload.note,idempotency_key)
+
+    @router.get('/recommendations')
+    def recommendations():
+        with db.connect() as c:
+            rows=c.execute("SELECT data FROM investment_objects WHERE kind='recommendations' ORDER BY created_at DESC LIMIT 100")
+            return {'items':[json.loads(row[0]) for row in rows]}
+
     @router.get('/accounts/{object_id}/balance')
     def balance(object_id: str):
         return store.balance(object_id)
@@ -51,6 +184,36 @@ def register(app):
     @router.get('/accounts/{object_id}/campaigns')
     def campaigns(object_id: str):
         return {'items':store.campaigns(object_id)}
+
+    @router.get('/export')
+    def export():
+        return JSONResponse(store.export(),headers={
+            'Content-Disposition':'attachment; filename="grow-investments.json"'})
+
+    @router.post('/imports/preview')
+    def preview(payload: CSVInput):
+        from .operations import preview_csv
+        return preview_csv(store,payload.account_id,payload.text)
+
+    @router.post('/imports/commit')
+    def commit(payload: CSVInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .operations import commit_csv
+        return commit_csv(store,payload.account_id,payload.text,payload.token,idempotency_key)
+
+    @router.post('/fills/{object_id}/corrections')
+    def correct(object_id: str,payload: CorrectionInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .operations import correct_fill
+        return correct_fill(store,object_id,payload.version,payload.data,payload.reason,idempotency_key)
+
+    @router.post('/fund-orders/{object_id}/confirm')
+    def confirm_fund_order(object_id: str,payload: FundConfirmInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .operations import confirm_fund
+        return confirm_fund(store,object_id,payload.version,payload.model_dump(mode='json',exclude={'version'}),idempotency_key)
+
+    @router.post('/fund-orders/{object_id}/settle')
+    def settle_fund_order(object_id: str,payload: FundSettleInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .operations import settle_fund
+        return settle_fund(store,object_id,payload.version,payload.received_at.isoformat(),idempotency_key)
 
     def creators(kind,model):
         def create(payload, idempotency_key: str=Header(min_length=1,max_length=160)):

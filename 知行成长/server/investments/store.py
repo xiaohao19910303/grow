@@ -111,59 +111,78 @@ class InvestmentStore:
             plan = self._get(c,'trade-plans',data['plan_id'])
             if (plan['account_id'],plan['instrument_id']) != (data['account_id'],data['instrument_id']):
                 fail('validation_error','成交与计划的账户或证券不一致。',422)
+        if data.get('campaign_id'):
+            if not any(item['id']==data['campaign_id'] for item in self._campaigns(c,data['account_id'])):
+                fail('not_found','关联交易链不存在或已需重新核对。',404)
 
     def create(self,kind,payload,key):
         data = self.validate(kind,payload)
+        if kind=='cash-events' and data['kind'].startswith('fund_receivable_'):
+            fail('invalid_cash_event','基金待到账流水由确认/到账操作生成，不能独立添加。',422)
         fingerprint = digest(encoded({'kind':kind,'data':data}))
         with db.connect() as c:
             self.lock(c)
-            old = self.replay(c,key,fingerprint)
-            if old is not None:
-                return old
-            self.references(c,kind,data)
-            if kind=='fills' and data.get('external_id'):
-                row = c.execute('SELECT id FROM investment_fills WHERE account_id=? AND source=? AND external_id=?',
-                    (data['account_id'],data['source'],data['external_id'])).fetchone()
-                if row:
-                    existing=self._get(c,'fills',row[0])
-                    if any(existing.get(k)!=v for k,v in data.items()):
-                        fail('conflict','外部成交编号已存在，但内容不同，请核对。')
-                    self.remember(c,key,fingerprint,existing)
-                    return existing
-            stamp=now()
-            record={**data,'id':'inv-'+uuid.uuid4().hex,'version':1,'created_at':stamp,'updated_at':stamp}
-            if kind=='fills' and data.get('plan_id'):
-                plan=self._get(c,'trade-plans',data['plan_id'])
-                record['plan_snapshot']=plan
-                record['plan_recorded_before_execution']=(plan.get('state')=='confirmed' and
-                    datetime.fromisoformat(plan['confirmed_at'])<=datetime.fromisoformat(data['executed_at']))
-            if kind in ('policies','strategies','trade-plans'):
-                record['state']='draft'
-            if kind=='fund-orders':
-                instrument=self._get(c,'instruments',data['instrument_id'])
-                if instrument['kind']!='fund':
-                    fail('validation_error','此申请仅适用于场外基金。',422)
-                if (data['side']=='subscription' and not data.get('amount')) or (data['side']=='redemption' and not data.get('quantity')):
-                    fail('validation_error','申购请填写金额，赎回请填写份额。',422)
-                record['state']='pending'
-            self.save(c,kind,record,fresh=True)
-            if kind=='accounts':
-                c.execute('INSERT INTO investment_accounts VALUES (?,?,?)',
-                    (record['id'],record['opening_cash'],record['baseline_date']))
-            elif kind=='fills':
-                c.execute('''INSERT INTO investment_fills
-                    (id,account_id,instrument_id,side,price,quantity,fee,tax,executed_at,source,external_id)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?)''',tuple(record[k] for k in ('id','account_id','instrument_id',
-                    'side','price','quantity','fee','tax','executed_at','source','external_id')))
-                try:
-                    self._balance(c,record['account_id'],{})
-                except ValueError as exc:
-                    fail('reconciliation_required',str(exc),422)
-            elif kind=='cash-events':
-                c.execute('INSERT INTO investment_cash_events VALUES (?,?,?,?,?)',tuple(record[k]
-                    for k in ('id','account_id','kind','amount','occurred_at')))
-            self.remember(c,key,fingerprint,record)
-            return record
+            return self.create_in(c,kind,data,key,fingerprint)
+
+    def create_in(self,c,kind,data,key,fingerprint=None):
+        fingerprint = fingerprint or digest(encoded({'kind':kind,'data':data}))
+        old = self.replay(c,key,fingerprint)
+        if old is not None:
+            return old
+        self.references(c,kind,data)
+        if kind=='instruments':
+            row=c.execute("SELECT data FROM investment_objects WHERE kind='instruments' AND data::jsonb->>'market'=? AND data::jsonb->>'code'=?",
+                          (data['market'],data['code'])).fetchone()
+            if row:
+                existing=json.loads(row[0])
+                if existing['kind']!=data['kind']:
+                    fail('instrument_conflict','同一市场和代码已登记为其他品种，请核对。')
+                self.remember(c,key,fingerprint,existing)
+                return existing
+        if kind=='fills' and data.get('external_id'):
+            row = c.execute('SELECT id FROM investment_fills WHERE account_id=? AND source=? AND external_id=?',
+                (data['account_id'],data['source'],data['external_id'])).fetchone()
+            if row:
+                existing=self._get(c,'fills',row[0])
+                if any(existing.get(k)!=v for k,v in data.items()):
+                    fail('conflict','外部成交编号已存在，但内容不同，请核对。')
+                self.remember(c,key,fingerprint,existing)
+                return existing
+        stamp=now()
+        record={**data,'id':'inv-'+uuid.uuid4().hex,'version':1,'created_at':stamp,'updated_at':stamp}
+        if kind=='fills' and data.get('plan_id'):
+            plan=self._get(c,'trade-plans',data['plan_id'])
+            record['plan_snapshot']=plan
+            record['plan_recorded_before_execution']=(plan.get('state')=='confirmed' and
+                datetime.fromisoformat(plan['confirmed_at'])<=datetime.fromisoformat(data['executed_at']))
+        if kind in ('policies','strategies','trade-plans'):
+            record['state']='draft'
+        if kind=='fund-orders':
+            instrument=self._get(c,'instruments',data['instrument_id'])
+            if instrument['kind']!='fund':
+                fail('validation_error','此申请仅适用于场外基金。',422)
+            if (data['side']=='subscription' and not data.get('amount')) or (data['side']=='redemption' and not data.get('quantity')):
+                fail('validation_error','申购请填写金额，赎回请填写份额。',422)
+            record['state']='pending'
+        self.save(c,kind,record,fresh=True)
+        if kind=='accounts':
+            c.execute('INSERT INTO investment_accounts VALUES (?,?,?)',
+                (record['id'],record['opening_cash'],record['baseline_date']))
+        elif kind=='fills':
+            c.execute('''INSERT INTO investment_fills
+                (id,account_id,instrument_id,side,price,quantity,fee,tax,executed_at,source,external_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)''',tuple(record[k] for k in ('id','account_id','instrument_id',
+                'side','price','quantity','fee','tax','executed_at','source','external_id')))
+            try:
+                self._balance(c,record['account_id'],{})
+            except ValueError as exc:
+                fail('reconciliation_required',str(exc),422)
+        elif kind=='cash-events':
+            c.execute('INSERT INTO investment_cash_events VALUES (?,?,?,?,?)',tuple(record[k]
+                for k in ('id','account_id','kind','amount','occurred_at')))
+        self.remember(c,key,fingerprint,record)
+        return record
+
 
     def update(self,kind,object_id,version,payload,key):
         fingerprint=digest(encoded({'kind':kind,'id':object_id,'version':version,'data':payload}))
@@ -207,10 +226,31 @@ class InvestmentStore:
         return transition(self,kind,object_id,version,state,key)
 
     def campaigns(self,account_id):
-        from .campaigns import project
         with db.connect() as c:
             self.lock(c)
-            account=self._get(c,'accounts',account_id)
-            fills=[json.loads(r[0]) for r in c.execute('''SELECT o.data FROM investment_fills f
-                JOIN investment_objects o ON o.id=f.id WHERE f.account_id=? ORDER BY f.executed_at,f.sequence''',(account_id,))]
-            return project(account,fills)
+            return self._campaigns(c,account_id)
+
+    def _campaigns(self,c,account_id):
+        from .campaigns import project
+        account=self._get(c,'accounts',account_id)
+        fills=[json.loads(r[0]) for r in c.execute('''SELECT o.data FROM investment_fills f
+            JOIN investment_objects o ON o.id=f.id WHERE f.account_id=? ORDER BY f.executed_at,f.sequence''',(account_id,))]
+        return project(account,fills)
+
+    def export(self):
+        with db.connect() as c:
+            self.lock(c)
+            count=c.execute('SELECT count(*) FROM investment_versions').fetchone()[0]
+            if count>10000:
+                fail('export_too_large','记录较多，请使用管理员完整备份。',422)
+            objects=[json.loads(r[0]) for r in c.execute('SELECT data FROM investment_objects ORDER BY created_at,id')]
+            versions=[json.loads(r[0]) for r in c.execute('SELECT data FROM investment_versions ORDER BY object_id,version')]
+            jobs=[]
+            if c.execute("SELECT to_regclass('investment_analysis_jobs')").fetchone()[0]:
+                if c.execute('SELECT count(*) FROM investment_analysis_jobs').fetchone()[0]>1000:
+                    fail('export_too_large','分析记录较多，请使用管理员完整备份。',422)
+                jobs=[{k:v for k,v in json.loads(r[0]).items() if k not in ('worker','fingerprint')}
+                      for r in c.execute('SELECT data FROM investment_analysis_jobs ORDER BY id')]
+            return {'format':'grow-investments-v1','exported_at':now(),
+                'scope':'仅本账号投资对象与历史版本；不含登录、AI密钥、全站数据或外部行情授权。',
+                'objects':objects,'versions':versions,'analysis_jobs':jobs}

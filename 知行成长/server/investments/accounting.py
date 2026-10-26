@@ -21,6 +21,7 @@ def _reconcile(opening_cash, cash_events, fills, opening_positions, marks):
     positions = {}
     cash = D(opening_cash)
     fees_complete = True
+    receivables = ZERO
 
     def position(instrument_id):
         return positions.setdefault(instrument_id, {'quantity': ZERO, 'cost': ZERO,
@@ -33,7 +34,11 @@ def _reconcile(opening_cash, cash_events, fills, opening_positions, marks):
         item['cost'] = None if cost is None or item['cost'] is None else item['cost'] + D(cost)
     for event in cash_events:
         amount = D(event['amount'])
-        cash += -amount if event['kind'] in ('withdrawal', 'fee') else amount
+        cash += -amount if event['kind'] in ('withdrawal', 'fee','fund_receivable_hold') else amount
+        if event['kind']=='fund_receivable_hold':
+            receivables+=amount
+        elif event['kind']=='fund_receivable_release':
+            receivables-=amount
     for fill in fills:
         item = position(fill['instrument_id'])
         quantity, price = D(fill['quantity']), D(fill['price'])
@@ -67,7 +72,7 @@ def _reconcile(opening_cash, cash_events, fills, opening_positions, marks):
             raise ValueError('不支持的成交方向。')
     output = []
     realized = ZERO
-    equity = cash
+    equity = cash + receivables
     for instrument_id, item in positions.items():
         realized = None if realized is None or item['realized'] is None else realized + item['realized']
         mark = marks.get(instrument_id)
@@ -78,7 +83,7 @@ def _reconcile(opening_cash, cash_events, fills, opening_positions, marks):
             'fees_complete': item['fees_complete'], 'market_value': number(value),
             'unrealized': number(unrealized) if item['fees_complete'] else None,
             'mark': mark})
-    return {'cash': number(cash), 'cash_verified': fees_complete,
+    return {'cash': number(cash), 'cash_verified': fees_complete,'receivables':number(receivables),
             'positions': output, 'realized': number(realized), 'fees_complete': fees_complete,
             'net_realized': number(realized) if fees_complete else None,
             'equity': number(equity) if fees_complete else None,

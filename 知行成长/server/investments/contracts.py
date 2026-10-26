@@ -52,6 +52,13 @@ class InstrumentInput(Contract):
     def compatible_market(self):
         if (self.market=='FUND') != (self.kind=='fund'):
             raise ValueError('场外基金请选择对应市场。')
+        self.code=self.code.upper()
+        suffixes={'SSE':'.SH','SZSE':'.SZ','BSE':'.BJ','FUND':'.OF'}
+        for market,suffix in suffixes.items():
+            if self.code.endswith(suffix):
+                if market!=self.market:
+                    raise ValueError('证券代码后缀与市场不一致。')
+                self.code=self.code[:-len(suffix)]
         return self
 
 
@@ -72,7 +79,7 @@ class FillInput(Contract):
 
 class CashInput(Contract):
     account_id: Identifier
-    kind: Literal['deposit', 'withdrawal', 'dividend', 'interest', 'fee']
+    kind: Literal['deposit', 'withdrawal', 'dividend', 'interest', 'fee', 'fund_receivable_hold', 'fund_receivable_release']
     amount: Positive
     occurred_at: AwareDatetime
     note: Text = ''
@@ -172,6 +179,15 @@ class FundOrderInput(Contract):
     amount: Positive | None = None
     quantity: Positive | None = None
     note: Text = ''
+
+
+class FundConfirmation(Contract):
+    price: Positive
+    quantity: Positive
+    fee: Money
+    tax: Money
+    confirmed_at: AwareDatetime
+    nav_date: date
 
 
 RESOURCE_MODELS = {'accounts': AccountInput, 'instruments': InstrumentInput,

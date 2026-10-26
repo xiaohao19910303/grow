@@ -102,3 +102,9 @@ class InvestmentStoreTests(PostgreSQLFixture):
             'valid_until':'2026-12-01T15:00:00+08:00'},'plan')
         with self.assertRaises(Problem):
             self.store.transition('trade-plans',plan['id'],1,'confirmed','confirm-plan')
+
+    def test_same_security_cannot_split_into_duplicate_positions(self):
+        again=self.store.create('instruments',{'code':'510000.SH','name':'别名',
+            'market':'SSE','kind':'etf'},'instrument-alias')
+        self.assertEqual(again['id'],self.instrument['id'])
+        self.assertEqual(self.store.listing('instruments')['total'],1)
