@@ -34,6 +34,7 @@ from behavior_report.api import register as register_behavior_report
 from knowledge.api import register as register_knowledge
 from reflections.api import register as register_reflections
 from stocks.api import register as register_stocks
+from investments.api import register as register_investments
 from study_materials import register as register_materials, initialize as initialize_materials
 from search_api import register as register_search
 from timeline_api import register as register_timeline
@@ -336,6 +337,12 @@ async def lifespan(app: FastAPI):
         stocks_store.startup_error = exc
         print('股票复盘暂不可用，请检查磁盘或恢复日志。')
     try:
+        investments_store.initialize()
+        investments_store.startup_error = None
+    except (Problem, OSError, db.psycopg2.Error) as exc:
+        investments_store.startup_error = exc
+        print('投资工作台暂不可用，已有记录保留。')
+    try:
         behavior_store.initialize()
         behavior_store.startup_error = None
     except Exception as exc:
@@ -401,6 +408,7 @@ prediction_stats = register_predictions(app, LEARN_ROOT, DB_PATH)
 behavior_report_store = register_behavior_report(app, LEARN_ROOT, DB_PATH)
 knowledge_graph_store = register_knowledge(app, LEARN_ROOT, DB_PATH)
 stocks_store = register_stocks(app, LEARN_ROOT, DB_PATH)
+investments_store = register_investments(app)
 from migration_api import register as register_migrations
 register_migrations(app, copilot_store, LEARN_ROOT)
 materials = register_materials(app, LEARN_ROOT)
@@ -422,7 +430,7 @@ def storage_status():
                                'reason': (getattr(store.startup_error, 'code', 'legacy_schema_or_storage') if getattr(store, 'startup_error', None) else None)}
                         for name, store in (('plans', plans_store), ('copilot', copilot_store),
                                             ('reading', reading_store), ('reflections', reflections_store),
-                                            ('stocks', stocks_store), ('behavior', behavior_store),
+                                            ('stocks', stocks_store), ('investments', investments_store), ('behavior', behavior_store),
                                             ('errors', error_store), ('behavior_report', behavior_report_store),
                                             ('knowledge', knowledge_graph_store))}}
 
@@ -506,7 +514,7 @@ def prepare_user(user):
     # middleware accesses these proxies on the event loop.
     for module in (plans_store, copilot_store, reading_store, reflections_store,
                    behavior_store, error_store, behavior_report_store,
-                   knowledge_graph_store, stocks_store):
+                   knowledge_graph_store, stocks_store, investments_store):
         module.resolve()
 
 

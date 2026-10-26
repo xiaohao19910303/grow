@@ -242,6 +242,7 @@
 <link rel="stylesheet" href="/static/reading.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
 <link rel="stylesheet" href="/static/stocks.css?v=1">
+<link rel="stylesheet" href="/static/investments.css?v=20261026">
 <link rel="stylesheet" href="/static/learning-notebook.css?v=20261025-1">
 <link rel="stylesheet" href="/static/learning-history.css?v=20261021-p1-navigation">
 <link rel="stylesheet" href="/static/account.css">
@@ -528,7 +529,12 @@
   </div>
 
   <div id="view-stocks" style="display:none">
-    <div id="stocks-container"></div>
+    <div id="investment-workspace"></div>
+    <details class="section" id="investment-legacy"><summary>旧投资记录（历史估算）</summary>
+      <p class="desc">旧数值保留，尚未核对为新账本成交；不计入投资工作台净收益。</p>
+      <button type="button" class="btn" onclick="window.initStocksModule?.()">查看旧记录</button>
+      <div id="stocks-container"></div>
+    </details>
   </div>
 
   <div id="view-custom" style="display:none">
@@ -2334,7 +2340,7 @@ const navParents={reader:'library',archive:'library',summary:'library',copilot:'
 const contextGroups={
   applications:[['applications','应用记录'],['errors','错误记录']],
   decisions:[['decisions','决策日志'],['predictions','预测校准']],
-  custom:[['custom','自定义记录'],['stocks','投资复盘']],
+  custom:[['custom','自定义记录'],['stocks','投资工作台']],
   'learning-history':[['learning-history','学习日历'],['progress','分类足迹'],['habits','时长趋势']],
   report:[['report','周／月汇总'],['ai-report','AI 报告']]
 };
@@ -2411,7 +2417,7 @@ function goTab(name, options={}){
   else window.LearningNotebook?.leave();
   if(name==='learning-history') window.loadLearningHistory?.();
   if(name==='progress' || name==='overview')refreshAutoCheckins();
-  if(name==='stocks') window.initStocksModule?.();
+  if(name==='stocks') window.Investments?.open();
   if(!options.fromHistory && name!=='reader' && name!=='reading' && !(name==='plans'&&location.hash.startsWith('#plans/')) && location.hash!=='#view/'+name){
     history[options.restore?'replaceState':'pushState'](null,'',location.pathname+location.search+'#view/'+name);
   }
@@ -2616,6 +2622,7 @@ init();
 <script src="/static/learning-notebook.js?v=20261025-1"></script>
 <script src="/static/learning-history.js?v=20261021-p1-navigation"></script>
 <script src="/static/stocks.js?v=20261021-merge"></script>
+<script src="/static/investments.js?v=20261026"></script>
 <script src="/static/search.js?v=20261023-autofill"></script>
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>

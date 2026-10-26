@@ -56,7 +56,8 @@ def schemas():
     from behavior_report.store import TABLE_SQL as reports
     from knowledge.store import TABLE_SQL as links
     from stocks.store import TABLES as stocks
-    return [dashboard,EXTRA,plans,copilot,reading,reflections,stocks,behavior,errors,reports,links]
+    from investments.schema import TABLES as investments
+    return [dashboard,EXTRA,plans,copilot,reading,reflections,stocks,investments,behavior,errors,reports,links]
 
 
 def payload(row):

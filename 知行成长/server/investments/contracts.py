@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, model_validator
 
 
 def decimal_input(value):
@@ -47,6 +47,12 @@ class InstrumentInput(Contract):
     market: Literal['SSE', 'SZSE', 'BSE', 'FUND']
     kind: Literal['stock', 'etf', 'fund']
     name: str = Field(min_length=1, max_length=100)
+
+    @model_validator(mode='after')
+    def compatible_market(self):
+        if (self.market=='FUND') != (self.kind=='fund'):
+            raise ValueError('场外基金请选择对应市场。')
+        return self
 
 
 class FillInput(Contract):
@@ -134,6 +140,41 @@ class StateCommand(VersionCommand):
     state: Literal['confirmed', 'declined', 'expired', 'cancelled', 'paused']
 
 
+class ResearchInput(Contract):
+    instrument_id: Identifier | None = None
+    account_id: Identifier | None = None
+    title: str = Field(min_length=1,max_length=200)
+    content: str = Field(min_length=1,max_length=12000)
+    source_url: HttpUrl | None = None
+    locator: str = Field(max_length=1000,default='')
+    available_at: AwareDatetime
+    period_end: date | None = None
+    contrary_evidence: Text = ''
+
+
+class AnalysisInput(Contract):
+    kind: Literal['capital','research','plan','review']
+    account_id: Identifier | None = None
+    instrument_id: Identifier | None = None
+    question: str = Field(min_length=1,max_length=4000)
+    evidence_ids: list[Identifier] = Field(default_factory=list,max_length=30)
+    plan_ids: list[Identifier] = Field(default_factory=list,max_length=10)
+    review_ids: list[Identifier] = Field(default_factory=list,max_length=10)
+    include_amounts: bool = False
+    decision_at: AwareDatetime
+
+
+class FundOrderInput(Contract):
+    account_id: Identifier
+    instrument_id: Identifier
+    side: Literal['subscription','redemption']
+    applied_at: AwareDatetime
+    amount: Positive | None = None
+    quantity: Positive | None = None
+    note: Text = ''
+
+
 RESOURCE_MODELS = {'accounts': AccountInput, 'instruments': InstrumentInput,
                    'fills': FillInput, 'cash-events': CashInput, 'policies': PolicyInput,
-                   'strategies': StrategyInput, 'trade-plans': PlanInput, 'reviews': ReviewInput}
+                   'strategies': StrategyInput, 'trade-plans': PlanInput, 'reviews': ReviewInput,
+                   'research': ResearchInput, 'fund-orders': FundOrderInput}

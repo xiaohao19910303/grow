@@ -5,7 +5,7 @@ from pydantic import Field
 
 from copilot.core import Problem
 from tenancy import scoped
-from .contracts import Contract, RESOURCE_MODELS
+from .contracts import Contract, RESOURCE_MODELS, StateCommand
 from .store import InvestmentStore
 
 
@@ -48,6 +48,10 @@ def register(app):
     def balance(object_id: str):
         return store.balance(object_id)
 
+    @router.get('/accounts/{object_id}/campaigns')
+    def campaigns(object_id: str):
+        return {'items':store.campaigns(object_id)}
+
     def creators(kind,model):
         def create(payload, idempotency_key: str=Header(min_length=1,max_length=160)):
             return store.create(kind,payload.model_dump(mode='json'),idempotency_key)
@@ -75,6 +79,11 @@ def register(app):
             return store.update(kind,object_id,payload.version,payload.data,idempotency_key)
         return edit
 
+    def transitions(kind):
+        def change(object_id: str,payload: StateCommand,idempotency_key: str=Header(min_length=1,max_length=160)):
+            return store.transition(kind,object_id,payload.version,payload.state,idempotency_key)
+        return change
+
     for kind,model in RESOURCE_MODELS.items():
         router.add_api_route('/'+kind,creators(kind,model),methods=['POST'],status_code=201)
         router.add_api_route('/'+kind,listers(kind),methods=['GET'])
@@ -82,5 +91,7 @@ def register(app):
         router.add_api_route('/'+kind+'/{object_id}/history',histories(kind),methods=['GET'])
         if kind in ('policies','strategies','trade-plans','reviews'):
             router.add_api_route('/'+kind+'/{object_id}',editors(kind),methods=['PUT'])
+        if kind in ('policies','strategies','trade-plans'):
+            router.add_api_route('/'+kind+'/{object_id}/state',transitions(kind),methods=['POST'])
     app.include_router(router)
     return store

@@ -74,3 +74,31 @@ class InvestmentStoreTests(PostgreSQLFixture):
         self.assertEqual(a['id'],b['id'])
         with self.assertRaises(Problem):
             self.fill('c',external_id='broker-1',price='20')
+
+    def test_confirmed_versions_and_plan_snapshot_remain_immutable(self):
+        strategy=self.store.create('strategies',{'title':'趋势观察','entry_conditions':'条件明确',
+            'exit_conditions':'逻辑失效','validation_scope':'前向观察'},'strategy')
+        confirmed=self.store.transition('strategies',strategy['id'],1,'confirmed','confirm-strategy')
+        edited=self.store.update('strategies',strategy['id'],2,{'title':'新版本'},'edit-strategy')
+        self.assertEqual(edited['state'],'draft')
+        self.assertEqual(self.store.history('strategies',strategy['id'])[1],confirmed)
+
+    def test_campaign_partial_exit_close_and_next_cycle(self):
+        self.fill('b1')
+        self.fill('b2',price='12')
+        self.fill('s1',side='sell',price='13',quantity='50')
+        items=self.store.campaigns(self.account['id'])
+        self.assertEqual(len(items),1)
+        self.assertEqual(items[0]['state'],'open')
+        self.assertEqual(items[0]['quantity'],'150')
+        self.fill('s2',side='sell',price='12',quantity='150')
+        self.assertEqual(self.store.campaigns(self.account['id'])[0]['state'],'closed')
+        self.fill('b3')
+        self.assertEqual(len(self.store.campaigns(self.account['id'])),2)
+
+    def test_unverified_trade_plan_cannot_become_executable(self):
+        plan=self.store.create('trade-plans',{'account_id':self.account['id'],
+            'instrument_id':self.instrument['id'],'title':'观察',
+            'valid_until':'2026-12-01T15:00:00+08:00'},'plan')
+        with self.assertRaises(Problem):
+            self.store.transition('trade-plans',plan['id'],1,'confirmed','confirm-plan')

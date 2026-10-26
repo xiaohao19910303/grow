@@ -92,8 +92,8 @@ class InvestmentStore:
         c.execute('INSERT INTO investment_versions VALUES (?,?,?)',(data['id'],data['version'],encoded(data)))
 
     def references(self,c,kind,data):
-        account = self._get(c,'accounts',data['account_id']) if 'account_id' in data else None
-        if 'instrument_id' in data:
+        account = self._get(c,'accounts',data['account_id']) if data.get('account_id') else None
+        if data.get('instrument_id'):
             self._get(c,'instruments',data['instrument_id'])
         for opening in data.get('opening_positions',[]):
             self._get(c,'instruments',opening['instrument_id'])
@@ -132,8 +132,20 @@ class InvestmentStore:
                     return existing
             stamp=now()
             record={**data,'id':'inv-'+uuid.uuid4().hex,'version':1,'created_at':stamp,'updated_at':stamp}
+            if kind=='fills' and data.get('plan_id'):
+                plan=self._get(c,'trade-plans',data['plan_id'])
+                record['plan_snapshot']=plan
+                record['plan_recorded_before_execution']=(plan.get('state')=='confirmed' and
+                    datetime.fromisoformat(plan['confirmed_at'])<=datetime.fromisoformat(data['executed_at']))
             if kind in ('policies','strategies','trade-plans'):
                 record['state']='draft'
+            if kind=='fund-orders':
+                instrument=self._get(c,'instruments',data['instrument_id'])
+                if instrument['kind']!='fund':
+                    fail('validation_error','此申请仅适用于场外基金。',422)
+                if (data['side']=='subscription' and not data.get('amount')) or (data['side']=='redemption' and not data.get('quantity')):
+                    fail('validation_error','申购请填写金额，赎回请填写份额。',422)
+                record['state']='pending'
             self.save(c,kind,record,fresh=True)
             if kind=='accounts':
                 c.execute('INSERT INTO investment_accounts VALUES (?,?,?)',
@@ -165,7 +177,8 @@ class InvestmentStore:
                 fail('version_conflict','记录已更新，请载入最新版本后再修改。')
             if kind not in ('policies','strategies','trade-plans','reviews'):
                 fail('immutable_fact','此事实需通过专用核对流程更正，不能覆盖。')
-            data=self.validate(kind,payload)
+            previous={k:old[k] for k in RESOURCE_MODELS[kind].model_fields if k in old}
+            data=self.validate(kind,{**previous,**payload})
             self.references(c,kind,data)
             if old.get('account_id') != data.get('account_id'):
                 fail('validation_error','已有记录不能移到另一个账户。',422)
@@ -188,3 +201,16 @@ class InvestmentStore:
         with db.connect() as c:
             self.lock(c)
             return self._balance(c,account_id,marks or {})
+
+    def transition(self,kind,object_id,version,state,key):
+        from .planning import transition
+        return transition(self,kind,object_id,version,state,key)
+
+    def campaigns(self,account_id):
+        from .campaigns import project
+        with db.connect() as c:
+            self.lock(c)
+            account=self._get(c,'accounts',account_id)
+            fills=[json.loads(r[0]) for r in c.execute('''SELECT o.data FROM investment_fills f
+                JOIN investment_objects o ON o.id=f.id WHERE f.account_id=? ORDER BY f.executed_at,f.sequence''',(account_id,))]
+            return project(account,fills)
