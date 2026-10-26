@@ -1,0 +1,5 @@
+course library model: status, denominator, resume and lifecycle passed
+Navigation grouping passed: five main tabs, reduced secondary groups, preserved legacy destinations and standalone global search.
+Discovery navigation checks passed: exact saved targets, keyboard, partial warnings and leave guards.
+Learning action client checks passed: safe text, progress, schema/version writes, retry, account and navigation races.
+Study draft session checks passed: recovery, offline, accounts, concurrent edits, conflicts, uncertain saves.

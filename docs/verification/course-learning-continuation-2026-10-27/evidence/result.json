@@ -1,0 +1,150 @@
+{
+  "python_tests": 141,
+  "javascript_groups": 5,
+  "modules": [
+    {
+      "module": "regression-test_browser_ai_config.py.log",
+      "python_tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_learning_notebook_browser.py.log",
+      "python_tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_plan_refinement.py.log",
+      "python_tests": 14,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_learning_actions_browser.py.log",
+      "python_tests": 6,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_navigation_allbrowser.py.log",
+      "python_tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_course_libraryall.py.log",
+      "python_tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_study_generation.py.log",
+      "python_tests": 7,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_background_generations.py.log",
+      "python_tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_github_plans.py.log",
+      "python_tests": 17,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_sequential_learning_browser.py.log",
+      "python_tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_self_paced.py.log",
+      "python_tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_legacy_cloud_api.py.log",
+      "python_tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_plans.py.log",
+      "python_tests": 28,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "regression-test_course_completion_loop.py.log",
+      "python_tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "service.log",
+      "python_tests": 10,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "browser.log",
+      "python_tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "copilot.log",
+      "python_tests": 23,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    },
+    {
+      "module": "study-materials.log",
+      "python_tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": []
+    }
+  ]
+}

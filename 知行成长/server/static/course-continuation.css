@@ -1,0 +1,10 @@
+.course-continuation{min-width:0;overflow-wrap:anywhere;border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--spacing-lg);margin:var(--spacing-lg) 0}
+.course-continuation h3{margin-top:0}.continuation-body{margin-top:var(--spacing-lg)}
+.continuation-option{border:1px solid var(--border);border-radius:var(--radius-md);padding:var(--spacing-lg);margin:var(--spacing-md) 0;background:var(--card)}
+.continuation-option h4{margin:0 0 var(--spacing-sm)}
+.continuation-check{display:flex;align-items:center;gap:var(--spacing-sm);margin:var(--spacing-sm) 0;line-height:1.7}
+.continuation-check input{width:auto;flex-shrink:0}
+.course-continuation textarea{min-height:80px;resize:vertical;max-width:100%}
+.course-continuation input,.course-continuation select{max-width:100%;min-width:0}
+.continuation-sources{margin-top:var(--spacing-lg);border-top:1px solid var(--border);padding-top:var(--spacing-lg)}
+@media(max-width:600px){.course-continuation{padding:var(--spacing-md)}.course-continuation .plan-grid{grid-template-columns:minmax(0,1fr)}.course-continuation .btn{white-space:normal;max-width:100%}}

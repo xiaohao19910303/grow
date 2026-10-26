@@ -1,0 +1,32 @@
+/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_backup_change_detection_and_stale_preview (test_copilot.CourseChecks.test_backup_change_detection_and_stale_preview) ... ok
+test_backup_restore_preserves_learning_state (test_copilot.CourseChecks.test_backup_restore_preserves_learning_state) ... ok
+test_concurrent_publication_is_single (test_copilot.CourseChecks.test_concurrent_publication_is_single) ... ok
+test_conflict_preserves_external_notes (test_copilot.CourseChecks.test_conflict_preserves_external_notes) ... ok
+test_different_writers_compete_for_same_lesson (test_copilot.CourseChecks.test_different_writers_compete_for_same_lesson) ... ok
+test_duplicate_missing_sources_and_short_filename (test_copilot.CourseChecks.test_duplicate_missing_sources_and_short_filename) ... ok
+test_existing_import_and_read_only_content (test_copilot.CourseChecks.test_existing_import_and_read_only_content) ... ok
+test_full_168_lesson_boundary (test_copilot.CourseChecks.test_full_168_lesson_boundary) ... ok
+test_gap_unknown_date_and_round_end (test_copilot.CourseChecks.test_gap_unknown_date_and_round_end) ... ok
+test_generation_failure_and_unverified_citation (test_copilot.CourseChecks.test_generation_failure_and_unverified_citation) ... ok
+test_generation_simulated_events_and_cancel (test_copilot.CourseChecks.test_generation_simulated_events_and_cancel) ... ok
+test_isolated_api_access_and_local_reading (test_copilot.CourseChecks.test_isolated_api_access_and_local_reading) ... ok
+test_numbered_tables_in_personal_notes_are_not_catalog (test_copilot.CourseChecks.test_numbered_tables_in_personal_notes_are_not_catalog) ... ok
+test_old_state_sync_does_not_clear_copilot (test_copilot.CourseChecks.test_old_state_sync_does_not_clear_copilot) ... ok
+test_path_and_version_protection (test_copilot.CourseChecks.test_path_and_version_protection) ... ok
+test_plan_confirmation_invalidation_and_missing_sources (test_copilot.CourseChecks.test_plan_confirmation_invalidation_and_missing_sources) ... ok
+test_publish_idempotency_and_learning (test_copilot.CourseChecks.test_publish_idempotency_and_learning) ... ok
+test_recovery_after_database_finalize_failure (test_copilot.CourseChecks.test_recovery_after_database_finalize_failure) ... ok
+test_recovery_after_index_failure (test_copilot.CourseChecks.test_recovery_after_index_failure) ... ok
+test_recovery_after_second_file_failure (test_copilot.CourseChecks.test_recovery_after_second_file_failure) ... ok
+test_recovery_preserves_unknown_hash (test_copilot.CourseChecks.test_recovery_preserves_unknown_hash) ... ok
+test_same_day_and_missing_volume (test_copilot.CourseChecks.test_same_day_and_missing_volume) ... ok
+test_unplanned_lesson_never_calls_transport (test_copilot.CourseChecks.test_unplanned_lesson_never_calls_transport) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 10.036s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 23, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

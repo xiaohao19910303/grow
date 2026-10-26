@@ -1,0 +1,13 @@
+{
+  "health": 200,
+  "login": 200,
+  "page": 200,
+  "context": 200,
+  "context_shape": true,
+  "jobs": 200,
+  "plans": 200,
+  "budget_shape": true,
+  "script": 200,
+  "script_current": true,
+  "logout": 200
+}

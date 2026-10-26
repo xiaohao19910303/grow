@@ -90,6 +90,7 @@
     if (!response.ok) throw new Error(data.message || data.detail || '请求失败，请检查服务。');
     if (method !== 'GET' && /\/lessons\/\d+\/(complete|review|summary|learning-state)$/.test(path)) {
       await window.refreshLearningCompletion?.(data);
+      if(!path.endsWith('/learning-state')&&data.status==='done'&&document.getElementById('view-copilot').style.display!=='none')window.CourseContinuation?.mount(reader,'renzhi',{refresh:true});
     }
     return data;
   }
@@ -153,6 +154,7 @@
       await load(false);
     }, actions, 'btn primary');
     publishButton.disabled = d.status !== 'ready';
+    if(d.status==='ready')button('放弃草稿',async()=>{await request('/generations/'+d.id+'/cancel','POST',{});editor.hidden=true;dirty=false;await load(false);message('草稿已放弃，可以重新生成。');},actions);
     button('重新生成（可能新增费用）', async () => {
       if (confirm('重新生成将创建新的模型调用，可能产生新增费用。继续？')) await generate(d.lesson_no);
     }, actions);
@@ -208,6 +210,7 @@
       readingTracker.start();
     }
 
+    if(lesson.learning_state==='completed')window.CourseContinuation?.mount(reader,'renzhi',{refresh:true});
     window.CourseLibrary?.recordOpened('renzhi',number);
     reader.scrollIntoView({behavior: 'smooth', block: 'start'});
   }
@@ -401,6 +404,7 @@
   window.renderLearningMarkdown = markdown;
   window.leaveCopilot = () => {++readingRequest;stopReading();};
   window.showCopilotManagement = () => { ++readingRequest;stopReading();root.classList.remove('reading-mode');management.open=true; };
+  window.generateNextCognitiveLesson=number=>generate(number);
   window.openCopilotLesson = async number => {
     if (goTab('copilot', {reading:true}) === false) return;
     try { await read(number); } catch (error) { message(error.message); }

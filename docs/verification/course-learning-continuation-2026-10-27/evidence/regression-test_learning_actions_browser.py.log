@@ -1,0 +1,13 @@
+test_adopt_publish_arrange_complete_and_retry_read (test_learning_actions_browser.LearningActionsBrowserTests.test_adopt_publish_arrange_complete_and_retry_read) ... ok
+test_expired_h5_session_keeps_only_safe_native_lesson_continuation (test_learning_actions_browser.LearningActionsBrowserTests.test_expired_h5_session_keeps_only_safe_native_lesson_continuation) ... ok
+test_mobile_plan_and_source_links_open_without_marking_learning_complete (test_learning_actions_browser.LearningActionsBrowserTests.test_mobile_plan_and_source_links_open_without_marking_learning_complete) ... ok
+test_partial_success_retry_and_adoption_opt_out (test_learning_actions_browser.LearningActionsBrowserTests.test_partial_success_retry_and_adoption_opt_out) ... ok
+test_private_learning_scope_is_separate_and_requires_own_confirmation (test_learning_actions_browser.LearningActionsBrowserTests.test_private_learning_scope_is_separate_and_requires_own_confirmation) ... ok
+test_reading_scope_requires_target_preview_and_explicit_consent_in_real_h5 (test_learning_actions_browser.LearningActionsBrowserTests.test_reading_scope_requires_target_preview_and_explicit_consent_in_real_h5) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 9.722s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 6, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

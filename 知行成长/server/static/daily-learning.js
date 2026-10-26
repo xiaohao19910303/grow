@@ -297,14 +297,14 @@
         status.textContent = input.value !== sent.summary_text ? '已学完；最新修改的笔记会单独暂存。' :
           '已学完，学习记录已保存。' + (hasNext ? '可以继续下一课。' : '本模块已保存课程已全部学完。');
         generationPanel.replaceChildren();
-        if (!hasNext && current) window.renderStudyGeneration?.(generationPanel, current);
+        if (current) window.CourseContinuation?.mount(generationPanel,module.id,{refresh:true});
       } catch (error) {
         status.textContent = '保存未完成，笔记仍保留：' + error.message;
       } finally { draft.saving = false; save.disabled = false; }
     });
     save.classList.add('primary');
     input.oninput = () => { next.disabled = hasStudyDraft(); };
-    if (module.lessons.every(item => item.learning_state === 'completed')) window.renderStudyGeneration?.(generationPanel, module);
+    if (lesson.learning_state === 'completed') window.CourseContinuation?.mount(generationPanel,module.id,{refresh:true});
     reader.append(form);
   }
   window.openStudyCourse = async (moduleId, filename, options = {}) => {

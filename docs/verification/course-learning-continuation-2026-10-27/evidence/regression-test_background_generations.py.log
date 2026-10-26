@@ -1,0 +1,12 @@
+test_advanced_result_and_incomplete_output (test_background_generations.BackgroundTests.test_advanced_result_and_incomplete_output) ... ok
+test_cancel_is_explicit_and_replay_never_regenerates (test_background_generations.BackgroundTests.test_cancel_is_explicit_and_replay_never_regenerates) ... ok
+test_cancellation_during_result_commit_keeps_successful_result (test_background_generations.BackgroundTests.test_cancellation_during_result_commit_keeps_successful_result) ... ok
+test_reload_and_lost_response_replay_do_not_restart_model (test_background_generations.BackgroundTests.test_reload_and_lost_response_replay_do_not_restart_model) ... ok
+test_task_lookup_is_scoped_to_its_account_store (test_background_generations.BackgroundTests.test_task_lookup_is_scoped_to_its_account_store) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.093s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 75}
+REGRESSION_RESULT {"python_tests": 5, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

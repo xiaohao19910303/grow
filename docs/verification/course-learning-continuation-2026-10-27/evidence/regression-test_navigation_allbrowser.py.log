@@ -1,0 +1,9 @@
+test_shared_filters_compact_panels_and_topic_records (test_navigation_audit_browser.NavigationAuditBrowser.test_shared_filters_compact_panels_and_topic_records) ... ok
+test_relocated_entries_keep_history_and_course_tools (test_navigation_organization_browser.NavigationOrganizationBrowser.test_relocated_entries_keep_history_and_course_tools) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 12.421s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 2, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

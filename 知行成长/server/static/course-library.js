@@ -111,7 +111,6 @@
       button(actions,'认知课程管理',()=>goTab('copilot'));
       button(actions,'课程归档',()=>goTab('archive'));button(actions,'课程总结',()=>goTab('summary'));
     }
-    if(['yingyu','biaoda'].includes(item.module.id)&&item.lessons.length&&item.lessons.every(l=>l.learning_state==='completed'))window.renderStudyGeneration?.(box,item.module);
     button(actions,'草稿与课程设置',()=>goTab('plans'));
   }
   function renderDetail(){
@@ -130,10 +129,11 @@
     if(!['paused','archived','completed'].includes(item.status)){
       const actions=node('div',undefined,'course-actions');
       if(item.next)primary(actions,item);
-      else actions.append(node('p',item.caughtUp?'已学完当前发布内容，可在课程工具中准备后续课程。':'尚无已发布课次，可在课程工具中准备第一课。','desc'));
+      else actions.append(node('p',item.caughtUp?'已学完当前发布内容，可在下方选择下一步学习。':'尚无已发布课次，可在下方准备第一课。','desc'));
       overview.append(actions);
     }
     detail.append(overview);
+    window.CourseContinuation?.mount(detail,item.key,{refresh:true});
     detail.append(node('h3','课程目录'));
     const curriculum=item.module.curriculum;
     const stages=item.finite?curriculum.stages:[{title:'已发布课次',goal:'课程持续更新；打开和暂存笔记不会自动算学完。'}];
@@ -151,14 +151,14 @@
       if(!planned.length)box.append(node('p','尚无已发布课次。','desc'));
     });
     if(item.finite){const plan=disclosure(detail,'学习规划','plan');
-      if(item.module.brief)plan.append(node('p',`当前基础：${item.module.brief.level||'未填写'} · ${item.module.brief.weeks} 周 · 每周 ${item.module.brief.sessions} 次`,'desc'));
+      if(item.module.brief)plan.append(node('p',`当前基础：${item.module.brief.level||'未填写'} · `+(item.module.brief.pacing==='self_paced'?`自由节奏 · 共 ${item.module.brief.lesson_count} 课`:`${item.module.brief.weeks} 周 · 每周 ${item.module.brief.sessions} 次`),'desc'));
       if(curriculum.prerequisites)plan.append(node('p','先修说明：'+curriculum.prerequisites));
       button(plan,'查看或调整完整规划',()=>window.openLearningPlan(item.module.id));
     }
     tools(detail,item);sourceStatus(detail);
     for(const el of detail.querySelectorAll('details[data-section]'))if(expanded.has(el.dataset.section))el.open=expanded.get(el.dataset.section);
   }
-  function render(){renderLibrary();if(selected)renderDetail();}
+  function render(){renderLibrary();if(selected&&detail.style.display!=='none')renderDetail();}
   function open(key,options={}){
     const previous=selected;selected=key;
     if(previous!==key)detail.replaceChildren();

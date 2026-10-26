@@ -41,8 +41,15 @@
   }
   function briefFields(parent,b={}) {
     const box=node('div',undefined,'plan-grid');parent.append(box);
-    const fields={title:field(box,'学习方向',b.title),goal:field(box,'希望学会什么',b.goal),level:field(box,'当前基础',b.level||'零基础'),weeks:field(box,'周期（周）',b.weeks||8,'number'),sessions:field(box,'每周学习次数',b.sessions||5,'number'),minutes:field(box,'每次分钟数',b.minutes||20,'number')};
-    return ()=>Object.fromEntries(Object.entries(fields).map(([k,e])=>[k,['weeks','sessions','minutes'].includes(k)?Number(e.value):e.value]));
+    const fields={title:field(box,'学习方向',b.title),goal:field(box,'希望学会什么',b.goal),level:field(box,'当前基础',b.level||'零基础'),minutes:field(box,'每次分钟数',b.minutes||20,'number')};
+    const label=node('label','学习节奏','plan-field'),pacing=node('select');
+    for(const [value,text] of [['weekly','按周规划'],['self_paced','自由节奏']]){const o=node('option',text);o.value=value;pacing.append(o);}
+    pacing.value=b.pacing||'weekly';label.append(pacing);box.append(label);
+    const weekly=node('div',undefined,'plan-grid');box.append(weekly);
+    const weeks=field(weekly,'周期（周）',b.weeks||8,'number'),sessions=field(weekly,'每周学习次数',b.sessions||5,'number');
+    const free=node('div');box.append(free);const count=field(free,'总课数',b.lesson_count||4,'number');
+    const toggle=()=>{weekly.hidden=pacing.value==='self_paced';free.hidden=!weekly.hidden;};pacing.onchange=toggle;toggle();
+    return ()=>({...Object.fromEntries(Object.entries(fields).map(([k,e])=>[k,k==='minutes'?Number(e.value):e.value])),...(pacing.value==='self_paced'?{pacing:'self_paced',lesson_count:Number(count.value)}:{weeks:Number(weeks.value),sessions:Number(sessions.value)})});
   }
   async function generateAndWatch(body){const turn=navigation;const a=await api('/generate',body);if(turn===navigation&&root.style.display!=='none')await watch(a.id);else observe(a.id);}
   function refresh(){window.loadDailyLearning?.({force:true});}
@@ -67,7 +74,7 @@
       if(AIConfig.status())window.AISetup?.entry(root);
       button(root,'完成与进度说明',()=>window.showCompletionHelp?.());
       const budget=node('details');budget.append(node('summary','每周总时间预算'));root.append(budget);
-      budget.append(node('p',`已登记投入 ${data.budget.known_minutes} 分钟/周${data.budget.legacy_unknown?'；旧模块投入尚未登记':''}。新增计划默认不启用定时任务。`));
+      budget.append(node('p',`已登记投入 ${data.budget.known_minutes} 分钟/周${data.budget.legacy_unknown?'；旧模块投入尚未登记':''}${data.budget.self_paced_count?'；'+data.budget.self_paced_count+' 门自由节奏课程每周投入尚未安排':''}。新增计划默认不启用定时任务。`));
       const limit=field(budget,'总预算（分钟/周，留空为未知）',data.budget.weekly,'number');
       const legacy=field(budget,'旧模块合计投入（分钟/周，留空为未知）',data.budget.legacy_weekly,'number');
       button(budget,'保存预算',async()=>{await api('/budget',{weekly:limit.value===''?null:Number(limit.value),legacy_weekly:legacy.value===''?null:Number(legacy.value)});await window.loadPlans();});
@@ -89,7 +96,7 @@
     const args=()=>({brief:getBrief(),plan_id:existing?.plan.id||null,base_version:existing?.plan.version||0,feedback_lessons:selected.filter(([c])=>c.checked).map(([,n])=>n)});
     button(root,'让AI生成规划草稿',async()=>{await generateAndWatch({...args(),kind:'plan',key:uuid()});},true);
     button(root,'手动编写规划',()=>{
-      const b=getBrief();const count=b.weeks*b.sessions;
+      const b=getBrief();const count=b.pacing==='self_paced'?b.lesson_count:b.weeks*b.sessions;
       if(!Number.isInteger(count)||count<1||count>364)throw new Error('请先填写有效的周期与次数。');
       const doc=existing?.current.document||{prerequisites:'',stages:[{title:'',goal:''}],lessons:Array.from({length:count},(_,i)=>({number:i+1,topic:'',goal:'',exercise:'',assessment:'',stage:1,kind:i===count-1?'review':'lesson',minutes:b.minutes,requires:[]}))};
       editPlan({...args(),document:doc,external_hash:existing?.external.changed?existing.external.hash:null},existing);
@@ -134,7 +141,7 @@
     const getDoc=()=>({prerequisites:prereq.value,stages:stages.map(e=>({title:e.title.value,goal:e.goal.value})),lessons:editors.map((e,i)=>({number:i+1,...Object.fromEntries(['topic','goal','exercise','assessment','kind'].map(k=>[k,e[k].value])),stage:Number(e.stage.value),minutes:Number(e.minutes.value),requires:readRequires(e)}))});
     const initial=canonical({brief:getBrief(),document:getDoc()});dirtyCheck=()=>canonical({brief:getBrief(),document:getDoc()})!==initial;
     const ack=existing?.external.changed?field(root,'已核对规划文件的外部修改，允许导入并保留原文','','checkbox'):null;
-    button(root,'保存草稿并预览',async()=>{const turn=navigation;if(ack&&!ack.checked)throw new Error('请先核对规划文件的外部修改。');const saved=await api('/drafts',{brief:getBrief(),document:getDoc(),plan_id:d.plan_id||null,base_version:d.base_version||0,external_hash:ack?existing.external.hash:null,...(d.id?{parent_draft_id:d.id,parent_hash:d.content_hash}:{})});if(turn===navigation){dirtyCheck=null;await previewDraft(saved.id);}else toast('草稿已保存，可从计划列表查看。');},true);
+    button(root,'保存草稿并预览',async()=>{const turn=navigation;if(ack&&!ack.checked)throw new Error('请先核对规划文件的外部修改。');const saved=await api('/drafts',{brief:getBrief(),document:getDoc(),plan_id:d.plan_id||null,base_version:d.base_version||0,external_hash:ack?existing.external.hash:null,...(d.continuation_id?{continuation_id:d.continuation_id,continuation_form_hash:d.continuation_form_hash}:{}),...(d.id?{parent_draft_id:d.id,parent_hash:d.content_hash}:{})});if(turn===navigation){dirtyCheck=null;await previewDraft(saved.id);}else toast('草稿已保存，可从计划列表查看。');},true);
   }
   async function detail(pid){
     const status=shell('计划详情');route('detail',pid);status.textContent='正在读取课程规划…';const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
@@ -336,10 +343,11 @@
       note.textContent=active?(entries.length?'正在逐步补全。下面是预览片段，尚未正式保存。':'已经提交给 AI，首段内容到达后会在这里显示。'):(a.error||'已完成，可以阅读和调整草稿。');
       if(!active&&!opened){opened=true;
         if(a.draft_id)button(actions,a.state==='ready'?'查看生成预览':'检查并修正草稿',()=>previewDraft(a.draft_id),true);
-        if(a.state==='failed'&&a.kind==='plan'&&!a.draft_id)button(actions,'检查完整输出并手动修正',async()=>{const failed=await api('/attempts/'+id);if(!failed.complete||failed.operation==='refine')throw new Error('输出未完整结束或是局部调整，请保留原稿并重新调整。');let doc;try{doc=JSON.parse(failed.raw);}catch(_){throw new Error('输出不是完整JSON，请返回创建页手动填写。');}if(!Array.isArray(doc.stages)||!Array.isArray(doc.lessons)||doc.stages.some(x=>!x||typeof x!=='object')||doc.lessons.some(x=>!x||typeof x!=='object'))throw new Error('结构无法安全编辑，请返回创建页手动填写。');await editPlan({...failed.context,document:doc});});
+        if(a.state==='failed'&&a.kind==='plan'&&!a.draft_id)button(actions,'检查完整输出并手动修正',async()=>{const failed=await api('/attempts/'+id);if(!failed.complete||failed.operation==='refine')throw new Error('输出未完整结束或是局部调整，请保留原稿并重新调整。');let doc;try{doc=JSON.parse(failed.raw);}catch(_){throw new Error('输出不是完整JSON，请返回创建页手动填写。');}if(!Array.isArray(doc.stages)||!Array.isArray(doc.lessons)||doc.stages.some(x=>!x||typeof x!=='object')||doc.lessons.some(x=>!x||typeof x!=='object'))throw new Error('结构无法安全编辑，请返回创建页手动填写。');await editPlan({...failed.context,document:doc,...(failed.context.continuation?{continuation_id:failed.context.continuation.continuation_id,continuation_form_hash:failed.context.continuation.form_hash}:{})});});
         if(a.state!=='ready')button(actions,'重新生成一份',async()=>{const old=await api('/attempts/'+id);const ctx=old.context;let fresh;
           if(old.operation==='refine')fresh=await api('/drafts/'+ctx.parent.id+'/refine',{key:uuid(),parent_hash:ctx.parent_hash,instruction:ctx.instruction,scope:ctx.scope,...(old.kind==='plan'&&ctx.scope.mode==='all'?{brief:ctx.brief}:{})});
-          else fresh=await api('/generate',{key:uuid(),kind:old.kind,...(old.kind==='plan'?ctx:{plan_id:ctx.plan_id})});
+          else if(old.kind==='plan'&&ctx.continuation)fresh=await window.CourseContinuation.retryPlan(ctx.continuation.continuation_id);
+          else fresh=await api('/generate',{key:uuid(),kind:old.kind,...(old.kind==='plan'?ctx:{plan_id:ctx.plan_id,...(ctx.extension?{extend:true}:{}),...(ctx.strict_sources?{strict_sources:true}:{})})});
           await watch(fresh.id);
         });
       }
@@ -358,13 +366,13 @@
       if(d.state==='ready')button(actions,'告诉 AI 如何调整',()=>refineEditor(d));
     }
     if(d.kind==='plan'){
-      root.append(node('p',`${d.brief.weeks}周 · 每周${d.brief.sessions}次 · 每次${d.brief.minutes}分钟 · 共${d.document.lessons.length}课`,'plan-summary'));
+      root.append(node('p',d.brief.pacing==='self_paced'?`自由节奏 · 共${d.brief.lesson_count}课 · 每次${d.brief.minutes}分钟`:`${d.brief.weeks}周 · 每周${d.brief.sessions}次 · 每次${d.brief.minutes}分钟 · 共${d.document.lessons.length}课`,'plan-summary'));
       if(d.budget)root.append(node('p',`每周已知总投入（含本规划）：${d.budget.known_minutes}分钟；预算：${d.budget.weekly??'未设置'}${d.budget.over?'；超出'+d.budget.over+'分钟':''}${d.budget.legacy_unknown?'；旧模块投入尚未登记':''}`,'desc'));
       root.append(node('p','学习目标：'+d.brief.goal),node('p','当前基础：'+d.brief.level),node('h3','先修说明'),node('p',d.document.prerequisites));
       d.document.stages.forEach((s,i)=>{const box=node('section',undefined,'plan-stage');box.append(node('h3',`阶段${i+1} · ${s.title}`),node('p',s.goal));root.append(box);});
       root.append(node('h3','逐课安排'));
       for(const l of d.document.lessons){const box=node('details');box.append(node('summary',`第${l.number}课 · ${l.topic} · ${l.minutes}分钟${d.frozen_lessons.includes(l.number)?' · 已发布，不能调整':''}`));box.append(node('p','目标：'+l.goal),node('p','练习：'+l.exercise),node('p','自查：'+l.assessment),node('p',`阶段${l.stage} · ${l.kind==='review'?'复盘':'新知识'} · 先修：${l.requires.join('、')||'无'}`));root.append(box);}
-    }else{markdown(root,d.content);const notes=node('details');notes.open=true;notes.append(node('summary','参考资料与适用边界'));root.append(notes);notes.append(node('p','以下内容是 AI 整理的资料摘要。提供链接不等于已核实网页全文，请核对出处。','desc'));markdown(notes,d.sources);}
+    }else{if(d.context.extension)root.append(node('p',`保存本课时，原课程将增加第 ${d.context.lesson_no} 课，并转为共 ${d.context.lesson_no} 课的自由节奏规划；不再折算固定周投入。预览期间原进度保持不变。`,'desc'));markdown(root,d.content);const notes=node('details');notes.open=true;notes.append(node('summary','参考资料与适用边界'));root.append(notes);notes.append(node('p','以下内容是 AI 整理的资料摘要。提供链接不等于已核实网页全文，请核对出处。','desc'));markdown(notes,d.sources);}
     if(d.parent_draft_id){
       const comparison=node('section',undefined,'section plan-comparison');comparison.append(node('h3','与上一版的实际变化'));root.append(comparison);
       if(!d.diff.length)comparison.append(node('p','内容没有变化。'));
@@ -382,6 +390,7 @@
       button(confirmBox,'确认改为今天日期并预览',async()=>{const child=await api('/drafts/'+id+'/redate',{parent_hash:d.content_hash,confirm_date:true});await previewDraft(child.id);},true);return;
     }
     const check=field(confirmBox,'已阅读这份草稿，确认将其正式保存','','checkbox');
+    if(d.kind==='plan'&&d.continuation_id){window.CourseContinuation.planActions(confirmBox,d,check);return;}
     const linkActions=d.kind==='plan'?field(confirmBox,'同时关联到行动（不指定学习日期）','','checkbox'):null;if(linkActions)linkActions.checked=true;
     button(confirmBox,d.kind==='plan'?'采用这份规划':'保存正式课程',async()=>{
       const turn=navigation;if(!check.checked)throw new Error('请先阅读草稿并勾选确认。');let result;
@@ -448,9 +457,13 @@
       const feedback=detail.feedback.find(item=>item.lesson_no===n);
       const notes=window.StudyNotes.mount({parent:reader,content,kind:'plan',course:pid+'/'+n,version,seedNotes:feedback?.comment||''});
       const status=node('p',d.lesson.learning_state==='completed'?'本课已完成；修改笔记不会改变完成状态。':'本课尚未完成；笔记与答案可先暂存。','desc');notes.form.insertBefore(status,notes.status);
-      button(notes.actions,'本人确认学完',async()=>{await notes.flush();await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:feedback?.comment||'',...(window.actionContentOrigin?.target?.kind==='plan'&&window.actionContentOrigin.target.plan_id===pid&&window.actionContentOrigin.target.lesson_no===n?{origin_action_id:window.actionContentOrigin.actionId}:{})});d.lesson.learning_state='completed';status.textContent='本课已完成，笔记与练习答案已独立暂存。';refresh();},true);
+      button(notes.actions,'本人确认学完',async()=>{await notes.flush();await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:feedback?.comment||'',...(window.actionContentOrigin?.target?.kind==='plan'&&window.actionContentOrigin.target.plan_id===pid&&window.actionContentOrigin.target.lesson_no===n?{origin_action_id:window.actionContentOrigin.actionId}:{})});d.lesson.learning_state='completed';status.textContent='本课已完成，笔记与练习答案已独立暂存。';refresh();window.CourseContinuation?.mount(reader,'plan:'+pid,{refresh:true});},true);
+      if(d.lesson.learning_state==='completed')window.CourseContinuation?.mount(reader,'plan:'+pid,{refresh:true});
     }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,(window.lessonReturnLabel?.() || '返回我的课程'),returnFromLesson);button(reader,'重试读取课程',()=>window.openPlanCourse(pid,n));}finally{loading?.finish();}
   };
+  window.openPlanDraft=async id=>{if(goTab('plans',{create:true})===false)return false;return previewDraft(id);};
+  window.editLearningPlanDraft=async id=>{const d=await api('/drafts/'+id);return editPlan(d);};
+  window.watchLearningPlanAttempt=async id=>{if(goTab('plans',{create:true})===false)return false;return watch(id);};
   window.createLearningPlan=()=>{if(goTab('plans',{create:true})===false)return false;create();return true;};
   window.openLearningPlan=async pid=>{if(goTab('plans',{create:true})===false)return false;await detail(pid);return true;};
 })();

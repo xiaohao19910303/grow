@@ -1,0 +1,12 @@
+/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_no_fake_weekly_minutes_or_adoption_budget_block (test_self_paced.BudgetTests.test_no_fake_weekly_minutes_or_adoption_budget_block) ... ok
+test_original_weekly_shape_is_unchanged (test_self_paced.ValidationTests.test_original_weekly_shape_is_unchanged) ... ok
+test_self_paced_count_and_last_review (test_self_paced.ValidationTests.test_self_paced_count_and_last_review) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.262s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 3, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}
