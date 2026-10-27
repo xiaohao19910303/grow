@@ -1,0 +1,23 @@
+/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_all_matches_single_module_and_returns_actual_saved_notes (test_search_timeline.SearchTimelineTests.test_all_matches_single_module_and_returns_actual_saved_notes) ... ok
+test_api_filters_and_stats_use_the_same_record_sources (test_search_timeline.SearchTimelineTests.test_api_filters_and_stats_use_the_same_record_sources) ... ok
+test_cross_source_pages_keep_exact_totals_after_candidate_limits (test_search_timeline.SearchTimelineTests.test_cross_source_pages_keep_exact_totals_after_candidate_limits) ... ok
+test_literal_wildcards_and_counts_are_not_silently_capped (test_search_timeline.SearchTimelineTests.test_literal_wildcards_and_counts_are_not_silently_capped) ... ok
+test_local_reading_note_is_searchable_and_opens_its_article (test_search_timeline.SearchTimelineTests.test_local_reading_note_is_searchable_and_opens_its_article) ... ok
+test_no_duplicates_archived_records_or_internal_reading_jobs (test_search_timeline.SearchTimelineTests.test_no_duplicates_archived_records_or_internal_reading_jobs) ... ok
+test_small_pages_and_stats_do_not_materialize_every_matching_record (test_search_timeline.SearchTimelineTests.test_small_pages_and_stats_do_not_materialize_every_matching_record) ... ok
+test_source_failure_is_reported_without_poisoning_later_queries (test_search_timeline.SearchTimelineTests.test_source_failure_is_reported_without_poisoning_later_queries) ... Discovery source unavailable: custom_records (UndefinedColumn)
+Discovery source unavailable: custom_records (UndefinedColumn)
+ok
+test_sql_dates_and_excerpt_projection_avoid_loading_unrelated_large_bodies (test_search_timeline.SearchTimelineTests.test_sql_dates_and_excerpt_projection_avoid_loading_unrelated_large_bodies) ... ok
+test_timeline_includes_end_date_and_has_consistent_counts (test_search_timeline.SearchTimelineTests.test_timeline_includes_end_date_and_has_consistent_counts) ... ok
+test_unrelated_documents_are_excluded_before_json_parsing (test_search_timeline.SearchTimelineTests.test_unrelated_documents_are_excluded_before_json_parsing) ... ok
+test_visible_course_identifiers_are_searchable_and_feedback_opens_original_lesson (test_search_timeline.SearchTimelineTests.test_visible_course_identifiers_are_searchable_and_feedback_opens_original_lesson) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.925s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 12, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

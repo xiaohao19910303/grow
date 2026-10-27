@@ -1,0 +1,7 @@
+Commands executed 2026-10-28 (exit 0):
+node 知行成长/server/tests/test_search_autofill.cjs
+Search autofill and pending-navigation checks passed.
+node 知行成长/server/tests/test_search_timeline_navigation.cjs
+Discovery navigation checks passed: exact saved targets, keyboard, partial warnings and leave guards.
+node 知行成长/server/tests/test_search_loading.cjs
+Search loading checks passed: immediate visible progress, abort older queries, no late navigation and leave-guard support.
