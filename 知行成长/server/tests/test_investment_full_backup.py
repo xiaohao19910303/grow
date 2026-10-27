@@ -18,6 +18,8 @@ class InvestmentFullBackupTests(unittest.TestCase):
 
     def test_whole_site_manifest_and_restore_include_investment_sources_versions_and_jobs(self):
         from standalone_backup import restore, verify
+        # The fixture owns this revision; source archives need no surrounding .git.
+        self.env['GROW_REVISION']=self.sha
         original=db.connect
         def connect_to(dsn):
             return patch('db.connect',lambda *a,**kw:original(dsn+' options=-csearch_path=tenant_fixture',tenant=False))
