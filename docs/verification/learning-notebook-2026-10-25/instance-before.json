@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-10-25T22:53:33.541348+08:00",
+  "url": "http://127.0.0.1:8000",
+  "runtime_revision": "local",
+  "modules_ready": true,
+  "http_status": {
+    "health": 200,
+    "login": 200,
+    "page": 200,
+    "storage": 200,
+    "notebook": 404,
+    "materials": 200,
+    "search": 200,
+    "notebook_js": 200,
+    "notebook_css": 200,
+    "logout": 200
+  }
+}

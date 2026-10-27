@@ -104,6 +104,23 @@
   --red: var(--error);
   --amber: var(--warning);
   --radius: var(--radius-xl);
+
+  /* ===== 按钮层级 ===== */
+  --btn-height: 36px;
+  --btn-height-sm: 30px;
+  --btn-height-lg: 44px;
+  --btn-padding: 0 14px;
+  --btn-padding-sm: 0 10px;
+  --btn-padding-lg: 0 18px;
+  --btn-radius: var(--radius-md);
+  --btn-font: 500 13px/1 var(--font-family);
+
+  /* ===== 热力图颜色 ===== */
+  --heatmap-0: #ebedf0;
+  --heatmap-1: #c6e48b;
+  --heatmap-2: #7bc96f;
+  --heatmap-3: #239a3b;
+  --heatmap-4: #196127;
 }
 
 /* ===== 暗色模式 ===== */
@@ -133,6 +150,12 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
     --shadow: var(--shadow-sm), var(--shadow-md);
+    /* 暗黑模式热力图 */
+    --heatmap-0: #2A2E38;
+    --heatmap-1: #1A4D2A;
+    --heatmap-2: #2FA84F;
+    --heatmap-3: #4FD670;
+    --heatmap-4: #7FE89A;
   }
 }
 
@@ -161,6 +184,12 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
   --shadow: var(--shadow-sm), var(--shadow-md);
+  /* 暗黑模式热力图 */
+  --heatmap-0: #2A2E38;
+  --heatmap-1: #1A4D2A;
+  --heatmap-2: #2FA84F;
+  --heatmap-3: #4FD670;
+  --heatmap-4: #7FE89A;
 }
 
 /* 手动切换明亮模式 (覆盖系统暗黑偏好) */

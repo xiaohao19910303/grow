@@ -1,0 +1,60 @@
+/tmp/grow-web-batch1-env/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_account_schemas_do_not_share_notes (test_study_notes.StudyNotesTests.test_account_schemas_do_not_share_notes) ... ok
+test_cross_site_and_unmarked_writes_are_forbidden (test_study_notes.StudyNotesTests.test_cross_site_and_unmarked_writes_are_forbidden) ... ok
+test_first_get_and_put_create_missing_tenant_table_and_public_read_survives_app_restart (test_study_notes.StudyNotesTests.test_first_get_and_put_create_missing_tenant_table_and_public_read_survives_app_restart) ... ok
+test_first_put_alone_can_create_the_table_and_explicit_initialize_is_repeatable (test_study_notes.StudyNotesTests.test_first_put_alone_can_create_the_table_and_explicit_initialize_is_repeatable) ... ok
+test_invalid_fields_and_input_limits_are_rejected_without_creating_notes (test_study_notes.StudyNotesTests.test_invalid_fields_and_input_limits_are_rejected_without_creating_notes) ... ok
+test_maximum_lengths_and_empty_draft_are_valid (test_study_notes.StudyNotesTests.test_maximum_lengths_and_empty_draft_are_valid) ... ok
+test_note_kinds_courses_and_nested_plan_course_ids_are_independent (test_study_notes.StudyNotesTests.test_note_kinds_courses_and_nested_plan_course_ids_are_independent) ... ok
+test_notebook_is_scoped_to_the_current_database_tenant (test_study_notes.StudyNotesTests.test_notebook_is_scoped_to_the_current_database_tenant) ... ERROR
+test_notebook_lists_saved_drafts_without_requiring_course_completion (test_study_notes.StudyNotesTests.test_notebook_lists_saved_drafts_without_requiring_course_completion) ... FAIL
+test_notebook_paginates_stably_and_omits_empty_notes (test_study_notes.StudyNotesTests.test_notebook_paginates_stably_and_omits_empty_notes) ... ERROR
+test_notebook_searches_answers_filters_modules_and_treats_wildcards_literally (test_study_notes.StudyNotesTests.test_notebook_searches_answers_filters_modules_and_treats_wildcards_literally) ... ERROR
+test_same_key_retry_is_idempotent_and_changed_replay_or_stale_tab_cannot_overwrite (test_study_notes.StudyNotesTests.test_same_key_retry_is_idempotent_and_changed_replay_or_stale_tab_cannot_overwrite) ... ok
+test_saving_notes_neither_completes_pending_courses_nor_changes_existing_completion_notes (test_study_notes.StudyNotesTests.test_saving_notes_neither_completes_pending_courses_nor_changes_existing_completion_notes) ... ok
+test_simultaneous_first_saves_have_one_winner (test_study_notes.StudyNotesTests.test_simultaneous_first_saves_have_one_winner) ... ok
+test_untrusted_note_and_answer_content_remains_plain_text (test_study_notes.StudyNotesTests.test_untrusted_note_and_answer_content_remains_plain_text) ... ok
+
+======================================================================
+ERROR: test_notebook_is_scoped_to_the_current_database_tenant (test_study_notes.StudyNotesTests.test_notebook_is_scoped_to_the_current_database_tenant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_study_notes.py", line 87, in test_notebook_is_scoped_to_the_current_database_tenant
+    self.assertEqual([n['preview'] for n in listing['items']], ['另一个人的私人笔记'])
+                                            ~~~~~~~^^^^^^^^^
+KeyError: 'items'
+
+======================================================================
+ERROR: test_notebook_paginates_stably_and_omits_empty_notes (test_study_notes.StudyNotesTests.test_notebook_paginates_stably_and_omits_empty_notes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_study_notes.py", line 72, in test_notebook_paginates_stably_and_omits_empty_notes
+    self.assertEqual(first['total'], 5)
+                     ~~~~~^^^^^^^^^
+KeyError: 'total'
+
+======================================================================
+ERROR: test_notebook_searches_answers_filters_modules_and_treats_wildcards_literally (test_study_notes.StudyNotesTests.test_notebook_searches_answers_filters_modules_and_treats_wildcards_literally)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_study_notes.py", line 57, in test_notebook_searches_answers_filters_modules_and_treats_wildcards_literally
+    self.assertEqual(self.client.get('/api/study-notes', params={'q': '判断依据'}).json()['total'], 1)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+KeyError: 'total'
+
+======================================================================
+FAIL: test_notebook_lists_saved_drafts_without_requiring_course_completion (test_study_notes.StudyNotesTests.test_notebook_lists_saved_drafts_without_requiring_course_completion)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_study_notes.py", line 39, in test_notebook_lists_saved_drafts_without_requiring_course_completion
+    self.assertEqual(response.status_code, 200, response.text)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 404 != 200 : {"detail":"Not Found"}
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.630s
+
+FAILED (failures=1, errors=3)
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 15, "skipped": 0, "failures": 1, "errors": 3, "javascript": []}
