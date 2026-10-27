@@ -28,6 +28,9 @@ class InvestmentIsolationTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/investments/accounts').json()['total'],0)
         for path in ('/api/investments/accounts/'+account['id'],
                      '/api/investments/accounts/'+account['id']+'/balance',
+                     '/api/investments/accounts/'+account['id']+'/policy-status?as_of=2026-10-28',
+                     '/api/investments/accounts/'+account['id']+'/summary?start=2026-10-26&end=2026-10-28',
+                     '/api/investments/accounts/'+account['id']+'/campaigns/not-mine/review',
                      '/api/investments/accounts/'+account['id']+'/history'):
             response=self.client.get(path)
             self.assertEqual(response.status_code,404,response.text)

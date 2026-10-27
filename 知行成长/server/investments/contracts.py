@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import AwareDatetime, BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, StrictBool, field_validator, model_validator
 
 
 def decimal_input(value):
@@ -72,6 +72,7 @@ class FillInput(Contract):
     tax: Money | None = None
     executed_at: AwareDatetime
     plan_id: Identifier | None = None
+    plan_version: int | None = Field(default=None,ge=1)
     external_id: str | None = Field(default=None, max_length=200)
     source: Literal['manual', 'csv', 'broker', 'fund_confirmation'] = 'manual'
     note: Text = ''
@@ -125,6 +126,44 @@ class PlanInput(Contract):
     entry_price: Positive | None = None
     invalidation_price: Positive | None = None
     fee_budget: Money | None = None
+    planned_for: date | None = None
+    check_id: Identifier | None = None
+
+
+class PlanCheckInput(Contract):
+    instrument_id: Identifier
+    quote_price: Positive
+    quote_as_of: AwareDatetime
+    sessions: dict[date,StrictBool] = Field(min_length=1,max_length=370)
+    rules_valid_from: date
+    rules_valid_until: date
+    price_tick: Positive
+    quantity_step: Positive
+    minimum_quantity: Positive
+    sell_delay_sessions: int = Field(ge=0,le=30)
+    trading_status: Literal['normal','halted','unknown']
+    source_url: HttpUrl
+    source_note: str = Field(min_length=1,max_length=2000)
+    acknowledged: StrictBool
+
+    @field_validator('sessions',mode='before')
+    @classmethod
+    def calendar_lines(cls,value):
+        if not isinstance(value,str):return value
+        result={}
+        for line in value.strip().splitlines():
+            pieces=line.strip().replace('，',',').split(',')
+            if len(pieces)!=2 or pieces[0].strip() in result or pieces[1].strip() not in ('1','0','开市','休市'):
+                raise ValueError('逐行填写日期,开市/休市，不可重复日期。')
+            result[pieces[0].strip()]=pieces[1].strip() in ('1','开市')
+        return result
+
+    @model_validator(mode='after')
+    def confirmed_coverage(self):
+        days=sorted(self.sessions)
+        if not self.acknowledged or self.rules_valid_until<self.rules_valid_from or (days[-1]-days[0]).days+1!=len(days):
+            raise ValueError('请本人核对规则与连续覆盖的日历，不可省略休市日期。')
+        return self
 
 
 class ReviewInput(Contract):
@@ -137,6 +176,29 @@ class ReviewInput(Contract):
     execution: Text = ''
     next_experiment: Text = ''
     no_trade: bool = False
+    adherence: Literal['unknown','followed','deviated'] = 'unknown'
+    thesis: Literal['unknown','supported','refuted'] = 'unknown'
+
+
+class PeriodPlanInput(Contract):
+    account_id: Identifier
+    period: Literal['day','week']
+    period_start: date
+    period_end: date
+    title: str = Field(min_length=1,max_length=200)
+    focus: Text = ''
+    contrary_evidence: Text = ''
+    no_trade: bool = False
+    strategy_id: Identifier | None = None
+    check_id: Identifier | None = None
+
+    @model_validator(mode='after')
+    def valid_period(self):
+        if self.period=='day' and self.period_start!=self.period_end:
+            raise ValueError('日计划只覆盖一个自然日。')
+        if self.period=='week' and (self.period_start.weekday()!=0 or (self.period_end-self.period_start).days!=6):
+            raise ValueError('周计划覆盖周一至周日，开市日由核对日历决定。')
+        return self
 
 
 class VersionCommand(Contract):
@@ -144,7 +206,8 @@ class VersionCommand(Contract):
 
 
 class StateCommand(VersionCommand):
-    state: Literal['confirmed', 'declined', 'expired', 'cancelled', 'paused']
+    state: Literal['confirmed', 'declined', 'expired', 'cancelled', 'paused','untriggered','skipped']
+    reason: str = Field(default='',max_length=2000)
 
 
 class ResearchInput(Contract):
@@ -188,9 +251,11 @@ class FundConfirmation(Contract):
     tax: Money
     confirmed_at: AwareDatetime
     nav_date: date
+    final_confirmation: bool = True
 
 
 RESOURCE_MODELS = {'accounts': AccountInput, 'instruments': InstrumentInput,
                    'fills': FillInput, 'cash-events': CashInput, 'policies': PolicyInput,
                    'strategies': StrategyInput, 'trade-plans': PlanInput, 'reviews': ReviewInput,
-                   'research': ResearchInput, 'fund-orders': FundOrderInput}
+                   'research': ResearchInput, 'fund-orders': FundOrderInput,'plan-checks':PlanCheckInput,
+                   'period-plans':PeriodPlanInput}

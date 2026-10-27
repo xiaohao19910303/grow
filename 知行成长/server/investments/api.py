@@ -1,5 +1,6 @@
 """Authenticated-account investment HTTP contracts; execution remains user-owned."""
 import json
+from datetime import date
 
 import db
 from fastapi import APIRouter, Header, Query, Request
@@ -49,6 +50,14 @@ class AnalysisSubmit(Contract):
 class RecommendationInput(Contract):
     state: str = Field(max_length=30)
     note: str = Field(default='',max_length=4000)
+
+
+class LegacyLinkInput(Contract):
+    legacy_id: str = Field(min_length=1,max_length=100)
+    target_kind: str = Field(max_length=30)
+    target_id: str = Field(min_length=1,max_length=100)
+    note: str = Field(min_length=1,max_length=2000)
+    reconciled: bool
 
 
 class DailyFetchInput(Contract):
@@ -131,6 +140,16 @@ def register(app):
             {'id':'iwencai','name':'同花顺问财','status':'external','scope':'在官网进行条件查询；未接入其私有接口','url':'https://www.iwencai.com/'},
             {'id':'eastmoney','name':'东方财富条件选股','status':'external','scope':'官网查看/筛选；未接入其私有接口','url':'https://xuangu.eastmoney.com/'}]}
 
+    @router.get('/legacy-records')
+    def legacy_records():
+        from .legacy import list_legacy
+        return list_legacy(store)
+
+    @router.post('/legacy-links')
+    def legacy_link(payload: LegacyLinkInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .legacy import link_record
+        return link_record(store,payload.legacy_id,payload.target_kind,payload.target_id,payload.note,payload.reconciled,idempotency_key)
+
     @router.post('/screen')
     def screening(payload: ScreenInput):
         from .screening import screen
@@ -181,9 +200,29 @@ def register(app):
     def balance(object_id: str):
         return store.balance(object_id)
 
+    @router.get('/accounts/{object_id}/policy-status')
+    def capital_status(object_id: str,as_of: date,plan_id: str | None=None):
+        from .planning import policy_status
+        return policy_status(store,object_id,as_of.isoformat(),plan_id)
+
     @router.get('/accounts/{object_id}/campaigns')
     def campaigns(object_id: str):
         return {'items':store.campaigns(object_id)}
+
+    @router.get('/accounts/{object_id}/campaigns/{campaign_id}/review')
+    def campaign_review(object_id: str,campaign_id: str):
+        from .reviews import campaign_detail
+        return campaign_detail(store,object_id,campaign_id)
+
+    @router.get('/accounts/{object_id}/summary')
+    def period_review(object_id: str,start: date,end: date):
+        from .reviews import period_summary
+        return period_summary(store,object_id,start.isoformat(),end.isoformat())
+
+    @router.get('/trade-plans/{object_id}/assessment')
+    def plan_assessment(object_id: str):
+        from .plan_checks import assess_plan
+        return assess_plan(store,object_id)
 
     @router.get('/export')
     def export():
@@ -244,7 +283,7 @@ def register(app):
 
     def transitions(kind):
         def change(object_id: str,payload: StateCommand,idempotency_key: str=Header(min_length=1,max_length=160)):
-            return store.transition(kind,object_id,payload.version,payload.state,idempotency_key)
+            return store.transition(kind,object_id,payload.version,payload.state,idempotency_key,payload.reason)
         return change
 
     for kind,model in RESOURCE_MODELS.items():
@@ -252,9 +291,9 @@ def register(app):
         router.add_api_route('/'+kind,listers(kind),methods=['GET'])
         router.add_api_route('/'+kind+'/{object_id}',getters(kind),methods=['GET'])
         router.add_api_route('/'+kind+'/{object_id}/history',histories(kind),methods=['GET'])
-        if kind in ('policies','strategies','trade-plans','reviews'):
+        if kind in ('policies','strategies','trade-plans','reviews','period-plans'):
             router.add_api_route('/'+kind+'/{object_id}',editors(kind),methods=['PUT'])
-        if kind in ('policies','strategies','trade-plans'):
+        if kind in ('policies','strategies','trade-plans','period-plans'):
             router.add_api_route('/'+kind+'/{object_id}/state',transitions(kind),methods=['POST'])
     app.include_router(router)
     return store

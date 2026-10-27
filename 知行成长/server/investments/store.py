@@ -101,6 +101,10 @@ class InvestmentStore:
             fail('validation_error','期初同一证券请合并为一条持仓。',422)
         if data.get('strategy_id'):
             self._get(c,'strategies',data['strategy_id'])
+        if data.get('check_id'):
+            check=self._get(c,'plan-checks',data['check_id'])
+            if data.get('instrument_id') and check['instrument_id']!=data['instrument_id']:
+                fail('scope_mismatch','核对资料与计划标的不一致。',422)
         if kind in ('fills','cash-events'):
             stamp = datetime.fromisoformat(data['executed_at'] if kind=='fills' else data['occurred_at'])
             if stamp.astimezone(ZoneInfo('Asia/Shanghai')).date().isoformat() < account['baseline_date']:
@@ -111,6 +115,8 @@ class InvestmentStore:
             plan = self._get(c,'trade-plans',data['plan_id'])
             if (plan['account_id'],plan['instrument_id']) != (data['account_id'],data['instrument_id']):
                 fail('validation_error','成交与计划的账户或证券不一致。',422)
+        if kind=='fills' and data.get('plan_version') is not None and not data.get('plan_id'):
+            fail('validation_error','指定计划版本时必须先选择关联计划。',422)
         if data.get('campaign_id'):
             if not any(item['id']==data['campaign_id'] for item in self._campaigns(c,data['account_id'])):
                 fail('not_found','关联交易链不存在或已需重新核对。',404)
@@ -152,10 +158,24 @@ class InvestmentStore:
         record={**data,'id':'inv-'+uuid.uuid4().hex,'version':1,'created_at':stamp,'updated_at':stamp}
         if kind=='fills' and data.get('plan_id'):
             plan=self._get(c,'trade-plans',data['plan_id'])
+            if data.get('plan_version') is not None:
+                row=c.execute('SELECT data FROM investment_versions WHERE object_id=? AND version=?',
+                    (plan['id'],data['plan_version'])).fetchone()
+                if not row:fail('not_found','指定计划版本不存在。',404)
+                plan=json.loads(row[0])
+            else:
+                # Late recording can still bind the version known at the execution time.
+                row=c.execute("""SELECT data FROM investment_versions WHERE object_id=?
+                    AND data::jsonb->>'state'='confirmed' AND (data::jsonb->>'confirmed_at')::timestamptz<=?::timestamptz
+                    ORDER BY version DESC LIMIT 1""",(plan['id'],data['executed_at'])).fetchone()
+                if row:plan=json.loads(row[0])
             record['plan_snapshot']=plan
+            if plan.get('strategy_snapshot'):
+                record['strategy_snapshot']=plan['strategy_snapshot']
             record['plan_recorded_before_execution']=(plan.get('state')=='confirmed' and
                 datetime.fromisoformat(plan['confirmed_at'])<=datetime.fromisoformat(data['executed_at']))
-        if kind in ('policies','strategies','trade-plans'):
+            record['plan_valid_at_execution']=record['plan_recorded_before_execution'] and datetime.fromisoformat(data['executed_at'])<=datetime.fromisoformat(plan['valid_until'])
+        if kind in ('policies','strategies','trade-plans','period-plans'):
             record['state']='draft'
         if kind=='fund-orders':
             instrument=self._get(c,'instruments',data['instrument_id'])
@@ -194,7 +214,7 @@ class InvestmentStore:
             old=self._get(c,kind,object_id)
             if old['version']!=version:
                 fail('version_conflict','记录已更新，请载入最新版本后再修改。')
-            if kind not in ('policies','strategies','trade-plans','reviews'):
+            if kind not in ('policies','strategies','trade-plans','reviews','period-plans'):
                 fail('immutable_fact','此事实需通过专用核对流程更正，不能覆盖。')
             previous={k:old[k] for k in RESOURCE_MODELS[kind].model_fields if k in old}
             data=self.validate(kind,{**previous,**payload})
@@ -221,9 +241,9 @@ class InvestmentStore:
             self.lock(c)
             return self._balance(c,account_id,marks or {})
 
-    def transition(self,kind,object_id,version,state,key):
+    def transition(self,kind,object_id,version,state,key,reason=''):
         from .planning import transition
-        return transition(self,kind,object_id,version,state,key)
+        return transition(self,kind,object_id,version,state,key,reason)
 
     def campaigns(self,account_id):
         with db.connect() as c:

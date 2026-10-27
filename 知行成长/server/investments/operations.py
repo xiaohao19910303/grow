@@ -3,7 +3,7 @@ import csv
 import io
 import json
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from zoneinfo import ZoneInfo
 
 import db
@@ -102,36 +102,46 @@ def confirm_fund(store,object_id,version,payload,key):
     except ValidationError:
         fail('invalid_confirmation','请填写实际确认净值、份额、费用、税费、确认时间与净值日期。',422)
     fingerprint=digest(encoded({'fund_confirmation':object_id,'version':version,'data':data}))
-    with db.connect() as c:
+    with db.connect() as c, localcontext() as ctx:
+        ctx.prec=60
         store.lock(c)
         replay=store.replay(c,key,fingerprint)
         if replay is not None:
             return replay
         order=store._get(c,'fund-orders',object_id)
-        if order['version']!=version or order['state']!='pending':
+        if order['version']!=version or order['state'] not in ('pending','partially_confirmed'):
             fail('version_conflict','基金申请已变化或已经确认。')
         stamp=datetime.fromisoformat(data['confirmed_at'])
         if stamp<datetime.fromisoformat(order['applied_at']) or data['nav_date']>stamp.astimezone(ZoneInfo('Asia/Shanghai')).date().isoformat():
             fail('invalid_confirmation','请核对申请、净值日期与确认时间顺序。',422)
         buy=order['side']=='subscription'
+        batches=order.get('confirmations',[])
+        if batches and stamp<datetime.fromisoformat(batches[-1]['confirmed_at']):
+            fail('invalid_confirmation','下一批确认时间不能早于已登记批次。',422)
         quantity=Decimal(data['quantity']);gross=Decimal(data['price'])*quantity
         charges=Decimal(data['fee'])+Decimal(data['tax'])
-        if (buy and gross+charges>Decimal(order['amount'])) or (not buy and quantity>Decimal(order['quantity'])):
+        used=sum((Decimal(b['price'])*Decimal(b['quantity'])+Decimal(b['fee'])+Decimal(b['tax']) for b in batches),Decimal('0'))
+        units=sum((Decimal(b['quantity']) for b in batches),Decimal('0'))
+        if (buy and used+gross+charges>Decimal(order['amount'])) or (not buy and units+quantity>Decimal(order['quantity'])):
             fail('invalid_confirmation','确认金额或份额超出原申请，请先核对。',422)
         if not buy and gross<charges:
             fail('invalid_confirmation','赎回费用不能大于确认总额。',422)
         fill=store.validate('fills',{'account_id':order['account_id'],'instrument_id':order['instrument_id'],
             'side':'buy' if buy else 'sell','price':data['price'],'quantity':data['quantity'],
             'fee':data['fee'],'tax':data['tax'],'executed_at':data['confirmed_at'],
-            'source':'fund_confirmation','external_id':object_id,'note':'基金确认，净值日期 '+data['nav_date']})
-        recorded=store.create_in(c,'fills',fill,'fund-fill-'+object_id)
+            'source':'fund_confirmation','external_id':object_id+':'+str(len(batches)+1),'note':'基金确认，净值日期 '+data['nav_date']})
+        batch_key=object_id+':'+str(len(batches)+1)
+        recorded=store.create_in(c,'fills',fill,'fund-fill-'+batch_key)
         net=number(gross-charges)
         if not buy and Decimal(net)>0:
             event=store.validate('cash-events',{'account_id':order['account_id'],'kind':'fund_receivable_hold',
                 'amount':net,'occurred_at':data['confirmed_at'],'note':'基金赎回待到账 '+object_id})
-            store.create_in(c,'cash-events',event,'fund-hold-'+object_id)
-        record={**order,'version':version+1,'updated_at':now(),'state':'confirmed' if not buy else 'settled',
-                'confirmation':data,'fill_id':recorded['id'],'receivable':net if not buy else '0'}
+            store.create_in(c,'cash-events',event,'fund-hold-'+batch_key)
+        state=('confirmed' if not buy else 'settled') if data['final_confirmation'] else 'partially_confirmed'
+        record={**order,'version':version+1,'updated_at':now(),'state':state,
+                'confirmation':data,'confirmations':[*batches,{**data,'fill_id':recorded['id']}],
+                'fill_id':recorded['id'],'receivable':number(Decimal(order.get('receivable','0'))+Decimal(net)) if not buy else '0',
+                'confirmed_quantity':number(units+quantity),'confirmed_amount':number(used+gross+charges) if buy else None}
         store.save(c,'fund-orders',record)
         store.remember(c,key,fingerprint,record)
         return record

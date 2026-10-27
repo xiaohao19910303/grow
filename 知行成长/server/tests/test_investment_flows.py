@@ -56,3 +56,25 @@ class InvestmentFlowTests(PostgreSQLFixture):
         self.assertEqual(self.store.balance(self.account['id'])['receivables'],'150.25')
         settle_fund(self.store,redemption['id'],confirmed['version'],'2026-10-30T10:00:00+08:00','settle')
         self.assertEqual(self.store.balance(self.account['id'])['cash'],'9150.25')
+
+    def test_fund_partial_confirmation_preserves_batches_and_actual_holding_fees(self):
+        fund=self.store.create('instruments',{'name':'基金','code':'000002','market':'FUND','kind':'fund'},'fund2')
+        order=self.store.create('fund-orders',{'account_id':self.account['id'],'instrument_id':fund['id'],
+            'side':'subscription','amount':'1000','applied_at':'2026-10-26T10:00:00+08:00'},'sub2')
+        first=confirm_fund(self.store,order['id'],1,{'price':'1','quantity':'400','fee':'1','tax':'0',
+            'confirmed_at':'2026-10-27T10:00:00+08:00','nav_date':'2026-10-26','final_confirmation':False},'part1')
+        self.assertEqual(first['state'],'partially_confirmed')
+        second=confirm_fund(self.store,order['id'],2,{'price':'1.1','quantity':'500','fee':'2','tax':'0',
+            'confirmed_at':'2026-10-28T10:00:00+08:00','nav_date':'2026-10-27'},'part2')
+        self.assertEqual(len(second['confirmations']),2)
+        self.assertEqual(self.store.balance(self.account['id'])['cash'],'9047')
+        redeem=self.store.create('fund-orders',{'account_id':self.account['id'],'instrument_id':fund['id'],
+            'side':'redemption','quantity':'200','applied_at':'2026-10-29T10:00:00+08:00'},'red2')
+        part=confirm_fund(self.store,redeem['id'],1,{'price':'1.2','quantity':'100','fee':'1.5','tax':'0',
+            'confirmed_at':'2026-10-30T10:00:00+08:00','nav_date':'2026-10-29','final_confirmation':False},'redpart1')
+        final=confirm_fund(self.store,redeem['id'],part['version'],{'price':'1.3','quantity':'100','fee':'0.1','tax':'0',
+            'confirmed_at':'2026-11-02T10:00:00+08:00','nav_date':'2026-10-30'},'redpart2')
+        self.assertEqual(final['receivable'],'248.4')
+        self.assertEqual(self.store.balance(self.account['id'])['cash'],'9047')
+        settle_fund(self.store,redeem['id'],final['version'],'2026-11-03T10:00:00+08:00','settled2')
+        self.assertEqual(self.store.balance(self.account['id'])['cash'],'9295.4')
