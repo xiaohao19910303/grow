@@ -16,6 +16,7 @@
   let requestNumber = 0, activeRequest = null;
 
   const moduleLabels = {
+    investment:'投资记录',
     learning: '学习记录',
     reflection: '日常记录',
     review: '四问复盘', insight: '灵感记录', action: '行动记录',
@@ -78,6 +79,7 @@
 
     // 筛选事件
     const typeFilter = document.getElementById('searchTypeFilter');
+    if(typeFilter && !typeFilter.querySelector('option[value=investment]')){const option=document.createElement('option');option.value='investment';option.textContent='投资记录';typeFilter.append(option);}
     const startDate = document.getElementById('searchStartDate');
     const endDate = document.getElementById('searchEndDate');
 
@@ -321,6 +323,10 @@
         if (goTab('reviews') === false) return;
         if (await window.Reflections.load() === false) throw new Error('日常记录暂时无法读取。');
         return window.Reflections.viewEntry(target.id);
+      }
+      if (target.kind === 'investment') {
+        if (goTab('stocks') === false) return;
+        return await window.Investments.openRecord(target);
       }
       if (target.kind === 'action') {
         if (goTab('action-plans') === false) return;

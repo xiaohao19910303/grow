@@ -5,10 +5,11 @@ const elements = {}, timers = new Map(), navigations = [], requests = [];
 let timerId = 0;
 function element(id) {
   return elements[id] ||= {value:'', innerHTML:'', textContent:'', events:{},
+    children:[],append(child){this.children.push(child);},querySelector(){return this.children.find(child=>child.value==='investment')||null;},
     addEventListener(name, run) { this.events[name] = run; },
     querySelectorAll() { return []; }, replaceChildren() { this.innerHTML = ''; }};
 }
-const document = {activeElement:null, readyState:'complete', getElementById:element, addEventListener() {}};
+const document = {activeElement:null, readyState:'complete', getElementById:element, createElement:()=>({}),addEventListener() {}};
 const context = {window:{}, document, console, URLSearchParams, AbortController,
   setTimeout(run) { timers.set(++timerId, run); return timerId; },
   clearTimeout(id) { timers.delete(id); },
@@ -16,6 +17,7 @@ const context = {window:{}, document, console, URLSearchParams, AbortController,
   fetch:async url=> { requests.push(url); return {ok:true, json:async()=>({results:[],total_count:0})}; }};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/search.js'), 'utf8'), context);
+assert.equal(element('searchTypeFilter').children.filter(child=>child.value==='investment').length,1);
 function flush() { const pending = [...timers.values()]; timers.clear(); pending.forEach(run=>run()); }
 const input = element('globalSearch');
 (async () => {

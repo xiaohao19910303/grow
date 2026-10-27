@@ -346,39 +346,43 @@ def expand_dates(start, until, recurrence):
 
 def create(body):
     with connection(True) as c:
-        def work():
-            repeat = bool(body.repeat_dates)
-            if body.recurrence:
-                if body.period != 'day':
-                    fail(422, '只有日行动可以设置重复。')
-                if not body.start_date or not body.until or body.until < body.start_date:
-                    fail(422, '请选择有效的重复结束日期。')
-                if (body.until - body.start_date).days > 366:
-                    fail(422, '重复范围最多一年。')
-                dates = expand_dates(body.start_date, body.until, body.recurrence)
-                if not dates:
-                    fail(422, '这个范围内没有匹配的重复日期，请调整星期或结束日期。')
-            elif repeat:
-                dates = body.repeat_dates
-                if body.period != 'day' or len(set(dates)) != len(dates) or (max(dates) - min(dates)).days > 6 or body.start_date not in dates:
-                    fail(422, '重复日行动请选择同一七天内不重复的日期，并包含首日。')
-            else:
-                dates = [body.start_date]
-            if c.execute('SELECT count(*) FROM action_plans').fetchone()[0] + len(dates) > 1000:
-                fail(422, '计划数量已达首版上限，请先整理历史计划。')
-            result = []
-            for day in sorted(dates,key=lambda d:str(d or '')):
-                fields = body.model_dump(mode='json', exclude={'key', 'repeat_dates', 'recurrence', 'until'})
-                if len(dates) > 1 or day != body.start_date:
-                    fields.update(start_date=day.isoformat(), end_date=day.isoformat())
-                validate_parent(c, fields)
-                pid = 'action-' + uuid.uuid4().hex
-                plan = {**fields, 'id': pid, 'schema_version':2,'completed_at':None,'completion_record_id':None,'revision': 1, 'status': 'active', 'created_at': clock().isoformat(),
-                        'reminder_at': due_at(fields), 'updated_at': clock().isoformat()}
-                c.execute('INSERT INTO action_plans VALUES (?,?,1)', (pid, encoded(plan)))
-                result.append(plan)
-            return {'plans': result}
-        return operation(c, body.key, body.model_dump(mode='json'), work)
+        return create_in(c,body)
+
+
+def create_in(c,body):
+    def work():
+        repeat = bool(body.repeat_dates)
+        if body.recurrence:
+            if body.period != 'day':
+                fail(422, '只有日行动可以设置重复。')
+            if not body.start_date or not body.until or body.until < body.start_date:
+                fail(422, '请选择有效的重复结束日期。')
+            if (body.until - body.start_date).days > 366:
+                fail(422, '重复范围最多一年。')
+            dates = expand_dates(body.start_date, body.until, body.recurrence)
+            if not dates:
+                fail(422, '这个范围内没有匹配的重复日期，请调整星期或结束日期。')
+        elif repeat:
+            dates = body.repeat_dates
+            if body.period != 'day' or len(set(dates)) != len(dates) or (max(dates) - min(dates)).days > 6 or body.start_date not in dates:
+                fail(422, '重复日行动请选择同一七天内不重复的日期，并包含首日。')
+        else:
+            dates = [body.start_date]
+        if c.execute('SELECT count(*) FROM action_plans').fetchone()[0] + len(dates) > 1000:
+            fail(422, '计划数量已达首版上限，请先整理历史计划。')
+        result = []
+        for day in sorted(dates,key=lambda d:str(d or '')):
+            fields = body.model_dump(mode='json', exclude={'key', 'repeat_dates', 'recurrence', 'until'})
+            if len(dates) > 1 or day != body.start_date:
+                fields.update(start_date=day.isoformat(), end_date=day.isoformat())
+            validate_parent(c, fields)
+            pid = 'action-' + uuid.uuid4().hex
+            plan = {**fields, 'id': pid, 'schema_version':2,'completed_at':None,'completion_record_id':None,'revision': 1, 'status': 'active', 'created_at': clock().isoformat(),
+                    'reminder_at': due_at(fields), 'updated_at': clock().isoformat()}
+            c.execute('INSERT INTO action_plans VALUES (?,?,1)', (pid, encoded(plan)))
+            result.append(plan)
+        return {'plans': result}
+    return operation(c, body.key, body.model_dump(mode='json'), work)
 
 
 def active(c):

@@ -60,6 +60,12 @@ class LegacyLinkInput(Contract):
     reconciled: bool
 
 
+class ReviewActionInput(Contract):
+    source_version: int = Field(ge=1)
+    title: str = Field(min_length=1,max_length=160)
+    date: date
+
+
 class DailyFetchInput(Contract):
     instrument_id: str = Field(min_length=1,max_length=100)
     account_id: str | None = Field(default=None,max_length=100)
@@ -123,6 +129,26 @@ def register(app):
             'realtime':{'enabled':False,'reason':'实时权限、时效和规则尚未验收。'},
             'ai':{'requires_own_config':True,'unattended':False}}
 
+    @router.get('/overview')
+    def today_overview(as_of: date):
+        from .integration import overview
+        return overview(store,as_of.isoformat())
+
+    @router.get('/search')
+    def private_investment_search(account_id: str,q: str=Query(min_length=1,max_length=200),page: int=Query(1,ge=1,le=10000)):
+        from .integration import private_search
+        return private_search(store,account_id,q,page)
+
+    @router.get('/reviews/{object_id}/actions')
+    def review_actions(object_id: str):
+        from .integration import references
+        return references(store,object_id)
+
+    @router.post('/reviews/{object_id}/actions')
+    def create_review_action(object_id: str,payload: ReviewActionInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .integration import create_action
+        return create_action(store,object_id,payload.model_dump(mode='json'),idempotency_key)
+
     @router.post('/provider/daily')
     async def daily_fetch(payload: DailyFetchInput,idempotency_key: str=Header(min_length=1,max_length=160)):
         from .providers import DailyProvider
@@ -132,7 +158,7 @@ def register(app):
     @router.get('/data-sources')
     def data_sources():
         return {'sources':[
-            {'id':'tushare','name':'Tushare Pro','status':'adapter_ready','scope':'股票/ETF盘后行情、交易日历；账号权限待核验','url':'https://tushare.pro/document/2'},
+            {'id':'tushare','name':'Tushare Pro','status':'adapter_ready','scope':'沪深股票/ETF盘后行情与日历适配；账号权限待核验，北交所日历未开放','url':'https://tushare.pro/document/2'},
             {'id':'akshare','name':'AKShare','status':'planned','scope':'采集库候选；逐项核验上游接口、时效与使用范围','url':'https://akshare.akfamily.xyz/'},
             {'id':'baostock','name':'BaoStock','status':'planned','scope':'历史行情候选；当前服务和具体品种覆盖待实测','url':'https://baostock.com/api/'},
             {'id':'ifind','name':'同花顺iFinD','status':'planned','scope':'授权数据接口候选；账号、额度与用途需配置','url':'https://quantapi.51ifind.com/'},
@@ -189,6 +215,10 @@ def register(app):
     def recommendation_decision(object_id: str,index: int,payload: RecommendationInput,
                                 idempotency_key: str=Header(min_length=1,max_length=160)):
         return analysis.decide(object_id,index,payload.state,payload.note,idempotency_key)
+
+    @router.post('/analysis/jobs/{object_id}/scenarios/{index}/policy-draft')
+    def adopt_capital_scenario(object_id: str,index: int,idempotency_key: str=Header(min_length=1,max_length=160)):
+        return analysis.capital_draft(object_id,index,idempotency_key)
 
     @router.get('/recommendations')
     def recommendations():
@@ -291,9 +321,9 @@ def register(app):
         router.add_api_route('/'+kind,listers(kind),methods=['GET'])
         router.add_api_route('/'+kind+'/{object_id}',getters(kind),methods=['GET'])
         router.add_api_route('/'+kind+'/{object_id}/history',histories(kind),methods=['GET'])
-        if kind in ('policies','strategies','trade-plans','reviews','period-plans'):
+        if kind in ('policies','strategies','trade-plans','reviews','period-plans','watchlist','dossiers','principles','ledger-notices'):
             router.add_api_route('/'+kind+'/{object_id}',editors(kind),methods=['PUT'])
-        if kind in ('policies','strategies','trade-plans','period-plans'):
+        if kind in ('policies','strategies','trade-plans','period-plans','principles'):
             router.add_api_route('/'+kind+'/{object_id}/state',transitions(kind),methods=['POST'])
     app.include_router(router)
     return store

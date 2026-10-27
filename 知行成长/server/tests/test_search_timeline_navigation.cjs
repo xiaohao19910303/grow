@@ -10,6 +10,7 @@ for(const name of ['loadDailyLearning','openStudyCourse','openPlanCourse','openC
 context.window.rememberLearningOrigin=()=>{origin=currentTab;calls.push(['origin',currentTab]);};
 context.window.Reflections={load:async()=>true,viewEntry:id=>calls.push(['reflection',id])};
 context.window.ActionPlans={openRecord:async id=>calls.push(['action',id])};
+context.window.Investments={openRecord:async target=>calls.push(['investment',target.id,target.resource])};
 vm.createContext(context);
 for(const file of ['search.js','timeline.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../static/'+file),'utf8'),context);
 (async()=>{
@@ -27,6 +28,8 @@ for(const file of ['search.js','timeline.js'])vm.runInContext(fs.readFileSync(pa
   await open({target:{kind:'article',id:'article-1'}});
   await open({target:{kind:'reflection',id:'ref-1'}});
   await open({target:{kind:'action',id:'plan-2'}});
+  await open({target:{kind:'investment',id:'private-review',resource:'reviews'}});
+  assert(calls.some(call=>call.join('|')==='investment|private-review|reviews'));
   await open({target:{kind:'legacy',module:'decision',id:8}});
   assert(calls.some(call=>call.join('|')==='openDecisionForm|0'));
   assert(calls.some(call=>call.join('|')==='reflection|ref-1'));

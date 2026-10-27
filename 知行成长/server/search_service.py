@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 SEARCHABLE_MODULES = {key: {'label': label} for key, label in (
     ('learning', '学习记录'), ('reflection', '日常记录'), ('decision', '决策记录'),
     ('prediction', '预测记录'), ('review', '四问复盘'), ('insight', '灵感记录'),
-    ('knowledge', '知识图谱'), ('action', '行动记录'))}
+    ('knowledge', '知识图谱'), ('action', '行动记录'),('investment','投资记录'))}
 
 # Only application-owned table/column names appear in SQL. User inputs are parameters.
 SOURCES = (
@@ -37,6 +37,7 @@ SOURCES = (
     ('knowledge', 'knowledge', ('name', 'category', 'summary', 'source')),
     ('action_plans', 'action', ('data',)),
     ('action_executions', 'action', ('data',)),
+    ('investment_discovery','investment',('data',)),
 )
 
 
@@ -115,6 +116,9 @@ def normalize(source, module, row):
         day = item.get('start_date')
         body = text([item.get('target'), item.get('note'), item.get('status')])
         target = {'kind': 'action', 'id': identity}
+    elif source == 'investment_discovery':
+        body=item.get('summary','私有投资记录')
+        target={'kind':'investment','id':identity,'resource':item['record_kind'],'account_id':item['account_id']}
     elif source == 'action_executions':
         day = item.get('business_date') or item.get('started_at')
         title = item.get('title') or '行动执行记录'
@@ -135,6 +139,7 @@ def normalize(source, module, row):
 
 # Raw columns stay inside PostgreSQL; only bounded display excerpts cross the wire.
 JSON_PREVIEWS = {
+    'investment_discovery':('title','summary','record_kind','account_id'),
     'course_study_notes': ('notes', 'answers'),
     'learning_feedback': ('comment',),
     'reading_records': ('type', 'title', 'zh_title', 'summary', 'guide', 'full_content', 'feedback', 'note'),

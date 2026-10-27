@@ -15,6 +15,7 @@
   let requestNumber = 0, activeRequest = null;
 
   const moduleLabels = {
+    investment:'投资记录',
     learning: '学习记录',
     reflection: '日常记录', action: '行动记录',
     decision: '决策记录',
@@ -59,6 +60,7 @@
     }
 
     const typeFilter = document.getElementById('timelineTypeFilter');
+    if(typeFilter && !typeFilter.querySelector('option[value=investment]')){const option=document.createElement('option');option.value='investment';option.textContent='投资记录';typeFilter.append(option);}
     if (typeFilter) {
       typeFilter.addEventListener('change', updateFilters);
     }
@@ -258,6 +260,7 @@
     const startDate = document.getElementById('timelineStartDate');
     const endDate = document.getElementById('timelineEndDate');
     const typeFilter = document.getElementById('timelineTypeFilter');
+    if(typeFilter && !typeFilter.querySelector('option[value=investment]')){const option=document.createElement('option');option.value='investment';option.textContent='投资记录';typeFilter.append(option);}
 
     if (startDate) startDate.value = '';
     if (endDate) endDate.value = '';

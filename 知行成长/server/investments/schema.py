@@ -30,4 +30,11 @@ CREATE TABLE IF NOT EXISTS investment_cash_events (
     account_id TEXT NOT NULL REFERENCES investment_accounts(id),
     kind TEXT NOT NULL, amount NUMERIC(28,10) NOT NULL CHECK(amount>0), occurred_at TIMESTAMPTZ NOT NULL
 );
+CREATE OR REPLACE VIEW investment_discovery AS
+SELECT id,jsonb_build_object('title',CASE kind WHEN 'reviews' THEN '投资复盘'
+    WHEN 'trade-plans' THEN '投资条件计划' WHEN 'dossiers' THEN '投资研究' ELSE '投资规则试验' END,
+    'date',COALESCE(data::jsonb->>'date',to_char(updated_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD')),
+    'record_kind',kind,'account_id',data::jsonb->>'account_id',
+    'summary','私有投资记录；进入投资工作台查看本人资料。')::text AS data
+FROM investment_objects WHERE kind IN ('reviews','trade-plans','dossiers','principles');
 '''

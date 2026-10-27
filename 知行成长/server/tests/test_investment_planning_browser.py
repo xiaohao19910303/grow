@@ -20,7 +20,7 @@ class InvestmentPlanningBrowserTests(PostgreSQLFixture):
         @app.get('/')
         def index():
             return HTMLResponse('''<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/design-tokens.css"><link rel="stylesheet" href="/static/investments.css"><div id="investment-workspace"></div><script src="/static/investments.js"></script><script>Investments.open()</script>''')
-        for target in ('investments.planning.now','investments.plan_checks.now'):
+        for target in ('investments.planning.now','investments.plan_checks.now','investments.store.now','investments.operations.now'):
             p=patch(target,return_value='2026-10-28T09:00:00+08:00');p.start();self.addCleanup(p.stop)
         a=store.create('accounts',{'name':'表单测试','opening_cash':'10000','baseline_date':'2026-10-26'},'a')
         i=store.create('instruments',{'name':'核对股票','code':'600000','market':'SSE','kind':'stock'},'i')
@@ -40,6 +40,7 @@ class InvestmentPlanningBrowserTests(PostgreSQLFixture):
         with sync_playwright() as p:
             browser=p.chromium.launch(headless=True,executable_path='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
             page=browser.new_page(viewport={'width':390,'height':844});page.set_default_timeout(5000)
+            page.clock.install(time='2026-10-28T09:00:00+08:00')
             errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
             page.goto(f'http://127.0.0.1:{port}')
             page.get_by_role('button',name='核对日历与交易规则',exact=True).click()
@@ -92,13 +93,23 @@ class InvestmentPlanningBrowserTests(PostgreSQLFixture):
             page.get_by_role('tab',name='交易簿',exact=True).click()
             for index in range(2):
                 page.get_by_role('button',name='确认净值与份额',exact=True).click()
-                for label,value in {'确认净值':'1','确认份额':'400','实际手续费':'1','实际税费':'0',
+                for label,value in {'确认净值':'1','确认份额':'400','实际手续费':'1','实际税费':'0','本批实际收支净额（含费用）':'401',
                     '净值日期':'2026-10-26','确认时间':f'2026-10-{27+index}T10:00'}.items():page.get_by_label(label,exact=True).fill(value)
                 if index==0:page.get_by_label('本申请全部确认完毕',exact=True).uncheck()
                 page.get_by_role('button',name='保存',exact=True).click()
                 expect(page.get_by_role('dialog')).to_have_count(0)
                 expect(page.get_by_role('button',name='基金申请',exact=True)).to_be_enabled()
             self.assertEqual(len(store.get('fund-orders',order['id'])['confirmations']),2)
+            page.get_by_role('tab',name='今日与计划',exact=True).click()
+            page.get_by_role('button',name='结构化研究',exact=True).click()
+            page.get_by_label('研究标题',exact=True).fill('股票资料不足时先观察')
+            page.get_by_label('研究标的',exact=True).select_option(i['id'])
+            page.get_by_label('研究持有视角',exact=True).select_option('short')
+            page.get_by_label('公司风险',exact=False).fill('公告与实际交易状态仍需核对')
+            page.get_by_label('缺少输入',exact=False).fill('缺少公告、财报和当前行情')
+            page.get_by_role('button',name='保存',exact=True).click()
+            expect(page.get_by_text('股票资料不足时先观察 · 短线',exact=True)).to_be_visible()
+            expect(page.get_by_text('选定原文 0 份，研究笔记不等于核验事实。',exact=True)).to_be_visible()
             self.assertEqual(errors,[])
             self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),390)
             page.screenshot(path='/tmp/grow-investment-planning-390.png',full_page=True)

@@ -19,6 +19,8 @@ from test_legacy_cloud_schema import PostgreSQLFixture
 
 class InvestmentBrowserTests(PostgreSQLFixture):
     def test_three_views_record_and_restore_partial_trade(self):
+        for target in ('investments.analysis.now','investments.store.now','investments.planning.now','investments.operations.now'):
+            clock=patch(target,return_value='2026-10-28T09:00:00+08:00');clock.start();self.addCleanup(clock.stop)
         app=FastAPI()
         store=register(app);store.initialize()
         with db.connect() as c:
@@ -33,9 +35,9 @@ class InvestmentBrowserTests(PostgreSQLFixture):
                 <meta name="viewport" content="width=device-width,initial-scale=1">
                 <link rel="stylesheet" href="/static/design-tokens.css">
                 <link rel="stylesheet" href="/static/investments.css">
-                <div id="investment-workspace"></div>
+                <div id="view-personal"><div class="day-heading"></div><input id="personalDate" value="2026-10-28"></div><div id="investment-workspace"></div>
                 <script>window.AIConfig={require:()=>({api_base_url:'https://model.example/v1',api_key:'BROWSER_TEST_ONLY',model_name:'test-model'})}</script>
-                <script src="/static/investments.js"></script><script src="/static/investment-analysis.js"></script><script src="/static/investment-market.js"></script><script>Investments.open()</script></html>''')
+                <script src="/static/investments.js"></script><script src="/static/investment-analysis.js"></script><script src="/static/investment-market.js"></script><script src="/static/search.js"></script><script>window.goTab=tab=>{window.openedTab=tab;return true};Investments.open()</script></html>''')
         calls=[]
         async def model(messages,cfg):
             calls.append(messages)
@@ -46,6 +48,10 @@ class InvestmentBrowserTests(PostgreSQLFixture):
                 'missing_inputs':['交易规则与费用'], 'suggestions':[{'title':'核对财报现金流','action':'research',
                 'reason':'补足证据','trigger':'取得原始财报','invalidation':'公告更正',
                 'valid_until':'2030-01-01T15:00:00+08:00','evidence_ids':[evidence['id']]}]}
+            if snapshot['kind']=='capital':
+                scenario={'name':'继续保留现金','mode':'personal_draft' if snapshot.get('policies') else 'education','assumptions':['仍需本人核对需求'],
+                    'constraints':['不自动扩大风险'],'allocation':{},'next_step':'先完善资金政策','missing_inputs':['实际预算与费用']}
+                report['scenarios']=[scenario,{**scenario,'name':'分阶段观察后再决策'}]
             yield {'text':json.dumps(report,ensure_ascii=False)}
             yield {'done':True}
         mock=patch('copilot.transport.qwen_stream',model);mock.start();self.addCleanup(mock.stop)
@@ -61,6 +67,7 @@ class InvestmentBrowserTests(PostgreSQLFixture):
             browser=playwright.chromium.launch(headless=True,
                 executable_path='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
             page=browser.new_page(viewport={'width':390,'height':844})
+            page.clock.install(time='2026-10-28T09:00:00+08:00')
             page.set_default_timeout(5000)
             errors=[]
             def page_error(error):
@@ -103,7 +110,7 @@ class InvestmentBrowserTests(PostgreSQLFixture):
             expect(page.get_by_text('1.234',exact=True)).to_be_visible()
             page.get_by_role('button',name='关联旧记录',exact=True).click()
             buy=next(f for f in store.listing('fills')['items'] if f['side']=='buy')
-            page.get_by_label('关联实际成交',exact=True).select_option(buy['id'])
+            page.get_by_label('关联成交或复盘',exact=True).select_option('fills:'+buy['id'])
             page.get_by_label('本人核对说明',exact=True).fill('核对券商实际成交，旧估算不纳入')
             page.get_by_label('本人已核对原始资料和关联事实',exact=True).check()
             page.get_by_role('button',name='保存',exact=True).click()
@@ -126,10 +133,14 @@ class InvestmentBrowserTests(PostgreSQLFixture):
             page.get_by_role('button',name='AI研究与建议',exact=True).click()
             page.get_by_label('想分析的问题').fill('请分析依据并提供反证。')
             page.get_by_label('公告摘录',exact=True).check()
+            page.get_by_label('完整交易 · 测试ETF',exact=False).check()
             page.get_by_role('button',name='预览将发送的资料',exact=True).click()
             expect(page.get_by_role('heading',name='核对发送范围')).to_be_visible()
             page.get_by_role('button',name='确认发送并分析',exact=True).click()
             expect(page.get_by_text('先核对规则和现金流。',exact=True)).to_be_visible(timeout=15000)
+            page.get_by_role('button',name='查看保留原文',exact=True).click()
+            expect(page.get_by_role('dialog').get_by_role('heading',name='公告摘录',exact=True)).to_be_visible()
+            page.get_by_role('dialog').filter(has=page.get_by_role('heading',name='公告摘录',exact=True)).get_by_role('button',name='关闭',exact=True).click()
             page.get_by_role('button',name='保存为思考',exact=True).click()
             expect(page.get_by_text('已保存为投资思考。',exact=True)).to_be_visible()
             page.get_by_role('button',name='关闭',exact=True).click()
@@ -151,6 +162,7 @@ class InvestmentBrowserTests(PostgreSQLFixture):
             page.screenshot(path='/tmp/grow-investment-screen-mobile.png',full_page=True)
             page.get_by_role('button',name='关闭',exact=True).click()
             self.assertEqual(len(calls),2)
+            self.assertEqual(json.loads(calls[0][1]['content'])['snapshot']['campaigns'][0]['fills'][0]['side'],'buy')
             page.get_by_role('tab',name='今日与计划',exact=True).click()
             page.get_by_role('button',name='资金预算',exact=True).click()
             page.get_by_label('开始日期',exact=True).fill('2026-10-01')
@@ -181,5 +193,102 @@ class InvestmentBrowserTests(PostgreSQLFixture):
             expect(page.get_by_text('实际成交 2 笔 · 期间平仓 0 链 · 期末未平仓 1 链',exact=True)).to_be_visible()
             expect(page.get_by_text('已采用 · 结果尚未核验',exact=True)).to_be_visible()
             page.get_by_role('button',name='关闭',exact=True).click()
+            page.get_by_role('button',name='形成试验原则',exact=True).click()
+            page.get_by_label('原则标题',exact=True).fill('只作有限前向试验')
+            page.get_by_label('候选规则',exact=True).fill('下次入场先记录反例')
+            page.get_by_label('支持案例',exact=False).fill('这次临时追价偏离规则')
+            page.get_by_label('反例与失效情形',exact=False).fill('也可能错过有效催化')
+            page.get_by_label('前向试验范围',exact=False).fill('下一周只观察，不增加风险')
+            page.get_by_label('选择原始复盘',exact=True).select_option(index=0)
+            page.get_by_role('button',name='保存',exact=True).click()
+            principle=page.locator('article').filter(has=page.get_by_role('heading',name='只作有限前向试验',exact=True))
+            principle.get_by_role('button',name='确认',exact=True).click()
+            expect(principle.get_by_text('版本 2 · 已确认',exact=True)).to_be_visible()
+            principle.get_by_role('button',name='暂停试验',exact=True).click()
+            expect(principle.get_by_text('版本 3 · 已暂停',exact=True)).to_be_visible()
+            page.get_by_role('tab',name='今日与计划',exact=True).click()
+            page.get_by_role('button',name='添加自选跟踪',exact=True).click()
+            page.get_by_label('关注理由',exact=False).fill('等待公告与流动性核对')
+            page.get_by_role('button',name='保存',exact=True).click()
+            expect(page.get_by_text('测试ETF · 观察',exact=True)).to_be_visible()
+            page.get_by_role('button',name='结构化研究',exact=True).click()
+            page.get_by_label('研究标题',exact=True).fill('ETF波段研究笔记')
+            page.get_by_label('研究持有视角',exact=True).select_option('swing')
+            page.get_by_label('ETF净值与时差',exact=False).fill('场内价格不能直接当作最新净值')
+            page.get_by_label('缺少输入',exact=False).fill('最新净值和盘口流动性')
+            source=next(r for r in store.listing('research')['items'] if r['title']=='公告摘录')
+            page.get_by_label('选择相关原始资料',exact=True).select_option(source['id'])
+            page.get_by_role('button',name='保存',exact=True).click()
+            expect(page.get_by_text('ETF波段研究笔记 · 波段',exact=True)).to_be_visible()
+            page.get_by_role('button',name='AI研究与建议',exact=True).click()
+            page.get_by_label('分析目的',exact=False).select_option('capital')
+            page.get_by_label('想分析的问题',exact=True).fill('在不增加风险的前提下比较两种情景')
+            page.get_by_label('公告摘录',exact=True).check()
+            page.get_by_role('button',name='预览将发送的资料',exact=True).click()
+            page.get_by_role('button',name='确认发送并分析',exact=True).click()
+            expect(page.get_by_text('继续保留现金 · 教育情景',exact=True)).to_be_visible(timeout=15000)
+            page.get_by_role('button',name='关闭',exact=True).click()
+            self.assertEqual(len(calls),4)
+            page.get_by_role('tab',name='交易簿',exact=True).click()
+            page.get_by_role('button',name='新增核对事项',exact=True).click()
+            page.get_by_label('待核对原因',exact=True).fill('疑似份额差异，等待原始资料')
+            page.get_by_role('button',name='保存',exact=True).click()
+            expect(page.get_by_text('所录数量（待核对）',exact=False)).to_be_visible()
+            page.get_by_role('button',name='修改版本',exact=True).click()
+            page.get_by_label('核对状态',exact=True).select_option('resolved')
+            page.get_by_label('处理与核对说明',exact=False).fill('已核对券商资料，实际无份额变更')
+            page.get_by_role('button',name='保存',exact=True).click()
+            expect(page.get_by_text('测试ETF · 本人已核对',exact=True)).to_be_visible()
+            page.get_by_role('tab',name='复盘与策略',exact=True).click()
+            review=next(r for r in store.listing('reviews')['items'] if r['text']=='今日按计划观察，等待公告。')
+            article=page.locator('article').filter(has=page.get_by_text('今日按计划观察，等待公告。',exact=True))
+            for _ in range(2):
+                article.get_by_role('button',name='生成改进行动',exact=True).click()
+                page.get_by_label('改进行动标题',exact=True).fill('核对原始公告')
+                page.get_by_label('行动日期',exact=True).fill('2026-10-29')
+                page.get_by_role('button',name='保存',exact=True).click()
+                expect(page.get_by_text('已安排改进行动，未复制私人复盘正文或金额。',exact=True)).to_be_visible()
+            with db.connect() as c:self.assertEqual(c.execute('SELECT count(*) FROM action_plans').fetchone()[0],1)
+            article.get_by_role('button',name='查看行动引用',exact=True).click()
+            expect(page.get_by_text('行动仍可查看',exact=True)).to_be_visible()
+            page.get_by_role('button',name='关闭',exact=True).click()
+            expect(page.locator('#investmentToday')).not_to_contain_text('10000')
+            page.evaluate('target=>RecordDiscovery.open({target})',{'kind':'investment','id':review['id'],'resource':'reviews'})
+            expect(page.get_by_role('dialog').get_by_role('heading',name='投资复盘',exact=True)).to_be_visible()
+            self.assertEqual(page.evaluate('window.openedTab'),'stocks')
+            page.get_by_role('button',name='关闭',exact=True).click()
+            page.get_by_role('tab',name='今日与计划',exact=True).click()
+            page.get_by_role('button',name='AI研究与建议',exact=True).click()
+            page.get_by_label('分析目的',exact=False).select_option('capital')
+            page.get_by_label('想分析的问题',exact=True).fill('沿用已有政策约束，形成待确认的修改草稿')
+            page.get_by_label('公告摘录',exact=True).check()
+            page.get_by_label('2026-10-01 至 2026-10-31 · 本人交易账户',exact=True).check()
+            page.get_by_role('button',name='预览将发送的资料',exact=True).click()
+            page.get_by_role('button',name='确认发送并分析',exact=True).click()
+            scenario_card=page.locator('dialog article').filter(has=page.get_by_role('heading',name='继续保留现金 · 本人资料下的条件草案',exact=True))
+            scenario_card.get_by_role('button',name='形成资金政策修改草稿',exact=True).click(timeout=15000)
+            expect(page.get_by_text('已生成资金政策修改草稿，原生效版本保留，仍需本人另行确认。',exact=True)).to_be_visible()
+            page.get_by_role('button',name='关闭',exact=True).click()
+            self.assertEqual(store.listing('policies')['items'][0]['state'],'draft')
+            self.assertEqual(len(calls),6)
+            page.get_by_role('button',name='查找投资记录',exact=True).click()
+            page.get_by_label('投资记录关键词',exact=True).fill('ETF波段研究笔记')
+            page.get_by_role('button',name='查找',exact=True).click()
+            expect(page.get_by_text('找到 1 条，当前显示前50条。',exact=True)).to_be_visible()
+            page.get_by_role('button',name='查看私有记录',exact=True).click()
+            expect(page.get_by_role('dialog').get_by_role('heading',name='ETF波段研究笔记',exact=True,level=3)).to_be_visible()
+            page.get_by_role('button',name='关闭',exact=True).click()
+            expect(page.get_by_role('dialog')).to_have_count(0)
+            dossier=store.listing('dossiers')['items'][0]
+            with patch('investments.store.now',return_value='2026-10-29T09:00:00+08:00'):
+                for index in range(101):store.create('instruments',{'name':f'分页夹具{index}','code':f'5{index:05d}','market':'SSE','kind':'etf'},f'page-{index}')
+            page.get_by_role('button',name='刷新',exact=True).click()
+            dossier_card=page.locator('article').filter(has=page.get_by_role('heading',name='ETF波段研究笔记 · 波段',exact=True))
+            dossier_card.get_by_role('button',name='修改版本',exact=True).click()
+            expect(page.get_by_label('研究标的',exact=True)).to_contain_text('当前引用未载入，保存时保留')
+            page.get_by_label('缺少输入',exact=False).fill('保留原证券引用，仅更新核对事项')
+            page.get_by_role('button',name='保存',exact=True).click()
+            expect(page.get_by_role('dialog')).to_have_count(0)
+            self.assertEqual(store.get('dossiers',dossier['id'])['instrument_id'],dossier['instrument_id'])
             self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),390)
             self.assertEqual(errors,[])
