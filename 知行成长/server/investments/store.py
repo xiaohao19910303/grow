@@ -57,7 +57,8 @@ class InvestmentStore:
                 where += " AND data::jsonb->>'account_id'=?"
                 args.append(account_id)
             total = c.execute('SELECT count(*) FROM investment_objects WHERE '+where,args).fetchone()[0]
-            rows = c.execute('SELECT data FROM investment_objects WHERE '+where+
+            projection="(data::jsonb-'source_snapshots')::text" if kind in ('dossiers','principles') else 'data'
+            rows = c.execute('SELECT '+projection+' FROM investment_objects WHERE '+where+
                 ' ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?', [*args,page_size,(page-1)*page_size]).fetchall()
             return {'items':[json.loads(r[0]) for r in rows], 'total':total,'page':page,'page_size':page_size}
 
@@ -120,11 +121,18 @@ class InvestmentStore:
         if data.get('campaign_id'):
             if not any(item['id']==data['campaign_id'] for item in self._campaigns(c,data['account_id'])):
                 fail('not_found','关联交易链不存在或已需重新核对。',404)
+        for source_kind,field in [('research','evidence_ids'),('reviews','source_review_ids')]:
+            for source_id in data.get(field,[]):
+                source=self._get(c,source_kind,source_id)
+                if source.get('account_id') not in (None,data.get('account_id')) or (kind=='dossiers' and source.get('instrument_id') not in (None,data['instrument_id'])):
+                    fail('scope_mismatch','引用来源不属于当前投资账户或证券。',422)
 
     def create(self,kind,payload,key):
         data = self.validate(kind,payload)
         if kind=='cash-events' and data['kind'].startswith('fund_receivable_'):
             fail('invalid_cash_event','基金待到账流水由确认/到账操作生成，不能独立添加。',422)
+        if kind=='fills' and data['source']=='fund_confirmation':
+            fail('fund_confirmation_required','基金确认成交由专用申请确认流程生成。',422)
         fingerprint = digest(encoded({'kind':kind,'data':data}))
         with db.connect() as c:
             self.lock(c)
@@ -156,6 +164,10 @@ class InvestmentStore:
                 return existing
         stamp=now()
         record={**data,'id':'inv-'+uuid.uuid4().hex,'version':1,'created_at':stamp,'updated_at':stamp}
+        if kind=='research':record['evidence_hash']=digest(encoded(data))
+        if kind in ('dossiers','principles'):
+            source_kind,field=('research','evidence_ids') if kind=='dossiers' else ('reviews','source_review_ids')
+            record['source_snapshots']=[self._get(c,source_kind,i) for i in data[field]]
         if kind=='fills' and data.get('plan_id'):
             plan=self._get(c,'trade-plans',data['plan_id'])
             if data.get('plan_version') is not None:
@@ -174,8 +186,13 @@ class InvestmentStore:
                 record['strategy_snapshot']=plan['strategy_snapshot']
             record['plan_recorded_before_execution']=(plan.get('state')=='confirmed' and
                 datetime.fromisoformat(plan['confirmed_at'])<=datetime.fromisoformat(data['executed_at']))
-            record['plan_valid_at_execution']=record['plan_recorded_before_execution'] and datetime.fromisoformat(data['executed_at'])<=datetime.fromisoformat(plan['valid_until'])
-        if kind in ('policies','strategies','trade-plans','period-plans'):
+            execution=datetime.fromisoformat(data['executed_at'])
+            record['plan_valid_at_execution']=(record['plan_recorded_before_execution'] and execution<=datetime.fromisoformat(plan['valid_until']) and
+                bool(plan.get('planned_for')) and execution.astimezone(ZoneInfo('Asia/Shanghai')).date().isoformat()>=plan['planned_for'])
+        if kind=='fills':
+            from .campaigns import freeze_entry_risk
+            record['initial_risk_snapshot']=freeze_entry_risk(record)
+        if kind in ('policies','strategies','trade-plans','period-plans','principles'):
             record['state']='draft'
         if kind=='fund-orders':
             instrument=self._get(c,'instruments',data['instrument_id'])
@@ -214,7 +231,7 @@ class InvestmentStore:
             old=self._get(c,kind,object_id)
             if old['version']!=version:
                 fail('version_conflict','记录已更新，请载入最新版本后再修改。')
-            if kind not in ('policies','strategies','trade-plans','reviews','period-plans'):
+            if kind not in ('policies','strategies','trade-plans','reviews','period-plans','watchlist','dossiers','principles','ledger-notices'):
                 fail('immutable_fact','此事实需通过专用核对流程更正，不能覆盖。')
             previous={k:old[k] for k in RESOURCE_MODELS[kind].model_fields if k in old}
             data=self.validate(kind,{**previous,**payload})
@@ -222,19 +239,35 @@ class InvestmentStore:
             if old.get('account_id') != data.get('account_id'):
                 fail('validation_error','已有记录不能移到另一个账户。',422)
             record={**data,'id':object_id,'version':version+1,'created_at':old['created_at'],'updated_at':now()}
+            if kind in ('dossiers','principles'):
+                source_kind,field=('research','evidence_ids') if kind=='dossiers' else ('reviews','source_review_ids')
+                record['source_snapshots']=[self._get(c,source_kind,i) for i in data[field]]
             if 'state' in old:
                 record['state']='draft'
             self.save(c,kind,record)
             self.remember(c,key,fingerprint,record)
             return record
 
-    def _balance(self,c,account_id,marks):
+    def _balance(self,c,account_id,marks,as_of=None):
         account=self._get(c,'accounts',account_id)
+        if as_of and datetime.fromisoformat(account['created_at'])>datetime.fromisoformat(as_of):
+            fail('future_information','账户核对信息在分析截止时间之后才录入，请调整截止时间。',422)
+        fill_filter=' AND f.executed_at<=?::timestamptz AND o.created_at<=?::timestamptz' if as_of else ''
+        event_filter=' AND e.occurred_at<=?::timestamptz AND o.created_at<=?::timestamptz' if as_of else ''
         fills=[json.loads(r[0]) for r in c.execute('''SELECT o.data FROM investment_fills f
-            JOIN investment_objects o ON o.id=f.id WHERE f.account_id=? ORDER BY f.executed_at,f.sequence''',(account_id,))]
+            JOIN investment_objects o ON o.id=f.id WHERE f.account_id=?'''+fill_filter+' ORDER BY f.executed_at,f.sequence',
+            (account_id,as_of,as_of) if as_of else (account_id,))]
+        if as_of:
+            for index,fill in enumerate(fills):
+                if datetime.fromisoformat(fill['updated_at'])>datetime.fromisoformat(as_of):
+                    row=c.execute("""SELECT data FROM investment_versions WHERE object_id=?
+                        AND (data::jsonb->>'updated_at')::timestamptz<=?::timestamptz ORDER BY version DESC LIMIT 1""",(fill['id'],as_of)).fetchone()
+                    fills[index]=json.loads(row[0])
         events=[json.loads(r[0]) for r in c.execute('''SELECT o.data FROM investment_cash_events e
-            JOIN investment_objects o ON o.id=e.id WHERE e.account_id=? ORDER BY e.occurred_at,e.id''',(account_id,))]
-        return reconcile(account['opening_cash'],events,fills,opening_positions=account['opening_positions'],marks=marks)
+            JOIN investment_objects o ON o.id=e.id WHERE e.account_id=?'''+event_filter+' ORDER BY e.occurred_at,e.id',
+            (account_id,as_of,as_of) if as_of else (account_id,))]
+        from .reconciliation import apply_notices
+        return apply_notices(c,account_id,reconcile(account['opening_cash'],events,fills,opening_positions=account['opening_positions'],marks=marks),as_of)
 
     def balance(self,account_id,marks=None):
         with db.connect() as c:
@@ -255,7 +288,13 @@ class InvestmentStore:
         account=self._get(c,'accounts',account_id)
         fills=[json.loads(r[0]) for r in c.execute('''SELECT o.data FROM investment_fills f
             JOIN investment_objects o ON o.id=f.id WHERE f.account_id=? ORDER BY f.executed_at,f.sequence''',(account_id,))]
-        return project(account,fills)
+        from .reconciliation import notices
+        affected={n['instrument_id'] for n in notices(c,account_id)}
+        cycles=project(account,fills)
+        for cycle in cycles:
+            if cycle['instrument_id'] in affected:
+                cycle.update(net_realized=None,realized_r=None,cost=None,reconciliation_required=True)
+        return cycles
 
     def export(self):
         with db.connect() as c:

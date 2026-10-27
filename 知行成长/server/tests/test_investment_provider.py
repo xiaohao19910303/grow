@@ -1,6 +1,7 @@
 """Bounded fixed-host provider protocol, exact units and honest freshness."""
 import asyncio
 import json
+from unittest.mock import patch
 
 import httpx
 from copilot.core import Problem
@@ -56,3 +57,19 @@ class InvestmentProviderTests(PostgreSQLFixture):
         with self.assertRaises(Problem):
             asyncio.run(self.provider.fetch(self.instrument['id'],'2026-10-23','2026-10-26',
                 'PROVIDER_TEST_ONLY',False,'no-license'))
+
+    def test_bse_never_borrows_sse_calendar_and_future_bars_are_rejected(self):
+        bse=self.store.create('instruments',{'code':'920000','market':'BSE','kind':'stock','name':'北交所夹具'},'bse')
+        with self.assertRaises(Problem):
+            asyncio.run(self.provider.fetch(bse['id'],'2026-10-23','2026-10-26','PROVIDER_TEST_ONLY',True,'bse-daily'))
+        self.assertEqual(self.calls,[])
+        def future(request):
+            body=json.loads(request.content)
+            data={'fields':['exchange','cal_date','is_open'],'items':[['SSE','20261027',1]]} if body['api_name']=='trade_cal' else {
+                'fields':['ts_code','trade_date','open','high','low','close','vol','amount'],
+                'items':[['510000.SH','20261027',1,2,1,1.5,1,1]]}
+            return httpx.Response(200,json={'code':0,'data':data})
+        provider=DailyProvider(self.store,httpx.MockTransport(future))
+        with patch('investments.providers.now',return_value='2026-10-26T16:00:00+08:00'),self.assertRaises(Problem):
+            asyncio.run(provider.fetch(self.instrument['id'],'2026-10-27','2026-10-27','PROVIDER_TEST_ONLY',True,'future'))
+        self.assertEqual(self.store.listing('research')['total'],0)

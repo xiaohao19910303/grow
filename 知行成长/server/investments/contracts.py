@@ -76,6 +76,13 @@ class FillInput(Contract):
     external_id: str | None = Field(default=None, max_length=200)
     source: Literal['manual', 'csv', 'broker', 'fund_confirmation'] = 'manual'
     note: Text = ''
+    settlement_amount: Money | None = None
+
+    @model_validator(mode='after')
+    def settlement_source(self):
+        if self.settlement_amount is not None and self.source!='fund_confirmation':
+            raise ValueError('实际结算净额仅用于基金专用确认流程。')
+        return self
 
 
 class CashInput(Contract):
@@ -116,6 +123,7 @@ class PlanInput(Contract):
     instrument_id: Identifier
     strategy_id: Identifier | None = None
     title: str = Field(min_length=1, max_length=200)
+    intent: Literal['entry','exit','observe'] = 'entry'
     rationale: Text = ''
     entry_conditions: Text = ''
     invalidation: Text = ''
@@ -230,8 +238,64 @@ class AnalysisInput(Contract):
     evidence_ids: list[Identifier] = Field(default_factory=list,max_length=30)
     plan_ids: list[Identifier] = Field(default_factory=list,max_length=10)
     review_ids: list[Identifier] = Field(default_factory=list,max_length=10)
+    policy_ids: list[Identifier] = Field(default_factory=list,max_length=5)
+    dossier_ids: list[Identifier] = Field(default_factory=list,max_length=10)
+    campaign_ids: list[Identifier] = Field(default_factory=list,max_length=5)
     include_amounts: bool = False
     decision_at: AwareDatetime
+
+
+class WatchInput(Contract):
+    account_id: Identifier
+    instrument_id: Identifier
+    stage: Literal['observing','researching','ready','held','archived'] = 'observing'
+    reason: Text = ''
+    next_check: date | None = None
+
+
+class DossierInput(Contract):
+    account_id: Identifier
+    instrument_id: Identifier
+    title: str = Field(min_length=1,max_length=200)
+    horizon: Literal['short','swing'] = 'swing'
+    market_context: Text = ''
+    technical_case: Text = ''
+    catalyst: Text = ''
+    company_risk: Text = ''
+    valuation_assumptions: Text = ''
+    liquidity: Text = ''
+    nav_context: Text = ''
+    portfolio_impact: Text = ''
+    contrary_case: Text = ''
+    missing_inputs: Text = ''
+    evidence_ids: list[Identifier] = Field(default_factory=list,max_length=30)
+
+
+class PrincipleInput(Contract):
+    account_id: Identifier
+    title: str = Field(min_length=1,max_length=200)
+    rule: str = Field(min_length=1,max_length=4000)
+    supporting_case: Text = ''
+    contrary_case: Text = ''
+    validation_scope: Text = ''
+    source_review_ids: list[Identifier] = Field(default_factory=list,max_length=10)
+
+
+class LedgerNoticeInput(Contract):
+    account_id: Identifier
+    instrument_id: Identifier
+    kind: Literal['corporate_action','missing_fact','cost_or_fee','other']
+    observed_at: AwareDatetime
+    reason: str = Field(min_length=1,max_length=2000)
+    source_url: HttpUrl | None = None
+    status: Literal['open','resolved'] = 'open'
+    resolution: str = Field(default='',max_length=4000)
+
+    @model_validator(mode='after')
+    def explained_resolution(self):
+        if self.status=='resolved' and not self.resolution:
+            raise ValueError('解除待核对状态必须保留本人核对与处理说明。')
+        return self
 
 
 class FundOrderInput(Contract):
@@ -252,10 +316,12 @@ class FundConfirmation(Contract):
     confirmed_at: AwareDatetime
     nav_date: date
     final_confirmation: bool = True
+    settlement_amount: Money | None = None
 
 
 RESOURCE_MODELS = {'accounts': AccountInput, 'instruments': InstrumentInput,
                    'fills': FillInput, 'cash-events': CashInput, 'policies': PolicyInput,
                    'strategies': StrategyInput, 'trade-plans': PlanInput, 'reviews': ReviewInput,
                    'research': ResearchInput, 'fund-orders': FundOrderInput,'plan-checks':PlanCheckInput,
-                   'period-plans':PeriodPlanInput}
+                   'period-plans':PeriodPlanInput,'watchlist':WatchInput,'dossiers':DossierInput,'principles':PrincipleInput,
+                   'ledger-notices':LedgerNoticeInput}

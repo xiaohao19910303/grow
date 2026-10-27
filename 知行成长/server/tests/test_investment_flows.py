@@ -78,3 +78,13 @@ class InvestmentFlowTests(PostgreSQLFixture):
         self.assertEqual(self.store.balance(self.account['id'])['cash'],'9047')
         settle_fund(self.store,redeem['id'],final['version'],'2026-11-03T10:00:00+08:00','settled2')
         self.assertEqual(self.store.balance(self.account['id'])['cash'],'9295.4')
+
+    def test_fund_actual_settlement_rounding_changes_cash_and_cost_exactly(self):
+        fund=self.store.create('instruments',{'name':'基金','code':'000003','market':'FUND','kind':'fund'},'fund3')
+        order=self.store.create('fund-orders',{'account_id':self.account['id'],'instrument_id':fund['id'],
+            'side':'subscription','amount':'100','applied_at':'2026-10-26T10:00:00+08:00'},'rounded-order')
+        confirm_fund(self.store,order['id'],1,{'price':'1.2345','quantity':'81','fee':'0','tax':'0','settlement_amount':'100',
+            'confirmed_at':'2026-10-27T10:00:00+08:00','nav_date':'2026-10-26'},'rounded-confirm')
+        balance=self.store.balance(self.account['id'])
+        self.assertEqual(balance['cash'],'9900');self.assertTrue(balance['cash_verified'])
+        self.assertEqual(balance['positions'][0]['cost'],'100')

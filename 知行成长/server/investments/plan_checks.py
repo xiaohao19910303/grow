@@ -18,6 +18,8 @@ def assess_plan(store,plan_id,as_of=None):
 
 
 def assess_in(store,c,plan,as_of):
+    if plan.get('intent','entry')!='entry':
+        fail('research_only_plan','此处仅估算做多入场数量。退出/观察保留研究草稿；卖出需核对券商当前可卖数量。',422)
     stamp=datetime.fromisoformat(as_of).astimezone(TZ);day=stamp.date().isoformat()
     if not all(plan.get(k) is not None for k in ('planned_for','check_id','entry_price','invalidation_price','fee_budget','risk_budget','holding_sessions')):
         fail('execution_unverified','请补充核对资料、计划日期、进出价格、费用预算和持有期。',422)
@@ -31,7 +33,7 @@ def assess_in(store,c,plan,as_of):
     prior=[d for d,is_open in sessions.items() if is_open and (d<day or (d==day and stamp.time()>=time(15)))]
     if day not in sessions or quote>stamp or not prior or quote.date().isoformat()!=max(prior) or quote.time()<time(15):
         fail('stale_plan_check','盘后价格必须对应已核对日历内最近完成的开市日，不能采用未来或缺覆盖资料。',422)
-    if target<day or not sessions.get(target) or not check['rules_valid_from']<=day<=target<=check['rules_valid_until'] or not target<=expiry.date().isoformat()<=check['rules_valid_until'] or expiry<=stamp:
+    if target<day or (target==day and stamp.time()>=time(15)) or not sessions.get(target) or not check['rules_valid_from']<=day<=target<=check['rules_valid_until'] or not target<=expiry.date().isoformat()<=check['rules_valid_until'] or expiry<=stamp:
         fail('invalid_plan_session','请核对计划开市日、有效期与规则覆盖，休市或资料过期不能确认。',422)
     if check['trading_status']!='normal':
         fail('unknown_trading_status','交易状态非正常或未知，请先核对。',422)
@@ -39,7 +41,7 @@ def assess_in(store,c,plan,as_of):
     holding=plan['holding_sessions'];delay=check['sell_delay_sessions']
     if len(future)<max(holding,delay+1):
         fail('calendar_incomplete','日历未覆盖预计持有期与最早可卖日，不能按自然日代算。',422)
-    capital=policy_status_in(store,c,plan['account_id'],day,plan['id'])
+    capital=policy_status_in(store,c,plan['account_id'],target,plan['id'])
     if capital['conflicts'] or capital['available_after_buffer'] is None:
         fail('policy_conflict','请核对生效政策、现金缓冲、实际费用、暂停状态与单笔风险限制。',422)
     with localcontext() as ctx:
@@ -66,6 +68,7 @@ def assess_in(store,c,plan,as_of):
             'realtime':False,'mode':'user_checked_conditional','price_basis':'user_declared_post_close',
             'limitations':['资料由本人核对，系统未独立核验来源、行情或规则；这是未来条件计划，不是当前可成交承诺。',
                 '费用预算为本人填写的本次进出合计估计；跳空、停牌、限价或无法成交可造成超预算损失。',
+                '各计划不自动预留资金，若多个条件同时触发，须再次核对总暴露和可用现金。',
                 '数量按价格差风险和现金缓冲取较小值，再按本人核对的数量单位向下取整；不自动增加风险。']}
         result['calculation_hash']=digest(encoded(result))
         return result

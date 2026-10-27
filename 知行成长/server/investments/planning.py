@@ -7,7 +7,7 @@ from copilot.core import digest, encoded, fail, now
 
 
 def transition(store,kind,object_id,version,state,key,reason=''):
-    if kind not in ('policies','strategies','trade-plans','period-plans'):
+    if kind not in ('policies','strategies','trade-plans','period-plans','principles'):
         fail('invalid_transition','此记录不支持计划状态操作。',422)
     if state not in ('confirmed','declined','expired','cancelled','paused','untriggered','skipped'):
         fail('invalid_transition','无效的计划状态。',422)
@@ -31,6 +31,8 @@ def transition(store,kind,object_id,version,state,key,reason=''):
                 fail('invalid_transition','只有草稿可以确认，请先创建修改版本。')
             if kind=='strategies' and not all(old.get(k) for k in ('entry_conditions','exit_conditions','validation_scope')):
                 fail('incomplete_strategy','请补充策略入场、退出和验证范围。',422)
+            if kind=='principles' and not all(old.get(k) for k in ('supporting_case','contrary_case','validation_scope','source_review_ids')):
+                fail('incomplete_principle','试验前请补充支持案例、反例、验证范围和原始复盘。',422)
             if kind=='period-plans':
                 if not old.get('check_id') or not old.get('focus'):
                     fail('incomplete_period_plan','请填写关注事项和已核对日历。',422)
@@ -54,7 +56,7 @@ def transition(store,kind,object_id,version,state,key,reason=''):
                     if other['state'] in ('confirmed','paused') and other['id']!=old['id'] and other['period_start']<=old['period_end'] and old['period_start']<=other['period_end']:
                         fail('overlapping_policy','此期间已有生效资金政策，请修改原政策版本或选择其他期间。',422)
             if kind=='trade-plans':
-                status=policy_status_in(store,c,old['account_id'],datetime.fromisoformat(now()).astimezone(ZoneInfo('Asia/Shanghai')).date().isoformat(),object_id)
+                status=policy_status_in(store,c,old['account_id'],old.get('planned_for') or datetime.fromisoformat(now()).astimezone(ZoneInfo('Asia/Shanghai')).date().isoformat(),object_id)
                 if status['conflicts']:
                     fail('policy_conflict','资金政策缺失、暂停新增风险或超过预算，请先核对。',422)
                 missing=[k for k in ('strategy_id','rationale','entry_conditions','invalidation','risk_budget','holding_sessions') if not old.get(k)]

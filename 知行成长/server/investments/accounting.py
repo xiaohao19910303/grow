@@ -21,11 +21,12 @@ def _reconcile(opening_cash, cash_events, fills, opening_positions, marks):
     positions = {}
     cash = D(opening_cash)
     fees_complete = True
+    settlements_complete = True
     receivables = ZERO
 
     def position(instrument_id):
         return positions.setdefault(instrument_id, {'quantity': ZERO, 'cost': ZERO,
-            'realized': ZERO, 'fees_complete': True})
+            'realized': ZERO, 'fees_complete': True,'settlements_complete':True})
 
     for opening in opening_positions:
         item = position(opening['instrument_id'])
@@ -49,20 +50,25 @@ def _reconcile(opening_cash, cash_events, fills, opening_positions, marks):
         item['fees_complete'] = item['fees_complete'] and known
         costs = D(fill.get('fee') or '0') + D(fill.get('tax') or '0')
         value = quantity * price
+        settlement = D(fill['settlement_amount']) if fill.get('settlement_amount') is not None else None
+        if fill.get('source')=='fund_confirmation' and settlement is None:
+            settlements_complete=False;item['settlements_complete']=False
         if fill['side'] == 'buy':
-            cash -= value + costs
+            paid=value+costs if settlement is None else settlement
+            cash -= paid
             # A fully closed unknown-cost opening position must not contaminate a new cycle.
             if item['quantity'] == 0:
                 item['cost'] = ZERO
             if item['cost'] is not None:
-                item['cost'] += value + costs
+                item['cost'] += paid
             item['quantity'] += quantity
         elif fill['side'] == 'sell':
             if quantity > item['quantity']:
                 raise ValueError('卖出数量超过已核对持仓；请先补齐期初或成交。')
             allocated = None if item['cost'] is None else item['cost'] * quantity / item['quantity']
-            cash += value - costs
-            item['realized'] = None if allocated is None or item['realized'] is None else item['realized'] + value - costs - allocated
+            proceeds=value-costs if settlement is None else settlement
+            cash += proceeds
+            item['realized'] = None if allocated is None or item['realized'] is None else item['realized'] + proceeds - allocated
             item['quantity'] -= quantity
             if item['cost'] is not None:
                 item['cost'] -= allocated
@@ -81,10 +87,13 @@ def _reconcile(opening_cash, cash_events, fills, opening_positions, marks):
         unrealized = None if value is None or item['cost'] is None else value - item['cost']
         output.append({'instrument_id': instrument_id, **{k:number(item[k]) for k in ('quantity','cost','realized')},
             'fees_complete': item['fees_complete'], 'market_value': number(value),
-            'unrealized': number(unrealized) if item['fees_complete'] else None,
+            'settlements_complete':item['settlements_complete'],
+            'unrealized': number(unrealized) if item['fees_complete'] and item['settlements_complete'] else None,
             'mark': mark})
-    return {'cash': number(cash), 'cash_verified': fees_complete,'receivables':number(receivables),
+    return {'cash': number(cash), 'cash_verified': fees_complete and settlements_complete,'receivables':number(receivables),
             'positions': output, 'realized': number(realized), 'fees_complete': fees_complete,
-            'net_realized': number(realized) if fees_complete else None,
-            'equity': number(equity) if fees_complete else None,
-            'warnings': ([] if fees_complete else ['费用未齐，现金和成本为暂估，不能作为精确净收益。'])}
+            'net_realized': number(realized) if fees_complete and settlements_complete else None,
+            'equity': number(equity) if fees_complete and settlements_complete else None,
+            'settlements_complete':settlements_complete,
+            'warnings': ([] if fees_complete else ['费用未齐，现金和成本为暂估，不能作为精确净收益。'])+
+                ([] if settlements_complete else ['基金确认未填实际收支净额，现金按净值乘份额暂估；不能当作已核验净结果。'])}

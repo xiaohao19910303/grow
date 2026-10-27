@@ -1,5 +1,6 @@
 """User-verified context enables conditional planning without paid quotes."""
 from unittest.mock import patch
+from decimal import Decimal,localcontext
 from copilot.core import Problem
 from investments.store import InvestmentStore
 from investments.plan_checks import assess_plan
@@ -60,3 +61,31 @@ class InvestmentPlanCheckTests(PostgreSQLFixture):
         stale=self.context(quote_as_of='2026-10-26T15:00:00+08:00')
         p=self.plan(stale,planned_for='2026-10-29')
         with self.assertRaises(Problem):assess_plan(self.store,p['id'],'2026-10-28T09:00:00+08:00')
+
+    def test_partial_entry_r_uses_frozen_actual_entry_risk_not_entire_budget(self):
+        context=self.context();plan=self.plan(context)
+        self.store.transition('trade-plans',plan['id'],1,'confirmed','confirm')
+        buy=self.store.create('fills',{'account_id':self.a['id'],'instrument_id':self.i['id'],'plan_id':plan['id'],
+            'side':'buy','price':'10','quantity':'100','fee':'1','tax':'0','executed_at':'2026-10-28T10:00:00+08:00'},'buy')
+        self.store.update('trade-plans',plan['id'],2,{'invalidation_price':'8'},'widen')
+        self.store.create('fills',{'account_id':self.a['id'],'instrument_id':self.i['id'],'side':'sell',
+            'price':'11','quantity':'100','fee':'1','tax':'0','executed_at':'2026-10-28T11:00:00+08:00'},'sell')
+        cycle=self.store.campaigns(self.a['id'])[0]
+        self.assertEqual(cycle['risk_basis'],'102')
+        with localcontext() as ctx:
+            ctx.prec=60
+            self.assertLess(abs(Decimal(cycle['realized_r'])-Decimal(98)/102),Decimal('1e-50'))
+        self.assertEqual(self.store.get('fills',buy['id'])['initial_risk_snapshot']['invalidation_price'],'9')
+
+    def test_entry_before_planned_session_has_no_verified_initial_risk(self):
+        context=self.context();plan=self.plan(context,planned_for='2026-10-29',valid_until='2026-10-29T15:00:00+08:00')
+        self.store.transition('trade-plans',plan['id'],1,'confirmed','confirm')
+        actual=self.store.create('fills',{'account_id':self.a['id'],'instrument_id':self.i['id'],'plan_id':plan['id'],
+            'side':'buy','price':'10','quantity':'100','fee':'1','tax':'0','executed_at':'2026-10-28T10:00:00+08:00'},'early')
+        self.assertFalse(actual['plan_valid_at_execution']);self.assertIsNone(actual['initial_risk_snapshot'])
+
+    def test_exit_draft_never_gets_buy_sizing(self):
+        context=self.context();plan=self.plan(context,intent='exit')
+        with self.assertRaises(Problem) as caught:
+            assess_plan(self.store,plan['id'],'2026-10-28T09:00:00+08:00')
+        self.assertEqual(caught.exception.code,'research_only_plan')

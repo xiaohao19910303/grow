@@ -85,6 +85,8 @@ def correct_fill(store,object_id,version,changes,reason,key):
             fail('version_conflict','成交已更新，请先载入最新版本。')
         data=store.validate('fills',{**{k:old[k] for k in RESOURCE_MODELS['fills'].model_fields if k in old},**changes})
         record={**old,**data,'version':version+1,'updated_at':now(),'correction_reason':reason}
+        if old.get('initial_risk_snapshot') and any(data.get(k)!=old.get(k) for k in ('price','quantity')):
+            record['risk_snapshot_invalidated']=True
         store.save(c,'fills',record)
         c.execute('UPDATE investment_fills SET price=?,quantity=?,fee=?,tax=? WHERE id=?',
                   (record['price'],record['quantity'],record['fee'],record['tax'],object_id))
@@ -120,19 +122,24 @@ def confirm_fund(store,object_id,version,payload,key):
             fail('invalid_confirmation','下一批确认时间不能早于已登记批次。',422)
         quantity=Decimal(data['quantity']);gross=Decimal(data['price'])*quantity
         charges=Decimal(data['fee'])+Decimal(data['tax'])
-        used=sum((Decimal(b['price'])*Decimal(b['quantity'])+Decimal(b['fee'])+Decimal(b['tax']) for b in batches),Decimal('0'))
+        expected=gross+charges if buy else gross-charges
+        settled=Decimal(data['settlement_amount']) if data.get('settlement_amount') is not None else expected
+        if abs(settled-expected)>Decimal('0.01'):
+            fail('settlement_mismatch','实际净额与净值、份额、费用相差超过一分，请先核对原始确认记录。',422)
+        used=sum((Decimal(b['settlement_amount']) if b.get('settlement_amount') is not None else Decimal(b['price'])*Decimal(b['quantity'])+Decimal(b['fee'])+Decimal(b['tax']) for b in batches),Decimal('0'))
         units=sum((Decimal(b['quantity']) for b in batches),Decimal('0'))
-        if (buy and used+gross+charges>Decimal(order['amount'])) or (not buy and units+quantity>Decimal(order['quantity'])):
+        if (buy and used+settled>Decimal(order['amount'])) or (not buy and units+quantity>Decimal(order['quantity'])):
             fail('invalid_confirmation','确认金额或份额超出原申请，请先核对。',422)
         if not buy and gross<charges:
             fail('invalid_confirmation','赎回费用不能大于确认总额。',422)
         fill=store.validate('fills',{'account_id':order['account_id'],'instrument_id':order['instrument_id'],
             'side':'buy' if buy else 'sell','price':data['price'],'quantity':data['quantity'],
             'fee':data['fee'],'tax':data['tax'],'executed_at':data['confirmed_at'],
+            'settlement_amount':data.get('settlement_amount'),
             'source':'fund_confirmation','external_id':object_id+':'+str(len(batches)+1),'note':'基金确认，净值日期 '+data['nav_date']})
         batch_key=object_id+':'+str(len(batches)+1)
         recorded=store.create_in(c,'fills',fill,'fund-fill-'+batch_key)
-        net=number(gross-charges)
+        net=number(settled)
         if not buy and Decimal(net)>0:
             event=store.validate('cash-events',{'account_id':order['account_id'],'kind':'fund_receivable_hold',
                 'amount':net,'occurred_at':data['confirmed_at'],'note':'基金赎回待到账 '+object_id})
@@ -141,7 +148,7 @@ def confirm_fund(store,object_id,version,payload,key):
         record={**order,'version':version+1,'updated_at':now(),'state':state,
                 'confirmation':data,'confirmations':[*batches,{**data,'fill_id':recorded['id']}],
                 'fill_id':recorded['id'],'receivable':number(Decimal(order.get('receivable','0'))+Decimal(net)) if not buy else '0',
-                'confirmed_quantity':number(units+quantity),'confirmed_amount':number(used+gross+charges) if buy else None}
+                'confirmed_quantity':number(units+quantity),'confirmed_amount':number(used+settled) if buy else None}
         store.save(c,'fund-orders',record)
         store.remember(c,key,fingerprint,record)
         return record

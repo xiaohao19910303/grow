@@ -52,6 +52,15 @@ def period_summary(store,account_id,start,end):
         before=reconcile(account['opening_cash'],prior_events,prior,opening_positions=account['opening_positions'])
         after=reconcile(account['opening_cash'],through_events,through,opening_positions=account['opening_positions'])
         cycles=project(account,through)
+        from .reconciliation import notices
+        unresolved=[n for n in notices(c,account_id) if day_of(n['observed_at'])<=end]
+        affected={n['instrument_id'] for n in unresolved}
+        if affected:
+            after.update(net_realized=None,equity=None,cash_verified=False)
+            for position in after['positions']:
+                if position['instrument_id'] in affected:position.update(quantity_verified=False,cost=None,realized=None,unrealized=None)
+            for cycle in cycles:
+                if cycle['instrument_id'] in affected:cycle.update(net_realized=None,realized_r=None)
         closed=[v for v in cycles if v['state']=='closed' and start<=day_of(v['closed_at'])<=end]
         opened=[v for v in cycles if v['state']=='open']
         known=[v for v in closed if v['net_realized'] is not None]
@@ -59,10 +68,12 @@ def period_summary(store,account_id,start,end):
         r_values=[v['realized_r'] for v in closed if v['realized_r'] is not None]
         groups={}
         for cycle in closed:
-            strategies={f.get('strategy_snapshot',{}).get('id') for f in cycle['fills'] if f['side']=='buy'}
-            name=next(iter(strategies)) if len(strategies)==1 and None not in strategies else 'mixed_or_unplanned'
+            strategies={(f.get('strategy_snapshot',{}).get('id'),f.get('strategy_snapshot',{}).get('version')) for f in cycle['fills'] if f['side']=='buy'}
+            name=next(iter(strategies)) if len(strategies)==1 and next(iter(strategies))[0] else ('mixed_or_unplanned',None)
             groups.setdefault(name,[]).append(cycle)
-        group_results=[{'strategy_id':k,'closed_count':len(v),'known_net_count':sum(x['net_realized'] is not None for x in v),
+        group_results=[{'strategy_id':k[0],'strategy_version':k[1],
+            'strategy_title':next((f['strategy_snapshot']['title'] for x in v for f in x['fills'] if f.get('strategy_snapshot',{}).get('id')==k[0]),'混合策略或无计划'),
+            'closed_count':len(v),'known_net_count':sum(x['net_realized'] is not None for x in v),
             'net_realized':number(sum((Decimal(x['net_realized']) for x in v),Decimal('0'))) if all(x['net_realized'] is not None for x in v) else None} for k,v in groups.items()]
         period_events=[e for e in through_events if day_of(e['occurred_at'])>=start]
         amounts={kind:number(sum((Decimal(e['amount']) for e in period_events if e['kind']==kind),Decimal('0'))) for kind in ('deposit','withdrawal','dividend','interest','fee')}
@@ -87,10 +98,11 @@ def period_summary(store,account_id,start,end):
             'r_sample_count':len(r_values),'average_r':number(sum((Decimal(v) for v in r_values),Decimal('0'))/len(r_values)) if r_values else None,
             'cash_at_end':after['cash'],'cash_verified':after['cash_verified'],'positions_at_end':after['positions'],
             'strategy_groups':group_results,'reviews':reviews,'suggestions':suggestions,'drawdown':None,'twr':None,'xirr':None,
-            'formulas':{'net_realized':'期末累计已实现净盈亏 - 期初前累计已实现净盈亏；不含浮盈、入出金、分红和利息',
+            'reconciliation_required':bool(unresolved),
+            'formulas':{'net_realized':'期末累计成交已实现净盈亏 - 期初前累计成交已实现净盈亏；仅含成交内费用，不含浮盈、入出金、分红、利息或单列账户费用',
                 'win_rate':'期间平仓且净盈亏已知的盈利交易链数 / 净盈亏已知的期间平仓交易链数；零结果计入分母',
                 'average_r':'期间平仓且事前风险基数已知的R均值；未知不补零'},
-            'limitations':['费用或历史成本不完整时净结果显示未知；现金也可能为暂估。',
+            'limitations':['费用、基金实际净额或历史成本不完整时净结果显示未知；现金也可能为暂估。',
                 '仅按期间内平仓统计胜率，开放仓位另列；少数交易不能证明策略有效。',
                 '没有逐日估值和资金流时间序列，不计算回撤、TWR、XIRR或持有路径指标。',
                 '策略归组依据成交冻结版本；多策略混合或无计划单列。AI建议全量保留，未实现影子收益核验，不混入实盘。']}

@@ -3,7 +3,7 @@ import json
 import re
 import uuid
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from zoneinfo import ZoneInfo
 
 import db
@@ -38,8 +38,15 @@ def rows(data):
 
 
 def indicators(bars):
+    with localcontext() as ctx:
+        ctx.prec=60
+        return _indicators(bars)
+
+
+def _indicators(bars):
     ordered=sorted(bars,key=lambda b:b['date'])
-    output={'price_basis':'unadjusted','ma5':None,'ma20':None,'volume_ratio_5':None,
+    output={'price_basis':'unadjusted','ma5':None,'ma20':None,'volume_ratio_5':None,'atr14':None,
+        'record_return_std20':None,'return_sample_count':max(0,min(20,len(ordered)-1)),
         'limitations':['未复权；除权与公司行动可能影响指标，不能据此推定可执行交易。']}
     for window in (5,20):
         if len(ordered)>=window:
@@ -48,6 +55,15 @@ def indicators(bars):
         previous=sum((D(b['volume_shares']) for b in ordered[-6:-1]),D('0'))/5
         if previous:
             output['volume_ratio_5']=number(D(ordered[-1]['volume_shares'])/previous)
+    if len(ordered)>=15 and all('high' in b and 'low' in b for b in ordered[-14:]):
+        true_ranges=[max(D(b['high'])-D(b['low']),abs(D(b['high'])-D(p['close'])),abs(D(b['low'])-D(p['close'])))
+            for p,b in zip(ordered[-15:-1],ordered[-14:])]
+        output['atr14']=number(sum(true_ranges,D('0'))/14)
+    if len(ordered)>=21 and all(D(b['close'])>0 for b in ordered[-21:]):
+        returns=[D(b['close'])/D(p['close'])-1 for p,b in zip(ordered[-21:-1],ordered[-20:])]
+        mean=sum(returns,D('0'))/20
+        output['record_return_std20']=number((sum(((r-mean)**2 for r in returns),D('0'))/19).sqrt())
+    output['limitations'].append('ATR为最近14条真实区间的简单均值；波动为20次相邻有效记录收益样本标准差，不年化，不保证相邻自然日开市。')
     return output
 
 
@@ -98,6 +114,8 @@ class DailyProvider:
                 self.store._get(c,'accounts',account_id)
         if instrument['kind'] not in ('stock','etf') or instrument['market'] not in ('SSE','SZSE','BSE'):
             fail('provider_unsupported','此适配器只读取A股/场内ETF盘后行情；场外净值尚待独立核验。',422)
+        if instrument['market']=='BSE':
+            fail('provider_unsupported','北交所日历尚未独立核验，不能用沪深日历替代。请使用手工核对资料。',422)
         suffix={'SSE':'.SH','SZSE':'.SZ','BSE':'.BJ'}[instrument['market']]
         code=instrument['code']
         plain=code[:-3] if code.endswith(suffix) else code
@@ -105,13 +123,14 @@ class DailyProvider:
             fail('invalid_instrument','请核对证券代码与市场。',422)
         ts_code=plain+suffix
         compact=lambda d:d.replace('-','')
-        calendar=await self.request('trade_cal',{'exchange':'SZSE' if instrument['market']=='SZSE' else 'SSE',
+        exchange=instrument['market']
+        calendar=await self.request('trade_cal',{'exchange':exchange,
             'start_date':compact(start_date),'end_date':compact(end_date)},'exchange,cal_date,is_open,pretrade_date',token)
         calendar_by_date={}
         for item in calendar:
             try:
                 day=datetime.strptime(str(item['cal_date']),'%Y%m%d').date().isoformat()
-                if str(item['is_open']) not in ('0','1') or day in calendar_by_date:
+                if item.get('exchange')!=exchange or not start_date<=day<=end_date or str(item['is_open']) not in ('0','1') or day in calendar_by_date:
                     raise ValueError()
                 calendar_by_date[day]=str(item['is_open'])=='1'
             except (ValueError,KeyError):
@@ -121,11 +140,11 @@ class DailyProvider:
         endpoint='fund_daily' if instrument['kind']=='etf' else 'daily'
         raw=await self.request(endpoint,{'ts_code':ts_code,'start_date':compact(start_date),'end_date':compact(end_date)},
             'ts_code,trade_date,open,high,low,close,vol,amount',token)
-        bars=[];seen=set()
+        bars=[];seen=set();retrieved=now();asof=datetime.fromisoformat(retrieved).astimezone(TZ)
         for item in raw:
             try:
                 day=datetime.strptime(str(item['trade_date']),'%Y%m%d').date().isoformat()
-                if item['ts_code']!=ts_code or not start_date<=day<=end_date or day in seen:
+                if item['ts_code']!=ts_code or not start_date<=day<=end_date or day in seen or not calendar_by_date.get(day) or day>asof.date().isoformat() or (day==asof.date().isoformat() and asof.time()<time(15)):
                     raise ValueError()
                 values={k:decimal_value(item[k]) for k in ('open','high','low','close','vol','amount')}
                 if not (values['low']<=min(values['open'],values['close'])<=max(values['open'],values['close'])<=values['high']) or values['low']<=0:
@@ -137,7 +156,6 @@ class DailyProvider:
                 'volume_shares':number(values['vol']*100),'turnover_cny':number(values['amount']*1000),
                 'source_volume':number(values['vol']),'source_amount':number(values['amount'])})
         bars.sort(key=lambda b:b['date'])
-        retrieved=now();asof=datetime.fromisoformat(retrieved).astimezone(TZ)
         expected=[day for day,is_open in calendar_by_date.items() if is_open and day<=asof.date().isoformat()
             and (day<asof.date().isoformat() or asof.time()>=time(15))]
         expected=max(expected) if expected else None

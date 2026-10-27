@@ -2,7 +2,8 @@
 import csv
 import io
 import uuid
-from datetime import date
+from datetime import date,datetime,time
+from zoneinfo import ZoneInfo
 
 import db
 from copilot.core import Problem, digest, encoded, fail, now
@@ -23,9 +24,11 @@ def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label
         if replay is not None:
             return replay
         instrument=store._get(c,'instruments',instrument_id)
+        if instrument['kind'] not in ('stock','etf'):
+            fail('unsupported_history','此处只接收股票/场内ETF日线；场外基金净值与确认另行记录。',422)
         if account_id:
             store._get(c,'accounts',account_id)
-        bars=[];seen=set()
+        bars=[];seen=set();stamp=now();asof=datetime.fromisoformat(stamp).astimezone(ZoneInfo('Asia/Shanghai'))
         try:
             aliases={'日期':'date','开盘':'open','最高':'high','最低':'low','收盘':'close','成交量':'volume','成交额':'amount'}
             reader=csv.DictReader(io.StringIO(text.lstrip('\ufeff')))
@@ -38,7 +41,7 @@ def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label
                     raise ValueError()
                 row={aliases.get(k,k):v for k,v in raw.items()}
                 day=date.fromisoformat(row['date']).isoformat()
-                if day in seen:
+                if day in seen or day>asof.date().isoformat() or (day==asof.date().isoformat() and asof.time()<time(15)):
                     raise ValueError()
                 seen.add(day)
                 values={k:decimal_value(row[k]) for k in ('open','high','low','close','volume','amount')}
@@ -51,9 +54,8 @@ def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label
             if not bars:
                 raise ValueError()
         except (Problem,ValueError,KeyError,TypeError,csv.Error):
-            fail('invalid_history_csv','请核对列名、有效日期、非负量额、OHLC关系和重复日期。',422)
+            fail('invalid_history_csv','请核对列名、已完成日线的日期、非负量额、OHLC关系和重复日期；不接收未来或15点前的当日日线。',422)
         bars.sort(key=lambda b:b['date'])
-        stamp=now()
         snapshot={'id':'market-'+uuid.uuid4().hex,'version':1,'created_at':stamp,'updated_at':stamp,
             'instrument_id':instrument_id,'provider':'user_import','declared_source':source_label,
             'retrieved_at':stamp,'available_at':stamp,'freshness':'manual_unverified','coverage':'imported_daily',
