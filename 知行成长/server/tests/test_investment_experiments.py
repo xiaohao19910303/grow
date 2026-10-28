@@ -86,3 +86,12 @@ class InvestmentExperimentTests(PostgreSQLFixture):
         self.assertTrue(updated['archived_evaluation_outdated'])
         self.assertEqual(self.s.get('experiments',registered['id'])['evaluation_snapshot'],saved['evaluation_snapshot'])
         self.assertEqual(registered['protocol_snapshot']['strategy_snapshot']['entry_conditions'],'明确条件')
+
+    def test_unattributed_cases_cannot_bypass_the_observation_size_bound(self):
+        registered=register_experiment(self.s,self.draft()['id'],1,'register')
+        self.clock='2026-10-28T16:00:00+08:00'
+        unrelated=[{'id':'unrelated-'+str(i),'opened_at':'2026-10-26T10:00:00+08:00',
+            'fills':[{'side':'buy','executed_at':'2026-10-26T10:00:00+08:00'}]} for i in range(1001)]
+        with patch.object(self.s,'_campaigns',return_value=unrelated),self.assertRaises(Problem) as caught:
+            evaluate_experiment(self.s,registered['id'])
+        self.assertEqual(caught.exception.code,'experiment_too_large')

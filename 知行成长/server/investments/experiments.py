@@ -102,7 +102,9 @@ def evaluate_in(store,c,record):
         prefix=[f for f in cycle['fills'] if stamp(f['executed_at'])<=end]
         strategies={(f.get('strategy_snapshot',{}).get('id'),f.get('strategy_snapshot',{}).get('version')) for f in prefix if f['side']=='buy'}
         if strategies!={(protocol['strategy_id'],protocol['strategy_version'])}:
-            excluded.append({'campaign_id':cycle['id'],'reason':'其他、混合或未冻结策略版本'});continue
+            excluded.append({'campaign_id':cycle['id'],'reason':'其他、混合或未冻结策略版本'})
+            if len(observed)+len(excluded)>1000:fail('experiment_too_large','单次试验最多核对1000条交易链，请先整理试验范围。',422)
+            continue
         projected=project({**account,'opening_positions':[]},prefix)[0]
         if cycle.get('reconciliation_required'):projected.update(net_realized=None,realized_r=None)
         observed.append({k:projected[k] for k in ('id','state','opened_at','closed_at','quantity','net_realized','fees_complete','risk_basis','realized_r')})
