@@ -20,6 +20,8 @@ class InvestmentIsolationTests(unittest.TestCase):
             headers={**self.headers,'Idempotency-Key':'alice-account'})
         self.assertEqual(response.status_code,201,response.text)
         account=response.json()
+        instrument=self.client.post('/api/investments/instruments',json={'name':'ALICE SECURITY','code':'600000',
+            'market':'SSE','kind':'stock'},headers={**self.headers,'Idempotency-Key':'alice-instrument'}).json()
         old=self.client.post('/api/stocks',json={'stock_code':'123','stock_name':'ALICE OLD',
             'action':'buy','date':'2026-10-26','price':1},headers=self.headers)
         self.assertEqual(old.status_code,200,old.text)
@@ -27,6 +29,8 @@ class InvestmentIsolationTests(unittest.TestCase):
         self.register('bob')
         self.assertEqual(self.client.get('/api/investments/accounts').json()['total'],0)
         for path in ('/api/investments/accounts/'+account['id'],
+                     '/api/investments/instruments/'+instrument['id']+'/rules?on=2026-10-28',
+                     '/api/investments/instruments/'+instrument['id']+'/data-status',
                      '/api/investments/accounts/'+account['id']+'/balance',
                      '/api/investments/accounts/'+account['id']+'/policy-status?as_of=2026-10-28',
                      '/api/investments/accounts/'+account['id']+'/summary?start=2026-10-26&end=2026-10-28',

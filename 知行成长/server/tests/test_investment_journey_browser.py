@@ -106,6 +106,7 @@ class InvestmentJourneyBrowserTests(unittest.TestCase):
             page.get_by_role('tab',name='交易簿',exact=True).click()
             for side,price,quantity,stamp in [('buy','10','100','2026-10-28T10:00'),('buy','10','100','2026-10-28T10:01'),('sell','11','200','2026-10-29T10:00')]:
                 self.stamp=stamp+':00+08:00'
+                page.clock.set_system_time(time=self.stamp)
                 button('记录成交').click();control('操作').select_option(side)
                 fields({'成交价格':price,'成交数量':quantity,'手续费（可留空）':'1','税费（可留空）':'0','成交时间':stamp})
                 if side=='buy':control('关联事前计划').select_option(label='合成条件计划 · 已确认')
@@ -131,7 +132,15 @@ class InvestmentJourneyBrowserTests(unittest.TestCase):
             self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),width)
             evidence=Path(os.getenv('INVESTMENT_EVIDENCE_DIR',self.tmp.name));evidence.mkdir(parents=True,exist_ok=True)
             page.screenshot(path=str(evidence/f'journey-{width}.png'),full_page=True)
-            export=self.client.get('/api/investments/export').json()
+            response=self.client.get('/api/investments/export');self.assertEqual(response.status_code,200)
+            export=response.json()
+            self.assertEqual(export['format'],'grow-investments-v1')
+            account=self.client.get('/api/investments/accounts').json()['items'][0]
+            campaign=self.client.get('/api/investments/accounts/'+account['id']+'/campaigns').json()['items'][0]
+            self.assertEqual(campaign['risk_basis'],'202')
+            self.assertEqual(campaign['net_realized'],'197')
+            self.assertEqual(len(campaign['fills']),3)
+            self.assertEqual(campaign['fills'][0]['plan_snapshot']['assessment_snapshot']['rule_comparison']['status'],'matched_reference_subset')
             self.assertNotIn('SYNTHETIC_JOURNEY_ONLY',json.dumps(export))
             browser.close()
 
