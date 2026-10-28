@@ -80,3 +80,14 @@ P2 backtesting and replay MUST use point-in-time inputs, historical instrument c
 #### Scenario: Offline path is imported after the historical trade
 - **WHEN** user-declared minute data is imported for retrospective review
 - **THEN** the original text, units, import time and hash remain available, the result is labeled retrospective current-ledger review, and it does not claim those inputs were knowable for historical backtesting
+
+### Requirement: Offline condition drills remain separate from live monitoring
+The system SHALL permit explicitly declared offline price-threshold drills using completed minute closes and simulated arrival clocks. It MUST freeze the rule, data/check references and result, and MUST NOT interpret these drills as current tradability, historical point-in-time strategy backtests or delivered notifications.
+
+#### Scenario: Delayed observations, session breaks and repeated threshold matches
+- **WHEN** a completed minute arrives after its selected age limit, a check occurs outside a covered open session, or the same daily condition has already matched in the drill
+- **THEN** the drill records stale, unavailable or suppressed status without generating another simulated page candidate, and explicit expiry remains visible
+
+#### Scenario: Offline exit condition relies on a hypothetical position
+- **WHEN** a drill selects exit intent and a declared purchase date
+- **THEN** it counts covered trading sessions against the declared selling delay, treats unknown rules as unresolved, never assumes ETF T+0, and does not assert actual sellable quantity

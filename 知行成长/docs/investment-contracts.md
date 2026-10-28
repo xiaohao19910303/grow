@@ -117,3 +117,11 @@
 `POST /experiments/{id}/finish`需当前version、decision（retain/reject/inconclusive/stopped）、reason及evaluation_hash。期间结束前只允许stopped；保存结项快照，后续更正标为outdated而非重写。观察/排除合计最多1000链。小样本、零分母与未知费用不补造绩效，不修改策略/风险。该观察切片不包含样本外撮合、参数重跑或优化器，4.4整项尚未完成。
 
 新接口沿用租户隔离、no-store、写标识/幂等；原文和协议纳入完整恢复。readiness/capabilities显式区分offline_replay和forward_observation可用、backtest/realtime/intraday_alerts未开放；P2整体仍未放行。新功能不读取凭证、不联网拉行情、不调用模型。
+
+### 离线条件演练（2026-10-28续）
+
+`POST /api/investments/condition-drills`需要account_id/path_id/check_id/title、op(gte/lte)、十进制文本threshold、含时区valid_from/valid_until、acknowledged；可选intent(observe/entry/exit)、退出假设assumed_bought_on、max_age_seconds(1–300)、arrival_delay_seconds(0–3600)、notification_scope(none/page)、probe_at(最多10个)。仅记录至今已结束且不超过62天的声明场景；字段外内容拒绝。
+
+保存原始rule_snapshot/check_snapshot/reference_snapshot/path_hash、逐事件status及result_hash，kind=condition-drills且无覆盖更新接口。GET同名列表须account_id、分页50并省略时序和核对正文；GET同名/{id}取完整已保存结果。校验/原文/备份/权限沿用投资私有边界。相同输入重复请求不建重复记录。完整规则、状态优先级与限制见根目录docs/investment-condition-drill-20261028.md。
+
+所有结果realtime/executable/notification_sent均false；page_candidate只是明确选择的本页模拟提示计数。最长2011个事件，显示前100条但私有API保留完整结果；不改实际账本。新增condition_drill能力为true，实际intraday_alerts和P2仍false。不能以此证明4.5或4.6整体完成。
