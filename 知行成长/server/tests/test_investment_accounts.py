@@ -37,6 +37,15 @@ class InvestmentIsolationTests(unittest.TestCase):
             'valid_from':'2026-10-26T09:30:00+08:00','valid_until':'2026-10-26T15:00:00+08:00','acknowledged':True},
             headers={**self.headers,'Idempotency-Key':'alice-drill'})
         self.assertEqual(drill_response.status_code,200,drill_response.text);drill=drill_response.json()
+        study_payload={'account_id':account['id'],'path_id':minute_path['id'],'check_id':check['id'],
+            'title':'ALICE STUDY','decision_at':'2026-10-26T09:59:00+08:00','evidence_available_at':'2026-10-26T09:58:00+08:00',
+            'cash':'10000','quantity':'100','stop_price':'9','target_price':'11','commission_bps':'0',
+            'minimum_commission':'1','sell_tax_bps':'0','slippage_bps':'0','participation_rate':'0.1',
+            'constraints_text':'date,status,limit_down,limit_up,available_at,corporate_action\n2026-10-26,normal,8,13,2026-10-26T08:00:00+08:00,none_declared\n',
+            'source_note':'ALICE DECLARED CONSTRAINTS','acknowledged':True}
+        study_response=self.client.post('/api/investments/execution-studies',json=study_payload,
+            headers={**self.headers,'Idempotency-Key':'alice-study'})
+        self.assertEqual(study_response.status_code,200,study_response.text);study=study_response.json()
         strategy=self.client.post('/api/investments/strategies',json={'title':'ALICE METHOD','entry_conditions':'合成条件',
             'exit_conditions':'反证','validation_scope':'合成观察'},headers={**self.headers,'Idempotency-Key':'alice-strategy'}).json()
         confirmed=self.client.post('/api/investments/strategies/'+strategy['id']+'/state',json={'version':1,'state':'confirmed'},
@@ -55,6 +64,8 @@ class InvestmentIsolationTests(unittest.TestCase):
         for path in ('/api/investments/accounts/'+account['id'],
                      '/api/investments/paths/'+minute_path['id'],
                      '/api/investments/paths?account_id='+account['id'],
+                     '/api/investments/execution-studies/'+study['id'],
+                     '/api/investments/execution-studies?account_id='+account['id'],
                      '/api/investments/condition-drills/'+drill['id'],
                      '/api/investments/condition-drills?account_id='+account['id'],
                      '/api/investments/experiments/'+trial['id'],
@@ -75,6 +86,9 @@ class InvestmentIsolationTests(unittest.TestCase):
             'valid_from':'2026-10-26T09:30:00+08:00','valid_until':'2026-10-26T15:00:00+08:00','acknowledged':True},
             headers={**self.headers,'Idempotency-Key':'cross-drill'})
         self.assertEqual(cross_drill.status_code,404,cross_drill.text)
+        cross_study=self.client.post('/api/investments/execution-studies',json=study_payload,
+            headers={**self.headers,'Idempotency-Key':'cross-study'})
+        self.assertEqual(cross_study.status_code,404,cross_study.text)
         self.assertEqual(self.client.get('/api/stocks').json()['records'],[])
         forbidden=self.client.post('/api/investments/cash-events',json={
             'account_id':account['id'],'kind':'deposit','amount':'1',

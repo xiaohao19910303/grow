@@ -45,6 +45,13 @@ class InvestmentFullBackupTests(unittest.TestCase):
             drill=run_drill(store,{'account_id':a['id'],'path_id':path['id'],'check_id':check['id'],'title':'PRIVATE DRILL',
                 'op':'gte','threshold':'1.23','valid_from':'2026-10-26T09:30:00+08:00',
                 'valid_until':'2026-10-26T15:00:00+08:00','acknowledged':True},'drill')
+            from investments.execution_studies import run_study
+            study=run_study(store,{'account_id':a['id'],'path_id':path['id'],'check_id':check['id'],
+                'title':'PRIVATE STUDY','decision_at':'2026-10-26T09:59:00+08:00','evidence_available_at':'2026-10-26T09:58:00+08:00',
+                'cash':'10000','quantity':'100','stop_price':'1','target_price':'2','commission_bps':'0',
+                'minimum_commission':'1','sell_tax_bps':'0','slippage_bps':'0','participation_rate':'0.1',
+                'constraints_text':'date,status,limit_down,limit_up,available_at,corporate_action\n2026-10-26,normal,0.5,2,2026-10-26T08:00:00+08:00,none_declared\n',
+                'source_note':'PRIVATE DECLARED CONSTRAINTS','acknowledged':True},'study')
             strategy=store.create('strategies',{'title':'PRIVATE TRIAL','entry_conditions':'合成条件','exit_conditions':'反例','validation_scope':'合成观察'},'strategy')
             strategy=store.transition('strategies',strategy['id'],1,'confirmed','strategy-confirm')
             start=datetime.fromisoformat(now())+timedelta(days=1)
@@ -78,3 +85,4 @@ class InvestmentFullBackupTests(unittest.TestCase):
             self.assertEqual(store.get('experiments',trial['id'])['protocol_hash'],trial['protocol_hash'])
 
             self.assertEqual(store.get('condition-drills',drill['id']),drill)
+            self.assertEqual(store.get('execution-studies',study['id']),study)

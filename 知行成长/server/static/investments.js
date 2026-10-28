@@ -99,7 +99,7 @@
       <h3>完整交易链</h3>${cards(s.campaigns, c => `<h4>${esc(instrumentName(c.instrument_id))} · ${esc(label[c.state])}</h4><p>剩余 ${esc(c.quantity)} · 已实现净盈亏 ${esc(money(c.net_realized))} · R ${esc(money(c.realized_r))}</p><small>R按冻结的实际入场价格差风险和费用预算计算，非最大损失保证；无事前预算不计算。同账户同标的一条进行中交易链。</small>${button('对照复盘','campaign-review',`data-id="${c.id}"`)}${button('路径复盘','path-replay',`data-id="${c.id}" data-instrument="${c.instrument_id}"`)}`, '成交后自动整理分批进出，周末不重置。')}</section>`;
   }
   function reviewView() {
-    return `<section><h3>先记录事实，再形成下一项试验</h3><div class="inv-actions">${button('写复盘','review')}${button('新增策略','strategy')}${button('周期统计与建议跟踪','summary')}${button('形成试验原则','principle')}${button('新建前向试验','experiment')}${button('前向试验列表','experiments')}</div>
+    return `<section><h3>先记录事实，再形成下一项试验</h3><div class="inv-actions">${button('写复盘','review')}${button('新增策略','strategy')}${button('周期统计与建议跟踪','summary')}${button('形成试验原则','principle')}${button('新建前向试验','experiment')}${button('前向试验列表','experiments')}${button('撮合情景验证','execution-studies')}</div>
       <h3>复盘与思考</h3>${cards(s.reviews, r => `<h4>${esc(r.date)} · ${esc(({day:'盘后',campaign:'完整交易',week:'周复盘',month:'月复盘',quarter:'季度',event:'事件',thought:'思考'})[r.period])}</h4><p class="inv-preserve">${esc(r.text)}</p>${r.execution ? `<p>执行：${esc(r.execution)}</p>` : ''}${r.next_experiment ? `<p>下一项试验：${esc(r.next_experiment)}</p>` : ''}<p>执行评价：${esc(({followed:'遵守规则',deviated:'偏离规则',unknown:'尚未评价'})[r.adherence || 'unknown'])} · 逻辑验证：${esc(({supported:'获得支持',refuted:'出现反证',unknown:'尚未判定'})[r.thesis || 'unknown'])}</p>${r.no_trade ? '<p>本次未交易</p>' : ''}${button('生成改进行动','review-action',`data-id="${r.id}" data-version="${r.version}"`)}${button('查看行动引用','action-refs',`data-id="${r.id}"`)}${versions('reviews',r)}`, '一句话也可以保存。盈利、亏损与是否遵守计划分别评价。')}
       <h3>原则与规则试验</h3>${cards(s.principles,p=>`<h4>${esc(p.title)}</h4><p>${esc(p.rule)}</p><p>支持：${esc(p.supporting_case || '待补充')}<br>反例：${esc(p.contrary_case || '待补充')}</p><p>验证范围：${esc(p.validation_scope || '待定义')}</p><small>确认仅表示本人开始试验，不证明有效，不自动修改策略或扩大风险。</small>${versions('principles',p)}`,'先保留原始复盘，再形成有反例和试验范围的候选规则。')}
       <h3>策略</h3>${cards(s.strategies, p => `<h4>${esc(p.title)}</h4><p>入场：${esc(p.entry_conditions || '待补充')}<br>退出：${esc(p.exit_conditions || '待补充')}</p><p>验证：${esc(p.validation_scope || '待定义')}</p>${versions('strategies',p)}`, '先形成一套可验证的方法，不要求每天交易。')}</section>`;
@@ -251,6 +251,7 @@
     try {
       if(action==='refresh') return await load();
       if(action==='private-search')return searchDialog();
+      if(action==='execution-studies')return window.InvestmentMarket.executionStudies({accountId:s.accountId});
       if(action==='condition-drills')return window.InvestmentMarket.conditionDrills({accountId:s.accountId});
       if(action==='experiments') {
         if(!s.accountId)throw new Error('请先选择账户。');

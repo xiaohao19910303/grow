@@ -19,6 +19,7 @@ from .store import InvestmentStore
 from .replay import PathInput
 from .experiments import ExperimentInput
 from .conditions import ConditionInput
+from .execution_studies import ExecutionInput
 
 
 class UpdateInput(Contract):
@@ -143,7 +144,7 @@ def register(app):
             'provider':{'verified':False,'mode':'manual','reason':'尚未核验本账号行情权限和使用许可。'},
             'realtime':{'enabled':False,'reason':'实时权限、时效和规则尚未验收。'},
             'ai':{'requires_own_config':True,'unattended':False},
-            **{k:offline[k] for k in ('offline_replay','forward_observation','condition_drill','backtest','intraday_alerts')}}
+            **{k:offline[k] for k in ('offline_replay','forward_observation','condition_drill','execution_study','backtest','intraday_alerts')}}
 
     @router.get('/overview')
     def today_overview(as_of: date):
@@ -185,6 +186,19 @@ def register(app):
 
     @router.get('/condition-drills/{object_id}')
     def saved_condition_drill(object_id: str):return store.get('condition-drills',object_id)
+
+    @router.post('/execution-studies')
+    def execution_study(payload: ExecutionInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .execution_studies import run_study
+        return run_study(store,payload.model_dump(mode='json'),idempotency_key)
+
+    @router.get('/execution-studies')
+    def execution_studies(account_id: str,page: int=Query(1,ge=1,le=10000)):
+        from .execution_studies import list_studies
+        return list_studies(store,account_id,page)
+
+    @router.get('/execution-studies/{object_id}')
+    def saved_execution_study(object_id: str):return store.get('execution-studies',object_id)
 
     @router.get('/experiments')
     def experiments(account_id: str,page: int=Query(1,ge=1,le=10000)):

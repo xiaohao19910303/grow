@@ -203,6 +203,49 @@
       await form.elements.path_id.onchange();
     }catch(error){if(d.isConnected)d.querySelector('[data-error]').textContent=error.message;}
   }
+  const executionStatuses={closed:'假设已平仓',open:'假设仍持仓，净结果未完成',entry_unfilled:'入场未成交',no_entry_bar:'没有下一条可用分钟',unresolved:'资料不足，无法判定',unresolved_reference:'公开参考冲突或未覆盖',future_information:'声明证据晚于决策，不能评价'};
+  const executionReasons={same_bar_stop_first:'同分钟双触发，失效优先',sell_delay:'未满足回转间隔',sell_rule_unknown:'回转机制未知',limit_queue_unknown:'限价队列未知，未成交',missing_entry_minute:'下一入场分钟缺失',missing_held_minutes:'持有分钟缺失',calendar_unknown:'日历未知',rules_or_calendar_unknown:'规则或日历未覆盖',closed_session:'非有效竞价时段',late_or_missing_constraints:'每日状态未知或声明时点超前',corporate_action_or_identity_unknown:'公司行动或退市身份待核对',halted:'声明停牌，未成交',price_limits_unknown:'价格限制未知',price_rule_conflict:'价格与规则冲突',entry_price_liquidity_or_cash_unfilled:'价格、量或现金不足，入场未成交',slippage_outside_bar:'滑点价超出路径，未成交',volume_unfilled:'分钟剩余容量不足',exit_fee_cash_unfilled:'现金不足支付假设退出费用',public_reference_unavailable_or_conflicting:'公开参考未覆盖、过期或冲突'};
+  function renderExecutionResult(target,study) {
+    const r=study.result,p=study.input_snapshot,show=v=>v==null?'未知':esc(v);
+    target.innerHTML=`<h4>${esc(executionStatuses[r.status] || r.status)}</h4><p>${esc(p.title)} · 假设失效价 ${esc(p.stop_price)} · 目标价 ${esc(p.target_price)}</p><p>完整假设净已实现 ${show(r.net_realized)} 元 · 剩余数量 ${show(r.remaining_quantity)}</p><p>假设现金 ${show(r.cash)} · 已撮合部分净已实现 ${show(r.known_partial_realized)} · 佣金 ${show(r.commission_total)} · 税费 ${show(r.tax_total)}</p><p>假设成交 ${r.fills.length} 笔，实际账本未改变；历史时点与策略收益未验证。</p>${r.fills.map(f=>`<article class="inv-record"><p>${f.side==='buy'?'假设买入':'假设卖出'} ${esc(f.quantity)} × ${esc(f.price)} · ${esc(f.at)}</p><p>佣金 ${esc(f.commission)} · 税费 ${esc(f.tax)}</p></article>`).join('')}<details><summary>撮合约束事件（前100条，共${r.events.length}条）</summary>${r.events.slice(0,100).map(e=>`<p>${esc(e.at)} · ${esc(executionReasons[e.reason] || e.reason)}</p>`).join('') || '<p>未出现额外约束事件。</p>'}</details><details><summary>原始假设、依据与限制</summary><p class="inv-preserve">${esc(p.source_note)}</p><p>输入现金 ${esc(p.cash)} · 期望数量 ${esc(p.quantity)} · 分钟量占比上限 ${esc(p.participation_rate)}</p><p>双边佣金万分率 ${esc(p.commission_bps)} · 每笔最低佣金 ${esc(p.minimum_commission)} 元 · 卖出税万分率 ${esc(p.sell_tax_bps)} · 单边滑点万分率 ${esc(p.slippage_bps)}</p><p>来源 ${esc(study.source_label)} · 路径哈希 ${esc(study.path_hash)} · 结果哈希 ${esc(study.result_hash)}</p>${study.limitations.map(t=>`<p>${esc(t)}</p>`).join('')}</details>`;
+  }
+  async function executionStudies(context) {
+    if(!context.accountId)throw new Error('请先选择投资账户。');
+    const d=dialog('撮合情景验证','<p>正在读取本人路径…</p>');
+    try {
+      const [paths,checks,history]=await Promise.all([api('paths?'+new URLSearchParams({account_id:context.accountId})),api('plan-checks?page_size=100'),api('execution-studies?'+new URLSearchParams({account_id:context.accountId}))]);
+      if(!d.isConnected)return;
+      const section=document.createElement('section');section.innerHTML=`<p>一笔假设交易的费用与成交约束验证，尚不是历史策略回测。仅支持决策之后下一分钟开盘入场、固定失效/目标退出，未平仓不强制结算；失败结果也保留。</p><form class="inv-form"><label>情景标题<input name="title" maxlength="160" value="假设撮合" required></label><label>撮合分钟路径<select aria-label="撮合分钟路径" name="path_id" required>${paths.items.map(p=>`<option value="${esc(p.id)}">${esc(p.source_label)}</option>`).join('')}</select></label><label>撮合核对资料<select aria-label="撮合核对资料" name="check_id" required></select></label><label>假设决策时间<input name="decision_at" type="datetime-local" required></label><label>声明证据可知时间<input name="evidence_available_at" type="datetime-local" required></label>${[['cash','假设初始现金'],['quantity','期望买入数量'],['stop_price','假设失效价'],['target_price','假设目标价'],['commission_bps','双边佣金万分率'],['minimum_commission','每笔最低佣金（元）'],['sell_tax_bps','卖出税万分率'],['slippage_bps','单边滑点万分率'],['participation_rate','每分钟量占比上限（0到1之间）']].map(([name,title])=>`<label>${title}<input name="${name}" inputmode="decimal" required></label>`).join('')}<label>每日状态CSV<textarea name="constraints_text" rows="7" maxlength="30000" required></textarea></label><p>逐日填写date、status（normal/halted/delisted/unknown）、limit_down、limit_up、available_at（含时区）、corporate_action（none_declared/unknown/adjustment_required）。未知价格与时点留空；只声明资料明确覆盖的状态，不把今天规则倒填历史。目标须严格穿越才尝试退出，失效触达仍可能无法成交。</p><label>撮合资料与假设说明<textarea name="source_note" maxlength="2000" required></textarea></label><label><input name="ack" type="checkbox" required>我确认这是声明路径的假设撮合，不能证明历史收益或真实可成交</label><button type="submit" class="btn" disabled>保存撮合情景</button></form><div data-execution-result aria-live="polite"></div><h4>已保留情景（前50项）</h4><div data-execution-history></div>`;
+      d.querySelector('p').replaceWith(section);const form=section.querySelector('form'),submit=form.querySelector('[type=submit]');let key=crypto.randomUUID(),generation=0;
+      function saved(items) {
+        section.querySelector('[data-execution-history]').innerHTML=items.map(x=>`<article class="inv-record"><p>${esc(x.title)} · ${esc(executionStatuses[x.status] || x.status)}</p><button class="btn" type="button" data-study="${esc(x.id)}">查看已存撮合情景</button></article>`).join('') || '<p>尚无撮合情景。</p>';
+        section.querySelectorAll('[data-study]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{const r=await api('execution-studies/'+encodeURIComponent(b.dataset.study));if(d.isConnected)renderExecutionResult(section.querySelector('[data-execution-result]'),r);}catch(e){if(d.isConnected)d.querySelector('[data-error]').textContent=e.message;}finally{b.disabled=false;}});
+      }
+      saved(history.items);form.oninput=()=>key=crypto.randomUUID();
+      form.elements.path_id.onchange=async()=>{
+        const selected=paths.items.find(p=>p.id===form.elements.path_id.value),ticket=++generation;submit.disabled=true;
+        form.elements.check_id.innerHTML=checks.items.filter(c=>c.instrument_id===selected?.instrument_id).map(c=>`<option value="${esc(c.id)}">${esc(c.quote_as_of)} · ${esc(c.source_note)}</option>`).join('');
+        if(!selected)return;
+        try{const path=await api('paths/'+encodeURIComponent(selected.id));if(!d.isConnected || ticket!==generation)return;
+          const before=new Date(new Date(path.bars[0].start).getTime()-60000+8*3600000).toISOString().slice(0,16);
+          form.elements.decision_at.value=before;form.elements.evidence_available_at.value=before;
+          const days=[...new Set(path.bars.map(b=>b.start.slice(0,10)))];
+          form.elements.constraints_text.value='date,status,limit_down,limit_up,available_at,corporate_action\n'+days.map(day=>day+',unknown,,,,unknown').join('\n')+'\n';
+          key=crypto.randomUUID();submit.disabled=!form.elements.check_id.value;d.querySelector('[data-error]').textContent=submit.disabled?'请先保存该证券的核对资料。':'';
+        }catch(e){if(d.isConnected && ticket===generation)d.querySelector('[data-error]').textContent=e.message;}
+      };
+      form.onsubmit=async event=>{
+        event.preventDefault();const values=Object.fromEntries(new FormData(form)),controls=[...form.elements];controls.forEach(c=>c.disabled=true);
+        const local=v=>(v.length===16?v+':00':v)+'+08:00';delete values.ack;
+        try{const r=await api('execution-studies',{...values,account_id:context.accountId,decision_at:local(values.decision_at),evidence_available_at:local(values.evidence_available_at),acknowledged:form.elements.ack.checked},key);
+          if(!d.isConnected)return;renderExecutionResult(section.querySelector('[data-execution-result]'),r);d.querySelector('[data-error]').textContent='';
+          const h=await api('execution-studies?'+new URLSearchParams({account_id:context.accountId}));if(d.isConnected)saved(h.items);
+        }catch(e){if(d.isConnected)d.querySelector('[data-error]').textContent=e.message;}
+        finally{controls.forEach(c=>c.disabled=false);}
+      };
+      await form.elements.path_id.onchange();
+    }catch(e){if(d.isConnected)d.querySelector('[data-error]').textContent=e.message;}
+  }
   async function experiments(context) {
     const d=dialog('前向试验列表','<p>正在读取前向观察试验…</p>');
     async function render() {
@@ -232,5 +275,5 @@
       };
     }catch(error){if(d.isConnected)d.querySelector('[data-error]').textContent=error.message;}
   }
-  window.InvestmentMarket={sources,data,screen,pathImport,replay,experiments,conditionDrills};
+  window.InvestmentMarket={sources,data,screen,pathImport,replay,experiments,conditionDrills,executionStudies};
 })();
