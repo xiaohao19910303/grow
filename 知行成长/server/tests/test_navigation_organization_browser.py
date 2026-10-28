@@ -94,7 +94,7 @@ class NavigationOrganizationBrowser(unittest.TestCase):
                     page.goto(base)
                     nav = page.locator('#subnav')
                     group = lambda key: page.locator(f'[data-group="{key}"]').click()
-                    expect(page.locator('#actionHome').get_by_role('button', name='新建行动', exact=True)).to_have_count(1)
+                    expect(page.locator('#view-personal .day-actions').get_by_role('button', name='添加行动', exact=True)).to_have_count(1)
                     group('growth')
                     shots = Path(os.getenv('NAV_SCREENSHOT_DIR', '/tmp/grow-navigation-verification'))
                     shots.mkdir(parents=True, exist_ok=True)

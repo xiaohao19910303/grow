@@ -2,11 +2,11 @@
 (() => {
   'use strict';
   const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
-  window.ActionQuickEditor={open({openFull,client,snapshot,dialog,field,button,option,day,refresh,change,existing=null,parent=null,date=day(),target=null,draftId=null,fresh=false,seedValues=null}){
+  window.ActionQuickEditor={open({openFull,client,snapshot,dialog,field,button,option,day,refresh,change,existing=null,parent=null,date=day(),target=null,draftId=null,fresh=false,seedValues=null,onSaved=null}){
     if(snapshot.action_schema_version!==2){toast('行动服务尚未支持P0，请等待升级。');return;}
     const origin=document.activeElement;
     const restoreFocus=()=>{const target=origin?.isConnected?origin:[...document.querySelectorAll('button')].find(b=>b.textContent===origin?.textContent&&b.getClientRects().length);target?.focus();};
-    const context={flow:existing?'edit':'create-day',origin_key:existing?.id||(target?JSON.stringify(target):'general'),parent_context:parent?.id||null,entry_date:date};
+    const context={flow:existing?'edit':'create-day',origin_key:existing?.id||(target?JSON.stringify(target):'general'),parent_context:parent?.id||null,entry_date:date||day()};
     const candidates=client.listDrafts(context);
     if(!draftId&&!fresh&&candidates.length>1){
       const choose=dialog('选择未提交的行动');
@@ -40,14 +40,29 @@
       fillTargets();content.value=String(Math.max(0,targets.indexOf(selected)));message.textContent=result.some(r=>r.status==='rejected')?'部分内容未读到，可重试。':'';content.focus();
     });
     const more=node('details');more.append(node('summary','更多设置'));form.append(more);
-    if(!existing&&openFull)button(more,'使用模板或重复安排',()=>{remember();d.close();openFull();});
+    if(!existing&&openFull&&snapshot.workspace_version!==1)button(more,'使用模板或重复安排',()=>{remember();d.close();openFull();});
     const at=field(more,'具体时间（可选）','time',seed.at||''),reminder=field(more,'到时提醒（网页打开时）','checkbox',seed.reminder);
     const timezone=field(more,'计划时区','text',seed.timezone);timezone.required=true;
     const minimum=field(more,'起步分钟（留空关闭）','number',seed.minimum_minutes??'');minimum.min=1;minimum.max=1440;
-    const estimate=field(more,'预计分钟（可选，不决定完成）','number',seed.estimated_minutes??'');estimate.min=1;estimate.max=1440;
+    const estimate=field(more,'预计分钟（可选，不决定完成）','number',seed.estimated_minutes??'');
+    const deadline=field(more,'截止日期（可选）','date',seed.deadline||'');deadline.parentElement.hidden=snapshot.workspace_version!==1;estimate.min=1;estimate.max=1440;
     const parentInput=field(more,'关联上级（可选）','select');option(parentInput,'','独立行动');
-    for(const p of snapshot.plans.filter(p=>p.period!=='day'&&p.status==='active'))option(parentInput,p.id,p.title);parentInput.value=seed.parent_id||'';
+    for(const p of snapshot.plans.filter(p=>p.period!=='day'&&(p.status==='active'||p.id===seed.parent_id)&&p.timezone===base.timezone))option(parentInput,p.id,p.title);parentInput.value=seed.parent_id||'';
     const reason=field(more,'为什么想做（可选）','textarea',seed.reason),intention=field(more,'分心时的约定（可选）','textarea',seed.if_then);reason.maxLength=intention.maxLength=1000;
+    let repeat=null,repeatUntil=null,weekdays=[];
+    if(!existing&&snapshot.workspace_version===1){
+      const templates=field(more,'从模板创建（可选）','select');option(templates,'','不使用模板');let available=[];
+      async function readTemplates(){const data=await client.read('/templates');if(!d.isConnected)return;available=(data.templates||[]).filter(t=>t.period==='day');templates.replaceChildren();option(templates,'','不使用模板');for(const t of available)option(templates,t.id,t.name);}
+      readTemplates().catch(()=>{option(templates,'','模板暂未读取');button(more,'重试读取行动模板',readTemplates);});
+      templates.onchange=()=>{const t=available.find(x=>x.id===templates.value);if(!t)return;name.value=t.name;mode.value=t.completion_mode||'time';minutes.value=t.target_minutes||20;minimum.value=t.minimum_minutes??'';at.value=t.at||'';reminder.checked=!!t.reminder;reason.value=t.reason||'';intention.value=t.if_then||'';if(t.target){targets.push(t.target);fillTargets();content.value=String(targets.length-1);}update();};
+      repeat=field(more,'重复安排','select');for(const [key,text] of [['none','不重复'],['daily','每天'],['weekly','每周指定日期']])option(repeat,key,text);repeat.value=seed.recurrence?.freq||'none';
+      const untilDate=dateInput.value||day(),endDate=new Date(untilDate.slice(0,7)+'-01T12:00:00Z');endDate.setUTCMonth(endDate.getUTCMonth()+1);endDate.setUTCDate(0);
+      repeatUntil=field(more,'重复结束日期','date',seed.until||endDate.toISOString().slice(0,10));
+      for(const [i,text] of ['周一','周二','周三','周四','周五','周六','周日'].entries()){const input=field(more,text,'checkbox',seed.recurrence?.byday?.includes(i+1)||false);weekdays.push(input);}
+      repeat.addEventListener('change',update);
+      more.append(node('p','重复安排只创建明确的行动日期，不会把未完成事项自动顺延。'));
+      button(more,'保存为行动模板',async()=>{const v=values();if(!v.title.trim()||v.title.length>80)throw Error('模板名称使用行动名称，请填写不超过80字的名称。');const saved=await client.write('template:'+draft.draft_id,'/templates',{name:v.title,period:'day',horizon:v.horizon,target_minutes:v.target_minutes||20,minimum_minutes:v.minimum_minutes??null,at:v.at,reminder:v.reminder,reason:v.reason,if_then:v.if_then,target:v.target||{kind:'book'},completion_mode:v.completion_mode});await readTemplates();toast('行动模板已保存。');});
+    }
     form.append(message);const controls=node('div');controls.className='action-buttons';form.append(controls);
     const submit=node('button');submit.type='submit';submit.className='btn primary';controls.append(submit);
     if(existing)dateInput.disabled=true;
@@ -55,17 +70,18 @@
     if(locked){mode.disabled=minutes.disabled=minimum.disabled=content.disabled=true;}
     function conditional(){
       const timed=mode.value==='time';minutes.parentElement.hidden=minimum.parentElement.hidden=!timed;minutes.required=timed;
-      targetBox.hidden=mode.value==='check';estimate.parentElement.hidden=mode.value!=='content';
+      targetBox.hidden=mode.value==='check';estimate.parentElement.hidden=false;
       content.setCustomValidity(mode.value==='content'&&!['article','plan'].includes(targets[Number(content.value)]?.kind)?'请选择具体文章或课程。':'');
+      if(repeat){repeatUntil.parentElement.hidden=repeat.value==='none';repeatUntil.required=repeat.value!=='none';for(const input of weekdays)input.parentElement.hidden=repeat.value!=='weekly';dateInput.setCustomValidity(repeat.value!=='none'&&!dateInput.value?'重复安排需要一个开始日期。':'');}
       submit.textContent=existing?'保存修改':!dateInput.value?'保存行动':dateInput.value===day()?'加入今日':dateInput.value===DailyAgenda.shift(day(),1)?'加入明日':'保存安排';
     }
     function values(){
       const selected=targets[Number(content.value)],clean=selected?Object.fromEntries(Object.entries(selected).filter(([key])=>key!=='display')):null;
       return {period:'day',title:name.value,start_date:dateInput.value||null,end_date:dateInput.value||null,completion_mode:mode.value,
         target:mode.value==='check'?null:clean,target_minutes:mode.value==='time'?Number(minutes.value):null,
-        minimum_minutes:mode.value==='time'&&minimum.value?Number(minimum.value):null,estimated_minutes:mode.value==='content'&&estimate.value?Number(estimate.value):null,
+        minimum_minutes:mode.value==='time'&&minimum.value?Number(minimum.value):null,estimated_minutes:estimate.value?Number(estimate.value):null,...(snapshot.workspace_version===1?{deadline:deadline.value||null}:{}),
         timezone:timezone.value,parent_id:parentInput.value||null,horizon:seed.horizon||'short',target_count:1,
-        at:at.value||null,reminder:reminder.checked,reason:reason.value,if_then:intention.value};
+        at:at.value||null,reminder:reminder.checked,reason:reason.value,if_then:intention.value,...(repeat&&repeat.value!=='none'?{recurrence:{freq:repeat.value,interval:1,...(repeat.value==='weekly'?{byday:weekdays.flatMap((input,i)=>input.checked?[i+1]:[])}:{})},until:repeatUntil.value}: {})};
     }
     function remember(){draft=client.saveDraft(draft,values());}
     function update(){conditional();remember();}
@@ -73,7 +89,7 @@
     minutes.addEventListener('input',()=>{if(minimum.value&&Number(minimum.value)>Number(minutes.value))minimum.value=String(Math.max(1,Math.min(5,Number(minutes.value)||1)));minimum.max=minutes.value||1440;remember();});
     mode.addEventListener('change',()=>{if(mode.value==='check')content.value='0';conditional();remember();});
     dateInput.addEventListener('change',()=>{if(!dateInput.value){at.value='';reminder.checked=false;}update();});
-    if(!existing)button(controls,'暂不安排',()=>{dateInput.value='';at.value='';reminder.checked=false;update();});
+    if(!existing)button(controls,'移到未安排',()=>{dateInput.value='';at.value='';reminder.checked=false;update();});
     button(controls,'稍后继续',()=>{remember();d.close();});
     const recoveryIds=new Set();
     function renderRecovery(){for(const pendingDraft of client.pendingDrafts(context)){
@@ -90,7 +106,7 @@
         if(!existing)snapshot.plans.push(...result.plans.map(p=>({...p,progress:{minutes:0,completed:0,minimum:0,partial:0,interrupted:0}})));
         else snapshot.plans=snapshot.plans.map(p=>p.id===existing.id?{...p,...result.plan}:p);
         client.deleteDraft(draft.draft_id);d.close();toast('行动已保存。');
-        try{await refresh();}catch{DailyAgenda.render();toast('已保存，列表暂未刷新，请稍后重试。');}restoreFocus();
+        try{await refresh();}catch{DailyAgenda.render();toast('已保存，列表暂未刷新，请稍后重试。');}restoreFocus();if(onSaved)await onSaved(result.plans?.[0]||result.plan);
       }catch(error){message.textContent=error.message;renderRecovery();if(error.existing_plan_id)button(controls,'查看已有安排',()=>{d.close();goTab('action-schedule');});}
       finally{submit.disabled=false;}
     };

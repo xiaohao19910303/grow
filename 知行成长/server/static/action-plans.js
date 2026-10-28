@@ -17,7 +17,7 @@
   async function load(force=false){
     if(!client)return;if(loading&&!force)return loading;
     const turn=++loadTurn;
-    const task=client.read('').then(data=>{if(turn!==loadTurn)return snapshot;snapshot=data;const serverStamp=Date.parse(data.server_time);if(Number.isFinite(serverStamp))offset=serverStamp-Date.now();
+    const task=client.read('').then(data=>{if(turn!==loadTurn)return snapshot;snapshot=data;window.GoalWorkspace?.configure({root,snapshot,client,refresh:()=>load(true),change,dialog,field,button,option,day,range});const serverStamp=Date.parse(data.server_time);if(Number.isFinite(serverStamp))offset=serverStamp-Date.now();
       const signature=JSON.stringify([data.plans,data.execution]),days=[...new Set(['Asia/Shanghai',...data.plans.map(p=>p.timezone)])].map(zone=>day(zone)).join(',');
       if(signature!==lastSignature||days!==lastDays){lastSignature=signature;lastDays=days;renderHome();renderBar();if(visible())renderWorkspace();
         // Emit event for cross-tab synchronization
@@ -29,7 +29,7 @@
   async function change(p,action,values={}){
     requireP0();
     try{
-      const result=await client.write(action+':'+(values.execution_id||p.id),'/'+p.id+'/operations',{revision:p.revision,action,...values});
+      const result=await client.write(action+':'+(values.execution_id||p.id),(p.entity_type==='goal'&&snapshot.workspace_version===1?'/goals/':'/')+p.id+'/operations',{revision:p.revision,action,...values});
       const old=planById(p.id);snapshot.plans=snapshot.plans.map(item=>item.id===p.id?{...old,...result.plan}:item);
       if(result.execution&&(result.execution.outcome==='running'||result.execution.id===snapshot.execution?.id))snapshot.execution=result.execution.outcome==='running'?result.execution:null;
       renderHome();renderBar();if(visible())renderWorkspace();remind().catch(()=>{});
@@ -139,6 +139,7 @@
   }
 
   function renderWorkspace(){
+    if(snapshot.workspace_version===1&&window.GoalWorkspace)return window.GoalWorkspace.render({root,snapshot,client,refresh:()=>load(true),change,dialog,field,button,option,day,range});
     const reminderOpen=root.querySelector('.action-reminder-help')?.open;root.replaceChildren();const head=n('div',undefined,'section-heading');root.append(head);
     const title=n('div');title.append(n('h2','目标与计划'),n('p','年目标定方向，月周计划拆解，日行动从小处开始；随时查看进度并复盘。','desc'));head.append(title);
     const controls=n('div',undefined,'action-buttons');head.append(controls);for(const kind of ['year','month','week','day'])button(controls,'新建'+label[kind],()=>editor(kind),kind==='day');button(controls,'刷新计划',()=>load(true));button(controls,'LightTick 联动',()=>window.ActionLink.show());
@@ -171,7 +172,7 @@
       controls.append(n('span',`共 ${data.total} 次执行 · 第 ${recordPage} 页`));const next=button(controls,'更早的记录',()=>renderRecords(container,recordPage+1));next.disabled=recordPage*30>=data.total;
     }catch(e){rows.replaceChildren(n('p',e.message));button(rows,'重新读取执行记录',()=>renderRecords(container,recordPage));}
   }
-  function dialog(title){const origin=document.activeElement;if(formDialog)formDialog.close();const d=n('dialog',undefined,'action-dialog');formDialog=d;d.append(n('h2',title));document.body.append(d);d.addEventListener('close',()=>{d.remove();if(formDialog===d)formDialog=null;if(origin?.isConnected)origin.focus();});d.showModal();return d;}
+  function dialog(title){const origin=document.activeElement;if(formDialog)formDialog.close();const d=n('dialog',undefined,'action-dialog');formDialog=d;d.setAttribute('aria-label',title);d.append(n('h2',title));document.body.append(d);d.addEventListener('close',()=>{d.remove();if(formDialog===d)formDialog=null;if(origin?.isConnected)origin.focus();});d.showModal();return d;}
   function range(kind,selected=day()){
     if(kind==='year')return [selected.slice(0,4)+'-01-01',selected.slice(0,4)+'-12-31'];
     if(kind==='month'){const dt=new Date(selected.slice(0,7)+'-01T12:00:00Z');dt.setUTCMonth(dt.getUTCMonth()+1);dt.setUTCDate(0);return [selected.slice(0,7)+'-01',dt.toISOString().slice(0,10)];}
@@ -183,7 +184,7 @@
   function editor(kind,existing=null,parent=null,full=false){
     if(kind==='day'&&!full)return quick(existing,parent);
 
-    const draftName='form.'+(existing?.id||'new'),draft=client.get(draftName),anchor=parent?[parent.start_date,day(parent.timezone),parent.end_date].sort()[1]:day(),[begin,end]=range(kind,anchor).map(value=>parent?[parent.start_date,value,parent.end_date].sort()[1]:value),defaultDate=parent?anchor:begin;
+    const draftName='form.'+(existing?.id||'new'),draft=client.get(draftName),anchor=day(parent?.timezone),[begin,end]=range(kind,anchor),defaultDate=parent?anchor:begin;
     const base=existing||{title:'',period:kind,horizon:kind==='year'?'long':'short',start_date:kind==='day'?defaultDate:begin,end_date:kind==='day'?defaultDate:end,parent_id:parent?.id||null,timezone:parent?.timezone||'Asia/Shanghai',target_minutes:20,minimum_minutes:5,target_count:kind==='day'?1:kind==='week'?3:kind==='month'?10:50,at:'21:00',reminder:true,reason:'',if_then:'',target:{kind:'library'},completion_mode:'time'};
     const seed=draft?.period===kind?{...base,...draft}:base;
     const modeIsDay=kind==='day';
@@ -211,7 +212,7 @@
     fields.title=field(grid,'计划名称','text',seed.title);fields.title.required=true;fields.title.maxLength=160;
     fields.horizon=field(grid,'长短期分类','select');option(fields.horizon,'short','短期计划');option(fields.horizon,'long','长期规划');fields.horizon.value=seed.horizon||(kind==='year'?'long':'short');
     fields.parent_id=field(grid,'关联上级计划（可选）','select');option(fields.parent_id,'','独立计划');
-    for(const p of snapshot.plans.filter(p=>p.status==='active'&&({year:0,month:1,week:2,day:3}[p.period]<{year:0,month:1,week:2,day:3}[kind])))option(fields.parent_id,p.id,label[p.period]+' · '+(p.horizon==='long'?'长期':'短期')+' · '+p.title);
+    for(const p of snapshot.plans.filter(p=>p.status==='active'&&(kind==='day'?p.period!=='day':({year:0,month:1,week:2,day:3}[p.period]<{year:0,month:1,week:2,day:3}[kind]))))option(fields.parent_id,p.id,label[p.period]+' · '+(p.horizon==='long'?'长期':'短期')+' · '+p.title);
     fields.parent_id.value=seed.parent_id||'';
     const mode=field(grid,'完成方式','select');option(mode,'time','计时（记录投入分钟）');option(mode,'content','内容确认（读完/学完再确认）');option(mode,'check','普通待办（勾选完成）');mode.value=seed.completion_mode||'time';mode.closest('.action-field').style.display=modeIsDay?'':'none';
     fields.start_date=field(grid,kind==='day'?'行动日期':'开始日期','date',seed.start_date);fields.start_date.required=true;
@@ -329,6 +330,7 @@
     fields.title.focus();
   }
   async function openTarget(target,actionId=null){
+    window.GoalWorkspace?.leave();
     window.actionContentOrigin=actionId?{actionId,target}:null;
     if(!target){toast('已开始行动，请在底部保存投入。');return;}
     if(target.kind==='book'){toast('已开始行动，可以在底部保存实际投入。');return;}
@@ -385,11 +387,11 @@
   }
   window.ActionPlans={enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','目标与计划'),n('p','正在读取计划与进度…'));try{await initialized;await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},
     resumeExecution:()=>{if(snapshot.execution)return openTarget(snapshot.execution.target,snapshot.execution.plan_id);},
-    refresh:async()=>{await initialized;return load(snapshot.action_schema_version!==undefined);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;return quick(null,null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
+    refresh:async()=>{await initialized;return load(snapshot.action_schema_version!==undefined);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;if(snapshot.action_schema_version===undefined)await load();return quick(null,options?.parent||null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
 
-    schedule,addTask,change,start,openTarget,records,review:p=>window.ActionReviews.open({client,plan:p,dialog,edit:()=>quick(p)}),
+    schedule,addTask,change,start,openTarget,records,review:p=>window.ActionReviews.open({client,plan:p,dialog,edit:()=>p.period==='day'?quick(p):window.GoalWorkspace?.edit(p)}),
     reconcile:async p=>{await load(true);const latest=planById(p.id);if(!latest)throw Error('这项安排已变更，请查看最新日程。');if(latest.status==='completed'){toast('内容已完成，安排状态已刷新。');return {plan:latest};}const result=await change(latest,'reconcile-content');toast('已核对保存的内容完成记录。');return result;},
-    openRecord:async id=>{await initialized;await load(true);const plan=planById(id);if(!plan)throw Error('这项行动暂不可用，请刷新后重试。');if(goTab('action-plans')===false)return false;period='all';horizon='all';status='all';viewMode='flat';page=Math.floor(snapshot.plans.findIndex(p=>p.id===id)/15)+1;renderWorkspace();const row=[...root.querySelectorAll('[data-plan-id]')].find(el=>el.dataset.planId===id);row?.scrollIntoView({block:'center'});return true;},
+    openRecord:async id=>{await initialized;await load(true);if(snapshot.workspace_version===1&&window.GoalWorkspace){if(goTab('action-plans')===false)return false;renderWorkspace();return GoalWorkspace.open(id);}const plan=planById(id);if(!plan)throw Error('这项行动暂不可用，请刷新后重试。');if(goTab('action-plans')===false)return false;period='all';horizon='all';status='all';viewMode='flat';page=Math.floor(snapshot.plans.findIndex(p=>p.id===id)/15)+1;renderWorkspace();const row=[...root.querySelectorAll('[data-plan-id]')].find(el=>el.dataset.planId===id);row?.scrollIntoView({block:'center'});return true;},
   };
   document.querySelector('.topbar').after(document.getElementById('actionReminder'));
   initialized=(window.Account?.ready||Promise.resolve({id:'local'})).then(user=>{let storage;try{storage=window.localStorage;}catch{/* The browser may deny even the storage getter. */}client=ActionPlanClient.create({request:window.fetch.bind(window),storage,account:user.id});window.ActionRecovery?.mount(client);

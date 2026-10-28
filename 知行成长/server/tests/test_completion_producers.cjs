@@ -129,7 +129,10 @@ async function transportProducers(){
 }
 async function legacyQuickCompletion(){
   const env=await dailyEnvironment({renzhi:true});
-  const quick=findButton(env.element('learningLibrary'),'标记完成');assert(quick,'historical completion without a durable timestamp retains its confirmation entrance');
+  const module=env.window.DailyLearning.snapshot().modules.find(m=>m.id==='renzhi');
+  // Course cards delegate lesson controls to the actual course-detail row producer.
+  env.window.DailyLearning.lessonRow(env.element('view-course'),module,module.lessons[0]);
+  const quick=findButton(env.element('view-course'),'标记完成');assert(quick,'historical completion without a durable timestamp retains its confirmation entrance');
   await quick.onclick();
   assert.equal(env.requests.filter(r=>r.method==='POST').length,1);
   assert.equal(env.refreshes,1,'the historical quick-complete entrance must synchronize actions as other completion entrances do');

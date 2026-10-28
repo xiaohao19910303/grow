@@ -45,11 +45,28 @@ class SetupHelpBrowserTests(unittest.TestCase):
         for text in ('计时行动','内容行动','勾选待办','起步','未安排','未发布','不相加'):expect(dialog).to_contain_text(text)
         self.page.screenshot(path=str(self.evidence/'completion-help-desktop.png'))
         self.page.keyboard.press('Escape');expect(dialog).not_to_be_visible();expect(button).to_be_focused()
-        self.page.evaluate("goTab('action-plans')");self.page.get_by_role('button',name='完成与进度说明',exact=True).click();expect(dialog).to_be_visible();self.page.keyboard.press('Escape')
+        self.page.evaluate("goTab('action-plans')");self.page.locator('#view-action-plans .gw-menu > summary').filter(has_text='工作区设置').click();self.page.get_by_role('button',name='完成与进度说明',exact=True).click();expect(dialog).to_be_visible();self.page.keyboard.press('Escape')
         self.page.evaluate("goTab('plans')");self.page.get_by_role('button',name='完成与进度说明',exact=True).click();expect(dialog).to_be_visible()
         self.page.set_viewport_size({'width':320,'height':850});self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'),320)
         self.page.screenshot(path=str(self.evidence/'completion-help-mobile.png'))
         self.assertFalse(any(r['path']=='/api/ai/test' or '/generate' in r['path'] for r in self.requests))
+
+    def test_account_menu_keyboard_mobile_escape_and_settings(self):
+        self.page.wait_for_function('dataLoaded === true')
+        trigger=self.page.get_by_role('button',name='账户菜单',exact=True)
+        panel=self.page.locator('#userMenuPanel')
+        for width in (1440,320):
+            self.page.set_viewport_size({'width':width,'height':900})
+            expect(trigger).to_have_attribute('aria-expanded','false');expect(panel).to_be_hidden()
+            trigger.focus();self.page.keyboard.press('Enter')
+            expect(trigger).to_have_attribute('aria-expanded','true')
+            expect(panel.get_by_role('button',name='退出登录',exact=True)).to_be_visible()
+            self.page.keyboard.press('Tab');expect(panel.get_by_role('button',name='账户设置',exact=True)).to_be_focused()
+            self.page.keyboard.press('Escape');expect(panel).to_be_hidden();expect(trigger).to_be_focused()
+            self.page.keyboard.press('Space');expect(panel).to_be_visible()
+            panel.get_by_role('button',name='账户设置',exact=True).click()
+            expect(panel).to_be_hidden();expect(self.page.locator('#view-settings')).to_be_visible()
+            self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'),width)
 
     def guide(self,model='test-model'):
         self.page.evaluate("goTab('settings')")

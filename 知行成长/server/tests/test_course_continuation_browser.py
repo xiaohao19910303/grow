@@ -156,6 +156,61 @@ class ContinuationBrowserTests(CloudFixture):
         self.assertTrue(any('PRIVATE_CHOSEN_NOTE' in str(call) for call in self.calls))
         self.assertEqual(self.errors,[])
 
+    def hold_context_refresh(self):
+        page=self.page
+        page.evaluate("""() => {
+          const original=window.fetch;
+          window.fetch=async (input,options)=>{
+            const response=await original(input,options);
+            if(String(input).startsWith('/api/course-continuations?course_key=biaoda')){
+              window.fetch=original;
+              const json=response.json.bind(response);
+              response.json=async()=>{
+                const data=await json();
+                await new Promise(resolve=>window.releaseContinuationRefresh=resolve);
+                window.continuationRefreshReleased=true;return data;
+              };
+            }
+            return response;
+          };
+          void window.CourseLibrary.open('biaoda');
+        }""")
+        page.wait_for_function("typeof releaseContinuationRefresh === 'function'")
+
+    def test_late_context_refresh_preserves_manual_direction_and_lesson_count(self):
+        page=self.page;page.goto(self.base+'/#course/biaoda')
+        panel=page.locator('#view-course .course-continuation')
+        expect(panel.get_by_role('button',name='自己填写方向',exact=True)).to_be_visible()
+        self.hold_context_refresh()
+        panel.get_by_role('button',name='自己填写方向',exact=True).click()
+        page.evaluate('releaseContinuationRefresh()')
+        page.wait_for_function('window.continuationRefreshReleased === true')
+        expect(panel.get_by_label('接下来希望学什么？')).to_be_visible()
+        panel.get_by_label('接下来希望学什么？').fill('保留我刚填写的方向')
+        panel.get_by_label('总课数（2–12课）').fill('2')
+        expect(panel.get_by_label('接下来希望学什么？')).to_have_value('保留我刚填写的方向')
+        expect(panel.get_by_label('总课数（2–12课）')).to_have_value('2')
+        panel.get_by_role('button',name='暂存填写',exact=True).click()
+        expect(panel.get_by_role('status')).to_contain_text('填写内容已暂存')
+        record=self.service.context('biaoda')['session']
+        self.assertEqual(record['form']['lesson_count'],2)
+        self.assertEqual(record['form']['direction'],'保留我刚填写的方向')
+        self.assertEqual(self.calls,[])
+
+    def test_late_context_refresh_keeps_generated_course_draft_visible(self):
+        page=self.page;page.goto(self.base+'/#course/biaoda')
+        panel=page.locator('#view-course .course-continuation')
+        expect(panel.get_by_role('button',name='直接生成下一课',exact=True)).to_be_visible()
+        self.hold_context_refresh()
+        panel.get_by_role('button',name='直接生成下一课',exact=True).click()
+        save=panel.get_by_role('button',name='保存课程并开始学习',exact=True)
+        expect(save).to_be_visible()
+        page.evaluate('releaseContinuationRefresh()')
+        page.wait_for_function('window.continuationRefreshReleased === true')
+        expect(save).to_be_visible()
+        self.assertEqual(len(self.calls),1)
+        self.assertEqual(self.errors,[])
+
     def test_direct_generation_and_manual_direction_without_advice(self):
         page=self.page;page.goto(self.base+'/#course/biaoda');panel=page.locator('#view-course .course-continuation')
         panel.get_by_role('button',name='直接生成下一课',exact=True).click()

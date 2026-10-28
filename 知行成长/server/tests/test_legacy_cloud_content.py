@@ -92,6 +92,8 @@ class LegacyCloudContentTests(CloudFixture):
         self.assertEqual(self.repository.ref_updates,before)
     def test_course_generation_publication_feedback_and_restart(self):
         self.migrate_files()
+        for lesson in self.course.scan()['lessons']:
+            self.course.learning(lesson['lesson_no'],'completed',lesson['version'],'content-fixture-'+str(lesson['lesson_no']))
         body=('# 第003课：确认偏误\n\n日期：2026-10-17\n## 引导问题\n问题\n## 核心概念\n概念\n'
               '## 完整示范\n假设示范\n## 误区与边界\n边界\n## 练习\n问题\n\n---\n\n## 参考分析\n分析\n'
               '## 自查\n自查\n## 记忆提示\n提示\n[来源](https://example.org/source)')

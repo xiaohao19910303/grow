@@ -59,7 +59,9 @@
   .search-box .search-shortcut{position:absolute;right:8px;font-size:11px;color:var(--text-tertiary);background:var(--card);padding:2px 5px;border-radius:4px;border:1px solid var(--border);pointer-events:none}
   /* 用户菜单 */
   .user-menu{position:relative}
-  .user-menu-trigger{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:var(--radius-md);cursor:pointer;border:1px solid transparent;transition:all var(--animation-fast)}
+  .user-menu-trigger{background:transparent;color:inherit;font:inherit;display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:var(--radius-md);cursor:pointer;border:1px solid transparent;transition:all var(--animation-fast)}
+  .user-menu-trigger:focus-visible,.user-dropdown-item:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  #storageWarning{border-left:3px solid var(--warning);overflow-wrap:anywhere}
   .user-menu-trigger:hover{background:var(--bg);border-color:var(--border)}
   .user-avatar{width:28px;height:28px;border-radius:50%;background:var(--gradient-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
   .user-menu-name{font-size:13px;font-weight:500;color:var(--text)}
@@ -67,7 +69,7 @@
   .user-menu.open .user-menu-arrow{transform:rotate(180deg)}
   .user-dropdown{position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:4px;opacity:0;visibility:hidden;transform:translateY(-4px);transition:all var(--animation-fast);z-index:100}
   .user-menu.open .user-dropdown{opacity:1;visibility:visible;transform:translateY(0)}
-  .user-dropdown-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);transition:background var(--animation-fast)}
+  .user-dropdown-item{width:100%;border:0;background:transparent;text-align:left;font:inherit;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);transition:background var(--animation-fast)}
   .user-dropdown-item:hover{background:var(--bg)}
   .user-dropdown-item.danger{color:var(--error)}
   .user-dropdown-item.danger:hover{background:var(--error-light)}
@@ -255,7 +257,8 @@
   }
 </style>
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
-<link rel="stylesheet" href="/static/growth.css?v=20261026-course-schedule">
+<link rel="stylesheet" href="/static/growth.css?v=20261027-goals">
+
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
 <link rel="stylesheet" href="/static/course-library.css?v=20261026-1">
 <link rel="stylesheet" href="/static/course-continuation.css?v=20261027-1">
@@ -271,7 +274,9 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
+<link rel="stylesheet" href="/static/goal-workspace.css?v=20261027-goals">
 <link rel="stylesheet" href="/static/action-plans.css?v=20261028-main">
+
 
 </head>
 <body>
@@ -302,32 +307,33 @@
       </svg>
     </button>
     <div class="user-menu" id="userMenu">
-      <div class="user-menu-trigger" onclick="toggleUserMenu()">
-        <div class="user-avatar" id="userAvatar">U</div>
+      <button type="button" id="userMenuToggle" class="user-menu-trigger" onclick="toggleUserMenu()" aria-label="账户菜单" aria-expanded="false" aria-controls="userMenuPanel">
+        <span class="user-avatar" id="userAvatar" aria-hidden="true">U</span>
         <span class="user-menu-name" id="accountName">用户</span>
-        <span class="user-menu-arrow">▾</span>
-      </div>
-      <div class="user-dropdown">
+        <span class="user-menu-arrow" aria-hidden="true">▾</span>
+      </button>
+      <div class="user-dropdown" id="userMenuPanel" hidden>
         <div class="user-dropdown-status">
           <span class="status-dot connecting" id="storageStatusDot"></span>
           <span id="storageStatus">连接中…</span>
         </div>
         <div class="user-dropdown-divider"></div>
-        <div class="user-dropdown-item" onclick="goTab('settings');toggleUserMenu()">
+        <button type="button" class="user-dropdown-item" aria-label="账户设置" onclick="goTab('settings');closeUserMenu()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           设置
-        </div>
+        </button>
         <div class="user-dropdown-divider"></div>
-        <div class="user-dropdown-item danger" onclick="Account.logout()">
+        <button type="button" class="user-dropdown-item danger" onclick="Account.logout()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           退出登录
-        </div>
+        </button>
       </div>
     </div>
   </div>
 </div>
 
 <div class="wrap">
+  <div id="storageWarning" class="section" role="alert" hidden></div>
   <div id="legacyConflict" class="section" role="alert" hidden>
     <p>其他页面或同步已更新记录，自动保存已暂停。当前页面的修改仍然保留；导出后可对照最新记录重新编辑。</p>
     <button class="btn" onclick="exportJson()">下载本地修改副本</button>
@@ -335,19 +341,19 @@
   </div>
   <nav class="tabs main-nav" id="tabs" aria-label="主导航">
     <button class="tab active" data-group="personal" aria-current="page" onclick="goGroup('personal')">
-      <span class="tab-icon">📅</span>今日
+      <span class="tab-icon" aria-hidden="true">📅</span>今日
     </button>
     <button class="tab" data-group="actions" onclick="goGroup('actions')">
-      <span class="tab-icon">🎯</span>行动
+      <span class="tab-icon" aria-hidden="true">🎯</span>行动
     </button>
     <button class="tab" data-group="learning" onclick="goGroup('learning')">
-      <span class="tab-icon">📚</span>学习
+      <span class="tab-icon" aria-hidden="true">📚</span>学习
     </button>
     <button class="tab" data-group="records" onclick="goGroup('records')">
-      <span class="tab-icon">📝</span>记录
+      <span class="tab-icon" aria-hidden="true">📝</span>记录
     </button>
     <button class="tab" data-group="growth" onclick="goGroup('growth')">
-      <span class="tab-icon">📈</span>成长
+      <span class="tab-icon" aria-hidden="true">📈</span>成长
     </button>
   </nav>
   <nav id="subnav" class="subnav" aria-label="栏目导航" hidden></nav>
@@ -773,7 +779,7 @@
 <script>
 /* ================= 主题切换 ================= */
 function initTheme(){
-  const saved = localStorage.getItem('theme');
+  let saved;try{saved=localStorage.getItem('theme');}catch{/* Storage denial must not prevent initialization or draft recovery. */}
   if(saved === 'dark' || saved === 'light'){
     document.documentElement.setAttribute('data-theme', saved);
   }
@@ -787,7 +793,7 @@ function toggleTheme(){
   else if(current === 'light') newTheme = 'dark';
   else newTheme = prefersDark ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
+  try{localStorage.setItem('theme', newTheme);}catch{/* The current theme remains usable for this session. */}
   updateThemeIcon();
 }
 function updateThemeIcon(){
@@ -804,13 +810,22 @@ function updateThemeIcon(){
 }
 /* ================= 用户菜单 ================= */
 function toggleUserMenu(){
-  const menu = document.getElementById('userMenu');
-  if(menu) menu.classList.toggle('open');
+  const menu=document.getElementById('userMenu');
+  if(!menu)return;
+  const open=menu.classList.toggle('open');
+  document.getElementById('userMenuToggle')?.setAttribute('aria-expanded',String(open));
+  const panel=document.getElementById('userMenuPanel');if(panel)panel.hidden=!open;
 }
 function closeUserMenu(){
-  const menu = document.getElementById('userMenu');
-  if(menu) menu.classList.remove('open');
+  document.getElementById('userMenu')?.classList.remove('open');
+  document.getElementById('userMenuToggle')?.setAttribute('aria-expanded','false');
+  const panel=document.getElementById('userMenuPanel');if(panel)panel.hidden=true;
 }
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&document.getElementById('userMenu')?.classList.contains('open')){
+    closeUserMenu();document.getElementById('userMenuToggle')?.focus();
+  }
+});
 document.addEventListener('click', function(e){
   const menu = document.getElementById('userMenu');
   if(menu && !menu.contains(e.target)){
@@ -874,11 +889,14 @@ function toast(msg, type, options){
   else if(type==='warn' || type==='warning'){ icon='⚠'; cls='warning'; }
   else if(type==='err' || type==='error'){ icon='✕'; cls='error'; }
   else { icon='ℹ'; }
-  let html = `<span class="toast-icon">${icon}</span><span>${msg}</span>`;
+  t.replaceChildren();
+  const iconNode=document.createElement('span');iconNode.className='toast-icon';iconNode.textContent=icon;
+  const messageNode=document.createElement('span');messageNode.textContent=String(msg);
+  t.append(iconNode,messageNode);
   if(options && options.undo){
-    html += `<button class="toast-action" onclick="(${options.undo.toString()})();this.closest('.toast').classList.remove('show')">撤销</button>`;
+    const undo=document.createElement('button');undo.className='toast-action';undo.textContent='撤销';
+    undo.onclick=()=>{options.undo();t.classList.remove('show');};t.append(undo);
   }
-  t.innerHTML = html;
   if(cls) t.classList.add(cls);
   t.classList.add('show');
   clearTimeout(undoTimer);
@@ -983,6 +1001,8 @@ async function saveToServer(){
   return saved;
 }
 function setStatus(txt, cls){
+  const warning=document.getElementById('storageWarning');
+  if(warning){warning.hidden=!['warn','err'].includes(cls);warning.textContent=warning.hidden?'':txt;}
   const el=document.getElementById('storageStatus');
   const dot=document.getElementById('storageStatusDot');
   if(el) el.textContent=txt;
@@ -2708,8 +2728,7 @@ async function init(){
   document.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='s'){ e.preventDefault(); saveToServer(); } });
   document.getElementById('personalDate').value=today();
   // Update user avatar and name
-  const accountInfo = Account.info ? Account.info() : null;
-  const displayName = accountInfo?.username || '用户';
+  const displayName = Account.user?.username || '用户';
   document.getElementById('accountName').textContent = displayName;
   document.getElementById('userAvatar').textContent = displayName.charAt(0).toUpperCase();
   loadFromServer();
@@ -2753,19 +2772,23 @@ init();
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
 <link rel="stylesheet" href="/static/action-recovery.css?v=20261024-merge">
-<script src="/static/action-plan-client.js?v=20261024-merge"></script>
+<script src="/static/action-plan-client.js?v=20261027-goals"></script>
 <script src="/static/action-recovery.js?v=20261024-merge"></script>
 <script src="/static/rhythm-client.js?v=20261023"></script>
 <script src="/static/action-reviews.js?v=20261021-merge"></script>
 <script src="/static/record-link.js?v=20261025"></script>
 <script src="/static/mobile-learning.js?v=20261025-reader"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>
-<script src="/static/daily-agenda.js?v=20261026-course-schedule"></script>
+<script src="/static/daily-agenda.js?v=20261027-goals"></script>
 <script src="/static/daily-rhythm.js?v=20261024-d0-settings"></script>
 <script src="/static/weekly-rhythm.js?v=20261023"></script>
 <script src="/static/rhythm-trial.js?v=20261023"></script>
-<script src="/static/action-quick-editor.js?v=20261024-merge"></script>
+<script src="/static/action-quick-editor.js?v=20261027-goals"></script>
 <script src="/static/coach-facts.js?v=20261026-agenda"></script>
-<script src="/static/action-plans.js?v=20261025-e2"></script>
+<script src="/static/goal-workspace.js?v=20261027-goals"></script>
+<script src="/static/goal-editor.js?v=20261027-goals"></script>
+<script src="/static/goal-planning.js?v=20261027-goals"></script>
+<script src="/static/action-plans.js?v=20261027-goals"></script>
+
 </body>
 </html>

@@ -8,8 +8,13 @@ from test_legacy_cloud_api import COURSE
 
 
 class LegacyStreamResponsivenessTests(CloudFixture):
+    def ready_course(self):
+        self.migrate_files()
+        for lesson in self.course.scan()['lessons']:
+            self.course.learning(lesson['lesson_no'],'completed',lesson['version'],'stream-fixture-'+str(lesson['lesson_no']))
+
     def test_course_buffered_output_yields_and_bounds_checkpoint_writes(self):
-        self.migrate_files();observed=[]
+        self.ready_course();observed=[]
         async def model(messages,cfg):
             for index,char in enumerate(COURSE+SEPARATOR+'摘要 [来源](https://example.org/source)'):
                 if index==5:asyncio.get_running_loop().call_soon(lambda:observed.append(self.course.draft(did)['status']))
@@ -26,7 +31,7 @@ class LegacyStreamResponsivenessTests(CloudFixture):
         self.assertLess(writes.call_count,10)
 
     def test_course_buffered_output_can_be_cancelled(self):
-        self.migrate_files();produced=[]
+        self.ready_course();produced=[]
         async def model(messages,cfg):
             for index in range(300):
                 if index==5:asyncio.get_running_loop().call_soon(generator.cancel,did)
@@ -76,7 +81,7 @@ class LegacyStreamResponsivenessTests(CloudFixture):
         self.assertEqual(self.reader.documents.read(path),before)
 
     def test_markdown_line_break_spaces_around_source_marker_are_accepted(self):
-        self.migrate_files()
+        self.ready_course()
         async def model(messages,cfg):
             yield {'text':COURSE+'\n<!-- COPILOT_SOURCES -->  \n摘要 [来源](https://example.org/source)'}
             yield {'done':True}

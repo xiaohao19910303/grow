@@ -93,7 +93,7 @@ class SequentialLearningBrowser(unittest.TestCase):
                     home = page.locator('#dailyLearning')
                     cognitive = home.locator('.learning-module').filter(has=page.locator('h3').filter(has_text='认知与通识'))
                     expect(cognitive.locator('.lesson-title')).to_have_text(['第二课'])
-                    self.assertEqual(page.locator('#dailyLearningTitle').inner_text(), '继续学习')
+                    self.assertEqual(page.locator('#dailyLearningTitle').inner_text(), '待继续课程')
                     self.assertNotIn('逾期', home.inner_text())
                     self.assertNotIn('2000-01-01', home.inner_text())
                     self.assertNotIn('undefined', home.inner_text())

@@ -56,8 +56,8 @@
           if(!Array.isArray(value)||value.length>200||new Set(value).size!==value.length||value.some(id=>typeof id!=='string'||!/^([\w.:-]){1,160}$/.test(id)))invalid();
         }else if(name.startsWith('draft.')){
           if(!exact(value,['draft_id','context','values','base_revision','updated_at']) || value.draft_id!==name.slice(6) || !exact(value.context,['flow','origin_key','parent_context','entry_date']) || !object(value.values) || typeof value.updated_at!=='string' || !Number.isFinite(Date.parse(value.updated_at)))invalid();
-          const c=value.context;if(!['edit','create-day'].includes(c.flow)||typeof c.origin_key!=='string'||c.origin_key.length>1000||!(c.parent_context===null||typeof c.parent_context==='string')||typeof c.entry_date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(c.entry_date))invalid();
-          if(value.base_revision!==undefined&&(!Number.isInteger(value.base_revision)||value.base_revision<1))invalid();
+          const c=value.context;if(!['edit','create-day','create-goal','create-plan','edit-goal','edit-plan','week-plan','ai-brief','ai-edit'].includes(c.flow)||typeof c.origin_key!=='string'||c.origin_key.length>1000||!(c.parent_context===null||typeof c.parent_context==='string')||typeof c.entry_date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(c.entry_date))invalid();
+          if(value.base_revision!==undefined&&(!Number.isInteger(value.base_revision)||value.base_revision<(c.flow==='week-plan'?0:1)))invalid();
         }else{
           if(!exact(value,['signature','body'])||typeof value.signature!=='string'||!object(value.body)||typeof value.body.key!=='string'||!value.body.key||value.body.key.length>160)invalid();
           const body={...value.body};delete body.key;if(JSON.stringify(body)!==value.signature)invalid();
@@ -74,7 +74,7 @@
     }
     async function send(path, body) {
       const response = await request('/api/action-plans' + path, {cache:'no-store', method:body ? 'POST' : 'GET',
-        headers:body ? {'Content-Type':'application/json', 'X-Copilot-Request':'1','X-Grow-Action-Schema':'2'} : {}, body:body ? JSON.stringify(body) : undefined});
+        headers:body ? {'Content-Type':'application/json', 'X-Copilot-Request':'1','X-Grow-Action-Schema':'2','X-Grow-Workspace-Version':'1'} : {}, body:body ? JSON.stringify(body) : undefined});
       let result;try { result = await response.json(); } catch { throw new Error('服务连接未完成，请重试；当前输入会保留。'); }
       if (!response.ok) {
         const detail = typeof result.detail === 'string' ? result.detail : typeof result.message === 'string' ? result.message : '请检查填写内容，或刷新计划后重试。';
