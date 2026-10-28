@@ -9,7 +9,8 @@
   function same(a,b){return !!a&&!!b&&a.kind===b.kind&&(a.course||'')===(b.course||'')&&(a.plan_id||'')===(b.plan_id||'')&&(a.lesson_no||1)===(b.lesson_no||1);}
   function button(parent,text,run,primary=false){const b=node('button',text,'btn'+(primary?' primary':''));b.type='button';b.onclick=async()=>{b.disabled=true;try{await run();}catch(error){toast(error.message);}finally{b.disabled=false;}};parent.append(b);return b;}
   const data=()=>window.ActionPlans?.snapshot()||{plans:[],execution:null};
-  function matching(target){return data().plans.filter(p=>p.period==='day'&&p.completion_mode==='content'&&p.status!=='archived'&&same(p.target,target));}
+  // 课程安排包含内容确认和计时两种方式；英文等课程的计时回退也必须参与日期去重。
+  function matching(target){return data().plans.filter(p=>p.period==='day'&&(p.completion_mode==='content'||p.completion_mode==='time'&&['plan','renzhi','yingyu','biaoda'].includes(target.kind))&&p.status!=='archived'&&same(p.target,target));}
   function dateDialog(title,initial,run){
     const d=node('dialog',undefined,'action-dialog'),form=node('form'),heading=node('h2',title),label=node('label','安排日期','action-field');
     const input=node('input');input.type='date';input.required=true;input.value=initial;label.append(input);
@@ -21,6 +22,11 @@
   }
   async function arrange(target,title,date,minutes){
     await ActionPlans.refresh();
+    const current=matching(target),existing=current.find(p=>p.start_date===date);
+    if(existing){toast(existing.status==='completed'?'该日期的安排已完成。':'该日期已有安排，可改期或取消。');refreshControls();return;}
+    // 复用规划已关联的未定日期行动，保留关联关系，不为同一课另建一条。
+    const undated=target.kind==='article'?[]:current.filter(p=>!p.start_date&&['active','paused'].includes(p.status));
+    if(undated.length===1){await ActionPlans.change(undated[0],'reschedule',{date});toast('已安排 '+date+'，原行动和记录保留。');refreshControls();return;}
     if(!data().capabilities?.content_receipts?.includes(target.kind))return ActionPlans.newDay({date,target,seedValues:{title,completion_mode:'time',target,target_minutes:minutes||20}});
     const result=await ActionPlans.schedule({target,title:title.slice(0,160),date,target_minutes:minutes||20});
     toast(result.existing?(result.plan.status==='completed'?'该日期的安排已完成。':'该日期已有安排，可改期或取消。'):'已安排 '+date+'，可在今日的日期视图或明日预览查看。');
@@ -28,6 +34,7 @@
   }
   function drawControls(entry){
     const {parent,target,title,minutes}=entry;parent.replaceChildren();parent.className='agenda-content-controls';
+    if(entry.compact){drawCourseControls(entry);return;}
     const controls=node('div',undefined,'action-buttons');parent.append(controls);
     const current=matching(target).sort((a,b)=>(a.start_date||'').localeCompare(b.start_date||''));
     const today=current.find(p=>p.start_date===day()),tomorrow=current.find(p=>p.start_date===shift(day(),1));
@@ -41,10 +48,48 @@
       button(row,'改期',()=>reschedule(p));button(row,'取消安排',()=>cancel(p));parent.append(row);
     }
   }
-  function mount(parent,target,title,minutes=20){const entry={parent,target,title,minutes};mounts.add(entry);drawControls(entry);}
+  function scheduleLabel(p){
+    const date=p.start_date,current=day();
+    const when=!date?'未安排日期':date<current&&p.status!=='completed'?'过去安排待处理 · '+date:date===current?'已安排今日 · '+date:date===shift(current,1)?'已安排明日 · '+date:'已安排 '+date;
+    return when+(p.status==='completed'?' · 安排已完成':p.blocked?' · 上级已暂停':p.status==='paused'?' · 已暂停':'')+(p.completion_mode==='time'?' · 计时安排':'');
+  }
+  async function moveCourse(p,date){
+    await ActionPlans.refresh();
+    if(matching(p.target).some(item=>item.start_date===date)){
+      toast('该日期已有这门课程的安排，请在日程中查看。');refreshControls();return;
+    }
+    await ActionPlans.change(p,'reschedule',{date});
+  }
+  // 待继续课程可直接学习；仅展示安排状态与次要入口，其他日期的安排不再隐藏课程。
+  function drawCourseControls(entry){
+    const {parent,target,title,minutes}=entry,current=matching(target).sort((a,b)=>(a.start_date||'').localeCompare(b.start_date||''));
+    const today=current.find(p=>p.start_date===day()),pending=current.filter(p=>p.status!=='completed');
+    const visible=pending.length?pending:current.slice(-1);
+    const status=node('p',visible.length?visible.slice(0,2).map(scheduleLabel).join('；')+(visible.length>2?'；另有 '+(visible.length-2)+' 项安排':''):'尚未加入日程，可直接学习。','desc course-schedule-status');parent.append(status);
+    const controls=node('div',undefined,'action-buttons');parent.append(controls);
+    if(!today&&(!pending.length||pending.length===1&&!pending[0].start_date))button(controls,'加入今日安排',()=>arrange(target,title,day(),minutes));
+    const more=node('details',undefined,'course-schedule-more');more.append(node('summary','更多安排','btn'));controls.append(more);
+    const options=node('div',undefined,'action-buttons course-schedule-options');more.append(options);
+    if(!pending.length){
+      button(options,'安排到明日',()=>arrange(target,title,shift(day(),1),minutes));
+      button(options,'选择日期',()=>dateDialog('安排学习日期',shift(day(),1),date=>arrange(target,title,date,minutes)));
+    }
+    for(const p of pending){
+      const row=node('div',undefined,'agenda-scheduled');row.append(node('span',scheduleLabel(p),'desc'));
+      if(data().execution?.plan_id===p.id)row.append(node('span','正在执行，请先保存本次投入再调整日期。','desc'));
+      else {
+        if(!today&&!p.blocked)button(row,!p.start_date?'安排到今日':p.start_date<day()?'移至今日':'改到今日',()=>moveCourse(p,day()));
+        button(row,'改期',()=>dateDialog('改期 · '+p.title,p.start_date||day(),date=>moveCourse(p,date)));button(row,'取消安排',()=>cancel(p));
+      }
+      options.append(row);
+    }
+    if(Array.isArray(data().capabilities?.content_receipts)&&!data().capabilities.content_receipts.includes(target.kind))parent.append(node('p','此课程的日程按投入计时；学完仍需在课程中本人确认。','desc course-schedule-note'));
+  }
+  function mount(parent,target,title,minutes=20,options={}){const entry={parent,target,title,minutes,compact:!!options.compact};mounts.add(entry);drawControls(entry);}
   function refreshControls(){for(const entry of mounts){if(!entry.parent.isConnected)mounts.delete(entry);else drawControls(entry);}}
   function reschedule(p){dateDialog('改期 · '+p.title,p.start_date||day(),date=>ActionPlans.change(p,'reschedule',{date}));}
   async function cancel(p){await ActionPlans.change(p,'cancel');toast('已取消日期安排，原内容和笔记仍保留。');}
+  // 今日安排／明日预览共用任务行：执行操作外露，日期与记录管理收进「更多」。
   function row(parent,p){
     const running=data().execution?.plan_id===p.id,mode=p.completion_mode||'time',done=p.status==='completed';
     const box=node('article',undefined,'agenda-row'+(done?' agenda-done':''));box.dataset.planId=p.id;
@@ -53,6 +98,10 @@
     content.append(node('p',type+' · '+(p.start_date||'未安排')+(p.at?' '+p.at:'')+' · '+(done?'已完成':p.blocked?'上级已暂停':p.status==='paused'?'已暂停':running?'正在进行':'待执行'),'action-kicker'),node('h3',p.title));
     if(mode!=='check')content.append(node('p',mode==='time'?`标准 ${p.target_minutes} 分钟 · 已确认累计 ${p.progress?.minutes||0} 分钟`:(p.estimated_minutes?`预计 ${p.estimated_minutes} 分钟 · `:'')+'在原内容中确认读完／学完','desc'));
     const actions=node('div',undefined,'action-buttons');box.append(actions);
+    actions.className='action-buttons agenda-primary';
+    const more=node('details',undefined,'agenda-more'),summary=node('summary','更多','btn');
+    summary.setAttribute('aria-label','更多操作：'+p.title);more.append(summary);
+    const secondary=node('div',undefined,'action-buttons agenda-secondary');more.append(secondary);
     const future=p.start_date>ActionPlans.day(p.timezone);
     if(!p.start_date&&p.status==='active'&&!p.blocked){
       button(actions,mode==='check'?'安排今日并完成':'安排今日并开始',async()=>{
@@ -61,35 +110,69 @@
         catch(error){throw Error('已安排今日，但尚未开始或完成：'+error.message);}
       },true);
     }else if(mode==='check'){
-      const label=node('label',done?'已完成':'完成待办','agenda-check'),check=node('input');check.type='checkbox';check.checked=done;check.disabled=future||p.status==='paused'||p.blocked;label.prepend(check);actions.append(label);
-      check.onchange=async()=>{check.disabled=true;try{await ActionPlans.change(p,done?'reopen':'complete');}catch(e){check.checked=done;check.disabled=false;toast(e.message);}};
+      if(!future||done){
+        const label=node('label',undefined,'agenda-check'),check=node('input');check.type='checkbox';check.checked=done;
+        check.disabled=future||p.status==='paused'||p.blocked;
+        check.setAttribute('aria-label',(done?'撤销完成：':'完成待办：')+p.title);label.append(check);box.prepend(label);box.classList.add('agenda-has-check');
+        check.onchange=async()=>{
+          const list=box.closest('#agendaList,#agendaTomorrowList,#view-action-schedule')||parent;
+          check.disabled=true;
+          try{
+            await ActionPlans.change(p,done?'reopen':'complete');
+            // 完成后条目可能移入折叠组，焦点应留在可见的列表控件上。
+            const replacement=[...list.querySelectorAll('.agenda-row')].find(el=>el.dataset.planId===p.id);
+            const target=replacement?.querySelector('input[type=checkbox]');
+            const group=replacement?.closest('.agenda-completed');
+            if(group&&!group.open)group.querySelector('summary')?.focus();
+            else if(target?.getClientRects().length&&!target.disabled)target.focus();
+            else list.querySelector('.agenda-completed>summary')?.focus();
+          }catch(e){check.checked=done;check.disabled=future||p.status==='paused'||p.blocked;toast(e.message);}
+        };
+      }
     }else if(done){if(p.target)button(actions,type==='阅读'?'再次阅读':'查看内容',()=>ActionPlans.openTarget(p.target,p.id));}
     else if(p.status==='active'&&!p.blocked){
       if(running)button(actions,'继续'+(type==='阅读'?'阅读':'执行'),()=>ActionPlans.openTarget(p.target,p.id),true);
       else if(!future){
-        if(mode==='content'){button(actions,type==='阅读'?'打开文章':'打开课程',()=>ActionPlans.openTarget(p.target,p.id),true);button(actions,'计时记录投入',()=>ActionPlans.start(p,'standard'));}
-        else {button(actions,'开始行动',()=>ActionPlans.start(p,'standard'),true);if(p.minimum_minutes&&p.minimum_minutes<p.target_minutes)button(actions,'先做 '+p.minimum_minutes+' 分钟',()=>ActionPlans.start(p,'minimum'));
-          if((p.progress?.minutes||0)>=p.target_minutes)button(actions,'累计已达标，确认完成',()=>ActionPlans.change(p,'complete-time'));}
+        if(mode==='content'){button(actions,type==='阅读'?'打开文章':'打开课程',()=>ActionPlans.openTarget(p.target,p.id),true);button(secondary,'计时记录投入',()=>ActionPlans.start(p,'standard'));}
+        else {const reached=(p.progress?.minutes||0)>=p.target_minutes;
+          if(reached)button(actions,'确认完成',()=>ActionPlans.change(p,'complete-time'),true);
+          button(reached?secondary:actions,reached?'继续计时':'开始行动',()=>ActionPlans.start(p,'standard'),!reached);
+          if(p.minimum_minutes&&p.minimum_minutes<p.target_minutes)button(secondary,'先做 '+p.minimum_minutes+' 分钟',()=>ActionPlans.start(p,'minimum'));}
       }
-      else button(actions,'查看内容',()=>ActionPlans.openTarget(p.target,p.id));
-      if(mode==='content'&&!future)button(actions,'核对完成',()=>ActionPlans.reconcile(p));
+      else if(p.target)button(actions,'查看内容',()=>ActionPlans.openTarget(p.target,p.id));
+      if(mode==='content'&&!future)button(secondary,'核对完成',()=>ActionPlans.reconcile(p));
     }
     if(!done&&p.status!=='archived'){
-      if(!running){button(actions,'编辑',()=>ActionPlans.editDay(p));button(actions,'暂不安排',()=>ActionPlans.change(p,'reschedule',{date:null}));}
-      if(p.at){const calendar=node('a','添加到日历');calendar.href='/api/action-plans/'+encodeURIComponent(p.id)+'/calendar.ics';calendar.className='btn';actions.append(calendar);}else actions.append(node('span','设置具体时间后可添加日历','desc'));
-      button(actions,'改期',()=>reschedule(p));button(actions,'取消安排',()=>cancel(p));
+      if(!running){
+        button(secondary,'编辑',()=>ActionPlans.editDay(p));
+        button(secondary,'改期',()=>reschedule(p));
+        button(secondary,'移至未安排',()=>ActionPlans.change(p,'reschedule',{date:null}));
+        if(p.at){const calendar=node('a','添加到日历');calendar.href='/api/action-plans/'+encodeURIComponent(p.id)+'/calendar.ics';calendar.className='btn';secondary.append(calendar);}
+        else button(secondary,'设置时间',()=>ActionPlans.editDay(p));
+        button(secondary,'取消安排',async()=>{if(window.confirm('取消后将归档这条安排，原内容、笔记和执行记录仍保留。确定取消？'))await cancel(p);});
+      }
       if(p.status==='paused')button(actions,'恢复安排',()=>ActionPlans.change(p,'resume'));
     }
-    button(actions,'复制为新行动',()=>ActionPlans.copyDay(p));
-    button(actions,'进度复盘',()=>ActionPlans.review(p));
+    button(secondary,'复制为新行动',()=>ActionPlans.copyDay(p));
+    button(secondary,'进度复盘',()=>ActionPlans.review(p));
+    box.append(more);
     parent.append(box);box.dataset.planId=p.id;
   }
   function forDate(parent,date){
-    if(!parent)return;parent.replaceChildren();
+    if(!parent)return;
+    const completedOpen=parent.querySelector('.agenda-completed')?.open||false;
+    parent.replaceChildren();
     const plans=data().plans.filter(p=>p.period==='day'&&p.start_date===date&&p.status!=='archived');
     plans.sort((a,b)=>(a.status==='completed')-(b.status==='completed')||(a.id===data().execution?.plan_id?-1:b.id===data().execution?.plan_id?1:0)||(a.at||'').localeCompare(b.at||''));
     if(!plans.length)parent.append(node('p','这个日期还没有安排。可以从阅读、课程加入，或直接添加待办。','action-empty'));
-    for(const p of plans)row(parent,p);
+    for(const p of plans.filter(p=>p.status!=='completed'))row(parent,p);
+    const completed=plans.filter(p=>p.status==='completed');
+    if(completed.length){
+      const group=node('details',undefined,'agenda-completed');group.open=completedOpen;
+      group.append(node('summary','已完成 '+completed.length+' 项'));
+      for(const p of completed)row(group,p);
+      parent.append(group);
+    }
   }
   function render(){
     const dateInput=document.getElementById('personalDate'),current=day();
@@ -99,7 +182,7 @@
     forDate(document.getElementById('agendaList'),selected);
     forDate(document.getElementById('agendaTomorrowList'),shift(selected,1));
     const pending=document.getElementById('agendaPending');if(pending){pending.replaceChildren();const count=data().plans.filter(p=>p.period==='day'&&['active','paused'].includes(p.status)&&p.start_date&&p.start_date<ActionPlans.day(p.timezone)&&p.id!==data().execution?.plan_id).length;
-      if(count)button(pending,count+' 项过去的安排待调整',()=>{scope='earlier';page=1;goTab('action-schedule');});}
+      if(count)button(pending,count+' 项过去的安排待处理',()=>{scope='earlier';page=1;goTab('action-schedule');});}
     window.updateDaySummary?.();refreshControls();window.renderOptionalLearning?.();
     if(document.getElementById('view-action-schedule')?.style.display!=='none')renderSchedule();
     renderGrowth();
@@ -133,7 +216,7 @@
     button(root,'查看执行记录',()=>goTab('action-records'));
   }
   window.DailyAgenda={mount,render,row,reschedule,cancel,refreshControls,renderGrowth,shift,same,
-    isScheduled:target=>matching(target).some(p=>!!p.start_date),
+    isScheduled:(target,date=day())=>matching(target).some(p=>p.start_date===date),
     enter:async()=>{try{await ActionPlans.refresh();renderSchedule();}catch(e){const root=document.getElementById('view-action-schedule');root.replaceChildren(node('p',e.message));button(root,'重试',()=>DailyAgenda.enter());}}};
 
   // Listen for plan changes to refresh agenda

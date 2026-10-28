@@ -38,13 +38,47 @@
 .action-reminder-help summary{cursor:pointer;font-weight:600}
 @media(max-width:600px){.action-form-grid{grid-template-columns:1fr}.action-dialog{padding:16px}.action-dialog .action-buttons{bottom:-16px}.action-execution{padding:12px}.action-execution .action-buttons{gap:4px}.action-reminder{padding:12px 16px}.action-featured h3{font-size:19px}.action-home .section-heading{flex-wrap:wrap;gap:8px}.action-repeat .action-field{flex-basis:100%}}
 .action-row progress{width:min(260px,70%);height:12px;accent-color:var(--primary)}
-.agenda-row{display:flex;justify-content:space-between;gap:var(--spacing-lg);align-items:center;padding:var(--spacing-lg) 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
-.agenda-row-content{min-width:0;flex:1}.agenda-row h3{font-size:17px;margin:var(--spacing-xs) 0}.agenda-row p{margin:var(--spacing-xs) 0}.agenda-row .action-buttons{flex-shrink:0;max-width:55%}
-.agenda-done h3{color:var(--muted)}.agenda-check{display:inline-flex;align-items:center;gap:var(--spacing-sm);font-size:13px;cursor:pointer}
+/* 今日安排与明日预览：标题保留可读宽度，「更多」展开后独占整行。 */
+.agenda-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--spacing-md);align-items:start;padding:var(--spacing-lg) 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere;min-width:0}
+.agenda-has-check{grid-template-columns:28px minmax(0,1fr) auto}
+.agenda-row-content{min-width:0;grid-column:1;grid-row:1}.agenda-has-check .agenda-row-content{grid-column:2}
+.agenda-row h3{font-size:17px;margin:var(--spacing-xs) 0;line-height:1.65}.agenda-row p{margin:var(--spacing-xs) 0}
+.agenda-row .agenda-primary{grid-column:-2/-1;grid-row:1;justify-content:flex-end;margin:0;padding-right:78px;min-height:44px;min-width:78px;max-width:none}
+.agenda-done h3{color:var(--muted)}
+.agenda-check{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;min-height:44px;cursor:pointer}
+.agenda-check input{width:20px;height:20px;accent-color:var(--primary);margin:0;cursor:inherit}
+.agenda-more{grid-column:1/-1;min-width:0}
+.agenda-more>summary{position:absolute;right:0;top:var(--spacing-lg);min-height:44px;list-style:none}
+.agenda-more>summary::-webkit-details-marker{display:none}
+.agenda-more>summary::after{content:'＋';font-size:14px}.agenda-more[open]>summary::after{content:'−'}
+.agenda-row .agenda-secondary{max-width:none;margin:var(--spacing-md) 0 0;padding:var(--spacing-md);border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg)}
+.agenda-secondary .btn{white-space:normal;max-width:100%}
+.agenda-completed{margin-top:var(--spacing-md)}.agenda-completed>summary{cursor:pointer;color:var(--muted);padding:var(--spacing-sm) 0;font-size:13px}
+.agenda-completed:not([open])>.agenda-row,.agenda-more:not([open])>.agenda-secondary{display:none}
+.agenda-completed .agenda-row:last-child{border-bottom:0}
+#agendaPending:not(:empty){margin-top:var(--spacing-md)}
 .agenda-content-controls{margin:var(--spacing-sm) 0 var(--spacing-lg)}.agenda-content-controls>.action-buttons{margin-bottom:var(--spacing-xs)}.agenda-scheduled{display:flex;align-items:center;gap:var(--spacing-sm);flex-wrap:wrap;font-size:12px}
 .agenda-scheduled .btn{font-size:12px;padding:4px 8px}.continue-learning>summary{font-weight:600;cursor:pointer}.continue-learning>.section-heading{margin-top:16px}
 #personalDays{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:var(--spacing-xl)}#agendaLegacy .manual-add{margin-top:var(--spacing-lg)}.main-nav .tab{min-width:0}.tabs.main-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
-@media(max-width:700px){.agenda-row{align-items:flex-start;flex-direction:column;gap:4px}.agenda-row .action-buttons{max-width:100%}#personalDays{grid-template-columns:1fr}.main-nav .tab{padding-left:6px;padding-right:6px}.agenda-row h3{font-size:16px}}
+/* 明日预览是半宽栏，不能仅依赖浏览器宽度触发移动布局。 */
+.tomorrow-content .agenda-row{grid-template-columns:minmax(0,1fr)}
+.tomorrow-content .agenda-has-check{grid-template-columns:28px minmax(0,1fr)}
+.tomorrow-content .agenda-row-content{padding-right:78px}
+.tomorrow-content .agenda-row .agenda-primary{grid-column:1/-1;grid-row:2;justify-content:flex-start;padding-right:0;min-height:0;margin-top:var(--spacing-sm)}
+.tomorrow-content .agenda-row .agenda-primary:empty{display:none}
+.tomorrow-content .manual-add{margin:var(--spacing-lg) 0 0;padding-top:var(--spacing-lg);border-top:1px solid var(--border)}
+.tomorrow-toolbar{display:flex;justify-content:space-between;align-items:center;gap:var(--spacing-sm);flex-wrap:wrap;margin-bottom:var(--spacing-sm)}
+.tomorrow-toolbar .desc{margin:0}
+#actionHome .manual-add{margin:var(--spacing-lg) 0 0;padding-top:var(--spacing-lg);border-top:1px solid var(--border)}
+#actionHome .manual-add input,.tomorrow-content .manual-add input{min-width:0;flex:1 1 150px}
+#personalDays>.section{min-width:0}
+@media(max-width:900px){#personalDays{grid-template-columns:1fr}}
+@media(max-width:700px){
+ .agenda-row{grid-template-columns:minmax(0,1fr)}.agenda-has-check{grid-template-columns:28px minmax(0,1fr)}
+ .agenda-row-content{padding-right:78px}.agenda-row .agenda-primary{grid-column:1/-1;grid-row:2;justify-content:flex-start;padding-right:0;min-height:0;margin-top:var(--spacing-sm)}
+ .agenda-row .agenda-primary:empty{display:none}
+ .main-nav .tab{padding-left:6px;padding-right:6px}.agenda-row h3{font-size:16px}
+}
 .action-review-preview,.action-ai-review,.action-review-history{margin:var(--spacing-xl) 0;padding:var(--spacing-lg);border:1px solid var(--border);border-radius:var(--radius-lg)}
 .action-context{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:12px}
 .action-ai-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}

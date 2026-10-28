@@ -2,6 +2,14 @@
 [hidden]{display:none!important}
 button{font-family:inherit}
 .coach-fact{overflow-wrap:anywhere}
+.coach-fact .coach-fact-message{margin:8px 0}
+.coach-fact-footer{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px 16px}
+.coach-fact-basis{flex:1 1 200px;min-width:0;margin:0;color:var(--muted);font-size:13px}
+.coach-fact-basis>summary{cursor:pointer;width:fit-content;display:flex;align-items:center;min-height:44px}
+.coach-fact-basis>summary::after{content:'＋';margin-left:8px}.coach-fact-basis[open]>summary::after{content:'−'}
+.coach-fact-basis>summary::-webkit-details-marker{display:none}
+.coach-fact-basis .desc{margin:8px 0}
+.coach-fact .action-buttons{margin:0}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var(--primary);outline-offset:3px}
 .btn,.tab,summary{min-height:44px}
 .btn:disabled{background:#f0f1f5!important;color:var(--text-tertiary)!important;border-color:var(--border)!important;cursor:not-allowed}
@@ -32,6 +40,15 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var
 .learning-module details summary{display:flex;align-items:center;cursor:pointer;color:var(--primary);font-weight:500}
 .learning-module details summary::before{content:'+';margin-right:var(--spacing-sm);font-size:18px}
 .learning-module details[open] summary::before{content:'−'}
+.learning-module .course-schedule-more{flex:0 1 auto;min-width:0}
+.learning-module .course-schedule-more[open]{flex-basis:100%}
+.learning-module .course-schedule-more>summary{width:fit-content;color:var(--text);font-weight:400}
+.learning-module .course-schedule-options{margin:8px 0 0;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg)}
+.learning-module .course-schedule-more:not([open])>.course-schedule-options{display:none}
+.course-schedule-options .agenda-scheduled{width:100%;padding:8px 0}
+.course-schedule-options .agenda-scheduled .desc{flex:1 1 100%;margin:0}
+.course-schedule-options .btn{white-space:normal;max-width:100%}
+.learning-module .course-schedule-status,.learning-module .course-schedule-note{margin:4px 0 8px}
 .empty{padding:var(--spacing-md) 0;text-align:left}
 .today-todos .manual-add{margin-bottom:var(--spacing-sm)}
 .today-todos .daily-review p{margin:var(--spacing-sm) 0}

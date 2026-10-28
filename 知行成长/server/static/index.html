@@ -255,14 +255,14 @@
   }
 </style>
 <link rel="stylesheet" href="/static/copilot.css?v=20261014-design2">
-<link rel="stylesheet" href="/static/growth.css?v=20261025-coach">
+<link rel="stylesheet" href="/static/growth.css?v=20261026-course-schedule">
 <link rel="stylesheet" href="/static/plans.css?v=20261014-2">
 <link rel="stylesheet" href="/static/course-library.css?v=20261026-1">
 <link rel="stylesheet" href="/static/course-continuation.css?v=20261027-1">
 <link rel="stylesheet" href="/static/reading.css?v=20261021-audit">
 <link rel="stylesheet" href="/static/reflections.css?v=1">
 <link rel="stylesheet" href="/static/stocks.css?v=1">
-<link rel="stylesheet" href="/static/investments.css?v=20261026">
+<link rel="stylesheet" href="/static/investments.css?v=20261028-rules">
 <link rel="stylesheet" href="/static/learning-notebook.css?v=20261025-1">
 <link rel="stylesheet" href="/static/learning-history.css?v=20261021-p1-navigation">
 <link rel="stylesheet" href="/static/account.css">
@@ -271,7 +271,8 @@
 <link rel="stylesheet" href="/static/timeline.css?v=1">
 <link rel="stylesheet" href="/static/study-notes.css?v=20261018-1">
 <link rel="stylesheet" href="/static/loading-state.css?v=20261018-1">
-<link rel="stylesheet" href="/static/action-plans.css?v=20261026-course">
+<link rel="stylesheet" href="/static/action-plans.css?v=20261028-main">
+
 </head>
 <body>
 
@@ -437,26 +438,26 @@
   <div id="view-personal">
     <div class="day-heading">
       <div><h2 id="dayHeading">今天，稳步向前</h2><p id="daySummary" class="desc">正在读取今日安排…</p></div>
-      <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="focusTodayTodo()">新增待办</button></div>
+      <div class="day-actions"><label class="sr-only" for="personalDate">查看日期</label><input type="date" id="personalDate" onchange="renderPersonal()"><button class="btn" onclick="document.getElementById('personalDate').value=today();renderPersonal()">今天</button><button class="btn primary" onclick="ActionPlans.newDay({date:document.getElementById('personalDate').value||today()})">添加行动</button></div>
     </div>
-    <section id="coachFactToday" class="section coach-fact" aria-label="教练今日提醒" aria-live="polite" hidden></section>
     <section id="dailyRhythm" class="section daily-rhythm" aria-label="今日一件事" aria-live="polite" hidden></section>
     <section id="actionHome" class="section action-home" aria-label="当日安排">
-      <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="ActionPlans.newDay({date:document.getElementById('personalDate').value||today()})">新建行动</button><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
+      <div class="section-heading"><h2 id="agendaTitle">今日安排</h2><div class="action-buttons"><button class="btn" onclick="goTab('action-schedule')">查看日程</button></div></div>
       <div id="agendaList" aria-live="polite"><p class="desc" role="status">正在读取安排…</p></div>
       <div id="agendaLegacy"></div>
       <div id="agendaPending"></div>
     </section>
+    <section id="coachFactToday" class="section coach-fact" aria-label="近期学习动态" aria-live="polite" hidden></section>
     <div class="personal-grid" id="personalDays"></div>
-    <details class="section continue-learning"><summary>继续学习 · 可选内容</summary>
-      <p class="desc">未安排的内容可随时学习，不计入今日必做。完整课程与历史记录在「学习」中查看。</p>
-      <div class="section-heading"><h2 id="dailyLearningTitle">继续学习</h2><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新</button></div>
+    <details class="section continue-learning"><summary>待继续课程 · 按需学习</summary>
+      <p class="desc">这里按进度列出尚未学完的课程，可直接继续学习。当前日期已安排的课程在上方；加入日程后才计入当日安排，学完以本人确认为准。</p>
+      <div class="section-heading"><h2 id="dailyLearningTitle">待继续课程</h2><button class="btn" onclick="window.loadDailyLearning({force:true})">刷新</button></div>
       <div id="dailyLearning" aria-live="polite"><p>正在读取学习内容…</p></div>
     </details>
   </div>
   <div id="view-overview" style="display:none">
     <p class="desc">从学习、实践和复盘看近期变化。学习完成与投入时长分别统计，避免重复累计。</p>
-    <section id="coachFactOverview" class="section coach-fact" aria-label="教练今日提醒" aria-live="polite" hidden></section>
+    <section id="coachFactOverview" class="section coach-fact" aria-label="近期学习动态" aria-live="polite" hidden></section>
     <section id="actionGrowth" class="section" aria-label="行动积累"></section>
     <div class="cards" id="statCards"></div>
     <details class="section"><summary>学习变化与活动明细</summary>
@@ -1095,6 +1096,7 @@ document.getElementById('apiSettingsForm')?.addEventListener('input',()=>{++apiS
 window.addEventListener('ai-config-changed',()=>cancelApiTest(''));
 
 /* ================= 个人日程 ================= */
+// 今日页负责日期与快速待办；明日预览复用安排列表，并保留独立的次日添加入口。
 function renderPersonal(){
   if(window.renderDailyLearning) window.renderDailyLearning();
   const selected=document.getElementById('personalDate').value || today();
@@ -1102,7 +1104,7 @@ function renderPersonal(){
   const drafts=Object.fromEntries([...document.querySelectorAll('input[id^="todoInput"]')].map(input=>[input.dataset.date,input.value]));
   const tomorrowOpen=document.getElementById('tomorrowPlan')?.open || false;
   const tasks=(date,day)=>{
-    const label=day?'明日':'当日';
+    const label=day?(selected===today()?'明日':'次日'):(selected===today()?'今日':'当日');
     const items=state.todos.map((item,index)=>({item,index})).filter(x=>x.item.date===date);
     const emptyState = items.length === 0 && date === today() ? `
       <div class="empty" style="padding:24px 20px">
@@ -1112,8 +1114,9 @@ function renderPersonal(){
         <p style="font-size:12px;color:var(--muted);margin-top:12px">💡 例如：阅读10分钟、写一段反思、散步20分钟</p>
       </div>
     ` : '';
-    return `<form class="manual-add" onsubmit="addTodo(event,'${date}',${day})"><input id="todoInput${day}" data-date="${date}" value="${esc(drafts[date] || '')}" aria-label="${label}待办内容" placeholder="添加一件想完成的事" required maxlength="160" style="max-width:none"><button class="btn primary" ${dataLoaded?'':'disabled'}>添加待办</button></form>
+    return `<form class="manual-add" onsubmit="addTodo(event,'${date}',${day})"><input id="todoInput${day}" data-date="${date}" value="${esc(drafts[date] || '')}" aria-label="${label}待办内容" placeholder="快速添加${label}待办" required maxlength="160" style="max-width:none"><button class="btn primary" ${dataLoaded?'':'disabled'}>添加待办</button></form>
       ${emptyState}
+
       ${items.map(({item,index})=>`<div class="todo-row"><label><input type="checkbox" ${item.done?'checked':''} onchange="toggleTodo(${index})"><span class="${item.done?'todo-done':''}">${esc(item.title)}</span></label><span class="desc">待办</span><button class="icon-btn" onclick="editTodo(${index})">改期／编辑</button><button class="icon-btn del" onclick="delItem('todos',${index})">删除</button></div>`).join('')}`;
   };
   document.getElementById('dayHeading').textContent=selected===today()?'今天，稳步向前':fmtDateCN(selected)+'的安排';
@@ -1122,10 +1125,11 @@ function renderPersonal(){
   const reviews=state.reviews.map((item,index)=>({item,index})).filter(x=>x.item.date===selected);
   document.getElementById('personalDays').innerHTML=`<section class="section"><h2>当日记录与复盘</h2><div class="action-buttons"><button class="btn primary" onclick="Reflections.openEditor('${selected}')">记几句</button><button class="btn" onclick="Reflections.openEditor('${selected}',null,{four:true})" ${dataLoaded?'':'disabled'}>四问复盘</button></div><div id="refToday_0"></div>
     ${reviews.map(({item,index})=>`<article class="daily-review">${[['原来怎么想','thought'],['实际结果','actual'],['哪对哪错','gap'],['下次怎么改','action']].map(([title,key])=>`<p><strong>${title}</strong><br>${esc(item[key] || '待补充')}</p>`).join('')}<button class="icon-btn" onclick="openReviewForm(${index})">编辑旧版四问</button><button class="icon-btn del" onclick="delItem('reviews',${index})">删除</button></article>`).join('')}</section>
-    <details class="section tomorrow-plan" id="tomorrowPlan"${tomorrowOpen?' open':''}><summary>${selected===today()?'明日':'次日'}预览 · ${esc(fmtDateCN(dates[1]))}</summary><div class="tomorrow-content"><div id="agendaTomorrowList"></div>${tasks(dates[1],1)}</div></details>`;
+    <details class="section tomorrow-plan" id="tomorrowPlan"${tomorrowOpen?' open':''}><summary>${selected===today()?'明日':'次日'}预览 · ${esc(fmtDateCN(dates[1]))}</summary><div class="tomorrow-content"><div class="tomorrow-toolbar"><p class="desc">提前安排，到计划日期再执行。</p><button class="btn" onclick="ActionPlans.newDay({date:'${dates[1]}'})">添加行动</button></div><div id="agendaTomorrowList"></div>${tasks(dates[1],1)}</div></details>`;
   window.Reflections?.renderDay?.(document.getElementById('refToday_0'), selected);
   window.DailyAgenda?.render();
   window.DailyRhythm?.refresh(selected);
+  window.CoachFacts?.updateDate();
   updateDaySummary();
 }
 function updateDaySummary(){
@@ -1134,7 +1138,7 @@ function updateDaySummary(){
   const plans=(window.ActionPlans?.snapshot().plans||[]).filter(p=>p.period==='day'&&p.start_date===selected&&p.status!=='archived');
   const done=items.filter(item=>item.done).length+plans.filter(p=>p.status==='completed').length;
   const recorded=state.reviews.some(item=>item.date===selected)||(window.Reflections?.entries||[]).some(item=>item.record_date===selected&&!item.archived_at);
-  document.getElementById('daySummary').textContent=`安排完成 ${done}/${items.length+plans.length} · ${recorded?'已留下记录':'今日尚未记录'}`;
+  document.getElementById('daySummary').textContent=`安排完成 ${done}/${items.length+plans.length} · ${recorded?'已留下记录':selected===today()?'今日尚未记录':'当日尚未记录'}`;
 }
 window.legacyAgendaTasks=()=>state.todos.map((item,index)=>({...item,index}));
 function focusTodayTodo(){
@@ -2732,7 +2736,8 @@ init();
 <script src="/static/course-library-model.js?v=20261026-1"></script>
 <script src="/static/course-continuation.js?v=20261027-1"></script>
 <script src="/static/course-library.js?v=20261027-continuation"></script>
-<script src="/static/daily-learning.js?v=20261027-continuation"></script>
+<script src="/static/daily-learning.js?v=20261028-main"></script>
+
 <script src="/static/reading-growth.js?v=20261025-e1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
 <script src="/static/reading-position.js?v=20261021-merge"></script>
@@ -2741,9 +2746,9 @@ init();
 <script src="/static/learning-notebook.js?v=20261025-1"></script>
 <script src="/static/learning-history.js?v=20261021-p1-navigation"></script>
 <script src="/static/stocks.js?v=20261021-merge"></script>
-<script src="/static/investments.js?v=20261026"></script>
-<script src="/static/investment-analysis.js?v=20261026"></script>
-<script src="/static/investment-market.js?v=20261026"></script>
+<script src="/static/investments.js?v=20261028-rules"></script>
+<script src="/static/investment-analysis.js?v=20261028-rules"></script>
+<script src="/static/investment-market.js?v=20261028-rules"></script>
 <script src="/static/search.js?v=20261023-autofill"></script>
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
@@ -2755,12 +2760,12 @@ init();
 <script src="/static/record-link.js?v=20261025"></script>
 <script src="/static/mobile-learning.js?v=20261025-reader"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>
-<script src="/static/daily-agenda.js?v=20261021-navigation-round3"></script>
+<script src="/static/daily-agenda.js?v=20261026-course-schedule"></script>
 <script src="/static/daily-rhythm.js?v=20261024-d0-settings"></script>
 <script src="/static/weekly-rhythm.js?v=20261023"></script>
 <script src="/static/rhythm-trial.js?v=20261023"></script>
 <script src="/static/action-quick-editor.js?v=20261024-merge"></script>
-<script src="/static/coach-facts.js?v=20261025"></script>
+<script src="/static/coach-facts.js?v=20261026-agenda"></script>
 <script src="/static/action-plans.js?v=20261025-e2"></script>
 </body>
 </html>
