@@ -101,8 +101,9 @@ LightTick 原生接口唯一合同源仍为 `Zook/api-contracts/openapi/lighttic
 定向回归使用 localhost PostgreSQL 的一次性 schema，不读取正式账号或调用真实模型。浏览器验收服务为 `server/tests/serve_action_plans_fixture.py`，真实计划／执行／笔记／素材路由加确定性模型替身。
 
 ```sh
-TEST_LEGACY_PG_DSN='host=127.0.0.1 dbname=postgres user=hao' PYTHONPATH=知行成长/server:知行成长/server/tests 知行成长/.venv/bin/python -m unittest test_action_reviews test_study_notes test_study_materials test_local_server_environment
+TEST_POSTGRES_DSN='host=127.0.0.1 port=<专用临时端口> dbname=<测试库> user=<测试用户>' \
+.venv/bin/python -B 知行成长/server/tests/run_isolated_checks.py --pattern 'test_action_reviews.py'
 node 知行成长/server/tests/test_action_plan_client.cjs
 ```
 
-本轮验收证据与尚未验证的范围见 OpenSpec change 中的 `verification.md`。
+最新工作区及全站回归证据、完整运行命令和待验收边界见[集成收口验收](../../docs/verification/system-integration-closeout-2026-10-28/README.md)。以上命令仅为定向示例，使用临时测试实例；原行动计划首版的历史证据见[旧版验收](../../openspec/changes/action-plans-v1/verification.md)。

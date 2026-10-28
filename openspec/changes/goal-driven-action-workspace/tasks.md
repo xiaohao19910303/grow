@@ -8,8 +8,8 @@
 ## 3. Verification
 - [x] 3.1 Targeted backend and browser acceptance including failure recovery.
 - [x] 3.2 Targeted visual checks, documentation and recorded full-regression attempt.
-- [ ] 3.3 Pass full isolated integration regression on the reconciled main candidate, repair reproduced failures, and record evidence before committing the workspace.
+- [x] 3.3 Pass full isolated integration regression on the reconciled main candidate, repair reproduced failures, and record evidence before committing the workspace.
 
 ## 验收边界
 
-实现与定向验收已完成。全量回归已执行并记录，项目整体发布门槛尚未通过；当前共享工作区的其他课程生成／入口检查仍有失败，详见 docs/verification/goal-driven-workspace-2026-10-27/README.md。未部署。
+目标工作区及全站集成验收已通过；本轮完整结果、失败基线、恢复路径和截图见 docs/verification/system-integration-closeout-2026-10-28/README.md。2026-10-27 的失败日志保留为历史，不再代表当前版本。未部署，未使用真实模型或付费行情。

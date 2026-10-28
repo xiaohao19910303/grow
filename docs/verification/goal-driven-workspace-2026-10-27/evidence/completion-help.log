@@ -1,0 +1,12 @@
+test_completion_help_keyboard_entry_points_and_mobile (test_setup_help_browser.SetupHelpBrowserTests.test_completion_help_keyboard_entry_points_and_mobile) ... ok
+test_missing_config_entry_respects_leave_guard_and_never_replays_generation (test_setup_help_browser.SetupHelpBrowserTests.test_missing_config_entry_respects_leave_guard_and_never_replays_generation) ... ok
+test_setup_save_without_model_request_and_new_browser_is_empty (test_setup_help_browser.SetupHelpBrowserTests.test_setup_save_without_model_request_and_new_browser_is_empty) ... ok
+test_setup_validation_explicit_test_failure_retry_and_stale_response (test_setup_help_browser.SetupHelpBrowserTests.test_setup_validation_explicit_test_failure_retry_and_stale_response) ... ok
+test_storage_denial_preserves_previous_saved_configuration (test_setup_help_browser.SetupHelpBrowserTests.test_storage_denial_preserves_previous_saved_configuration) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 10.216s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 5, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}
