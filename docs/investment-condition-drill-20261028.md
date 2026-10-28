@@ -63,3 +63,7 @@
 [本人配置清单](investment-configuration-checklist.md)继续单独维护。没有购买数据、使用真实模型、自动下单、部署或推送本轮工作。
 
 手机操作截图：[离线条件演练390px](verification/investment-conditions-20261028/condition-drill-390.png)。功能提交 `1c9ba4f`。代码与文档分开提交，未包含同目录其他功能的未提交改动。
+
+## 后续更新
+
+单笔声明路径的[撮合情景验证](investment-execution-study-20261028.md)已补费用、滑点、量与制度约束等基础，不等于完整历史回测；上表4.3后续缺口以新文档及唯一任务清单为准。当前仍25/32项、7项未完成。上文104项是本轮历史证据。

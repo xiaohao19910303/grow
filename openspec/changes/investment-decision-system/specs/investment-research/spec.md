@@ -91,3 +91,18 @@ The system SHALL permit explicitly declared offline price-threshold drills using
 #### Scenario: Offline exit condition relies on a hypothetical position
 - **WHEN** a drill selects exit intent and a declared purchase date
 - **THEN** it counts covered trading sessions against the declared selling delay, treats unknown rules as unresolved, never assumes ETF T+0, and does not assert actual sellable quantity
+
+### Requirement: Declared execution studies remain hypothetical
+The system SHALL support bounded immutable single-instrument execution studies with declared rules, fees, slippage and volume participation. These studies MUST remain separate from verified point-in-time strategy backtests and actual ledger results.
+
+#### Scenario: Missing next entry minute would skip to a later winner
+- **WHEN** the next eligible auction minute after the declared decision is absent
+- **THEN** the model records unresolved entry coverage and does not select a later available price as the entry
+
+#### Scenario: Stop is blocked by T+1 or a limit queue
+- **WHEN** a hypothetical invalidation triggers while selling is restricted or its modeled price cannot establish execution
+- **THEN** the model retains the unfilled exit intent, applies subsequent constraints and costs, and does not replace it with a later profitable target
+
+#### Scenario: Incomplete corporate-action or suspended-path evidence
+- **WHEN** held minutes are missing without a timely declared halt, or corporate action or delisting inputs are unresolved
+- **THEN** whole-study net results stay unavailable, partial hypothetical facts remain labeled, and the actual investment ledger is unchanged

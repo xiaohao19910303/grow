@@ -125,3 +125,11 @@
 保存原始rule_snapshot/check_snapshot/reference_snapshot/path_hash、逐事件status及result_hash，kind=condition-drills且无覆盖更新接口。GET同名列表须account_id、分页50并省略时序和核对正文；GET同名/{id}取完整已保存结果。校验/原文/备份/权限沿用投资私有边界。相同输入重复请求不建重复记录。完整规则、状态优先级与限制见根目录docs/investment-condition-drill-20261028.md。
 
 所有结果realtime/executable/notification_sent均false；page_candidate只是明确选择的本页模拟提示计数。最长2011个事件，显示前100条但私有API保留完整结果；不改实际账本。新增condition_drill能力为true，实际intraday_alerts和P2仍false。不能以此证明4.5或4.6整体完成。
+
+### 单笔声明路径撮合情景（2026-10-28续）
+
+`POST /api/investments/execution-studies`需要account_id/path_id/check_id/title、含时区decision_at/evidence_available_at、十进制文本cash/quantity/stop_price/target_price/commission_bps/minimum_commission/sell_tax_bps/slippage_bps/participation_rate、constraints_text/source_note/acknowledged。佣金/卖出税万分率0–10000，最低佣金0–100000元，滑点万分率0–1000，量占比(0,1]；各项均由本人显式提供。价格/期限及原始每日状态CSV有界，未验证资料生成失败或未判定结果而不虚构净收益。CSV原文保留，不执行代码。
+
+GET同名列表每页50且须account_id，仅返回摘要；GET同名/{id}取冻结完整结果，无覆盖修改接口。对象kind=execution-studies。模型`next_open_stop_first_v1`进入指纹，相同输入和模型版本重复提交只建一条。完整备份恢复、租户隔离、no-store/同源保护沿用投资边界。
+
+模型使用声明价格单位/数量步长与参考最大买量，费用逐笔取分、滑点不利取整、容量同分钟共享、下一入场分钟缺失不跳过、T+1和失效未成交意图保留。所有成交和净结果只是假设，不改实际账本。production_backtest及point_in_time_verified恒false；execution_study可用但完整backtest仍禁用。具体公式/边界见根目录docs/investment-execution-study-20261028.md。
