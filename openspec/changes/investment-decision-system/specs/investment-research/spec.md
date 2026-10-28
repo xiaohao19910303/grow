@@ -68,3 +68,11 @@ P2 backtesting and replay MUST use point-in-time inputs, historical instrument c
 #### Scenario: Limit-locked or unavailable sell quantity
 - **WHEN** a simulated exit cannot meet instrument selling rules or verifiable execution constraints
 - **THEN** the evaluator does not invent an executable exit at the requested price
+
+#### Scenario: Public reference expires or conflicts with a manual check
+- **WHEN** a plan check opts into the bundled public reference but its version or maintenance window is no longer valid, or recorded fields contradict covered rules or holiday dates
+- **THEN** confirmation is refused, the reference status and unknown fields remain explicit, and actual fills can still be recorded truthfully
+
+#### Scenario: Public calendar avoids an unnecessary supplier entitlement
+- **WHEN** the user explicitly selects the covered public calendar for daily data
+- **THEN** only the selected daily endpoint is requested, supplier calendar access is not claimed as tested, and missing coverage stops without silently switching providers or endpoints
