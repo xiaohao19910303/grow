@@ -1,0 +1,17 @@
+test_path_scrubbing_and_frozen_forward_trial (test_investment_offline_browser.InvestmentOfflineBrowserTests.test_path_scrubbing_and_frozen_forward_trial) ... FAIL
+
+======================================================================
+FAIL: test_path_scrubbing_and_frozen_forward_trial (test_investment_offline_browser.InvestmentOfflineBrowserTests.test_path_scrubbing_and_frozen_forward_trial)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_investment_offline_browser.py", line 56, in test_path_scrubbing_and_frozen_forward_trial
+    self.assertTrue(page.get_by_role('dialog').evaluate('d => d.scrollWidth <= d.clientWidth'))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 2.923s
+
+FAILED (failures=1)
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 1, "skipped": 0, "failures": 1, "errors": 0, "javascript": []}
