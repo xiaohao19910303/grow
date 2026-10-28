@@ -31,6 +31,20 @@ class InvestmentFullBackupTests(unittest.TestCase):
                 'fee':'1','tax':'0','executed_at':'2026-10-26T10:00:00+08:00'},'f')
             e=store.create('research',{'account_id':a['id'],'title':'PRIVATE SOURCE','content':'私人核对原文',
                 'available_at':'2026-10-26T09:00:00+08:00'},'e')
+            from investments.replay import import_path
+            from investments.experiments import create_experiment,register_experiment
+            from datetime import datetime,timedelta
+            original_path='start,open,high,low,close,volume,amount\n2026-10-26T10:00:00+08:00,1.231,1.24,1.22,1.23,1000,1230\n'
+            path=import_path(store,{'account_id':a['id'],'instrument_id':i['id'],'text':original_path,
+                'source_label':'PRIVATE PATH','volume_unit':'shares','amount_unit':'cny','price_basis':'unadjusted','use_confirmed':True},'path')
+            strategy=store.create('strategies',{'title':'PRIVATE TRIAL','entry_conditions':'合成条件','exit_conditions':'反例','validation_scope':'合成观察'},'strategy')
+            strategy=store.transition('strategies',strategy['id'],1,'confirmed','strategy-confirm')
+            start=datetime.fromisoformat(now())+timedelta(days=1)
+            trial=create_experiment(store,{'account_id':a['id'],'strategy_id':strategy['id'],'strategy_version':strategy['version'],
+                'title':'PRIVATE PROTOCOL','hypothesis':'先登记','counter_case':'可能无效','stop_condition':'资料缺失',
+                'parameters':{'sessions':'2'},'cost_assumptions':'按实际费用','start_at':start.isoformat(),
+                'end_at':(start+timedelta(days=7)).isoformat(),'sample_target':10,'additional_roundtrip_costs':['0','1']},'trial')
+            trial=register_experiment(store,trial['id'],1,'trial-register')
             review=store.create('reviews',{'account_id':a['id'],'date':'2026-10-26','text':'PRIVATE ORIGINAL'},'r')
             store.update('reviews',review['id'],1,{'text':'PRIVATE AUDITED'},'edit')
             analysis=InvestmentAnalysis(store);analysis.initialize()
@@ -52,3 +66,5 @@ class InvestmentFullBackupTests(unittest.TestCase):
             for key in ('objects','versions','analysis_jobs'):self.assertEqual(after[key],before[key])
             self.assertEqual(store.balance(a['id']),balance)
             self.assertEqual(store.get('research',e['id'])['evidence_hash'],e['evidence_hash'])
+            self.assertEqual(store.get('intraday-paths',path['id'])['raw_text'],original_path)
+            self.assertEqual(store.get('experiments',trial['id'])['protocol_hash'],trial['protocol_hash'])

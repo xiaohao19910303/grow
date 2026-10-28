@@ -22,6 +22,19 @@ class InvestmentIsolationTests(unittest.TestCase):
         account=response.json()
         instrument=self.client.post('/api/investments/instruments',json={'name':'ALICE SECURITY','code':'600000',
             'market':'SSE','kind':'stock'},headers={**self.headers,'Idempotency-Key':'alice-instrument'}).json()
+        minute_path=self.client.post('/api/investments/paths/import',json={'account_id':account['id'],'instrument_id':instrument['id'],
+            'text':'start,open,high,low,close,volume,amount\n2026-10-26T10:00:00+08:00,10,11,9,10,1,10\n',
+            'source_label':'ALICE PATH','volume_unit':'shares','amount_unit':'cny','price_basis':'unadjusted','use_confirmed':True},
+            headers={**self.headers,'Idempotency-Key':'alice-path'}).json()
+        strategy=self.client.post('/api/investments/strategies',json={'title':'ALICE METHOD','entry_conditions':'合成条件',
+            'exit_conditions':'反证','validation_scope':'合成观察'},headers={**self.headers,'Idempotency-Key':'alice-strategy'}).json()
+        confirmed=self.client.post('/api/investments/strategies/'+strategy['id']+'/state',json={'version':1,'state':'confirmed'},
+            headers={**self.headers,'Idempotency-Key':'alice-strategy-confirm'}).json()
+        trial=self.client.post('/api/investments/experiments',json={'account_id':account['id'],'strategy_id':strategy['id'],
+            'strategy_version':confirmed['version'],'title':'ALICE TRIAL','hypothesis':'先登记','counter_case':'可能无效','stop_condition':'资料缺失',
+            'parameters':{'sessions':'2'},'cost_assumptions':'实际费用','start_at':'2030-01-01T10:00:00+08:00',
+            'end_at':'2030-01-02T15:00:00+08:00','sample_target':10,'additional_roundtrip_costs':['0']},
+            headers={**self.headers,'Idempotency-Key':'alice-trial'}).json()
         old=self.client.post('/api/stocks',json={'stock_code':'123','stock_name':'ALICE OLD',
             'action':'buy','date':'2026-10-26','price':1},headers=self.headers)
         self.assertEqual(old.status_code,200,old.text)
@@ -29,6 +42,11 @@ class InvestmentIsolationTests(unittest.TestCase):
         self.register('bob')
         self.assertEqual(self.client.get('/api/investments/accounts').json()['total'],0)
         for path in ('/api/investments/accounts/'+account['id'],
+                     '/api/investments/paths/'+minute_path['id'],
+                     '/api/investments/paths?account_id='+account['id'],
+                     '/api/investments/experiments/'+trial['id'],
+                     '/api/investments/experiments/'+trial['id']+'/history',
+                     '/api/investments/experiments?account_id='+account['id'],
                      '/api/investments/instruments/'+instrument['id']+'/rules?on=2026-10-28',
                      '/api/investments/instruments/'+instrument['id']+'/data-status',
                      '/api/investments/accounts/'+account['id']+'/balance',
