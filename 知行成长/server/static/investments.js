@@ -89,17 +89,17 @@
   }
   function ledgerView() {
     const balance = s.balance;
-    return `<section><h3>实际成交与持仓</h3><div class="inv-actions">${button('记录成交','fill')}${button('资金流水','cash')}${button('导入CSV','csv')}${button('基金申请','fund')}${button('导出投资记录','export')}${button('关联旧记录','legacy-link')}${button('新增核对事项','notice')}${button('添加标的','instrument')}</div>
+    return `<section><h3>实际成交与持仓</h3><div class="inv-actions">${button('记录成交','fill')}${button('资金流水','cash')}${button('导入CSV','csv')}${button('导入分时路径','path-import')}${button('基金申请','fund')}${button('导出投资记录','export')}${button('关联旧记录','legacy-link')}${button('新增核对事项','notice')}${button('添加标的','instrument')}</div>
       ${balance ? `<dl class="inv-metrics"><div><dt>现金${balance.cash_verified ? '' : '（暂估）'}</dt><dd>${esc(balance.cash)}</dd></div><div><dt>已实现净盈亏</dt><dd>${esc(money(balance.net_realized))}</dd></div><div><dt>总资产</dt><dd>${esc(money(balance.equity))}</dd></div></dl>${balance.warnings.map(w => `<p class="inv-notice">${esc(w)}</p>`).join('')}` : ''}
       <p class="inv-muted">未录入行情时不推算浮动盈亏；费用留空表示尚未核对。这里只记录实际成交。</p>
       <h3>持仓</h3>${cards(balance?.positions || [], p => `<h4>${esc(instrumentName(p.instrument_id))}</h4><p>${p.quantity_verified===false?'所录数量（待核对）':'数量'} ${esc(p.quantity)} · 成本${p.fees_complete && p.settlements_complete!==false ? '' : '（暂估）'} ${esc(money(p.cost))}</p>`, '尚无持仓。')}
       <h3>账实核对事项</h3>${cards(s.notices,n=>`<h4>${esc(instrumentName(n.instrument_id))} · ${n.status==='open'?'待核对':'本人已核对'}</h4><p>${esc(n.reason)}</p><p>${esc(n.resolution || '尚未记录处理结果')}</p><small>系统不自动处理拆分、份额折算等公司行动。先核对并补齐真实事实，再填写处理说明；解除标记不会修改账本。</small>${versions('ledger-notices',n)}`,'如发现公司行动、份额折算或账实差异，先标记核对；不继续把旧数量与收益当作已验证。')}
       <h3>最近成交</h3>${cards(s.fills, f => `<h4>${esc(instrumentName(f.instrument_id))} · ${f.side === 'buy' ? '买入' : '卖出'}</h4><dl class="inv-fill"><div><dt>成交价格</dt><dd>${esc(f.price)}</dd></div><div><dt>数量</dt><dd>${esc(f.quantity)}</dd></div></dl><p>手续费 ${esc(money(f.fee))} · 税费 ${esc(money(f.tax))}</p><small>${esc(f.executed_at)} · ID ${esc(f.id)}</small>${button('核对更正','correction',`data-id="${f.id}"`)}`, '记录第一笔实际成交，刷新后可继续查看。')}
       <h3>基金申请与到账</h3>${cards(s.fundOrders, o => `<h4>${esc(instrumentName(o.instrument_id))} · ${o.side==='subscription'?'申购':'赎回'}</h4><p>${esc(({pending:'待确认',partially_confirmed:'部分确认，待继续核对',confirmed:'已确认，待到账',settled:'已完成'})[o.state] || o.state)} · 待到账 ${esc(o.receivable || '0')}</p>${o.confirmations?.map(b=>`<p>批次净值 ${esc(b.price)} · 份额 ${esc(b.quantity)} · 费用 ${esc(b.fee)} · 净值日 ${esc(b.nav_date)}</p>`).join('') || ''}${['pending','partially_confirmed'].includes(o.state)?button('确认净值与份额','fund-confirm',`data-id="${o.id}"`):o.state==='confirmed'?button('登记赎回到账','fund-settle',`data-id="${o.id}"`):''}`, '申请、确认和到账分别记录，尚未到账的赎回不增加现金。')}
-      <h3>完整交易链</h3>${cards(s.campaigns, c => `<h4>${esc(instrumentName(c.instrument_id))} · ${esc(label[c.state])}</h4><p>剩余 ${esc(c.quantity)} · 已实现净盈亏 ${esc(money(c.net_realized))} · R ${esc(money(c.realized_r))}</p><small>R按冻结的实际入场价格差风险和费用预算计算，非最大损失保证；无事前预算不计算。同账户同标的一条进行中交易链。</small>${button('对照复盘','campaign-review',`data-id="${c.id}"`)}`, '成交后自动整理分批进出，周末不重置。')}</section>`;
+      <h3>完整交易链</h3>${cards(s.campaigns, c => `<h4>${esc(instrumentName(c.instrument_id))} · ${esc(label[c.state])}</h4><p>剩余 ${esc(c.quantity)} · 已实现净盈亏 ${esc(money(c.net_realized))} · R ${esc(money(c.realized_r))}</p><small>R按冻结的实际入场价格差风险和费用预算计算，非最大损失保证；无事前预算不计算。同账户同标的一条进行中交易链。</small>${button('对照复盘','campaign-review',`data-id="${c.id}"`)}${button('路径复盘','path-replay',`data-id="${c.id}" data-instrument="${c.instrument_id}"`)}`, '成交后自动整理分批进出，周末不重置。')}</section>`;
   }
   function reviewView() {
-    return `<section><h3>先记录事实，再形成下一项试验</h3><div class="inv-actions">${button('写复盘','review')}${button('新增策略','strategy')}${button('周期统计与建议跟踪','summary')}${button('形成试验原则','principle')}</div>
+    return `<section><h3>先记录事实，再形成下一项试验</h3><div class="inv-actions">${button('写复盘','review')}${button('新增策略','strategy')}${button('周期统计与建议跟踪','summary')}${button('形成试验原则','principle')}${button('新建前向试验','experiment')}${button('前向试验列表','experiments')}</div>
       <h3>复盘与思考</h3>${cards(s.reviews, r => `<h4>${esc(r.date)} · ${esc(({day:'盘后',campaign:'完整交易',week:'周复盘',month:'月复盘',quarter:'季度',event:'事件',thought:'思考'})[r.period])}</h4><p class="inv-preserve">${esc(r.text)}</p>${r.execution ? `<p>执行：${esc(r.execution)}</p>` : ''}${r.next_experiment ? `<p>下一项试验：${esc(r.next_experiment)}</p>` : ''}<p>执行评价：${esc(({followed:'遵守规则',deviated:'偏离规则',unknown:'尚未评价'})[r.adherence || 'unknown'])} · 逻辑验证：${esc(({supported:'获得支持',refuted:'出现反证',unknown:'尚未判定'})[r.thesis || 'unknown'])}</p>${r.no_trade ? '<p>本次未交易</p>' : ''}${button('生成改进行动','review-action',`data-id="${r.id}" data-version="${r.version}"`)}${button('查看行动引用','action-refs',`data-id="${r.id}"`)}${versions('reviews',r)}`, '一句话也可以保存。盈利、亏损与是否遵守计划分别评价。')}
       <h3>原则与规则试验</h3>${cards(s.principles,p=>`<h4>${esc(p.title)}</h4><p>${esc(p.rule)}</p><p>支持：${esc(p.supporting_case || '待补充')}<br>反例：${esc(p.contrary_case || '待补充')}</p><p>验证范围：${esc(p.validation_scope || '待定义')}</p><small>确认仅表示本人开始试验，不证明有效，不自动修改策略或扩大风险。</small>${versions('principles',p)}`,'先保留原始复盘，再形成有反例和试验范围的候选规则。')}
       <h3>策略</h3>${cards(s.strategies, p => `<h4>${esc(p.title)}</h4><p>入场：${esc(p.entry_conditions || '待补充')}<br>退出：${esc(p.exit_conditions || '待补充')}</p><p>验证：${esc(p.validation_scope || '待定义')}</p>${versions('strategies',p)}`, '先形成一套可验证的方法，不要求每天交易。')}</section>`;
@@ -145,6 +145,16 @@
     if (action === 'period') return {kind:'period-plans',title:'周日准备计划',base:{account_id:aid},fields:[field('title','准备计划标题'),select('period','准备周期',[['day','日计划'],['week','周计划（周一至周日）']]),field('period_start','准备开始日期','date',today()),field('period_end','准备结束日期','date',today()),field('focus','本期关注与检查事项','textarea'),field('contrary_evidence','本期反对理由','textarea','',{optional:true}),select('strategy_id','关联策略',strategyOptions),{...select('check_id','本人核对资料',[['','尚未核对'],...options(s.checks,c=>`${instrumentName(c.instrument_id)} · ${c.quote_as_of}`)]),optional:true},field('no_trade','本期选择不交易','checkbox',false)]};
     if (action === 'watch') return {kind:'watchlist',title:'自选跟踪',base:{account_id:aid},fields:[select('instrument_id','跟踪标的',securities),select('stage','跟踪阶段',[['observing','观察'],['researching','研究中'],['ready','条件准备'],['held','持有关注'],['archived','已归档']]),field('reason','关注理由','textarea','',{optional:true}),field('next_check','下次核对日期','date','',{optional:true})]};
     if (action === 'dossier') return {kind:'dossiers',title:'股票与ETF结构化研究',base:{account_id:aid},fields:[field('title','研究标题'),select('instrument_id','研究标的',securities),select('horizon','研究持有视角',[['short','短线'],['swing','波段']]),...([['market_context','市场与板块'],['technical_case','量价假设'],['catalyst','催化事件'],['company_risk','公司风险'],['valuation_assumptions','估值假设'],['liquidity','流动性'],['nav_context','ETF净值与时差'],['portfolio_impact','组合影响'],['contrary_case','反对理由'],['missing_inputs','缺少输入']].map(([k,t])=>field(k,t,'textarea','',{optional:true}))),multi('evidence_ids','选择相关原始资料',options(s.research,r=>r.title))]};
+    if(action==='experiment') {
+      const approved=s.strategies.filter(x=>x.state==='confirmed').map(x=>({...x}));
+      if(!approved.length)throw new Error('请先保存并确认一套策略，再登记前向试验。');
+      const start=new Date(Date.now()+8*3600000+3600000).toISOString().slice(0,16),end=new Date(Date.now()+8*3600000+7*86400000).toISOString().slice(0,16);
+      return {kind:'experiments',title:'新建前向观察试验',message:'先保存草稿，再在开始前显式登记。登记后冻结策略版本、参数、成本假设和期间；全部相符策略版本的盈亏都会列入，不自动增加风险，也不是样本外回测。',base:{account_id:aid},fields:[field('title','试验标题'),select('strategy_id','试验策略',options(approved,x=>`${x.title} · 版本 ${x.version}`)),field('hypothesis','待验证假设','textarea'),field('counter_case','试验反例','textarea'),field('stop_condition','停止观察条件','textarea'),field('parameters','参数记录（每行 名称=值）','textarea'),field('cost_assumptions','成本与样本核对约定','textarea'),field('start_at','试验开始时间','datetime-local',start),field('end_at','试验结束时间','datetime-local',end),field('sample_target','复核样本目标','integer'),field('additional_roundtrip_costs','额外每条完整交易成本压力（元，逗号分隔）','text','0')],transform:values=>{
+        const parameters={};for(const line of values.parameters.trim().split('\n')){const split=line.indexOf('=');if(split<1)throw new Error('参数请逐行填写名称=值。');const key=line.slice(0,split).trim();if(Object.hasOwn(parameters,key))throw new Error('参数名不可重复。');Object.defineProperty(parameters,key,{value:line.slice(split+1).trim(),enumerable:true});}
+        const strategy=approved.find(x=>x.id===values.strategy_id);if(!strategy)throw new Error('请重新选择已确认策略版本。');
+        return {...values,parameters,strategy_version:strategy.version,additional_roundtrip_costs:values.additional_roundtrip_costs.replaceAll('，',',').split(',').map(x=>x.trim())};
+      }};
+    }
     if (action === 'principle') return {kind:'principles',title:'形成可验证的试验原则',message:'从本人确认的事实出发，保留支持与反例。开始试验不会自动改变策略或交易风险。',base:{account_id:aid},fields:[field('title','原则标题'),field('rule','候选规则','textarea'),field('supporting_case','支持案例','textarea','',{optional:true}),field('contrary_case','反例与失效情形','textarea','',{optional:true}),field('validation_scope','前向试验范围','textarea','',{optional:true}),multi('source_review_ids','选择原始复盘',options(s.reviews,r=>`${r.date} · ${r.text.slice(0,60)}`))]};
     if (action === 'notice') return {kind:'ledger-notices',title:'记录账实核对事项',base:{account_id:aid},fields:[select('instrument_id','核对证券',securities),select('kind','差异类型',[['corporate_action','公司行动或份额折算'],['missing_fact','遗漏事实'],['cost_or_fee','成本或费用'],['other','其他']]),field('observed_at','发现时间','datetime-local',dateTime()),field('reason','待核对原因','textarea'),field('source_url','核对资料链接','text','',{optional:true}),select('status','核对状态',[['open','待核对'],['resolved','本人核对完成']]),field('resolution','处理与核对说明','textarea','',{optional:true})]};
     if (action === 'policy') return {kind:'policies',title:'资金预算',base:{account_id:aid},fields:[field('period_start','开始日期','date',today()),field('period_end','结束日期','date',today()),field('purpose','资金用途','textarea'),field('liquidity_needs','近期用钱需求','textarea'),field('loss_capacity','能承受的损失','textarea'),field('planned_deposit','拟入金','decimal','0'),field('planned_withdrawal','拟取出','decimal','0'),field('cash_buffer','现金缓冲','decimal','',{optional:true}),field('trade_risk_budget','单笔风险预算','decimal','',{optional:true}),field('max_exposure','最大持仓金额','decimal','',{optional:true}),field('loss_review_line','亏损复核线','decimal','',{optional:true}),field('pause_new_risk','暂停新增风险','checkbox',false)]};
@@ -197,6 +207,7 @@
         if(spec.kind==='accounts')s.accountId=result.id;
         closeDialog();await load();
         if(spec.kind.endsWith('/actions'))status('已安排改进行动，未复制私人复盘正文或金额。');
+        if(spec.kind==='experiments')status('已保存试验草稿，请打开前向试验列表，在开始前登记。');
         if(spec.kind==='legacy-links')status('已保存旧记录关联；旧估算未计入新账盈亏。');
       } catch(error) {currentDialog.querySelector('[data-inv-form-error]').textContent=error.message;}
       finally {saving=false;controls.forEach(c=>c.disabled=false);currentDialog.oncancel=null;}
@@ -240,6 +251,16 @@
     try {
       if(action==='refresh') return await load();
       if(action==='private-search')return searchDialog();
+      if(action==='experiments') {
+        if(!s.accountId)throw new Error('请先选择账户。');
+        if(!window.InvestmentMarket)throw new Error('试验入口尚未载入，请刷新。');
+        return window.InvestmentMarket.experiments({accountId:s.accountId,onEdit:id=>act('edit',{kind:'experiments',id})});
+      }
+      if(action==='path-import' || action==='path-replay') {
+        if(!window.InvestmentMarket)throw new Error('路径入口尚未载入，请刷新。');
+        if(!s.accountId)throw new Error('请先选择账户。');
+        return action==='path-import'?window.InvestmentMarket.pathImport({accountId:s.accountId,instruments:s.instruments,refresh:load}):window.InvestmentMarket.replay({accountId:s.accountId,campaignId:data.id,instrumentId:data.instrument});
+      }
       if(action==='readiness') {
         const result=await api('readiness');closeDialog();const d=document.createElement('dialog');dialog=d;d.className='inv-dialog';
         d.innerHTML=`<h3>配置与验收要求</h3><p>手工记账、CSV和公开规则参考不需要付费行情或AI凭证。</p><h4>AI配置</h4><p>在设置中填写自己的HTTPS Base URL、API Key和准确模型ID；须支持OpenAI兼容流式聊天及要求的JSON输出。</p><p>${esc(result.ai.cost)}</p><h4>盘后行情</h4><p>Tushare Token和daily权限；公开日历覆盖内不需要trade_cal权限。选择供应商日历时另核对trade_cal，ETF另核对fund_daily权限/配额和本人用途许可。Token仅请求时填写，不写入投资记录。</p><h4>未开放</h4><p>分钟/实时权限另行验收，填入Token不会自动开放。真实模型效果和供应商账号权限目前未验证。</p><p>不需要券商登录密码、交易密码或短信验证码。请勿在聊天或文档中粘贴密钥。</p><p>公开规则复核截至 ${esc(result.automatic_reference.review_until)}，超过期限将停止自动填入。</p><button type="button" class="btn">关闭</button>`;
@@ -295,11 +316,13 @@
       }
       if(action==='edit') {
         const item=await api(`${data.kind}/${data.id}`);
-        const actionFor={'policies':'policy','strategies':'strategy','trade-plans':'plan','reviews':'review','period-plans':'period','watchlist':'watch','dossiers':'dossier','principles':'principle','ledger-notices':'notice'};
+        const actionFor={'policies':'policy','strategies':'strategy','trade-plans':'plan','reviews':'review','period-plans':'period','watchlist':'watch','dossiers':'dossier','principles':'principle','ledger-notices':'notice','experiments':'experiment'};
         const spec=formFor(actionFor[data.kind]);
         spec.edit={id:item.id,version:item.version};spec.title='修改 · '+spec.title;
         for(const f of spec.fields) {
           f.value=item[f.key] ?? '';
+          if(data.kind==='experiments' && f.key==='parameters')f.value=Object.entries(f.value).map(([k,v])=>k+'='+v).join('\n');
+          if(data.kind==='experiments' && f.key==='additional_roundtrip_costs')f.value=f.value.join(',');
           if(f.type==='select' && f.value!=='' && !f.items.some(([id])=>id===f.value))f.items.push([f.value,'当前引用未载入，保存时保留']);
           if(f.type==='multi')for(const id of f.value || [])if(!f.items.some(([value])=>value===id))f.items.push([id,'原引用未载入，保存时保留']);
           if(f.type==='datetime-local' && f.value)f.value=new Date(new Date(f.value).getTime()+8*3600000).toISOString().slice(0,16);
