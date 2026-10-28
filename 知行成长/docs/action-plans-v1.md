@@ -1,6 +1,49 @@
 # 行动计划使用说明
 
+## 2026-10-27：目标驱动工作区
+
+「行动 → 目标与计划」使用「＋新建」创建目标、计划或行动。目标可按年、月、自定义周期或暂不设周期；计划可按月、周或自定义阶段创建。没有年目标也可以独立使用，后续补关联不会创建副本。旧年目标的 ID、执行和复盘保留，旧达标次数沿用为行动计数口径。
+
+按目标看方向和下一步，按周期看本月／本周／自定义范围。详情包含概览、计划与行动、进度与复盘；课程进度在「关联课程」展开查看。日程、今日与目标中的行动使用同一条记录。上级关联可以跳级，日期超出周期只提示；移动到未安排保留上级关系，并清除时间和提醒。
+
+目标完成标准可选手动数值、阶段成果或固定目标行动数。实际投入单独显示，达到数字标准不会自动确认目标完成。修改结果保留历史，复盘快照不被当前调整覆盖。
+
+日程中的「规划本周」支持未来周、重点、可选可用分钟和行动安排。未知时长单独提示；没有设置可用时间时不显示剩余时间；超量可调整或继续保存。取消周规划勾选不自动清除已有日期安排；需要取消日期时使用「移到未安排」。规划不产生执行事实，不自动开启日常节奏或提醒。
+
+目标／计划详情中的「AI 辅助拆解」先预览发送内容、确认本人配置，再生成可编辑草案。默认具体安排未来七天，可选十四天；远期仅列阶段建议，最多三十项。可部分采用，未采用的草案上级不会成为必选，选中子项会关联原目标／计划。采用是原子事务，重试不重复创建；目标变化时先重新预览生成，草案保留。失败不自动重试收费请求，凭据不进入草案或日志。
+
+创建和编辑有账号／上下文隔离的草稿、待确认请求及恢复副本。模板和重复安排可以在新行动的更多设置中直接完成。新版能力与行动完成 schema 2 分开声明；LightTick 接管端未支持此工作区，含新增数据时不允许丢字段接管。
+
+实现与验证边界见 [交付报告](../../docs/verification/goal-driven-workspace-2026-10-27/README.md)。以下保留历史说明；与本节冲突的旧日期包含要求不再适用于新版工作区。
+
 2026-10-20更新：Grow本地P0已通过回归及指定浏览器验收；LightTick连接端仍受合同门槛限制，未完成真实双端验收，也未部署本轮改动。
+
+## 工作区私有接口（能力版本 1）
+
+继续使用 `X-Grow-Action-Schema: 2`；新版写操作同时发送 `X-Grow-Workspace-Version: 1`。能力版本与行动完成事实版本独立，所有数据继续按当前登录账号隔离，不作为 LightTick 原生合同。
+
+| 接口 | 用途 |
+| --- | --- |
+| GET `/api/action-plans/workspace` | 全部实体、继承的目标归属、越界／截止提示、结果和投入汇总 |
+| GET/POST `/api/action-plans/goals` | 目标列表与创建；创建沿用 `plans` 数组响应 |
+| GET `/api/action-plans/goals/{id}` | 单个目标的当前投影 |
+| POST `/api/action-plans/goals/{id}/operations` | 目标编辑、暂停、恢复、归档、本人确认完成 |
+| POST `/api/action-plans/goals/{id}/result` | 带 `key/revision/metric/note` 更新标准与结果，保留调整前快照 |
+| GET/POST `/api/action-plans/week-plans/{week_start}` | 周一为起点的未来周规划；与事实周卡分别存储 |
+| POST `/api/action-plans/planning-drafts/preview` | 根实体版本、基础、周可用分钟、近期重点和 7/14 天范围的发送预览 |
+| POST `/api/action-plans/planning-drafts/generate` | 显式确认、预览哈希、本人 AI 配置，返回 202 和草案 ID |
+| GET `/api/action-plans/planning-drafts?root_id=…` | 最近二十份草案与可恢复状态 |
+| GET `/api/action-plans/planning-drafts/{id}` | 刷新生成结果；过期或跨进程未完成任务显示失败 |
+| POST `/api/action-plans/planning-drafts/{id}/edit` | 带版本保存编辑后的项目，最多三十项 |
+| POST `/api/action-plans/planning-drafts/{id}/adopt` | 采用已保存且选中的项目；事务内创建并关联，幂等返回原结果 |
+
+实体新增 `entity_type`（goal/plan/action）、`expected_result`、可选 `deadline` 与目标的 `result_metric`。旧年、月、周、日记录读取时补充类型，不批量迁移 ID；没有新版语义的旧记录保持旧存储结构，避免污染既有接管包。新版数据使用 `workspace_version` 标识；导出备份保留结果历史、周规划和 AI 草案。
+
+结果口径为 `unset/manual/milestones/actions`。数值口径使用 `current/target/unit`；成果口径使用稳定 `id/title/completed` 列表；行动口径使用有效完成的唯一行动数与固定目标值。目标状态独立于百分比。
+
+周规划请求包含 `revision`、重点 ID 列表 `priorities`、带行动版本及可选日期的 `assignments` 和可选 `available_minutes`。保存前统一校验，冲突整笔回滚；日期安排只修改原行动。待调整列表的批量操作则逐项执行并保留失败选择，两者语义不同。
+
+AI 草案项目仅接受 `ref/parent_ref/title/entity_type/period/start_date/end_date/estimated_minutes/selected`；模型不能写完成状态、来源关联、执行命令或凭据。生成限时九十秒，生成中任务按现有单 worker 运行方式恢复；没有跨 worker 调度租约。正式支持多 worker 前必须升级任务租约机制。
 
 ## 当前日行动（P0）
 

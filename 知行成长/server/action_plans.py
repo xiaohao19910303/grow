@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS action_source_contexts (id TEXT PRIMARY KEY,data TEXT
 CREATE TABLE IF NOT EXISTS action_source_outbox (event_id TEXT PRIMARY KEY,payload TEXT NOT NULL,state TEXT NOT NULL,attempts INTEGER NOT NULL,next_attempt TEXT NOT NULL,receipt TEXT,data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_content_events (id TEXT PRIMARY KEY,request_key TEXT UNIQUE,data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_reminder_claims (key TEXT PRIMARY KEY,claimed_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS action_week_plans (id TEXT PRIMARY KEY,data TEXT NOT NULL,revision INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS action_plan_drafts (id TEXT PRIMARY KEY,state TEXT NOT NULL,data TEXT NOT NULL,revision INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS action_templates (id TEXT PRIMARY KEY,name TEXT NOT NULL,data TEXT NOT NULL,created_at TEXT NOT NULL);
 '''
 
@@ -61,7 +63,7 @@ def fail(status, message, code=None, **extra):
 def connection(write=False, allow_link=False):
     with db.connect() as c:
         tables=c.execute("SELECT to_regclass('action_link_state') AS link,to_regclass('action_reviews') AS reviews").fetchone()
-        if tables[0] is None or tables[1] is None or c.execute("SELECT to_regclass('action_source_outbox')").fetchone()[0] is None:
+        if tables[0] is None or tables[1] is None or c.execute("SELECT to_regclass('action_plan_drafts')").fetchone()[0] is None or c.execute("SELECT to_regclass('action_source_outbox')").fetchone()[0] is None:
             c.execute("SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':actions-schema',0))")
             c.executescript(SCHEMA)
         if write:
@@ -96,9 +98,37 @@ class StudyTarget(Input):
         return self
 
 
+class Milestone(Input):
+    id: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1, max_length=160)
+    completed: bool = False
+
+
+class ResultMetric(Input):
+    mode: Literal['unset', 'manual', 'milestones', 'actions'] = 'unset'
+    current: float = Field(default=0, ge=0, allow_inf_nan=False)
+    target: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    unit: str = Field(default='', max_length=40)
+    milestones: list[Milestone] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode='after')
+    def valid_metric(self):
+        if self.mode in ('manual', 'actions') and self.target is None:
+            raise ValueError('请填写结果目标值。')
+        if self.mode == 'actions' and self.target != int(self.target):
+            raise ValueError('行动目标须为整数。')
+        if len({m.id for m in self.milestones}) != len(self.milestones):
+            raise ValueError('阶段成果编号不能重复。')
+        return self
+
+
 class PlanFields(Input):
     title: str = Field(min_length=1, max_length=160)
-    period: Literal['year', 'month', 'week', 'day']
+    period: Literal['year', 'month', 'week', 'day', 'custom']
+    entity_type: Literal['goal', 'plan', 'action'] | None = None
+    result_metric: ResultMetric | None = None
+    expected_result: str = Field(default='', max_length=2000)
+    deadline: date | None = None
     horizon: Literal['short', 'long'] | None = None
     start_date: date | None = None
     end_date: date | None = None
@@ -117,14 +147,22 @@ class PlanFields(Input):
 
     @model_validator(mode='after')
     def valid_period(self):
+        original_fields = self.model_fields_set.copy()
         self.title = self.title.strip()
+        self.entity_type = self.entity_type or ('goal' if self.period == 'year' else 'action' if self.period == 'day' else 'plan')
+        if (self.entity_type == 'action') != (self.period == 'day'):
+            raise ValueError('行动使用日周期，目标和计划使用月、周或自定义周期。')
+        if self.entity_type != 'goal' and self.result_metric is not None:
+            raise ValueError('结果口径只能用于目标。')
+        if self.entity_type == 'goal' and self.period == 'year' and self.result_metric is None:
+            self.result_metric = ResultMetric(mode='actions', target=self.target_count, unit='项')
         self.horizon = self.horizon or ('long' if self.period == 'year' else 'short')
         if not self.title or (self.start_date is None) != (self.end_date is None):
             raise ValueError('标题和计划日期范围无效。')
         if self.start_date is None:
-            if self.period != 'day' or self.at is not None or self.parent_id:
-                raise ValueError('未安排行动不能设置时间或上级。')
-        elif self.end_date < self.start_date or (self.end_date-self.start_date).days > 366:
+            if self.entity_type != 'goal' and self.period != 'day' or self.at is not None:
+                raise ValueError('计划需要日期范围；未安排行动不能设置具体时间。')
+        elif self.end_date < self.start_date or (self.entity_type != 'goal' and (self.end_date-self.start_date).days > 366):
             raise ValueError('计划日期范围无效。')
         if self.period == 'day' and (self.target_count != 1 or self.start_date != self.end_date):
             raise ValueError('日行动对应同一天和一次完成。')
@@ -142,19 +180,20 @@ class PlanFields(Input):
                 self.minimum_minutes = min(5,self.target_minutes)
             if self.minimum_minutes is not None and self.minimum_minutes > self.target_minutes:
                 raise ValueError('起步时长不能超过标准时长。')
-            self.estimated_minutes = None
+            # An explicit estimate is independent of the completion threshold.
         if self.reminder and (not self.start_date or not self.at):
             raise ValueError('提醒需要日期和具体时间。')
-        if self.period == 'week' and (self.end_date-self.start_date).days > 6:
+        if self.start_date and self.period == 'week' and (self.end_date-self.start_date).days > 6:
             raise ValueError('周计划最多包含七天。')
-        if self.period == 'month' and (self.start_date.year,self.start_date.month) != (self.end_date.year,self.end_date.month):
+        if self.start_date and self.period == 'month' and (self.start_date.year,self.start_date.month) != (self.end_date.year,self.end_date.month):
             raise ValueError('月计划的日期需在同一个月。')
-        if self.period == 'year' and self.start_date.year != self.end_date.year:
+        if self.start_date and self.period == 'year' and self.start_date.year != self.end_date.year:
             raise ValueError('年目标的日期需在同一年。')
         try:
             ZoneInfo(self.timezone)
         except (ZoneInfoNotFoundError, ValueError):
             raise ValueError('时区无效。') from None
+        self.__pydantic_fields_set__ = original_fields
         return self
 
 
@@ -201,6 +240,9 @@ def public(row):
     data.setdefault('schema_version',1)
     data.setdefault('completed_at',None); data.setdefault('completion_record_id',None)
     data.setdefault('estimated_minutes',data.get('target_minutes') if data.get('completion_mode') in ('content','check') else None)
+    data.setdefault('expected_result','');data.setdefault('deadline',None)
+    data.setdefault('entity_type', 'goal' if data['period'] == 'year' else 'action' if data['period'] == 'day' else 'plan')
+    data.setdefault('result_metric', {'mode':'actions','target':data.get('target_count',1),'current':0,'unit':'项','milestones':[]} if data['entity_type']=='goal' and data['period']=='year' else None)
     return {**data, 'completion_mode': data.get('completion_mode', 'time'), 'horizon': data.get('horizon') or ('long' if data['period'] == 'year' else 'short'), 'id': row['id'], 'revision': row['revision']}
 
 
@@ -261,8 +303,23 @@ def get_descendants(c, pid):
     return [public(row) for row in c.execute(query, (pid, pid))]
 
 
+def workspace_extended(fields, c=None):
+    period = fields['period']
+    inferred = 'goal' if period=='year' else 'action' if period=='day' else 'plan'
+    metric = fields.get('result_metric')
+    legacy_metric = period=='year' and metric and metric.get('mode')=='actions' and metric.get('target')==fields.get('target_count',1)
+    extended = period=='custom' or fields.get('entity_type',inferred)!=inferred or bool(fields.get('expected_result') or fields.get('deadline') or metric and not legacy_metric)
+    if c is not None and fields.get('parent_id'):
+        parent=get(c,fields['parent_id']);begin=fields.get('start_date');end=fields.get('end_date')
+        extended = extended or parent.get('workspace_version') or begin is None or parent.get('start_date') and begin and not parent['start_date']<=str(begin)<=str(end)<=parent['end_date']
+    return bool(extended)
+
+
 def write(c, plan):
-    c.execute('UPDATE action_plans SET data=?,revision=? WHERE id=?', (encoded(plan), plan['revision'], plan['id']))
+    stored = dict(plan)
+    if not stored.get('workspace_version'):
+        for key in ('entity_type','result_metric','expected_result','deadline'): stored.pop(key,None)
+    c.execute('UPDATE action_plans SET data=?,revision=? WHERE id=?', (encoded(stored), plan['revision'], plan['id']))
 
 
 def operation(c, key, payload, work):
@@ -291,11 +348,19 @@ def validate_parent(c, fields, existing=None):
     parent_id = fields['parent_id']
     if parent_id:
         parent = get(c, parent_id)
-        levels = {'year': 0, 'month': 1, 'week': 2, 'day': 3}
-        if levels[parent['period']] >= levels[fields['period']] or parent['status'] == 'archived':
-            fail(422, '请选择有效的上级年、月或周计划。')
-        if not fields['start_date'] or not parent['start_date'] <= fields['start_date'] <= fields['end_date'] <= parent['end_date'] or fields['timezone'] != parent['timezone']:
-            fail(422, '子计划的日期和时区需在上级计划范围内。')
+        child_kind = fields.get('entity_type') or ('action' if fields['period']=='day' else 'goal' if fields['period']=='year' else 'plan')
+        if parent['entity_type']=='action' or child_kind=='goal' or parent['status'] != 'active' and not (existing and existing.get('parent_id')==parent_id):
+            fail(422, '请选择进行中的目标或计划作为上级。')
+        if fields['timezone'] != parent['timezone']:
+            fail(422, '子项与上级需要使用相同时区。')
+        visited = {existing['id']} if existing else set()
+        cursor = parent
+        while cursor:
+            if cursor['id'] in visited:
+                fail(422, '不能将项目关联到自己或自己的下级。')
+            visited.add(cursor['id'])
+            if len(visited)>12: fail(422, '请减少计划嵌套层级。')
+            cursor = get(c, cursor['parent_id']) if cursor.get('parent_id') else None
     target = fields['target']
     if target and target['kind'] in ('plan', 'article'):
         table = 'learning_lessons' if target['kind'] == 'plan' else 'reading_records'
@@ -305,13 +370,16 @@ def validate_parent(c, fields, existing=None):
         if not found:
             fail(404, '关联的学习内容不存在。')
     if existing:
-        if fields['period'] != existing['period']:
+        inferred = 'goal' if fields['period']=='year' else 'action' if fields['period']=='day' else 'plan'
+        if (fields.get('entity_type') or inferred) != existing['entity_type']:
+            fail(422, '不能直接改变目标、计划或行动类型。')
+        if fields['period'] != existing['period'] and existing['entity_type'] != 'goal':
             fail(422, '计划周期不能直接改变，请新建另一周期的计划。')
         # Use targeted query to find direct children instead of loading all plans
         children = [public(r) for r in c.execute(
             'SELECT * FROM action_plans WHERE data::jsonb->>\'parent_id\' = ?', (existing['id'],))]
-        if any(not fields['start_date'] <= child['start_date'] <= child['end_date'] <= fields['end_date'] or child['timezone'] != fields['timezone'] for child in children):
-            fail(422, '调整日期前请先处理已有子计划。')
+        if any(child['timezone'] != fields['timezone'] for child in children):
+            fail(422, '调整时区前请先处理已有子计划。')
     duplicate=duplicate_schedule(c,fields,existing['id'] if existing else None)
     if duplicate:
         fail(409,'这份内容在该日期已有安排，请查看或调整已有安排。','DUPLICATE_SCHEDULE',existing_plan_id=duplicate['id'])
@@ -376,13 +444,17 @@ def create_in(c,body):
             if len(dates) > 1 or day != body.start_date:
                 fields.update(start_date=day.isoformat(), end_date=day.isoformat())
             validate_parent(c, fields)
+            extended = workspace_extended(fields,c)
+            if not extended:
+                for key in ('entity_type','result_metric','expected_result','deadline'): fields.pop(key,None)
             pid = 'action-' + uuid.uuid4().hex
-            plan = {**fields, 'id': pid, 'schema_version':2,'completed_at':None,'completion_record_id':None,'revision': 1, 'status': 'active', 'created_at': clock().isoformat(),
+            plan = {**fields, **({'workspace_version':1} if extended else {}), 'id': pid, 'schema_version':2,'completed_at':None,'completion_record_id':None,'revision': 1, 'status': 'active', 'created_at': clock().isoformat(),
                     'reminder_at': due_at(fields), 'updated_at': clock().isoformat()}
             c.execute('INSERT INTO action_plans VALUES (?,?,1)', (pid, encoded(plan)))
-            result.append(plan)
+            result.append(public({'id':pid,'data':encoded(plan),'revision':1}))
         return {'plans': result}
     return operation(c, body.key, body.model_dump(mode='json'), work)
+
 
 
 def active(c):
@@ -430,13 +502,14 @@ def schedule_in_connection(c, fields):
     # this connection so different request keys cannot race duplicates.
     data = fields.model_dump(mode='json', exclude={'key', 'repeat_dates'})
     validate_parent(c, data)
+    for key in ('entity_type','result_metric','expected_result','deadline'): data.pop(key,None)
     if c.execute('SELECT count(*) FROM action_plans').fetchone()[0] >= 1000:
         fail(422, '安排数量已达上限，请先整理历史安排。')
     pid = 'action-' + uuid.uuid4().hex
     plan = {**data, 'id': pid, 'schema_version':2,'completed_at':None,'completion_record_id':None,'revision': 1, 'status': 'active', 'created_at': clock().isoformat(),
             'updated_at': clock().isoformat(), 'reminder_at': due_at(data)}
     c.execute('INSERT INTO action_plans VALUES (?,?,1)', (pid, encoded(plan)))
-    return {'plan': plan, 'existing': False}
+    return {'plan': public({'id':pid,'data':encoded(plan),'revision':1}), 'existing': False}
 
 
 def fact_public(data):
@@ -571,101 +644,113 @@ def with_content_completion(result,target,event_id=None):
 
 def mutate(pid,body):
     with connection(True) as c:
-        def work():
-            plan=get(c,pid)
-            if plan['revision']!=body.revision:fail(409,'计划已在其他页面更新，输入保留，请核对。','REVISION_CONFLICT')
-            action=body.action;running=active(c);own=running and running['plan_id']==pid;result={}
-            if plan['status']=='archived' or (plan['status']=='completed' and action!='reopen'):
-                fail(409,'该行动已经完成或归档，请复制新行动。')
-            if own and action!='finish':fail(409,'请先结束或保存当前执行。','RUNNING_CONFLICT')
-            if action in ('start','complete-time','complete','reconcile','reconcile-content'):
-                if plan['status']!='active':fail(409,'请先恢复行动。')
-                if plan['period']=='day':executable(c,plan)
-            if action=='edit':
-                if not body.fields:fail(422,'请提供编辑字段。')
-                fields=body.fields.model_dump(mode='json')
-                if plan['period']=='day' and (fields['start_date']!=plan['start_date'] or fields['end_date']!=plan['end_date']):
-                    fail(422,'请使用改期操作调整日期。')
-                if facts(c,pid) and any(fields[k]!=plan.get(k) for k in ('completion_mode','target','target_minutes','minimum_minutes')):
-                    fail(409,'已有执行事实，完成方式、内容和阈值已锁定，请复制新行动。')
-                validate_parent(c,fields,plan);plan.update(fields,reminder_at=due_at(fields))
-            elif action=='reschedule':
-                if plan['period']!='day' or plan['status'] not in ('active','paused') or 'date' not in body.model_fields_set:
-                    fail(422,'请选择日行动和日期。')
-                values={name:plan[name] for name in PlanFields.model_fields if name in plan}
-                values.update(start_date=body.date,end_date=body.date)
-                if body.date is None:values.update(at=None,reminder=False)
-                fields=PlanFields.model_validate(values).model_dump(mode='json')
-                validate_parent(c,fields,plan);plan.update(fields,reminder_at=due_at(fields))
-            elif action=='reopen':
-                if plan['completion_mode']!='check':fail(422,'只有勾选事项可撤销完成。')
-                if plan['status']!='completed':fail(409,'事项尚未完成。')
-                old=plan.get('completion_record_id') or next((r['id'] for r in reversed(facts(c,pid)) if r['outcome']=='completed'),None)
-                record=make_fact(plan,'reversal');record.update(outcome='reopened',completion_effect='reopen',reverses_record_id=old)
-                from rhythm.facts import instant
-                instant(c,plan,record)
-                save_fact(c,record);result['execution']=record
-                plan.update(status='active',completed_at=None,completion_record_id=None)
-            elif action in ('pause','resume','archive','cancel','complete'):
-                if action=='resume' and plan['status']!='paused' or action in ('pause','complete') and plan['status']!='active':
-                    fail(409,'当前状态不允许该操作。')
-                ids={pid}|{p['id'] for p in get_descendants(c,pid)}
-                if running and running['plan_id'] in ids:fail(409,'请先保存下级正在执行的行动。','RUNNING_CONFLICT')
-                if action=='complete' and plan['period']=='day':
-                    if plan['completion_mode']!='check':fail(422,'请按该行动的完成标准确认。')
-                    result['execution']=complete_fact(c,plan)
-                plan['status']={'pause':'paused','resume':'active','archive':'archived','cancel':'archived','complete':'completed'}[action]
-                if plan['status'] in ('paused','archived','completed'):plan['reminder_at']=None
-                elif action=='resume':plan['reminder_at']=due_at(plan)
-            elif action=='start':
-                if plan['period']!='day' or plan['completion_mode']=='check':fail(422,'勾选事项无需计时。')
-                if running:fail(409,'已有行动正在执行，请先保存。','RUNNING_CONFLICT')
-                record=make_fact(plan);record['variant']=body.variant
-                from rhythm.facts import start as rhythm_start
-                rhythm_start(c,plan,record,body.variant)
-                if body.variant=='minimum':
-                    if plan['completion_mode']=='time':
-                        if not plan.get('minimum_minutes'):fail(422,'该行动未设置起步时长。')
-                        record['planned_minutes']=plan['minimum_minutes']
-                    elif not record['minimum_step_snapshot']:fail(422,'请先在今日一件事确认具体的最小步骤。')
-                save_fact(c,record);result['execution']=record
-            elif action=='finish':
-                if not own or body.execution_id!=running['id']:fail(409,'该次执行已经结束或发生变化。')
-                if body.outcome=='completed' and not body.actual_minutes:fail(422,'请确认本次实际分钟；未执行可中断保存。')
-                record=fact_public(running);outcome=body.outcome
-                if outcome!='interrupted':
-                    if plan['completion_mode']=='content':outcome='recorded'
-                    else:
-                        total=sum(r['actual_minutes'] for r in facts(c,pid) if r['outcome']!='running' and r['record_kind']=='session')+body.actual_minutes
-                        outcome='completed' if total>=plan['target_minutes'] else ('minimum' if plan.get('minimum_minutes') and body.actual_minutes>=plan['minimum_minutes'] else 'partial')
-                record.update(ended_at=clock().isoformat(),actual_minutes=body.actual_minutes,note=body.note,next_step=body.next_step,recap_kind=body.recap_kind,outcome=outcome)
-                from rhythm.facts import confirm
-                confirm(record)
-                from rhythm.recap import initial
-                initial(record)
-                if outcome=='completed':mark_complete(plan,record);plan['reminder_at']=None
-                c.execute('UPDATE action_executions SET state=?,data=? WHERE id=?',(outcome,encoded(record),record['id']))
-                from rhythm.events import execution_events
-                execution_events(c,record)
-                result['execution']=record
-            elif action=='complete-time':
-                if plan['completion_mode']!='time' or plan['period']!='day':fail(422,'请选择计时行动。')
-                total=sum(r['actual_minutes'] for r in facts(c,pid) if r['outcome']!='running' and r['record_kind']=='session')
-                if total<plan['target_minutes']:fail(422,'累计确认投入尚未达标。')
-                result['execution']=complete_fact(c,plan);plan['reminder_at']=None
-            elif action in ('reconcile','reconcile-content'):
-                if plan['completion_mode']!='content':fail(422,'请选择内容行动。')
-                result['execution']=reconcile_event(c,plan,body.source_event_id)
-            elif action=='snooze':
-                if not plan.get('reminder_at') or not plan['reminder'] or plan['status']!='active':fail(409,'当前没有待处理提醒。')
-                plan['reminder_at']=(max(clock(),datetime.fromisoformat(plan['reminder_at']))+timedelta(minutes=body.snooze_minutes)).isoformat()
-            else:fail(422,'不支持的操作。')
-            plan.update(revision=plan['revision']+1,updated_at=clock().isoformat());write(c,plan)
-            if result.get('execution',{}).get('source_event_id'):
-                from rhythm.facts import completion_receipts
-                result['action_completion_receipts']=completion_receipts(c,result['execution']['source_event_id'])
-            return {**result,'plan':plan}
-        return operation(c,body.key,{'pid':pid,**body.model_dump(mode='json')},work)
+        return mutate_in(c,pid,body)
+
+
+def mutate_in(c,pid,body):
+    def work():
+        plan=get(c,pid)
+        if plan['revision']!=body.revision:fail(409,'计划已在其他页面更新，输入保留，请核对。','REVISION_CONFLICT')
+        action=body.action;running=active(c);own=running and running['plan_id']==pid;result={}
+        if plan['status']=='archived' or (plan['status']=='completed' and action!='reopen'):
+            fail(409,'该行动已经完成或归档，请复制新行动。')
+        if own and action!='finish':fail(409,'请先结束或保存当前执行。','RUNNING_CONFLICT')
+        if action in ('start','complete-time','complete','reconcile','reconcile-content'):
+            if plan['status']!='active':fail(409,'请先恢复行动。')
+            if plan['period']=='day':executable(c,plan)
+        if action=='edit':
+            if not body.fields:fail(422,'请提供编辑字段。')
+            fields=body.fields.model_dump(mode='json')
+            if plan['period']=='day' and (fields['start_date']!=plan['start_date'] or fields['end_date']!=plan['end_date']):
+                fail(422,'请使用改期操作调整日期。')
+            if facts(c,pid) and any(fields[k]!=plan.get(k) for k in ('completion_mode','target','target_minutes','minimum_minutes')):
+                fail(409,'已有执行事实，完成方式、内容和阈值已锁定，请复制新行动。')
+            validate_parent(c,fields,plan)
+            if workspace_extended(fields,c):
+                plan['workspace_version']=1
+            if plan.get('result_metric') != fields.get('result_metric'):
+                plan['result_history'] = [*plan.get('result_history',[]), {'at':clock().isoformat(),'metric':plan.get('result_metric'),'revision':plan['revision']}]
+            plan.update(fields,reminder_at=due_at(fields))
+        elif action=='reschedule':
+            if plan['period']!='day' or plan['status'] not in ('active','paused') or 'date' not in body.model_fields_set:
+                fail(422,'请选择日行动和日期。')
+            values={name:plan[name] for name in PlanFields.model_fields if name in plan}
+            values.update(start_date=body.date,end_date=body.date)
+            if body.date is None:values.update(at=None,reminder=False)
+            fields=PlanFields.model_validate(values).model_dump(mode='json')
+            validate_parent(c,fields,plan)
+            if workspace_extended(fields,c): plan['workspace_version']=1
+            plan.update(fields,reminder_at=due_at(fields))
+        elif action=='reopen':
+            if plan['completion_mode']!='check':fail(422,'只有勾选事项可撤销完成。')
+            if plan['status']!='completed':fail(409,'事项尚未完成。')
+            old=plan.get('completion_record_id') or next((r['id'] for r in reversed(facts(c,pid)) if r['outcome']=='completed'),None)
+            record=make_fact(plan,'reversal');record.update(outcome='reopened',completion_effect='reopen',reverses_record_id=old)
+            from rhythm.facts import instant
+            instant(c,plan,record)
+            save_fact(c,record);result['execution']=record
+            plan.update(status='active',completed_at=None,completion_record_id=None)
+        elif action in ('pause','resume','archive','cancel','complete'):
+            if action=='resume' and plan['status']!='paused' or action in ('pause','complete') and plan['status']!='active':
+                fail(409,'当前状态不允许该操作。')
+            ids={pid}|{p['id'] for p in get_descendants(c,pid)}
+            if running and running['plan_id'] in ids:fail(409,'请先保存下级正在执行的行动。','RUNNING_CONFLICT')
+            if action=='complete' and plan['period']=='day':
+                if plan['completion_mode']!='check':fail(422,'请按该行动的完成标准确认。')
+                result['execution']=complete_fact(c,plan)
+            plan['status']={'pause':'paused','resume':'active','archive':'archived','cancel':'archived','complete':'completed'}[action]
+            if plan['status'] in ('paused','archived','completed'):plan['reminder_at']=None
+            elif action=='resume':plan['reminder_at']=due_at(plan)
+        elif action=='start':
+            if plan['period']!='day' or plan['completion_mode']=='check':fail(422,'勾选事项无需计时。')
+            if running:fail(409,'已有行动正在执行，请先保存。','RUNNING_CONFLICT')
+            record=make_fact(plan);record['variant']=body.variant
+            from rhythm.facts import start as rhythm_start
+            rhythm_start(c,plan,record,body.variant)
+            if body.variant=='minimum':
+                if plan['completion_mode']=='time':
+                    if not plan.get('minimum_minutes'):fail(422,'该行动未设置起步时长。')
+                    record['planned_minutes']=plan['minimum_minutes']
+                elif not record['minimum_step_snapshot']:fail(422,'请先在今日一件事确认具体的最小步骤。')
+            save_fact(c,record);result['execution']=record
+        elif action=='finish':
+            if not own or body.execution_id!=running['id']:fail(409,'该次执行已经结束或发生变化。')
+            if body.outcome=='completed' and not body.actual_minutes:fail(422,'请确认本次实际分钟；未执行可中断保存。')
+            record=fact_public(running);outcome=body.outcome
+            if outcome!='interrupted':
+                if plan['completion_mode']=='content':outcome='recorded'
+                else:
+                    total=sum(r['actual_minutes'] for r in facts(c,pid) if r['outcome']!='running' and r['record_kind']=='session')+body.actual_minutes
+                    outcome='completed' if total>=plan['target_minutes'] else ('minimum' if plan.get('minimum_minutes') and body.actual_minutes>=plan['minimum_minutes'] else 'partial')
+            record.update(ended_at=clock().isoformat(),actual_minutes=body.actual_minutes,note=body.note,next_step=body.next_step,recap_kind=body.recap_kind,outcome=outcome)
+            from rhythm.facts import confirm
+            confirm(record)
+            from rhythm.recap import initial
+            initial(record)
+            if outcome=='completed':mark_complete(plan,record);plan['reminder_at']=None
+            c.execute('UPDATE action_executions SET state=?,data=? WHERE id=?',(outcome,encoded(record),record['id']))
+            from rhythm.events import execution_events
+            execution_events(c,record)
+            result['execution']=record
+        elif action=='complete-time':
+            if plan['completion_mode']!='time' or plan['period']!='day':fail(422,'请选择计时行动。')
+            total=sum(r['actual_minutes'] for r in facts(c,pid) if r['outcome']!='running' and r['record_kind']=='session')
+            if total<plan['target_minutes']:fail(422,'累计确认投入尚未达标。')
+            result['execution']=complete_fact(c,plan);plan['reminder_at']=None
+        elif action in ('reconcile','reconcile-content'):
+            if plan['completion_mode']!='content':fail(422,'请选择内容行动。')
+            result['execution']=reconcile_event(c,plan,body.source_event_id)
+        elif action=='snooze':
+            if not plan.get('reminder_at') or not plan['reminder'] or plan['status']!='active':fail(409,'当前没有待处理提醒。')
+            plan['reminder_at']=(max(clock(),datetime.fromisoformat(plan['reminder_at']))+timedelta(minutes=body.snooze_minutes)).isoformat()
+        else:fail(422,'不支持的操作。')
+        plan.update(revision=plan['revision']+1,updated_at=clock().isoformat());write(c,plan)
+        if result.get('execution',{}).get('source_event_id'):
+            from rhythm.facts import completion_receipts
+            result['action_completion_receipts']=completion_receipts(c,result['execution']['source_event_id'])
+        return {**result,'plan':plan}
+    return operation(c,body.key,{'pid':pid,**body.model_dump(mode='json')},work)
+
 
 
 def listing():
@@ -676,8 +761,10 @@ def listing():
         running = active(c)
     for plan in plans:
         descendants = {plan['id']}
-        for _ in range(4):
-            descendants |= {p['id'] for p in plans if p.get('parent_id') in descendants}
+        while True:
+            extended = descendants | {p['id'] for p in plans if p.get('parent_id') in descendants}
+            if extended == descendants: break
+            descendants = extended
         plan['progress']=progress_for(records,descendants)
         plan['auto_completed'] = plan['period'] != 'day' and plan['status'] == 'active' and plan['progress']['completed'] >= plan['target_count']
         ancestor = plan
@@ -731,13 +818,14 @@ class Claim(Input):
 
 
 class TemplateBody(Input):
+    key: str | None = Field(default=None, min_length=8, max_length=160)
     name: str = Field(min_length=1, max_length=80)
-    period: Literal['year', 'month', 'week', 'day']
+    period: Literal['year', 'month', 'week', 'day', 'custom']
     horizon: Literal['short', 'long'] = 'short'
     target_minutes: int = Field(default=20, ge=1, le=1440, strict=True)
-    minimum_minutes: int = Field(default=5, ge=1, le=1440, strict=True)
+    minimum_minutes: int | None = Field(default=5, ge=1, le=1440, strict=True)
     target_count: int = Field(default=1, ge=1, le=1000, strict=True)
-    at: str = Field(default='21:00', pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
+    at: str | None = Field(default=None, pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
     reminder: bool = False
     reason: str = Field(default='', max_length=1000)
     if_then: str = Field(default='', max_length=1000)
@@ -746,7 +834,7 @@ class TemplateBody(Input):
 
     @model_validator(mode='after')
     def valid(self):
-        if self.minimum_minutes > self.target_minutes:
+        if self.minimum_minutes is not None and self.minimum_minutes > self.target_minutes:
             raise ValueError('起步时长不能超过标准时长。')
         if self.completion_mode == 'content' and self.target.kind in ('library', 'book'):
             raise ValueError('内容确认请选择具体文章或课程。')
@@ -763,12 +851,16 @@ def list_templates():
 
 def save_template(body):
     with connection(True) as c:
-        if c.execute('SELECT count(*) FROM action_templates').fetchone()[0] >= 50:
-            fail(422, '模板数量已达上限，请先清理不用的模板。')
-        tid = 'tpl-' + uuid.uuid4().hex
-        data = body.model_dump(mode='json')
-        c.execute('INSERT INTO action_templates VALUES (?,?,?,?)', (tid, body.name, encoded(data), clock().isoformat()))
-        return {'id': tid, 'name': body.name, **data}
+        def work():
+            if c.execute('SELECT count(*) FROM action_templates').fetchone()[0] >= 50:
+                fail(422, '模板数量已达上限，请先清理不用的模板。')
+            tid = 'tpl-' + uuid.uuid4().hex
+            data = body.model_dump(mode='json',exclude={'key'})
+            c.execute('INSERT INTO action_templates VALUES (?,?,?,?)', (tid, body.name, encoded(data), clock().isoformat()))
+            return {'id': tid, 'name': body.name, **data}
+        if body.key:
+            return operation(c,body.key,{'op':'template',**body.model_dump(mode='json')},work)
+        return work()
 
 
 def delete_template(tid):
@@ -795,20 +887,28 @@ def register(app):
     from rhythm.api import register as register_rhythm
     register_rhythm(router)
 
+    from goal_workspace import register as register_workspace
+    register_workspace(router)
+
     @router.get('')
     def read():
-        return listing()
+        from goal_workspace import project
+        return project(listing())
 
     @router.post('/schedules')
     def arrange(body: Schedule):
         return schedule(body)
 
     @router.post('')
-    def add(body: NewPlan):
+    def add(body: NewPlan, request: Request):
+        from goal_workspace import guard_fields
+        guard_fields(request, body)
         return create(body)
 
     @router.post('/{pid}/operations')
-    def change(pid: str, body: Mutation):
+    def change(pid: str, body: Mutation, request: Request):
+        from goal_workspace import guard_mutation
+        guard_mutation(request, pid, body)
         return mutate(pid, body)
 
     @router.get('/records')
@@ -835,7 +935,10 @@ def register(app):
         return list_templates()
 
     @router.post('/templates')
-    def add_template(body: TemplateBody):
+    def add_template(body: TemplateBody, request: Request):
+        if body.period=='custom':
+            from goal_workspace import require_workspace
+            require_workspace(request)
         return save_template(body)
 
     @router.delete('/templates/{tid}')

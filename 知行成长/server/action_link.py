@@ -69,6 +69,8 @@ def snapshot(c, *, version=1):
     from rhythm.store import has_data
     if has_data(c):
         fail(409,'当前接管合同不包含日常节奏数据，原数据保留；请等待连接端升级。','CONTRACT_UPGRADE_REQUIRED')
+    if c.execute("SELECT 1 FROM action_plans WHERE data::jsonb->>'workspace_version'='1' LIMIT 1").fetchone() or any(c.execute('SELECT 1 FROM '+table+' LIMIT 1').fetchone() for table in ('action_week_plans','action_plan_drafts')):
+        fail(409,'当前接管合同不包含目标工作区数据，原数据保留；请等待连接端升级。','CONTRACT_UPGRADE_REQUIRED')
     # Source tables remain retained; this exact immutable package is the recovery backup.
     result={}
     for name,table in [('plans','action_plans'),('records','action_executions'),('reviews','action_reviews'),('reports','action_reports')]:
@@ -229,6 +231,14 @@ def register(app):
                     from rhythm.contracts import rhythm_capability
                     return JSONResponse(rhythm_capability(link.get('phase')), headers={'Cache-Control':'no-store'})
                 fail(409,'连接服务尚未支持日常节奏；不会读取旧数据或回落本地写入。','CONTRACT_UPGRADE_REQUIRED')
+            workspace_paths = ('/workspace','/goals','/week-plans','/planning-drafts')
+            if link.get('phase') != 'local' and (any(path.startswith('/api/action-plans'+part) for part in workspace_paths)):
+                fail(409,'目标工作区暂不支持当前接管状态，请在联动设置中核对数据归属。','CONTRACT_UPGRADE_REQUIRED')
+            if link.get('phase') != 'local' and request.method=='POST' and request.headers.get('X-Grow-Workspace-Version'):
+                workspace_body=await request.json()
+                fields=workspace_body.get('fields',workspace_body)
+                if isinstance(fields,dict) and (fields.get('period')=='custom' or fields.get('result_metric') or fields.get('expected_result') or fields.get('deadline') or fields.get('entity_type')=='goal'):
+                    fail(409,'连接端尚未支持目标工作区写入，输入已保留。','CONTRACT_UPGRADE_REQUIRED')
             if link.get('phase')=='local':return await call_next(request)
             source=identity()
             if request.method=='GET' and path.startswith('/api/action-plans/requests/'):
