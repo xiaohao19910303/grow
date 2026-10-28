@@ -105,3 +105,15 @@
 `POST /provider/daily` 支持 `calendar_mode=public_reference|provider`，HTTP默认公开参考；覆盖内不请求trade_cal，仅测试实际调用的日线接口。覆盖不足/过期直接停止；供应商模式须本人选择并核对trade_cal权限。内部函数缺省继续原供应商模式，旧幂等指纹保留。Token不入库；两种模式都不等于实时授权。
 
 运行时不自动抓取任意规则URL，更新需重新核验并发布参考版本。完整配置要求与真实服务待验收表见[本人配置清单](../../docs/investment-configuration-checklist.md)，具体证据见[本轮记录](../../docs/investment-rules-and-e2e-20261028.md)。
+
+## 本人分钟路径与前向观察（2026-10-28第三轮）
+
+`POST /paths/import` 的PathInput要求account_id/instrument_id、UTF-8 CSV原文、source_label、volume_unit（shares/lots100）、amount_unit（cny/thousand_cny）、price_basis=unadjusted和本人use_confirmed。列固定start/open/high/low/close/volume/amount，带时区分钟起点，半开一分钟区间，最多2000条/250KB；不接收交叠、未来、午休/盘后，已知休市日拒绝。原文包括结尾换行保留，另存来源/快照哈希与原始/转换单位。详情/导出保留，列表省略大原文和分钟。
+
+`GET /paths?account_id=...` 每页50；`GET /paths/{id}`读保留原文。`GET /accounts/{account_id}/campaigns/{campaign_id}/replay?path_id=...&cutoff=...` 核对账户/证券，最多62自然日和500笔成交；后续成交/分钟不进入截至投影。各完整分钟按实际剩余数量、移动成本和成交净已实现标记上下界；不含分红/利息/独立费用或未来假设退出费用。完整指标遇缺段、边界变动、来源冲突、未知费用或账实差异为空；已知真实净已实现不因路径坏数据变未知。回放不插值、不推断止损/目标顺序。retrospective/current-ledger不是时间点回测或独立行情验证。
+
+`POST /experiments` 新建观察草稿；GET列表/详情/history、PUT当前草稿；`POST /experiments/{id}/register`在开始前显式登记（version+state=confirmed）。冻结策略版本、参数文本、假设/反例、成本、起止与样本目标；登记后参数不能PUT覆盖。`GET /experiments/{id}/evaluation`纳入窗口内入场的全部相符冻结策略版本交易，开放/未知/其他归属分开；额外成本敏感性不是实际费用。
+
+`POST /experiments/{id}/finish`需当前version、decision（retain/reject/inconclusive/stopped）、reason及evaluation_hash。期间结束前只允许stopped；保存结项快照，后续更正标为outdated而非重写。观察/排除合计最多1000链。小样本、零分母与未知费用不补造绩效，不修改策略/风险。该观察切片不包含样本外撮合、参数重跑或优化器，4.4整项尚未完成。
+
+新接口沿用租户隔离、no-store、写标识/幂等；原文和协议纳入完整恢复。readiness/capabilities显式区分offline_replay和forward_observation可用、backtest/realtime/intraday_alerts未开放；P2整体仍未放行。新功能不读取凭证、不联网拉行情、不调用模型。

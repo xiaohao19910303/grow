@@ -1,0 +1,8 @@
+test_path_scrubbing_and_frozen_forward_trial (test_investment_offline_browser.InvestmentOfflineBrowserTests.test_path_scrubbing_and_frozen_forward_trial) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.879s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 1, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

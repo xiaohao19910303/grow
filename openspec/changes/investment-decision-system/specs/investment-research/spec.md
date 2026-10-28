@@ -76,3 +76,7 @@ P2 backtesting and replay MUST use point-in-time inputs, historical instrument c
 #### Scenario: Public calendar avoids an unnecessary supplier entitlement
 - **WHEN** the user explicitly selects the covered public calendar for daily data
 - **THEN** only the selected daily endpoint is requested, supplier calendar access is not claimed as tested, and missing coverage stops without silently switching providers or endpoints
+
+#### Scenario: Offline path is imported after the historical trade
+- **WHEN** user-declared minute data is imported for retrospective review
+- **THEN** the original text, units, import time and hash remain available, the result is labeled retrospective current-ledger review, and it does not claim those inputs were knowable for historical backtesting
