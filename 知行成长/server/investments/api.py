@@ -18,6 +18,7 @@ from .screening import ScreenInput
 from .store import InvestmentStore
 from .replay import PathInput
 from .experiments import ExperimentInput
+from .conditions import ConditionInput
 
 
 class UpdateInput(Contract):
@@ -142,7 +143,7 @@ def register(app):
             'provider':{'verified':False,'mode':'manual','reason':'尚未核验本账号行情权限和使用许可。'},
             'realtime':{'enabled':False,'reason':'实时权限、时效和规则尚未验收。'},
             'ai':{'requires_own_config':True,'unattended':False},
-            **{k:offline[k] for k in ('offline_replay','forward_observation','backtest','intraday_alerts')}}
+            **{k:offline[k] for k in ('offline_replay','forward_observation','condition_drill','backtest','intraday_alerts')}}
 
     @router.get('/overview')
     def today_overview(as_of: date):
@@ -171,6 +172,19 @@ def register(app):
     def new_experiment(payload: ExperimentInput,idempotency_key: str=Header(min_length=1,max_length=160)):
         from .experiments import create_experiment
         return create_experiment(store,payload.model_dump(mode='json'),idempotency_key)
+
+    @router.post('/condition-drills')
+    def condition_drill(payload: ConditionInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .conditions import run_drill
+        return run_drill(store,payload.model_dump(mode='json'),idempotency_key)
+
+    @router.get('/condition-drills')
+    def condition_drills(account_id: str,page: int=Query(1,ge=1,le=10000)):
+        from .conditions import list_drills
+        return list_drills(store,account_id,page)
+
+    @router.get('/condition-drills/{object_id}')
+    def saved_condition_drill(object_id: str):return store.get('condition-drills',object_id)
 
     @router.get('/experiments')
     def experiments(account_id: str,page: int=Query(1,ge=1,le=10000)):

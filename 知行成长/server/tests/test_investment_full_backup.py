@@ -37,6 +37,14 @@ class InvestmentFullBackupTests(unittest.TestCase):
             original_path='start,open,high,low,close,volume,amount\n2026-10-26T10:00:00+08:00,1.231,1.24,1.22,1.23,1000,1230\n'
             path=import_path(store,{'account_id':a['id'],'instrument_id':i['id'],'text':original_path,
                 'source_label':'PRIVATE PATH','volume_unit':'shares','amount_unit':'cny','price_basis':'unadjusted','use_confirmed':True},'path')
+            from investments.conditions import run_drill
+            check=store.create('plan-checks',{'instrument_id':i['id'],'quote_price':'1.23','quote_as_of':'2026-10-26T15:00:00+08:00',
+                'sessions':{'2026-10-26':True},'rules_valid_from':'2026-10-26','rules_valid_until':'2026-10-26',
+                'price_tick':'0.001','quantity_step':'100','minimum_quantity':'100','sell_delay_sessions':1,'trading_status':'normal',
+                'source_url':'https://example.com/declared','source_note':'PRIVATE CHECK','acknowledged':True},'check')
+            drill=run_drill(store,{'account_id':a['id'],'path_id':path['id'],'check_id':check['id'],'title':'PRIVATE DRILL',
+                'op':'gte','threshold':'1.23','valid_from':'2026-10-26T09:30:00+08:00',
+                'valid_until':'2026-10-26T15:00:00+08:00','acknowledged':True},'drill')
             strategy=store.create('strategies',{'title':'PRIVATE TRIAL','entry_conditions':'合成条件','exit_conditions':'反例','validation_scope':'合成观察'},'strategy')
             strategy=store.transition('strategies',strategy['id'],1,'confirmed','strategy-confirm')
             start=datetime.fromisoformat(now())+timedelta(days=1)
@@ -68,3 +76,5 @@ class InvestmentFullBackupTests(unittest.TestCase):
             self.assertEqual(store.get('research',e['id'])['evidence_hash'],e['evidence_hash'])
             self.assertEqual(store.get('intraday-paths',path['id'])['raw_text'],original_path)
             self.assertEqual(store.get('experiments',trial['id'])['protocol_hash'],trial['protocol_hash'])
+
+            self.assertEqual(store.get('condition-drills',drill['id']),drill)

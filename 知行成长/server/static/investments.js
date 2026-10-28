@@ -76,7 +76,7 @@
   function todayView() {
     const account = s.accounts.find(a => a.id === s.accountId);
     return `<section><h3>先确定资金边界，再写交易计划</h3><p>月度管资金，周度管策略，每日核对执行。条件未到，可以不交易。</p>
-      <div class="inv-actions">${button('资金预算','policy')}${button('周日准备计划','period')}${button('新增策略','strategy')}${button('交易计划','plan')}${button('核对日历与交易规则','check')}${button('添加标的','instrument')}${button('保存研究','research')}${button('添加自选跟踪','watch')}${button('结构化研究','dossier')}${button('AI研究与建议','analysis')}${button('AI报告','reports')}${button('配置与验收要求','readiness')}</div>
+      <div class="inv-actions">${button('资金预算','policy')}${button('周日准备计划','period')}${button('新增策略','strategy')}${button('交易计划','plan')}${button('核对日历与交易规则','check')}${button('添加标的','instrument')}${button('保存研究','research')}${button('添加自选跟踪','watch')}${button('结构化研究','dossier')}${button('AI研究与建议','analysis')}${button('AI报告','reports')}${button('配置与验收要求','readiness')}${button('离线条件演练','condition-drills')}</div>
       ${account ? `<p class="inv-muted">当前账户：${esc(account.name)} · 核对起点 ${esc(account.baseline_date)}</p>` : ''}
       ${s.capital?.policy ? `<article class="inv-record"><h4>当前生效预算 · 版本 ${s.capital.policy.version}</h4><p>实际入金 ${esc(s.capital.actual_deposit)} · 对比拟入金差额 ${esc(s.capital.deposit_gap)}</p><p>实际出金 ${esc(s.capital.actual_withdrawal)} · 对比拟取出差额 ${esc(s.capital.withdrawal_gap)}</p><p>当前账本扣除现金缓冲后 ${esc(money(s.capital.available_after_buffer))}</p>${s.capital.conflicts.includes('new_risk_paused')?'<p class="inv-notice">资金政策已暂停新增风险；实际成交仍可记录。</p>':''}<small>草稿不替换生效版本；估值、总风险与亏损复核线缺行情时仍待核对。</small></article>`:'<p class="inv-notice">当前日期没有已确认资金政策。先核对用途与风险预算，拟入金不会增加账本现金。</p>'}
       <h3>资金政策</h3>${cards(s.policies, p => `<h4>${esc(p.period_start)} 至 ${esc(p.period_end)}</h4><p>${esc(p.purpose || '待补充资金用途')}</p><p>拟入金 ${esc(p.planned_deposit)} · 拟取出 ${esc(p.planned_withdrawal)} · 单笔风险预算 ${esc(money(p.trade_risk_budget))}</p>${p.pause_new_risk ? '<p>已设置暂停新增风险</p>' : ''}${versions('policies',p)}`, '先记录资金用途、用钱需求和能承受的损失。')}
@@ -251,6 +251,7 @@
     try {
       if(action==='refresh') return await load();
       if(action==='private-search')return searchDialog();
+      if(action==='condition-drills')return window.InvestmentMarket.conditionDrills({accountId:s.accountId});
       if(action==='experiments') {
         if(!s.accountId)throw new Error('请先选择账户。');
         if(!window.InvestmentMarket)throw new Error('试验入口尚未载入，请刷新。');

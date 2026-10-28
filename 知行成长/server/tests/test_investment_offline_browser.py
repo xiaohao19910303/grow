@@ -17,10 +17,14 @@ from investments.api import register
 class InvestmentOfflineBrowserTests(PostgreSQLFixture):
     def test_path_scrubbing_and_frozen_forward_trial(self):
         app=FastAPI();store=register(app);store.initialize();calls=[]
-        for target in ('store','planning','replay','experiments'):
+        for target in ('store','planning','replay','experiments','conditions'):
             p=patch('investments.'+target+'.now',return_value='2026-10-28T09:00:00+08:00');p.start();self.addCleanup(p.stop)
         a=store.create('accounts',{'name':'离线验收','baseline_date':'2026-10-26','opening_cash':'10000'},'a')
         i=store.create('instruments',{'code':'600000','market':'SSE','kind':'stock','name':'合成股票'},'i')
+        store.create('plan-checks',{'instrument_id':i['id'],'quote_price':'10','quote_as_of':'2026-10-26T15:00:00+08:00',
+            'sessions':{'2026-10-26':True,'2026-10-27':True,'2026-10-28':True},'rules_valid_from':'2026-10-26','rules_valid_until':'2026-10-28',
+            'price_tick':'0.01','quantity_step':'100','minimum_quantity':'100','sell_delay_sessions':1,'trading_status':'normal',
+            'source_url':'https://example.com/declared','source_note':'本人合成资料','acknowledged':True},'check')
         strategy=store.create('strategies',{'title':'合成前向策略','entry_conditions':'条件明确','exit_conditions':'出现反证','validation_scope':'先观察'},'s')
         store.transition('strategies',strategy['id'],1,'confirmed','sc')
         for side,price,at in [('buy','10','10:00'),('sell','11','10:02')]:
@@ -56,6 +60,25 @@ class InvestmentOfflineBrowserTests(PostgreSQLFixture):
             self.assertTrue(page.get_by_role('dialog').evaluate('d => d.scrollWidth <= d.clientWidth'))
             evidence=Path(os.getenv('INVESTMENT_OFFLINE_EVIDENCE_DIR','/tmp/grow-investment-offline'));evidence.mkdir(parents=True,exist_ok=True)
             page.screenshot(path=str(evidence/'replay-390.png'),full_page=True)
+            page.get_by_role('button',name='关闭',exact=True).click()
+            page.get_by_role('tab',name='今日与计划',exact=True).click()
+            page.get_by_role('button',name='离线条件演练',exact=True).click()
+            expect(page.get_by_role('button',name='保存并运行演练',exact=True)).to_be_enabled()
+            page.get_by_label('演练价格阈值',exact=True).fill('10.2')
+            page.get_by_label('演练到期时间',exact=True).fill('2026-10-27T15:00')
+            page.get_by_label('额外检查时点（每行一个，含时区，最多10个）',exact=True).fill('2026-10-27T10:04:00+08:00\n2026-10-27T12:00:00+08:00')
+            page.get_by_label('模拟提示范围',exact=True).select_option('page')
+            page.get_by_label('我确认这是离线演练，不判断当前可成交或计划自由文本',exact=True).check()
+            page.get_by_role('button',name='保存并运行演练',exact=True).click()
+            expect(page.get_by_text('模拟页面提示 1 条 · 实际发送通知 0 条',exact=True)).to_be_visible()
+            expect(page.get_by_text('本日重复提示已抑制 1',exact=False)).to_be_visible()
+            expect(page.get_by_text('价格过期或断流 1',exact=False)).to_be_visible()
+            self.assertTrue(page.get_by_role('dialog').evaluate('d => d.scrollWidth <= d.clientWidth'))
+            page.screenshot(path=str(evidence/'condition-drill-390.png'),full_page=True)
+            page.get_by_role('button',name='关闭',exact=True).click()
+            page.reload();page.get_by_role('button',name='离线条件演练',exact=True).click()
+            page.get_by_role('button',name='查看已存演练',exact=True).click()
+            expect(page.get_by_text('模拟页面提示 1 条 · 实际发送通知 0 条',exact=True)).to_be_visible()
             page.get_by_role('button',name='关闭',exact=True).click()
             page.get_by_role('tab',name='复盘与策略',exact=True).click();page.get_by_role('button',name='新建前向试验',exact=True).click()
             for label,value in {'试验标题':'本人前向观察','待验证假设':'先定义再观察','试验反例':'成本可能抵消结果','停止观察条件':'出现数据缺失',

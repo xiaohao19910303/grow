@@ -161,6 +161,48 @@
       };
     }catch(error){if(d.isConnected)d.querySelector('[data-error]').textContent=error.message;}
   }
+  const conditionLabels={not_started:'尚未开始',expired:'已过期',rule_conflict:'规则冲突',rules_unknown:'规则未覆盖',rules_expired:'核对资料已过期',calendar_unknown:'日历缺失',closed_session:'休市',outside_session:'普通竞价时段外',trading_status_unknown:'交易状态未核实',missing_quote:'尚无已到达价格',future_quote:'未来价格',stale:'价格过期或断流',no_trades:'本分钟无成交',sell_rule_unknown:'回转机制未知',invalid_buy_session:'假设买入日休市',sell_delay:'未满足假设可卖间隔',not_met:'价格条件未满足',duplicate_suppressed:'本日重复提示已抑制',matched:'满足声明的价格条件'};
+  function renderConditionResult(target,result) {
+    target.innerHTML=`<h4>离线演练结果 · 条件满足 ${result.matched_count} 次</h4><p>${esc(result.rule_snapshot.title)} · 分钟收盘${result.rule_snapshot.op==='gte'?'大于等于':'小于等于'} ${esc(result.rule_snapshot.threshold)} · ${esc(result.rule_snapshot.valid_from)} 至 ${esc(result.rule_snapshot.valid_until)}</p><p>模拟页面提示 ${result.page_candidate_count} 条 · 实际发送通知 0 条</p><p>这只是价格条件线索，未核对真实可卖数量、资金或委托成交。</p><p>${Object.entries(result.status_counts).map(([k,v])=>`${esc(conditionLabels[k] || k)} ${v}`).join(' · ')}</p><details><summary>查看演练时序（前100条，共${result.rows.length}条）</summary>${result.rows.slice(0,100).map(r=>`<article class="inv-record"><p>${esc(r.at)} · ${esc(conditionLabels[r.status] || r.status)}</p><p>资料时点 ${esc(r.quote_as_of || '无')} · 声明收盘 ${esc(r.price || '未知')}${r.page_candidate?' · 模拟页面提示':''}</p></article>`).join('')}</details><details><summary>冻结依据与范围</summary><p>来源 ${esc(result.source_label)} · 路径哈希 ${esc(result.path_hash)}</p><p>核对资料版本 ${esc(result.check_snapshot.version)} · 结果哈希 ${esc(result.result_hash)}</p>${result.limitations.map(t=>`<p>${esc(t)}</p>`).join('')}</details>`;
+  }
+  async function conditionDrills(context) {
+    if(!context.accountId)throw new Error('请先选择投资账户。');
+    const d=dialog('离线条件演练','<p>正在读取路径与核对资料…</p>');
+    try {
+      const [paths,checks,saved]=await Promise.all([api('paths?'+new URLSearchParams({account_id:context.accountId})),api('plan-checks?page_size=100'),api('condition-drills?'+new URLSearchParams({account_id:context.accountId}))]);
+      if(!d.isConnected)return;
+      const section=document.createElement('section');section.innerHTML=`<p>用已导入一分钟CSV验证价格阈值、延迟、过期和去重。不会发送通知；关闭页面后没有后台检查。路径前50份、核对资料前100份；缺少时先导入路径并保存核对资料。</p><form class="inv-form"><label>演练标题<input name="title" required maxlength="160" value="价格条件演练"></label><label>演练分钟路径<select aria-label="演练分钟路径" name="path_id" required>${paths.items.map(p=>`<option value="${esc(p.id)}">${esc(p.source_label)}</option>`).join('')}</select></label><label>演练核对资料<select aria-label="演练核对资料" name="check_id" required></select></label><label>价格关系<select aria-label="价格关系" name="op"><option value="gte">分钟收盘大于等于</option><option value="lte">分钟收盘小于等于</option></select></label><label>演练价格阈值<input name="threshold" inputmode="decimal" required></label><label>演练用途<select aria-label="演练用途" name="intent"><option value="observe">观察条件</option><option value="entry">入场条件线索</option><option value="exit">退出条件线索（假设批次）</option></select></label><label>假设买入日期（退出时填写）<input type="date" name="assumed_bought_on"></label><label>演练开始时间<input type="datetime-local" step="1" name="valid_from" required></label><label>演练到期时间<input type="datetime-local" step="1" name="valid_until" required></label><label>价格最长有效秒数<input type="number" name="max_age_seconds" min="1" max="300" value="60" required></label><label>模拟行情延迟秒数<input type="number" name="arrival_delay_seconds" min="0" max="3600" value="0" required></label><label>模拟提示范围<select aria-label="模拟提示范围" name="notification_scope"><option value="none">只记录核对结果</option><option value="page">本页模拟提示</option></select></label><label>额外检查时点（每行一个，含时区，最多10个）<textarea name="probes" placeholder="2026-10-27T12:00:00+08:00"></textarea></label><label><input name="ack" type="checkbox" required>我确认这是离线演练，不判断当前可成交或计划自由文本</label><button class="btn" type="submit" disabled>保存并运行演练</button></form><div data-condition-result aria-live="polite"></div><h4>已保留演练（前50项）</h4><div data-condition-history></div>`;
+      d.querySelector('p').replaceWith(section);const form=section.querySelector('form'),button=form.querySelector('[type=submit]');let key=crypto.randomUUID(),generation=0;
+      function renderHistory(items) {
+        section.querySelector('[data-condition-history]').innerHTML=items.map(x=>`<article class="inv-record"><p>${esc(x.rule_snapshot.title)} · ${esc(x.created_at)}</p><button type="button" class="btn" data-drill-id="${esc(x.id)}">查看已存演练</button></article>`).join('') || '<p>尚无演练记录。</p>';
+        section.querySelectorAll('[data-drill-id]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{const result=await api('condition-drills/'+encodeURIComponent(b.dataset.drillId));if(d.isConnected)renderConditionResult(section.querySelector('[data-condition-result]'),result);}catch(e){if(d.isConnected)d.querySelector('[data-error]').textContent=e.message;}finally{b.disabled=false;}});
+      }
+      renderHistory(saved.items);form.oninput=()=>key=crypto.randomUUID();
+      form.elements.path_id.onchange=async()=>{
+        const selected=paths.items.find(p=>p.id===form.elements.path_id.value),ticket=++generation;button.disabled=true;
+        form.elements.check_id.innerHTML=checks.items.filter(c=>c.instrument_id===selected?.instrument_id).map(c=>`<option value="${esc(c.id)}">${esc(c.quote_as_of)} · ${esc(c.source_note)}</option>`).join('');
+        if(!selected)return;
+        try{const path=await api('paths/'+encodeURIComponent(selected.id));if(!d.isConnected || ticket!==generation)return;
+          form.elements.valid_from.value=path.bars[0].start.slice(0,19);form.elements.valid_until.value=path.bars.at(-1).end.slice(0,19);
+          form.elements.threshold.value=path.bars[0].close;form.elements.assumed_bought_on.value=path.bars[0].start.slice(0,10);key=crypto.randomUUID();
+          button.disabled=!form.elements.check_id.value;d.querySelector('[data-error]').textContent=button.disabled?'该路径证券还没有本人核对资料，请先保存。':'';
+        }catch(e){if(d.isConnected && ticket===generation)d.querySelector('[data-error]').textContent=e.message;}
+      };
+      form.onsubmit=async event=>{
+        event.preventDefault();const values=Object.fromEntries(new FormData(form)),controls=[...form.elements];controls.forEach(c=>c.disabled=true);
+        const local=value=>(value.length===16?value+':00':value)+'+08:00';
+        try{const result=await api('condition-drills',{account_id:context.accountId,path_id:values.path_id,check_id:values.check_id,title:values.title,
+          op:values.op,threshold:values.threshold,intent:values.intent,assumed_bought_on:values.intent==='exit'?values.assumed_bought_on:null,
+          valid_from:local(values.valid_from),valid_until:local(values.valid_until),max_age_seconds:Number(values.max_age_seconds),arrival_delay_seconds:Number(values.arrival_delay_seconds),
+          notification_scope:values.notification_scope,probe_at:values.probes.split(/\r?\n/).map(t=>t.trim()).filter(Boolean),acknowledged:values.ack==='on'},key);
+          if(!d.isConnected)return;renderConditionResult(section.querySelector('[data-condition-result]'),result);d.querySelector('[data-error]').textContent='';
+          const history=await api('condition-drills?'+new URLSearchParams({account_id:context.accountId}));if(d.isConnected)renderHistory(history.items);
+        }catch(e){if(d.isConnected)d.querySelector('[data-error]').textContent=e.message;}
+        finally{controls.forEach(c=>c.disabled=false);}
+      };
+      await form.elements.path_id.onchange();
+    }catch(error){if(d.isConnected)d.querySelector('[data-error]').textContent=error.message;}
+  }
   async function experiments(context) {
     const d=dialog('前向试验列表','<p>正在读取前向观察试验…</p>');
     async function render() {
@@ -190,5 +232,5 @@
       };
     }catch(error){if(d.isConnected)d.querySelector('[data-error]').textContent=error.message;}
   }
-  window.InvestmentMarket={sources,data,screen,pathImport,replay,experiments};
+  window.InvestmentMarket={sources,data,screen,pathImport,replay,experiments,conditionDrills};
 })();
