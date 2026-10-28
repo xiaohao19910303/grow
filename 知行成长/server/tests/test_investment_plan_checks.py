@@ -89,3 +89,37 @@ class InvestmentPlanCheckTests(PostgreSQLFixture):
         with self.assertRaises(Problem) as caught:
             assess_plan(self.store,plan['id'],'2026-10-28T09:00:00+08:00')
         self.assertEqual(caught.exception.code,'research_only_plan')
+
+    def test_automatic_reference_mismatch_blocks_confirmation_without_rejecting_facts(self):
+        context=self.context(sell_delay_sessions=0)
+        plan=self.plan(context)
+        with self.assertRaises(Problem) as caught:
+            self.store.transition('trade-plans',plan['id'],1,'confirmed','bad-reference')
+        self.assertEqual(caught.exception.code,'rule_reference_mismatch')
+        fill=self.store.create('fills',{'account_id':self.a['id'],'instrument_id':self.i['id'],'side':'buy',
+            'price':'10','quantity':'5','fee':'1','tax':'0','executed_at':'2026-10-28T10:00:00+08:00'},'actual-odd')
+        self.assertEqual(fill['quantity'],'5')
+
+    def test_automatic_reference_freezes_hash_and_respects_maintenance_expiry(self):
+        from investments.rules import RULEBOOK_ID
+        context=self.context(rulebook_id=RULEBOOK_ID)
+        plan=self.plan(context)
+        confirmed=self.store.transition('trade-plans',plan['id'],1,'confirmed','auto-reference')
+        reference=confirmed['assessment_snapshot']['rule_comparison']
+        self.assertEqual(reference['status'],'matched_reference_subset')
+        self.assertEqual(len(reference['rules']['snapshot_hash']),64)
+        with self.assertRaises(Problem) as caught:
+            assess_plan(self.store,plan['id'],'2026-12-01T09:00:00+08:00')
+        self.assertEqual(caught.exception.code,'rule_reference_unavailable')
+
+    def test_star_single_share_increment_and_limit_order_cap(self):
+        a=self.store.create('accounts',{'name':'大额合成账户','opening_cash':'5000000','baseline_date':'2026-10-26'},'large')
+        policy=self.store.create('policies',{'account_id':a['id'],'period_start':'2026-10-01','period_end':'2026-10-31',
+            'purpose':'程序边界验收','liquidity_needs':'合成','loss_capacity':'250000','cash_buffer':'0','trade_risk_budget':'250000'},'large-policy')
+        self.store.transition('policies',policy['id'],1,'confirmed','large-confirm')
+        self.i=self.store.create('instruments',{'name':'合成科创板','code':'688001','market':'SSE','kind':'stock'},'star')
+        context=self.context(quote_price='1',minimum_quantity='200',quantity_step='1')
+        plan=self.plan(context,account_id=a['id'],entry_price='1',invalidation_price='0.99',risk_budget='250000')
+        self.assertEqual(assess_plan(self.store,plan['id'],'2026-10-28T09:00:00+08:00')['quantity'],'100000')
+        second=self.plan(context,account_id=a['id'],entry_price='1',invalidation_price='0.99',risk_budget='4.01',title='201股取整')
+        self.assertEqual(assess_plan(self.store,second['id'],'2026-10-28T09:00:00+08:00')['quantity'],'201')

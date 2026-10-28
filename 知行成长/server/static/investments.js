@@ -76,7 +76,7 @@
   function todayView() {
     const account = s.accounts.find(a => a.id === s.accountId);
     return `<section><h3>先确定资金边界，再写交易计划</h3><p>月度管资金，周度管策略，每日核对执行。条件未到，可以不交易。</p>
-      <div class="inv-actions">${button('资金预算','policy')}${button('周日准备计划','period')}${button('新增策略','strategy')}${button('交易计划','plan')}${button('核对日历与交易规则','check')}${button('添加标的','instrument')}${button('保存研究','research')}${button('添加自选跟踪','watch')}${button('结构化研究','dossier')}${button('AI研究与建议','analysis')}${button('AI报告','reports')}</div>
+      <div class="inv-actions">${button('资金预算','policy')}${button('周日准备计划','period')}${button('新增策略','strategy')}${button('交易计划','plan')}${button('核对日历与交易规则','check')}${button('添加标的','instrument')}${button('保存研究','research')}${button('添加自选跟踪','watch')}${button('结构化研究','dossier')}${button('AI研究与建议','analysis')}${button('AI报告','reports')}${button('配置与验收要求','readiness')}</div>
       ${account ? `<p class="inv-muted">当前账户：${esc(account.name)} · 核对起点 ${esc(account.baseline_date)}</p>` : ''}
       ${s.capital?.policy ? `<article class="inv-record"><h4>当前生效预算 · 版本 ${s.capital.policy.version}</h4><p>实际入金 ${esc(s.capital.actual_deposit)} · 对比拟入金差额 ${esc(s.capital.deposit_gap)}</p><p>实际出金 ${esc(s.capital.actual_withdrawal)} · 对比拟取出差额 ${esc(s.capital.withdrawal_gap)}</p><p>当前账本扣除现金缓冲后 ${esc(money(s.capital.available_after_buffer))}</p>${s.capital.conflicts.includes('new_risk_paused')?'<p class="inv-notice">资金政策已暂停新增风险；实际成交仍可记录。</p>':''}<small>草稿不替换生效版本；估值、总风险与亏损复核线缺行情时仍待核对。</small></article>`:'<p class="inv-notice">当前日期没有已确认资金政策。先核对用途与风险预算，拟入金不会增加账本现金。</p>'}
       <h3>资金政策</h3>${cards(s.policies, p => `<h4>${esc(p.period_start)} 至 ${esc(p.period_end)}</h4><p>${esc(p.purpose || '待补充资金用途')}</p><p>拟入金 ${esc(p.planned_deposit)} · 拟取出 ${esc(p.planned_withdrawal)} · 单笔风险预算 ${esc(money(p.trade_risk_budget))}</p>${p.pause_new_risk ? '<p>已设置暂停新增风险</p>' : ''}${versions('policies',p)}`, '先记录资金用途、用钱需求和能承受的损失。')}
@@ -172,6 +172,7 @@
     const currentDialog=dialog;
     currentDialog.querySelector('[data-inv-cancel]').onclick=closeDialog;
     currentDialog.addEventListener('close',()=> {currentDialog.remove();if(dialog===currentDialog)dialog=null;});
+    if(spec.kind==='plan-checks')attachRulePrefill(currentDialog,spec);
     let requestKey=crypto.randomUUID(), priorBody=null, saving=false;
     currentDialog.querySelector('form').onsubmit=async event => {
       event.preventDefault();if(saving)return;
@@ -203,10 +204,47 @@
     currentDialog.querySelector('input,select,textarea')?.focus();
   }
 
+  function attachRulePrefill(d,spec) {
+    const panel=document.createElement('div');panel.className='inv-notice';
+    panel.innerHTML='<button type="button" class="btn" data-reference>自动填入公开规则与日历</button><p role="status" data-reference-status>无需行情凭证。自动核对公开规则的已覆盖部分；价格、停牌状态及账户权限仍需本人核对。</p>';
+    d.querySelector('h3').after(panel);
+    const controls=d.querySelector('form').elements,button=panel.querySelector('button'),message=panel.querySelector('p');
+    const generated=['sessions','rules_valid_from','rules_valid_until','price_tick','quantity_step','minimum_quantity','sell_delay_sessions'];
+    controls.instrument_id.addEventListener('change',()=>{
+      if(spec.base?.rulebook_id){for(const key of generated)controls[key].value='';controls.quote_price.value='';controls.quote_as_of.value='';delete spec.base.rulebook_id;}
+      message.textContent='标的已变更，请重新核对；不会沿用前一标的的自动依据。';
+    });
+    button.onclick=async()=>{
+      const id=controls.instrument_id.value,instrument=s.instruments.find(i=>i.id===id);if(!instrument)return;
+      button.disabled=true;
+      try {
+        const start=new Date(Date.now()+8*3600000-7*86400000).toISOString().slice(0,10);
+        const end=new Date(Date.now()+8*3600000+30*86400000).toISOString().slice(0,10);
+        const [rules,cal,data]=await Promise.all([api(`instruments/${encodeURIComponent(id)}/rules?on=${today()}`),api('calendar?'+new URLSearchParams({market:instrument.market,start,end})),api(`instruments/${encodeURIComponent(id)}/data-status`)]);
+        if(!d.isConnected || controls.instrument_id.value!==id)return;
+        if(rules.status!=='available' || cal.status!=='available')throw new Error('该标的、日期或规则复核期限不在自动覆盖内，请使用原始资料人工核对。');
+        for(const key of ['price_tick','quantity_step','minimum_quantity','sell_delay_sessions'])controls[key].value=rules.rules[key]??'';
+        controls.sessions.value=Object.entries(cal.sessions).map(([day,open])=>day+','+(open?'开市':'休市')).join('\n');
+        controls.rules_valid_from.value=today();controls.rules_valid_until.value=end<rules.review_until?end:rules.review_until;
+        controls.source_url.value=rules.source_url;
+        controls.source_note.value='公开规则参考 '+rules.rulebook_id+'；仅竞价限价买入。价格、当前交易状态、账户权限及ETF具体机制另核对。';
+        spec.base={...(spec.base || {}),rulebook_id:rules.rulebook_id};
+        controls.trading_status.value='unknown';controls.acknowledged.checked=false;
+        message.textContent='已填入公开参考。当前资料：'+({missing:'尚无行情记录',stale:'数据过期',latest_completed_session:'最近完成开市日的日线',incomplete_or_future:'日线未完成或超前',coverage_unknown:'日历覆盖未知'})[data.status]+'；未核验实时状态。'+(rules.rules.sell_delay_sessions===null?'ETF可卖机制未知，请查具体基金文件后填写。':'请补收盘价与时点，并本人核对状态后保存。');
+      }catch(error){if(d.isConnected)message.textContent=error.message;}
+      finally{button.disabled=false;}
+    };
+  }
+
   async function act(action, data={}) {
     try {
       if(action==='refresh') return await load();
       if(action==='private-search')return searchDialog();
+      if(action==='readiness') {
+        const result=await api('readiness');closeDialog();const d=document.createElement('dialog');dialog=d;d.className='inv-dialog';
+        d.innerHTML=`<h3>配置与验收要求</h3><p>手工记账、CSV和公开规则参考不需要付费行情或AI凭证。</p><h4>AI配置</h4><p>在设置中填写自己的HTTPS Base URL、API Key和准确模型ID；须支持OpenAI兼容流式聊天及要求的JSON输出。</p><p>${esc(result.ai.cost)}</p><h4>盘后行情</h4><p>Tushare Token和daily权限；公开日历覆盖内不需要trade_cal权限。选择供应商日历时另核对trade_cal，ETF另核对fund_daily权限/配额和本人用途许可。Token仅请求时填写，不写入投资记录。</p><h4>未开放</h4><p>分钟/实时权限另行验收，填入Token不会自动开放。真实模型效果和供应商账号权限目前未验证。</p><p>不需要券商登录密码、交易密码或短信验证码。请勿在聊天或文档中粘贴密钥。</p><p>公开规则复核截至 ${esc(result.automatic_reference.review_until)}，超过期限将停止自动填入。</p><button type="button" class="btn">关闭</button>`;
+        document.body.append(d);d.showModal();d.querySelector('button').onclick=closeDialog;return;
+      }
       if(action==='pause-principle'){await api(`principles/${data.id}/state`,{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({version:Number(data.version),state:'paused',reason:'本人暂停试验'})});return load();}
       if(action==='review-action')return openForm({kind:`reviews/${data.id}/actions`,title:'把改进安排为行动',message:'仅把下列本人填写的标题和日期保存到行动，不自动复制复盘正文、证券或金额；不会标记课程完成。',base:{source_version:Number(data.version)},fields:[field('title','改进行动标题','text','核对原始资料'),field('date','行动日期','date',today())]});
       if(action==='action-refs') {

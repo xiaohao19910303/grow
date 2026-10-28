@@ -1,6 +1,7 @@
 """Authenticated-account investment HTTP contracts; execution remains user-owned."""
 import json
 from datetime import date
+from typing import Literal
 
 import db
 from fastapi import APIRouter, Header, Query, Request
@@ -73,6 +74,7 @@ class DailyFetchInput(Contract):
     end_date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
     token: str = Field(min_length=8,max_length=4096,repr=False)
     licensed_use_confirmed: bool
+    calendar_mode: Literal['provider','public_reference'] = 'public_reference'
 
 
 class HistoryCSVInput(Contract):
@@ -125,6 +127,7 @@ def register(app):
     @router.get('/capabilities')
     def capabilities():
         return {'storage':'private_postgresql','currency':'CNY','accounting':'moving_weighted_average',
+            'automatic_reference':{'enabled':True,'scope':'沪深公开日历与竞价限价买入参考子集；动态状态仍未知'},
             'provider':{'verified':False,'mode':'manual','reason':'尚未核验本账号行情权限和使用许可。'},
             'realtime':{'enabled':False,'reason':'实时权限、时效和规则尚未验收。'},
             'ai':{'requires_own_config':True,'unattended':False}}
@@ -133,6 +136,29 @@ def register(app):
     def today_overview(as_of: date):
         from .integration import overview
         return overview(store,as_of.isoformat())
+
+    @router.get('/readiness')
+    def investment_requirements():
+        from .readiness import requirements
+        return requirements()
+
+    @router.get('/calendar')
+    def public_calendar(start: date,end: date,market: str=Query(max_length=10)):
+        from .rules import calendar, now
+        try:return calendar(market,start.isoformat(),end.isoformat(),now())
+        except ValueError:
+            from copilot.core import fail
+            fail('invalid_calendar_range','日历范围须为顺序连续且不超过370日。',422)
+
+    @router.get('/instruments/{object_id}/rules')
+    def public_rules(object_id: str,on: date):
+        from .rules import rule_context, now
+        return rule_context(store.get('instruments',object_id),on.isoformat(),now())
+
+    @router.get('/instruments/{object_id}/data-status')
+    def instrument_freshness(object_id: str):
+        from .rules import data_status
+        return data_status(store,object_id)
 
     @router.get('/search')
     def private_investment_search(account_id: str,q: str=Query(min_length=1,max_length=200),page: int=Query(1,ge=1,le=10000)):
@@ -153,7 +179,7 @@ def register(app):
     async def daily_fetch(payload: DailyFetchInput,idempotency_key: str=Header(min_length=1,max_length=160)):
         from .providers import DailyProvider
         return await DailyProvider(store).fetch(payload.instrument_id,payload.start_date,payload.end_date,
-            payload.token,payload.licensed_use_confirmed,idempotency_key,payload.account_id)
+            payload.token,payload.licensed_use_confirmed,idempotency_key,payload.account_id,calendar_mode=payload.calendar_mode)
 
     @router.get('/data-sources')
     def data_sources():

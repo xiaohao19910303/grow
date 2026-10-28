@@ -33,3 +33,26 @@ class InvestmentMarketImportTests(PostgreSQLFixture):
         with self.assertRaises(Problem) as caught:
             import_history(store,instrument['id'],negative,'shares','cny','本人导出',True,'negative')
         self.assertEqual(caught.exception.status,422)
+
+    def test_public_holiday_record_and_incomplete_today_are_rejected(self):
+        from unittest.mock import patch
+        store=InvestmentStore();store.initialize()
+        instrument=store.create('instruments',{'name':'股票','code':'600000','market':'SSE','kind':'stock'},'i')
+        text='date,open,high,low,close,volume,amount\n2026-10-01,10,11,9,10,1,10\n'
+        with patch('investments.market_import.now',return_value='2026-10-28T15:10:00+08:00'):
+            with self.assertRaises(Problem) as caught:
+                import_history(store,instrument['id'],text,'shares','cny','合成来源',True,'closed')
+            self.assertEqual(caught.exception.code,'closed_session_record')
+            with self.assertRaises(Problem):
+                import_history(store,instrument['id'],text.replace('2026-10-01','2026-10-28'),'shares','cny','合成来源',True,'incomplete')
+        self.assertEqual(store.listing('research')['total'],0)
+
+    def test_long_historical_span_retains_unknown_calendar_instead_of_crashing(self):
+        from unittest.mock import patch
+        store=InvestmentStore();store.initialize()
+        instrument=store.create('instruments',{'name':'股票','code':'600000','market':'SSE','kind':'stock'},'i')
+        text='date,open,high,low,close,volume,amount\n2024-01-02,10,11,9,10,1,10\n2026-10-27,10,11,9,10,1,10\n'
+        with patch('investments.market_import.now',return_value='2026-10-28T09:00:00+08:00'):
+            result=import_history(store,instrument['id'],text,'shares','cny','合成历史来源',True,'long-history')
+        self.assertEqual(result['calendar_comparison']['status'],'coverage_unknown')
+        self.assertEqual(len(result['bars']),2)

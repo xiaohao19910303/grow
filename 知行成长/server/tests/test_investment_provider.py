@@ -73,3 +73,22 @@ class InvestmentProviderTests(PostgreSQLFixture):
         with patch('investments.providers.now',return_value='2026-10-26T16:00:00+08:00'),self.assertRaises(Problem):
             asyncio.run(provider.fetch(self.instrument['id'],'2026-10-27','2026-10-27','PROVIDER_TEST_ONLY',True,'future'))
         self.assertEqual(self.store.listing('research')['total'],0)
+
+    def test_public_calendar_mode_needs_only_daily_permission_and_never_silently_falls_back(self):
+        stock=self.store.create('instruments',{'code':'600000','market':'SSE','kind':'stock','name':'合成股票'},'stock')
+        calls=[]
+        def daily_only(request):
+            body=json.loads(request.content);calls.append(body['api_name'])
+            self.assertEqual(body['api_name'],'daily')
+            return httpx.Response(200,json={'code':0,'data':{'fields':['ts_code','trade_date','open','high','low','close','vol','amount'],
+                'items':[['600000.SH','20261027',10,11,9,10,1,1]]}})
+        provider=DailyProvider(self.store,httpx.MockTransport(daily_only))
+        with patch('investments.providers.now',return_value='2026-10-28T09:00:00+08:00'):
+            result=asyncio.run(provider.fetch(stock['id'],'2026-10-27','2026-10-27','SYNTHETIC_ONLY',True,'public-mode',calendar_mode='public_reference'))
+            self.assertEqual(calls,['daily'])
+            self.assertEqual(result['calendar_source']['mode'],'public_reference')
+            self.assertFalse(result['calendar_source']['provider_entitlement_tested'])
+            with self.assertRaises(Problem) as caught:
+                asyncio.run(provider.fetch(stock['id'],'2025-10-27','2025-10-27','SYNTHETIC_ONLY',True,'unknown-mode',calendar_mode='public_reference'))
+            self.assertEqual(caught.exception.code,'public_calendar_unavailable')
+            self.assertEqual(calls,['daily'])

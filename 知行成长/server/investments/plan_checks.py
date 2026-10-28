@@ -27,6 +27,13 @@ def assess_in(store,c,plan,as_of):
     instrument=store._get(c,'instruments',plan['instrument_id'])
     if check['instrument_id']!=plan['instrument_id'] or instrument['kind']=='fund':
         fail('invalid_plan_check','核对资料与计划证券不符；场外基金使用申请确认流程。',422)
+    from .rules import compare_check, RULEBOOK_ID
+    comparison=compare_check(instrument,check,plan['planned_for'],as_of)
+    if check.get('rulebook_id') and (check['rulebook_id']!=RULEBOOK_ID or comparison['rules']['status']!='available' or comparison['calendar']['status']!='available'):
+        fail('rule_reference_unavailable','自动核对依据过期、版本不符或无覆盖，请重新核对资料；不能沿用自动确认。',422)
+    if comparison['mismatches']:
+        fields='、'.join(m['field'] for m in comparison['mismatches'][:5])
+        fail('rule_reference_mismatch','所填资料与公开规则/休市日历不一致：'+fields+'。请核对原文，实际已成交仍可如实记录。',422)
     sessions=check['sessions'];quote=datetime.fromisoformat(check['quote_as_of']).astimezone(TZ)
     target=plan['planned_for']
     expiry=datetime.fromisoformat(plan['valid_until']).astimezone(TZ)
@@ -41,6 +48,8 @@ def assess_in(store,c,plan,as_of):
     holding=plan['holding_sessions'];delay=check['sell_delay_sessions']
     if len(future)<max(holding,delay+1):
         fail('calendar_incomplete','日历未覆盖预计持有期与最早可卖日，不能按自然日代算。',422)
+    if future[max(holding-1,delay)]>check['rules_valid_until']:
+        fail('rule_coverage_incomplete','规则有效期未覆盖预计复核或最早可卖日，请补充核对资料。',422)
     capital=policy_status_in(store,c,plan['account_id'],target,plan['id'])
     if capital['conflicts'] or capital['available_after_buffer'] is None:
         fail('policy_conflict','请核对生效政策、现金缓冲、实际费用、暂停状态与单笔风险限制。',422)
@@ -58,6 +67,8 @@ def assess_in(store,c,plan,as_of):
             current=sum((Decimal(p['quantity'])*Decimal(check['quote_price']) for p in balance['positions']),Decimal('0'))
             cash=min(cash,max(Decimal('0'),Decimal(exposure_limit)-current))
         raw=min((risk-fees)/(entry-stop),(cash-fees)/entry)
+        maximum=comparison['rules']['rules'].get('maximum_quantity')
+        if maximum is not None:raw=min(raw,Decimal(maximum))
         quantity=(raw/step).to_integral_value(rounding=ROUND_FLOOR)*step
         if quantity<Decimal(check['minimum_quantity']) or quantity<=0:
             fail('insufficient_plan_budget','按已知预算和数量单位无法形成一笔计划数量。',422)
@@ -65,6 +76,7 @@ def assess_in(store,c,plan,as_of):
             'estimated_commitment':number(quantity*entry+fees),'risk_budget':plan['risk_budget'],
             'review_on':future[holding-1],'earliest_sell_on':future[delay],
             'check_snapshot':check,'policy_snapshot':capital['policy'],'as_of':as_of,
+            'rule_comparison':comparison,
             'realtime':False,'mode':'user_checked_conditional','price_basis':'user_declared_post_close',
             'limitations':['资料由本人核对，系统未独立核验来源、行情或规则；这是未来条件计划，不是当前可成交承诺。',
                 '费用预算为本人填写的本次进出合计估计；跳空、停牌、限价或无法成交可造成超预算损失。',

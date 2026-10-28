@@ -4,6 +4,7 @@ import io
 import uuid
 from datetime import date,datetime,time
 from zoneinfo import ZoneInfo
+from .rules import normalize_units, calendar, freshness
 
 import db
 from copilot.core import Problem, digest, encoded, fail, now
@@ -41,29 +42,33 @@ def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label
                     raise ValueError()
                 row={aliases.get(k,k):v for k,v in raw.items()}
                 day=date.fromisoformat(row['date']).isoformat()
-                if day in seen or day>asof.date().isoformat() or (day==asof.date().isoformat() and asof.time()<time(15)):
+                if day in seen or day>asof.date().isoformat() or (day==asof.date().isoformat() and asof.time()<time(15,30)):
                     raise ValueError()
                 seen.add(day)
                 values={k:decimal_value(row[k]) for k in ('open','high','low','close','volume','amount')}
                 if values['low']<=0 or not values['low']<=min(values['open'],values['close'])<=max(values['open'],values['close'])<=values['high']:
                     raise ValueError()
                 bars.append({'date':day,**{k:number(values[k]) for k in ('open','high','low','close')},
-                    'volume_shares':number(values['volume']*(100 if volume_unit=='lots' else 1)),
-                    'turnover_cny':number(values['amount']*(1000 if amount_unit=='thousand_cny' else 1)),
-                    'source_volume':number(values['volume']),'source_amount':number(values['amount'])})
+                    **{k:v for k,v in normalize_units(values['volume'],values['amount'],'lots100' if volume_unit=='lots' else 'shares',amount_unit).items() if k!='source_units'}})
             if not bars:
                 raise ValueError()
         except (Problem,ValueError,KeyError,TypeError,csv.Error):
-            fail('invalid_history_csv','请核对列名、已完成日线的日期、非负量额、OHLC关系和重复日期；不接收未来或15点前的当日日线。',422)
+            fail('invalid_history_csv','请核对列名、已完成日线的日期、非负量额、OHLC关系和重复日期；不接收未来或15:30前的当日日线。',422)
         bars.sort(key=lambda b:b['date'])
+        try:reference_calendar=calendar(instrument['market'],bars[0]['date'],bars[-1]['date'],stamp)
+        except ValueError:
+            reference_calendar={'status':'coverage_unknown','reason':'导入跨度超过370天，未逐年核验日历。'}
+        if reference_calendar['status']=='available' and any(not reference_calendar['sessions'][b['date']] for b in bars):
+            fail('closed_session_record','日线包含公开日历中的休市日，请核对日期和来源。',422)
         snapshot={'id':'market-'+uuid.uuid4().hex,'version':1,'created_at':stamp,'updated_at':stamp,
             'instrument_id':instrument_id,'provider':'user_import','declared_source':source_label,
             'retrieved_at':stamp,'available_at':stamp,'freshness':'manual_unverified','coverage':'imported_daily',
             'realtime':False,'price_basis':'unadjusted_user_declared','bars':bars,'calendar':{},
+            'calendar_comparison':reference_calendar,'data_status':freshness(instrument['market'],bars[-1]['date'],stamp),
             'source_units':{'volume':volume_unit,'amount':amount_unit},'indicators':indicators(bars),
-            'limitations':['来源与未复权口径由本人声明，未独立核验。','缺少交易日历和实时状态，不能据此确认当前可成交。']}
+            'limitations':['来源与未复权口径由本人声明，未独立核验。','公开日历核对仅限明确覆盖；实时状态仍未知，不能据此确认当前可成交。']}
         content=encoded({k:v for k,v in {**snapshot,'bars':bars[-20:],'omitted_bar_count':max(0,len(bars)-20)}.items()
-                         if k not in ('id','version','created_at','updated_at','calendar')})
+                         if k not in ('id','version','created_at','updated_at','calendar','calendar_comparison')})
         if len(content)>12000:
             fail('import_summary_too_large','摘要超过限制，请缩小日期范围。',422)
         evidence=store.validate('research',{'instrument_id':instrument_id,'account_id':account_id,

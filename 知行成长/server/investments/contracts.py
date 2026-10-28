@@ -140,6 +140,7 @@ class PlanInput(Contract):
 
 class PlanCheckInput(Contract):
     instrument_id: Identifier
+    rulebook_id: Identifier | None = None
     quote_price: Positive
     quote_as_of: AwareDatetime
     sessions: dict[date,StrictBool] = Field(min_length=1,max_length=370)

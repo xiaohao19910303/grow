@@ -42,7 +42,7 @@
       <button class="btn" type="button" data-template>下载日线模板</button></div>
       <div data-provider class="inv-form" hidden><label>开始日期<input type="date" name="start_date" value="${today()}"></label>
       <label>结束日期<input type="date" name="end_date" value="${today()}"></label>
-      <label>Tushare Token<input type="password" name="token" autocomplete="off" spellcheck="false"></label>
+      <label>日历依据<select name="calendar_mode"><option value="public_reference">公开日历参考（覆盖内不请求trade_cal）</option><option value="provider">供应商日历（需trade_cal权限）</option></select></label><label>Tushare Token<input type="password" name="token" autocomplete="off" spellcheck="false"></label>
       <p>最多90个日历日。凭证仅用于本次请求；权限不足会停止，不会自动购买或重试。</p></div>
       <label class="inv-choice"><input name="ack" type="checkbox" required>我已核对资料使用范围；CSV为未复权日线，量额单位与选择一致。</label>
       <button class="btn" type="submit">保存行情与研究证据</button></form><div data-result role="status"></div>`);
@@ -66,7 +66,7 @@
       try {
         const base={instrument_id:values.instrument_id,account_id:context.accountId || null};
         const body=values.mode==='csv'?{...base,text:values.text,source_label:values.source_label,volume_unit:values.volume_unit,amount_unit:values.amount_unit,use_confirmed:values.ack==='on'}:
-          {...base,start_date:values.start_date,end_date:values.end_date,token:values.token,licensed_use_confirmed:values.ack==='on'};
+          {...base,start_date:values.start_date,end_date:values.end_date,token:values.token,calendar_mode:values.calendar_mode,licensed_use_confirmed:values.ack==='on'};
         const result=await api(values.mode==='csv'?'market/import':'provider/daily',body,requestKey);
         form.elements.token.value='';
         d.querySelector('[data-result]').textContent=`已保存 ${result.bars.length} 条日线及研究证据。最后数据日 ${result.bars.at(-1)?.date || '无有效行情'}；来源 ${result.declared_source || result.provider}。`;
