@@ -53,6 +53,7 @@ class InvestmentOfflineBrowserTests(PostgreSQLFixture):
             slider=page.get_by_role('slider',name='已覆盖分钟回放');slider.focus();page.keyboard.press('End')
             expect(page.get_by_text('第 2 / 2 条已覆盖分钟；缺段不插值。',exact=True)).to_be_visible()
             self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),390)
+            self.assertTrue(page.get_by_role('dialog').evaluate('d => d.scrollWidth <= d.clientWidth'))
             evidence=Path(os.getenv('INVESTMENT_OFFLINE_EVIDENCE_DIR','/tmp/grow-investment-offline'));evidence.mkdir(parents=True,exist_ok=True)
             page.screenshot(path=str(evidence/'replay-390.png'),full_page=True)
             page.get_by_role('button',name='关闭',exact=True).click()
