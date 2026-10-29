@@ -188,7 +188,10 @@ def evaluate(row,conditions,combine):
 
 class ResearchTools:
     def __init__(self,store):self.store=store
-    def initialize(self,c):c.executescript(TABLES)
+    def initialize(self,c):
+        # First-page lists arrive concurrently; PostgreSQL IF NOT EXISTS alone
+        # cannot serialize concurrent creation of the same catalog objects.
+        self.store.lock(c);c.executescript(TABLES)
     def get(self,c,identity,kind=None,account_id=None):
         row=c.execute('SELECT kind,account_id,data FROM investment_research_objects WHERE id=?',(identity,)).fetchone()
         if not row or (kind and row[0]!=kind):fail('not_found','研究记录不存在。',404)

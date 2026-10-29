@@ -1,5 +1,9 @@
 """Research tools freeze private source data and never mutate the trade ledger."""
 from unittest.mock import patch
+from concurrent.futures import ThreadPoolExecutor
+import threading
+import db
+from investments.research_tools import ResearchTools
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from investments.api import register
@@ -23,6 +27,17 @@ class ResearchToolsTests(PostgreSQLFixture):
                     {'code':'600000','name':'合成乙','values':{'close':'20','turnover_rate_pct':None,'pe':'12'}},
                     {'code':'300001','name':'合成丙','values':{'close':'30','turnover_rate_pct':'1','pe':'-1'}}]},'data-key',201)
 
+    def test_concurrent_first_lists_initialize_once_and_export_counts_versions(self):
+        barrier=threading.Barrier(6);service=ResearchTools(self.store)
+        def listing(_):
+            barrier.wait(timeout=5)
+            return service.listing(self.account['id'],'dataset')
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            self.assertEqual([r['total'] for r in pool.map(listing,range(6))],[0]*6)
+        preset=self.post('presets',{'account_id':self.account['id'],'name':'导出上限','conditions':[]},'export-preset',201)
+        with db.connect() as c:c.execute('UPDATE investment_research_versions SET data=? WHERE object_id=?',('x'*20_000_001,preset['id']))
+        response=self.client.get('/api/investments/research/export',params={'account_id':self.account['id']})
+        self.assertEqual(response.status_code,422,response.text)
     def test_screen_explains_unknown_and_paginates_without_changing_frozen_data(self):
         dataset=self.dataset();body={'account_id':self.account['id'],'dataset_id':dataset['id'],
             'conditions':[{'field':'turnover_rate_pct','op':'gte','value':'2'}],'combine':'all','sort_by':'close','descending':True}

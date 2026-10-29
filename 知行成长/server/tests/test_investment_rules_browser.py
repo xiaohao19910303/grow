@@ -83,6 +83,7 @@ class RulesBrowserTests(PostgreSQLFixture):
                     d.get_by_text('模型配置（仅生成条件或研究候选时需要）',exact=True).click();d.locator('[data-relay-consent]').check()
                 d.locator('[data-preview]').click();expect(d.locator('[data-ai-preview]')).to_contain_text('实际发送内容');self.assertEqual(len(calls),1)
                 d.locator('[data-analyze]').click();expect(d.locator('[data-status]')).to_contain_text('本轮已停止执行',timeout=15000);expect(d.locator('[data-results] button')).to_contain_text('查看候选报告')
+                page.wait_for_function('async()=>{const s=await InvestmentRuleScreen.read("rule-test:'+account['id']+':rule-v2");return s?.cp?.run?.state==="ready"}')
                 self.assertEqual(page.evaluate('async()=>{const s=await InvestmentRuleScreen.read("rule-test:'+account['id']+':rule-v2");return s.cp.run.state}'),'ready')
                 self.assertEqual(len(calls),3,json.dumps({'width':width,'stages':[c.get('phase','parser') for c in calls],'status':d.locator('[data-status]').inner_text(),'checkpoint':page.evaluate('async()=>await InvestmentRuleScreen.read("rule-test:'+account['id']+':rule-v2")')},ensure_ascii=False));self.assertTrue(all('TEST_RULE_PRIVATE_KEY' not in x for x in platform) if transport=='direct' else sum('TEST_RULE_PRIVATE_KEY' in x for x in platform)==3)
                 saved=page.evaluate('async()=>JSON.stringify(await InvestmentRuleScreen.read("rule-test:'+account['id']+':rule-v2"))');self.assertNotIn('TEST_RULE_PRIVATE_KEY',saved)
