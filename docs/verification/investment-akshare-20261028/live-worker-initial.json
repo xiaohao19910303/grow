@@ -1,0 +1,18 @@
+[
+  {
+    "kind": "stock",
+    "code": "600000",
+    "status": "failed",
+    "error": "provider_unavailable",
+    "message": "东方财富日线暂不可用或返回格式已变化；未保存行情、未自动换源。",
+    "elapsed_seconds": 1.37
+  },
+  {
+    "kind": "etf",
+    "code": "510300",
+    "status": "failed",
+    "error": "provider_unavailable",
+    "message": "东方财富日线暂不可用或返回格式已变化；未保存行情、未自动换源。",
+    "elapsed_seconds": 0.921
+  }
+]

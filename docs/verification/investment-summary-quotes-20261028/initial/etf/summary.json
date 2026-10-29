@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-28",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "credential_storage": "local .env read for this validation only; no server fallback added",
+  "scope": "real model and real public market snapshot reuse; disposable localhost schema; no private financial data",
+  "source_hashes_at_start": {
+    "知行成长/server/investments/analysis.py": "ccb02053648503b1f88e10568d0f29227e9ab7eaa12b54f92159303da9eb3f8e",
+    "知行成长/server/investments/market_evidence.py": "165d47acce18a9859c2957eb3d2a822d5a6491388c89008029e11080b93f79c0",
+    "知行成长/server/investments/market_import.py": "a85aeef8eb892b95dd5038d93df0fec0c8f65a339f5f05f2d3b884efd8f49fd1",
+    "知行成长/server/investments/providers.py": "82d999ae8b85567d463c6d51947bae2d6486513f16ec3009c07c7b4c63320a1e",
+    "知行成长/server/investments/akshare_daily.py": "2f4f9d16efd005601e1da94d8655b19e55785fc0abdf92a288a5513ebd9d2fce",
+    "知行成长/server/investments/contracts.py": "9103fc435bc0bd54080457099f644433abb8a8d76e806bee9f8579f55b625efc",
+    "知行成长/server/investments/conditions.py": "f525fac706bdf200a84c260953c8a704be02b8502a05ea94991ed290b2a8748d",
+    "知行成长/server/investments/planning.py": "78e33fd4d0c1b043ef284c67377f4f1e719a1939a45debe4ab42bb5f7e750e4a",
+    "知行成长/server/investments/store.py": "cb4c3b04087cd7f957da82c7bae957e413c1d06954fa0a6ae15b8fce63859716",
+    "知行成长/server/investments/api.py": "c36ea763f15be781db73a3ac4f5d00ae57e99ef98af4adb2dee1ea3fa39da3e1",
+    "知行成长/server/copilot/transport.py": "0613a6a77ebc7de2fe82c217ade56556f28506f382f1dee0d7a2ea9b40586352",
+    "知行成长/server/ai_evidence.py": "35ce1bbd69a663afa79c04becce0ddb2a434c20590c46a5d6afb7f1d6123bb8a",
+    "知行成长/server/history_sources.py": "5e6343737e70fa6a398456ffb3d805943d0d30fee2196ecb320a80b3001e4614"
+  },
+  "source_hashes_at_end": {
+    "知行成长/server/investments/analysis.py": "ccb02053648503b1f88e10568d0f29227e9ab7eaa12b54f92159303da9eb3f8e",
+    "知行成长/server/investments/market_evidence.py": "165d47acce18a9859c2957eb3d2a822d5a6491388c89008029e11080b93f79c0",
+    "知行成长/server/investments/market_import.py": "a85aeef8eb892b95dd5038d93df0fec0c8f65a339f5f05f2d3b884efd8f49fd1",
+    "知行成长/server/investments/providers.py": "82d999ae8b85567d463c6d51947bae2d6486513f16ec3009c07c7b4c63320a1e",
+    "知行成长/server/investments/akshare_daily.py": "2f4f9d16efd005601e1da94d8655b19e55785fc0abdf92a288a5513ebd9d2fce",
+    "知行成长/server/investments/contracts.py": "9103fc435bc0bd54080457099f644433abb8a8d76e806bee9f8579f55b625efc",
+    "知行成长/server/investments/conditions.py": "f525fac706bdf200a84c260953c8a704be02b8502a05ea94991ed290b2a8748d",
+    "知行成长/server/investments/planning.py": "78e33fd4d0c1b043ef284c67377f4f1e719a1939a45debe4ab42bb5f7e750e4a",
+    "知行成长/server/investments/store.py": "cb4c3b04087cd7f957da82c7bae957e413c1d06954fa0a6ae15b8fce63859716",
+    "知行成长/server/investments/api.py": "c36ea763f15be781db73a3ac4f5d00ae57e99ef98af4adb2dee1ea3fa39da3e1",
+    "知行成长/server/copilot/transport.py": "0613a6a77ebc7de2fe82c217ade56556f28506f382f1dee0d7a2ea9b40586352",
+    "知行成长/server/ai_evidence.py": "35ce1bbd69a663afa79c04becce0ddb2a434c20590c46a5d6afb7f1d6123bb8a",
+    "知行成长/server/history_sources.py": "5e6343737e70fa6a398456ffb3d805943d0d30fee2196ecb320a80b3001e4614"
+  },
+  "prompt_version": "investment-v5",
+  "market_source_manifest": [
+    {
+      "symbol": "159915",
+      "original_path": "etf/159915-market.json",
+      "sha256": "07dd52f4a809b1cbac817c4562406659c1a07b948030251e38c3d2baea28279b",
+      "original_provider": "akshare_eastmoney",
+      "original_retrieved_at": "2026-10-28T14:35:47+08:00",
+      "snapshot_reuse": true
+    }
+  ],
+  "results": [
+    {
+      "code": "159915",
+      "name": "创业板ETF",
+      "kind": "etf",
+      "started_at": "2026-10-28T15:38:28+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-49d0082b6c234cc1aeb155b5bbd2e4f5",
+      "state": "ready",
+      "analysis_elapsed_seconds": 442.446,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 15,
+      "counterargument_count": 6,
+      "missing_inputs": [
+        "ETF的IOPV、基金净值与折溢价数据",
+        "实时盘口与当前可成交状态",
+        "完整35条bar的逐条明细，供独立复算指标",
+        "除权、分红或公司行动记录",
+        "基金公告、成分股变动与停复牌信息",
+        "更长时间维度的量价数据",
+        "本人风险预算与后续授权记录，如未来将研究升级为个人草稿"
+      ],
+      "suggestion_actions": [
+        "observe"
+      ],
+      "draft_http_status": 201,
+      "draft_origin": "observation_from_original_ai_text",
+      "plan_state": "draft",
+      "plan_intent": "observe",
+      "plan_id": "inv-5e0698f857ff4e1780ae7fb10a96da6f",
+      "no_execution": true
+    }
+  ],
+  "model_requests": [
+    {
+      "symbol": "159915",
+      "phase": "analysis",
+      "started_at": "2026-10-28T15:38:28+08:00",
+      "completed": true,
+      "snapshot_hash": "16aec235cf143ce730935ba8ed8fa07146845227eb7f8d17644c7620330b4071",
+      "report_validation": "passed",
+      "output_characters": 4530,
+      "elapsed_seconds": 238.165
+    },
+    {
+      "symbol": "159915",
+      "phase": "countercheck",
+      "started_at": "2026-10-28T15:42:26+08:00",
+      "completed": true,
+      "snapshot_hash": "16aec235cf143ce730935ba8ed8fa07146845227eb7f8d17644c7620330b4071",
+      "report_validation": "passed",
+      "output_characters": 5542,
+      "elapsed_seconds": 204.123
+    }
+  ],
+  "record_counts": {
+    "plans": 1,
+    "fills": 0
+  },
+  "secret_in_database": false
+}

@@ -10,6 +10,7 @@ import db
 from copilot.core import Problem, digest, encoded, fail, now
 from .accounting import number
 from .providers import decimal_value, indicators
+from .market_evidence import daily_excerpt
 
 
 def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label,use_confirmed,key,account_id=None):
@@ -67,7 +68,7 @@ def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label
             'calendar_comparison':reference_calendar,'data_status':freshness(instrument['market'],bars[-1]['date'],stamp),
             'source_units':{'volume':volume_unit,'amount':amount_unit},'indicators':indicators(bars),
             'limitations':['来源与未复权口径由本人声明，未独立核验。','公开日历核对仅限明确覆盖；实时状态仍未知，不能据此确认当前可成交。']}
-        content=encoded({k:v for k,v in {**snapshot,'bars':bars[-20:],'omitted_bar_count':max(0,len(bars)-20)}.items()
+        content=encoded({k:v for k,v in {**snapshot,**daily_excerpt(bars)}.items()
                          if k not in ('id','version','created_at','updated_at','calendar','calendar_comparison')})
         if len(content)>12000:
             fail('import_summary_too_large','摘要超过限制，请缩小日期范围。',422)

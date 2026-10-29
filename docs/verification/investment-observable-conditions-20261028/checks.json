@@ -1,0 +1,52 @@
+{
+  "159915": {
+    "successful_attempt": "first-run",
+    "checks": {
+      "final_report_valid": true,
+      "draft_conditions_valid": true,
+      "frozen_snapshot_same_in_two_passes": true,
+      "prompt_version_v4": true,
+      "identity_correct": true,
+      "amounts_hidden": true,
+      "bars_35": true,
+      "draft_unconfirmed": true,
+      "plan_instrument_matches": true,
+      "source_is_explicit_snapshot_reuse": true,
+      "no_fills": true
+    },
+    "trigger": "在2026-10-31T15:05:35+08:00前，若获得来自公开行情或本人授权记录的同一复权口径日线续接，核对最新收盘、同口径MA5/MA20、成交量及交易所披露的停牌状态；任一对象缺失则继续观察。若尚未取得相关行情或披露，则保持未知并继续观察。",
+    "invalidation": "若截至2026-10-31T15:05:35+08:00仍未取得同复权口径日线，或最新公开行情仍不能确认交易状态，或公开披露出现停牌/公司行动，则本观察条件失效并转为等待；查不到相关披露时保持未知并继续观察。",
+    "draft_origin": "observation_from_original_ai_text"
+  },
+  "000001": {
+    "successful_attempt": "stock-retry2",
+    "checks": {
+      "final_report_valid": true,
+      "draft_conditions_valid": true,
+      "frozen_snapshot_same_in_two_passes": true,
+      "prompt_version_v4": true,
+      "identity_correct": true,
+      "amounts_hidden": true,
+      "bars_35": true,
+      "draft_unconfirmed": true,
+      "plan_instrument_matches": true,
+      "source_is_explicit_snapshot_reuse": true,
+      "no_fills": true
+    },
+    "trigger": "观察对象：平安银行（000001.SZSE）最新公开或本人导入日线收盘价；核对来源：本人记录或公开行情；判据：在2026-10-31T15:10:55+08:00前某交易日盘后收盘价大于同口径MA20。若持续沿用本次未复权口径，初始MA20=11.484；若发生除权或公司行动，必须先重算同口径MA20，原阈值停止使用；时点：该交易日盘后15:30 Asia/Shanghai后复核。",
+    "invalidation": "截至2026-10-31T15:10:55+08:00未出现上述触发；或公司行动/除权导致未复权口径不可比且尚未重算；或无法取得可核对行情；或最新收盘价跌破同口径MA5（本次未复权口径下为11.336）；满足任一即失效或转为等待。",
+    "draft_origin": "adopted_conditional_suggestion"
+  },
+  "previous_real_report_rejected": {
+    "prompt_version": "investment-v3",
+    "violations": [
+      {
+        "index": 1,
+        "trigger": "未来已核验复权日线序列中，收盘价重新站上该复权序列的20日均线，且当日成交量较前一已核验交易日放大；同时确认下一交易日非停牌、无未公开重大事项，且本人已确认资金政策与实时交易规则。",
+        "invalidation": "若未来已核验复权收盘价重新跌破该复权序列的5日均线，或成交量未能相对前一已核验交易日放大，或本人未确认资金政策/实时交易规则，或出现未核验的重大公告、除权事项，则条件不成立并失效。",
+        "rejection": "条件不能要求确认或排除非公开事项；请改为核对指定时点的已公开公告，缺项保持未知并等待。"
+      }
+    ],
+    "original_preserved": true
+  }
+}

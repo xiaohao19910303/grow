@@ -26,31 +26,36 @@
       const result=await api('data-sources');
       if(!d.isConnected)return;
       const section=document.createElement('section');
-      section.innerHTML='<p>接口适配、账号实际权限与外部网站查询分别标注。请在各服务官网核对当前覆盖和使用范围。</p>'+result.sources.map(s=>`<article class="inv-record"><h4><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.name)}</a></h4><p>${esc(({adapter_ready:'已有适配，实际权限待核验',planned:'候选来源，尚未接入',external:'外部查询入口'})[s.status])}</p><p>${esc(s.scope)}</p></article>`).join('');
+      section.innerHTML='<p>接口适配、账号实际权限与外部网站查询分别标注。请在各服务官网核对当前覆盖和使用范围。</p>'+result.sources.map(s=>`<article class="inv-record"><h4><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.name)}</a></h4><p>${esc(({adapter_ready:'已有适配，覆盖与使用范围需核对',planned:'候选来源，尚未接入',external:'外部查询入口'})[s.status])}</p><p>${esc(s.scope)}</p></article>`).join('');
       d.querySelector('p').replaceWith(section);
     } catch(error){d.querySelector('[data-error]').textContent=error.message;}
   }
   function data(context) {
     const d=dialog('添加盘后行情',`<p>先添加股票或ETF标的。日线用于盘后研究，不代表实时价格或可成交状态。</p>
       <form class="inv-form"><label>行情标的<select name="instrument_id" required>${instruments(context.instruments)}</select></label>
-      <label>接入方式<select name="mode"><option value="csv">导入日线CSV（无需接口权限）</option><option value="tushare">Tushare Pro（使用本人权限）</option></select></label>
+      <label>接入方式<select name="mode"><option value="csv">导入日线CSV（无需接口权限）</option><option value="akshare">AKShare / 东方财富（无需Token）</option><option value="tushare">Tushare Pro（使用本人权限）</option></select></label>
       <div data-csv class="inv-form"><label>来源说明<input name="source_label" maxlength="100" placeholder="例如：本人从数据服务导出"></label>
       <label>日线CSV文件<input type="file" accept=".csv,text/csv" data-file></label>
       <label>日线CSV<textarea name="text" rows="7" placeholder="date,open,high,low,close,volume,amount"></textarea></label>
       <label>原成交量单位<select name="volume_unit"><option value="shares">股 / ETF份</option><option value="lots">手（按100股/份转换）</option></select></label>
       <label>原成交额单位<select name="amount_unit"><option value="cny">元</option><option value="thousand_cny">千元</option></select></label>
       <button class="btn" type="button" data-template>下载日线模板</button></div>
-      <div data-provider class="inv-form" hidden><label>开始日期<input type="date" name="start_date" value="${today()}"></label>
-      <label>结束日期<input type="date" name="end_date" value="${today()}"></label>
-      <label>日历依据<select name="calendar_mode"><option value="public_reference">公开日历参考（覆盖内不请求trade_cal）</option><option value="provider">供应商日历（需trade_cal权限）</option></select></label><label>Tushare Token<input type="password" name="token" autocomplete="off" spellcheck="false"></label>
-      <p>最多90个日历日。凭证仅用于本次请求；权限不足会停止，不会自动购买或重试。</p></div>
-      <label class="inv-choice"><input name="ack" type="checkbox" required>我已核对资料使用范围；CSV为未复权日线，量额单位与选择一致。</label>
+      <div data-provider class="inv-form" hidden><label>开始日期<input type="date" name="start_date" value="${new Date(Date.parse(today())-60*86400000).toISOString().slice(0,10)}"></label>
+      <label>结束日期<input type="date" name="end_date" value="${new Date(Date.parse(today())-86400000).toISOString().slice(0,10)}"></label>
+      <div data-tushare class="inv-form"><label>日历依据<select name="calendar_mode"><option value="public_reference">公开日历参考（覆盖内不请求trade_cal）</option><option value="provider">供应商日历（需trade_cal权限）</option></select></label><label>Tushare Token<input type="password" name="token" autocomplete="off" spellcheck="false"></label>
+      <p>凭证仅用于本次请求；权限不足会停止，不会自动购买或重试。</p></div>
+      <p data-akshare hidden>无需Token，使用东方财富未复权日线及公开日历参考。公开接口可能延迟或限流；45秒超时停止，不自动重试或切换来源。</p><p>最多90个日历日；首次建议使用截至上一个已完成交易日的数据。</p></div>
+      <label class="inv-choice"><input name="ack" type="checkbox" required><span data-ack-label>我已核对资料使用范围；CSV为未复权日线，量额单位与选择一致。</span></label>
       <button class="btn" type="submit">保存行情与研究证据</button></form><div data-result role="status"></div>`);
     const form=d.querySelector('form');let requestKey=crypto.randomUUID();
     form.oninput=()=>{requestKey=crypto.randomUUID();};
     form.elements.mode.onchange=()=>{
       d.querySelector('[data-csv]').hidden=form.elements.mode.value!=='csv';
-      d.querySelector('[data-provider]').hidden=form.elements.mode.value!=='tushare';
+      d.querySelector('[data-provider]').hidden=form.elements.mode.value==='csv';
+      d.querySelector('[data-tushare]').hidden=form.elements.mode.value!=='tushare';
+      d.querySelector('[data-akshare]').hidden=form.elements.mode.value!=='akshare';
+      d.querySelector('[data-ack-label]').textContent=form.elements.mode.value==='csv'?'我已核对资料使用范围；CSV为未复权日线，量额单位与选择一致。':'我已核对所选来源的资料使用范围，确认获取未复权盘后日线。';
+      form.elements.ack.checked=false;
     };
     d.querySelector('[data-file]').onchange=async event=>{
       try {const file=event.target.files[0];if(!file)return;if(file.size>250000)throw new Error('CSV文件不能超过250KB。');form.elements.text.value=await file.text();requestKey=crypto.randomUUID();}
@@ -66,10 +71,11 @@
       try {
         const base={instrument_id:values.instrument_id,account_id:context.accountId || null};
         const body=values.mode==='csv'?{...base,text:values.text,source_label:values.source_label,volume_unit:values.volume_unit,amount_unit:values.amount_unit,use_confirmed:values.ack==='on'}:
+          values.mode==='akshare'?{...base,start_date:values.start_date,end_date:values.end_date,use_confirmed:values.ack==='on'}:
           {...base,start_date:values.start_date,end_date:values.end_date,token:values.token,calendar_mode:values.calendar_mode,licensed_use_confirmed:values.ack==='on'};
-        const result=await api(values.mode==='csv'?'market/import':'provider/daily',body,requestKey);
+        const result=await api(values.mode==='csv'?'market/import':values.mode==='akshare'?'provider/akshare/daily':'provider/daily',body,requestKey);
         form.elements.token.value='';
-        d.querySelector('[data-result]').textContent=`已保存 ${result.bars.length} 条日线及研究证据。最后数据日 ${result.bars.at(-1)?.date || '无有效行情'}；来源 ${result.declared_source || result.provider}。`;
+        d.querySelector('[data-result]').textContent=`已保存 ${result.bars.length} 条日线及研究证据。最后数据日 ${result.bars.at(-1)?.date || '无有效行情'}；来源 ${result.provider==='akshare_eastmoney'?'东方财富（AKShare）':result.declared_source || result.provider}。`;
         submit.textContent='行情已保存';await context.refresh();
       } catch(error){d.querySelector('[data-error]').textContent=error.message;submit.disabled=false;}
       finally {controls.forEach(c=>c.disabled=false);}

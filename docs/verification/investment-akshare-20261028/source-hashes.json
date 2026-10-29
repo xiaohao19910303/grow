@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-28",
+  "hash": "sha256",
+  "files": {
+    "requirements.in": "e42e120b4fdfcae0d1643323fca981061c87068dabaf24d82a4bda7d5c3150d7",
+    "requirements.lock": "8a4534f34b2d6c407f3b2086b9d9ef09757e7228f178af3879bf885d30c29262",
+    "知行成长/server/investments/akshare_daily.py": "6a9a487cf93141087a8fa6ea0cd54b1d335206a48990b0eee340fc94998fecbf",
+    "知行成长/server/investments/akshare_worker.py": "8d5abf7cf1af96ca9938c29cf3e77df27837c732d621120bebd0bcd816ec1615",
+    "知行成长/server/investments/api.py": "10c32a450c6d22abda8f729d793bccc6d25cdff471d567c12d3def76157b57fd",
+    "知行成长/server/investments/readiness.py": "2e2efce6629830797bcba4a943132a4450c8d22b97667c74c9d53aa47e7e07ca",
+    "知行成长/server/static/investment-market.js": "2b9287120b338cabe1f2bdc9bf730de54b25acbf5a5c6f2774c258504fb62c83",
+    "知行成长/server/static/investments.js": "6ba4c5ef1e757666e54c4b4b3837482b9d8d37fa2a87918466f9aed0f2f4cbbd",
+    "知行成长/server/static/index.html": "a4ebcc9bea1d484c3417a824c973ecaf9353659b25d7ee199b01f92812930d78",
+    "知行成长/server/tests/test_investment_akshare.py": "aad097752f1817ec2ecc826f95a29e166db507958da8c4bf154c0c4f07c798ca",
+    "知行成长/server/tests/test_investment_akshare_browser.py": "f33b6fd77ed9431307a7bdf92f94d0a66acbcc473b245245ac37fd2534aedf10",
+    "知行成长/server/tests/test_investment_api.py": "8dfa8ef3995ea22facbbb746fbd4923c5235ab031bbf65f033f5b02c2f075fb9",
+    "知行成长/server/tests/test_investment_accounts.py": "82652164e95bc68a3aa82d8ce986f0df81f66ca7fe38c6f2736cbdc507cc8d8b"
+  }
+}

@@ -109,7 +109,7 @@
     root().innerHTML = `<div class="inv-workspace"><header><h2>投资工作台</h2><p class="inv-muted">资金、计划、实际交易和复盘放在一起。</p><div class="inv-actions">
       <label>当前账户<select data-inv-account aria-label="当前账户"><option value="">请选择账户</option>${s.accounts.map(a => `<option value="${a.id}" ${a.id === s.accountId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
       ${button('新建账户','account')}${button('刷新','refresh')}${button('行情与查询来源','sources')}${button('添加盘后行情','market')}${button('本地条件筛选','screen')}${button('查找投资记录','private-search')}</div></header>
-      <p class="inv-notice">支持手工记录与盘后行情导入。供应商实际权限待核验，数据日期以来源为准，实时判断尚未开放。</p>
+      <p class="inv-notice">支持CSV、AKShare东方财富及Tushare盘后日线。请核对来源、数据日期和使用范围，实时判断尚未开放。</p>
       <p data-inv-status role="status" aria-live="polite"></p>
       <nav class="inv-tabs" role="tablist" aria-label="投资视图">${[['today','今日与计划'],['ledger','交易簿'],['review','复盘与策略']].map(([key,text]) => `<button role="tab" type="button" aria-selected="${s.view === key}" aria-controls="investment-panel" data-inv-view="${key}">${text}</button>`).join('')}</nav>
       <div id="investment-panel" role="tabpanel">${!s.accountId ? `<div class="inv-empty"><h3>先建立自己的账户</h3><p>从核对过的现金开始，保留实际成交与当时的思考。</p>${button('添加标的','instrument')}</div>` : s.view === 'today' ? todayView() : s.view === 'ledger' ? ledgerView() : reviewView()}</div>
@@ -265,7 +265,7 @@
       }
       if(action==='readiness') {
         const result=await api('readiness');closeDialog();const d=document.createElement('dialog');dialog=d;d.className='inv-dialog';
-        d.innerHTML=`<h3>配置与验收要求</h3><p>手工记账、CSV和公开规则参考不需要付费行情或AI凭证。</p><h4>AI配置</h4><p>在设置中填写自己的HTTPS Base URL、API Key和准确模型ID；须支持OpenAI兼容流式聊天及要求的JSON输出。</p><p>${esc(result.ai.cost)}</p><h4>盘后行情</h4><p>Tushare Token和daily权限；公开日历覆盖内不需要trade_cal权限。选择供应商日历时另核对trade_cal，ETF另核对fund_daily权限/配额和本人用途许可。Token仅请求时填写，不写入投资记录。</p><h4>未开放</h4><p>分钟/实时权限另行验收，填入Token不会自动开放。真实模型效果和供应商账号权限目前未验证。</p><p>不需要券商登录密码、交易密码或短信验证码。请勿在聊天或文档中粘贴密钥。</p><p>公开规则复核截至 ${esc(result.automatic_reference.review_until)}，超过期限将停止自动填入。</p><button type="button" class="btn">关闭</button>`;
+        d.innerHTML=`<h3>配置与验收要求</h3><p>手工记账、CSV和公开规则参考不需要付费行情或AI凭证。</p><h4>AI配置</h4><p>在设置中填写自己的HTTPS Base URL、API Key和准确模型ID；须支持OpenAI兼容流式聊天及要求的JSON输出。</p><p>${esc(result.ai.cost)}</p><h4>盘后行情</h4><p>AKShare / 东方财富无需Token，支持沪深股票和ETF未复权日线；请先核对使用范围，公开接口可能延迟或限流。</p><p>Tushare Token和daily权限；公开日历覆盖内不需要trade_cal权限。选择供应商日历时另核对trade_cal，ETF另核对fund_daily权限/配额和本人用途许可。Token仅请求时填写，不写入投资记录。</p><h4>未开放</h4><p>分钟/实时权限另行验收，填入Token不会自动开放。真实模型效果和供应商账号权限目前未验证。</p><p>不需要券商登录密码、交易密码或短信验证码。请勿在聊天或文档中粘贴密钥。</p><p>公开规则复核截至 ${esc(result.automatic_reference.review_until)}，超过期限将停止自动填入。</p><button type="button" class="btn">关闭</button>`;
         document.body.append(d);d.showModal();d.querySelector('button').onclick=closeDialog;return;
       }
       if(action==='pause-principle'){await api(`principles/${data.id}/state`,{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({version:Number(data.version),state:'paused',reason:'本人暂停试验'})});return load();}

@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 import db
 from copilot.core import digest, encoded, fail, now
+from .observable_conditions import validate_conditions
 
 
 def transition(store,kind,object_id,version,state,key,reason=''):
@@ -29,6 +30,10 @@ def transition(store,kind,object_id,version,state,key,reason=''):
         if state=='confirmed':
             if old['state']!='draft':
                 fail('invalid_transition','只有草稿可以确认，请先创建修改版本。')
+            if kind=='trade-plans':
+                try:validate_conditions(old.get('entry_conditions',''),old.get('invalidation',''))
+                except ValueError as exc:
+                    fail('unverifiable_conditions',str(exc),422)
             if kind=='strategies' and not all(old.get(k) for k in ('entry_conditions','exit_conditions','validation_scope')):
                 fail('incomplete_strategy','请补充策略入场、退出和验证范围。',422)
             if kind=='principles' and not all(old.get(k) for k in ('supporting_case','contrary_case','validation_scope','source_review_ids')):

@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-28",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "credential_storage": "local .env read for this validation only; no server fallback added",
+  "scope": "real model and real public market data; disposable localhost schema; no private financial data",
+  "results": [
+    {
+      "code": "600000",
+      "name": "浦发银行",
+      "kind": "stock",
+      "started_at": "2026-10-28T14:35:45+08:00",
+      "market_http_status": 502,
+      "state": "market_failed",
+      "error": "provider_unavailable"
+    },
+    {
+      "code": "159915",
+      "name": "创业板ETF",
+      "kind": "etf",
+      "started_at": "2026-10-28T14:35:46+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-de8bf634f93f436c8c8f091a9a020a48",
+      "state": "ready",
+      "analysis_elapsed_seconds": 242.628,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 8,
+      "counterargument_count": 6,
+      "missing_inputs": [
+        "实时行情、盘口与交易状态",
+        "ETF净值/NAV、折溢价、现金替代与申赎影响",
+        "除权、分红、公司行动或价格连续性核验",
+        "当日或盘后成交确认与流动性资料",
+        "基本面、新闻和催化信息",
+        "个人投资政策、可承受损失、资金限制与现金缓冲要求",
+        "更长历史、成交量分布与波动期限结构",
+        "其他相关市场或基准对照"
+      ],
+      "suggestion_actions": [
+        "observe",
+        "conditional_entry"
+      ],
+      "adopt_http_status": 200,
+      "adoption_idempotent": true,
+      "draft_origin": "adopted_conditional_suggestion",
+      "plan_state": "draft",
+      "plan_intent": "entry",
+      "plan_id": "inv-d477c66d158d4d4fa507f75ec441c799",
+      "no_execution": true
+    }
+  ],
+  "model_requests": [
+    {
+      "symbol": "159915",
+      "phase": "analysis",
+      "started_at": "2026-10-28T14:35:47+08:00",
+      "completed": true,
+      "snapshot_hash": "7f63ef7b6f4e322743918fe2cbe4917b12c7c0465e63ae58e4eaf9867a46d36b",
+      "report_validation": "passed",
+      "output_characters": 4081,
+      "elapsed_seconds": 138.66
+    },
+    {
+      "symbol": "159915",
+      "phase": "countercheck",
+      "started_at": "2026-10-28T14:38:05+08:00",
+      "completed": true,
+      "snapshot_hash": "7f63ef7b6f4e322743918fe2cbe4917b12c7c0465e63ae58e4eaf9867a46d36b",
+      "report_validation": "passed",
+      "output_characters": 4756,
+      "elapsed_seconds": 103.238
+    }
+  ],
+  "record_counts": {
+    "plans": 1,
+    "fills": 0
+  },
+  "secret_in_database": false
+}

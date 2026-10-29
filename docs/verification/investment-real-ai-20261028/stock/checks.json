@@ -1,0 +1,13 @@
+{
+  "phases_are_analysis_and_countercheck": true,
+  "both_real_streams_completed": true,
+  "same_frozen_snapshot": true,
+  "frozen_hash_kept": true,
+  "amounts_excluded": true,
+  "report_revalidated": true,
+  "draft_is_unconfirmed": true,
+  "instrument_preserved": true,
+  "no_trade_created": true,
+  "same_model_countercheck": true,
+  "adoption_idempotent": true
+}

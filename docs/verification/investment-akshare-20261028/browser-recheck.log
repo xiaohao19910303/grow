@@ -1,0 +1,8 @@
+test_source_switching_stock_etf_and_failure_keep_previous_data (test_investment_akshare_browser.InvestmentAKShareBrowserTests.test_source_switching_stock_etf_and_failure_keep_previous_data) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 6.358s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 1, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

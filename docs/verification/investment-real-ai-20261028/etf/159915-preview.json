@@ -1,0 +1,51 @@
+{
+  "id": "preview-a5701c0a4b8b4ccfa8b52d6cf81b05de",
+  "version": 1,
+  "created_at": "2026-10-28T14:35:47+08:00",
+  "updated_at": "2026-10-28T14:35:47+08:00",
+  "snapshot": {
+    "kind": "research",
+    "question": "这是公开日线的真实模型与程序流程验收，仅作研究，不是委托。请按短线/波段分别说明支持理由、反证和缺失资料。facts只逐字摘录evidence.content中的片段，数值不改写；程序计算未提供时calculations为空，不编造财报、新闻、ETF净值或实时行情。请列出一个有触发、失效与期限的未来条件研究情景，仅在可合理表达时使用conditional_entry；证据不足可选择observe或wait，不要为验收强行推荐参与。未发送任何私人金额，不给精确个人仓位。建议有效截至可以使用2026-10-31T14:35:47+08:00，不声称条件已触发。",
+    "decision_at": "2026-10-28T14:35:47+08:00",
+    "instrument_id": "inv-fca65cf04f35448685c4343f63b200e6",
+    "instrument": {
+      "id": "inv-fca65cf04f35448685c4343f63b200e6",
+      "name": "创业板ETF",
+      "code": "159915",
+      "market": "SZSE",
+      "kind": "etf"
+    },
+    "evidence": [
+      {
+        "id": "inv-0c18762169e24a96882bbf65cb6f0ef1",
+        "version": 1,
+        "title": "创业板ETF · 东方财富盘后行情 2026-10-27",
+        "content": "{\"available_at\": \"2026-10-28T14:35:47+08:00\", \"bars\": [{\"close\": \"3.42\", \"date\": \"2026-09-22\", \"high\": \"3.493\", \"low\": \"3.407\", \"open\": \"3.463\", \"source_amount\": \"5932490779.064\", \"source_volume\": \"17162018\", \"turnover_cny\": \"5932490779.064\", \"volume_shares\": \"1716201800\"}, {\"close\": \"3.399\", \"date\": \"2026-09-23\", \"high\": \"3.434\", \"low\": \"3.393\", \"open\": \"3.428\", \"source_amount\": \"4517802842.145\", \"source_volume\": \"13259528\", \"turnover_cny\": \"4517802842.145\", \"volume_shares\": \"1325952800\"}, {\"close\": \"3.312\", \"date\": \"2026-09-24\", \"high\": \"3.392\", \"low\": \"3.306\", \"open\": \"3.382\", \"source_amount\": \"4434638158.218\", \"source_volume\": \"13253327\", \"turnover_cny\": \"4434638158.218\", \"volume_shares\": \"1325332700\"}, {\"close\": \"3.159\", \"date\": \"2026-09-28\", \"high\": \"3.293\", \"low\": \"3.145\", \"open\": \"3.284\", \"source_amount\": \"7970913451.03\", \"source_volume\": \"24949465\", \"turnover_cny\": \"7970913451.03\", \"volume_shares\": \"2494946500\"}, {\"close\": \"3.162\", \"date\": \"2026-09-29\", \"high\": \"3.179\", \"low\": \"3.139\", \"open\": \"3.139\", \"source_amount\": \"4678500475.885\", \"source_volume\": \"14794904\", \"turnover_cny\": \"4678500475.885\", \"volume_shares\": \"1479490400\"}, {\"close\": \"3.154\", \"date\": \"2026-09-30\", \"high\": \"3.192\", \"low\": \"3.142\", \"open\": \"3.174\", \"source_amount\": \"4142874902.909\", \"source_volume\": \"13081793\", \"turnover_cny\": \"4142874902.909\", \"volume_shares\": \"1308179300\"}, {\"close\": \"3.053\", \"date\": \"2026-10-08\", \"high\": \"3.188\", \"low\": \"3.03\", \"open\": \"3.161\", \"source_amount\": \"5547687777.701\", \"source_volume\": \"17855515\", \"turnover_cny\": \"5547687777.701\", \"volume_shares\": \"1785551500\"}, {\"close\": \"3.064\", \"date\": \"2026-10-09\", \"high\": \"3.074\", \"low\": \"2.952\", \"open\": \"3.029\", \"source_amount\": \"8210662643.918\", \"source_volume\": \"27315167\", \"turnover_cny\": \"8210662643.918\", \"volume_shares\": \"2731516700\"}, {\"close\": \"2.983\", \"date\": \"2026-10-12\", \"high\": \"3.069\", \"low\": \"2.981\", \"open\": \"3.039\", \"source_amount\": \"4784452497.19\", \"source_volume\": \"15816850\", \"turnover_cny\": \"4784452497.19\", \"volume_shares\": \"1581685000\"}, {\"close\": \"2.974\", \"date\": \"2026-10-13\", \"high\": \"3.02\", \"low\": \"2.88\", \"open\": \"2.93\", \"source_amount\": \"9230115812.249\", \"source_volume\": \"31410731\", \"turnover_cny\": \"9230115812.249\", \"volume_shares\": \"3141073100\"}, {\"close\": \"2.891\", \"date\": \"2026-10-14\", \"high\": \"2.981\", \"low\": \"2.883\", \"open\": \"2.958\", \"source_amount\": \"6371385796.958\", \"source_volume\": \"21766617\", \"turnover_cny\": \"6371385796.958\", \"volume_shares\": \"2176661700\"}, {\"close\": \"2.806\", \"date\": \"2026-10-15\", \"high\": \"2.839\", \"low\": \"2.77\", \"open\": \"2.805\", \"source_amount\": \"12159968279.591\", \"source_volume\": \"43401615\", \"turnover_cny\": \"12159968279.591\", \"volume_shares\": \"4340161500\"}, {\"close\": \"2.789\", \"date\": \"2026-10-16\", \"high\": \"2.85\", \"low\": \"2.762\", \"open\": \"2.84\", \"source_amount\": \"8143656605.165\", \"source_volume\": \"28973984\", \"turnover_cny\": \"8143656605.165\", \"volume_shares\": \"2897398400\"}, {\"close\": \"2.762\", \"date\": \"2026-10-19\", \"high\": \"2.789\", \"low\": \"2.727\", \"open\": \"2.772\", \"source_amount\": \"6973593574.773\", \"source_volume\": \"25255276\", \"turnover_cny\": \"6973593574.773\", \"volume_shares\": \"2525527600\"}, {\"close\": \"2.756\", \"date\": \"2026-10-20\", \"high\": \"2.809\", \"low\": \"2.724\", \"open\": \"2.741\", \"source_amount\": \"7938164416.577\", \"source_volume\": \"28788854\", \"turnover_cny\": \"7938164416.577\", \"volume_shares\": \"2878885400\"}, {\"close\": \"2.713\", \"date\": \"2026-10-21\", \"high\": \"2.787\", \"low\": \"2.7\", \"open\": \"2.771\", \"source_amount\": \"10410389037.534\", \"source_volume\": \"38029459\", \"turnover_cny\": \"10410389037.534\", \"volume_shares\": \"3802945900\"}, {\"close\": \"2.592\", \"date\": \"2026-10-22\", \"high\": \"2.708\", \"low\": \"2.591\", \"open\": \"2.701\", \"source_amount\": \"13934701946.63\", \"source_volume\": \"52785100\", \"turnover_cny\": \"13934701946.63\", \"volume_shares\": \"5278510000\"}, {\"close\": \"2.702\", \"date\": \"2026-10-23\", \"high\": \"2.714\", \"low\": \"2.511\", \"open\": \"2.549\", \"source_amount\": \"19738443792.122\", \"source_volume\": \"76054209\", \"turnover_cny\": \"19738443792.122\", \"volume_shares\": \"7605420900\"}, {\"close\": \"2.651\", \"date\": \"2026-10-26\", \"high\": \"2.69\", \"low\": \"2.618\", \"open\": \"2.655\", \"source_amount\": \"12568405378.707\", \"source_volume\": \"47428728\", \"turnover_cny\": \"12568405378.707\", \"volume_shares\": \"4742872800\"}, {\"close\": \"2.563\", \"date\": \"2026-10-27\", \"high\": \"2.69\", \"low\": \"2.563\", \"open\": \"2.678\", \"source_amount\": \"9574721211.157\", \"source_volume\": \"36368448\", \"turnover_cny\": \"9574721211.157\", \"volume_shares\": \"3636844800\"}], \"coverage\": \"daily_only\", \"data_status\": {\"as_of\": \"2026-10-28T14:35:47+08:00\", \"calendar_source\": \"https://www.szse.cn/disclosure/notice/general/t20251222_618087.html\", \"calendar_status\": \"available\", \"completion_gate\": \"15:30 Asia/Shanghai；保守等待盘后交易窗口结束，不承诺供应商此时已入库。\", \"expected_session\": \"2026-10-27\", \"latest_day\": \"2026-10-27\", \"realtime\": false, \"reason\": \"缺记录不能判断停牌；盘后日线不代表盘中行情。\", \"status\": \"latest_completed_session\", \"trading_status\": \"unknown\"}, \"endpoint\": \"fund_etf_hist_em\", \"freshness\": \"latest_completed_session\", \"indicators\": {\"atr14\": \"0.113214285714285714285714285714285714285714285714285714285714\", \"limitations\": [\"未复权；除权与公司行动可能影响指标，不能据此推定可执行交易。\", \"ATR为最近14条真实区间的简单均值；波动为20次相邻有效记录收益样本标准差，不年化，不保证相邻自然日开市。\"], \"ma20\": \"2.94525\", \"ma5\": \"2.6442\", \"price_basis\": \"unadjusted\", \"record_return_std20\": \"0.0203638829378369154688278627825516327678565845344800908229473\", \"return_sample_count\": 20, \"volume_ratio_5\": \"0.7480561537083427349993119728853553480069942224234310153573\"}, \"latest_session\": \"2026-10-27\", \"library_version\": \"1.20.1\", \"limitations\": [\"未复权日线；成交量由手转股/份，成交额原单位为元。\", \"本次获取的资料不能倒灌为历史事前证据；缺记录不推断停牌，未核验实时状态。\", \"公开接口可能限流、延迟或变更；用途和来源许可由本人核对，未自动换源或合并历史。\"], \"omitted_bar_count\": 15, \"price_basis\": \"unadjusted\", \"provider\": \"akshare_eastmoney\", \"realtime\": false, \"requested_end\": \"2026-10-27\", \"requested_start\": \"2026-09-01\", \"retrieved_at\": \"2026-10-28T14:35:47+08:00\", \"source_units\": {\"amount\": \"CNY\", \"volume\": \"lot_100_shares\"}, \"upstream\": \"eastmoney\"}",
+        "source_url": "https://akshare.akfamily.xyz/data/fund/fund_public.html",
+        "locator": "fund_etf_hist_em SZSE 159915",
+        "available_at": "2026-10-28T14:35:47+08:00",
+        "period_end": null,
+        "contrary_evidence": "未复权资料；公司行动、停牌与当前交易规则仍需核对。",
+        "instrument_id": "inv-fca65cf04f35448685c4343f63b200e6",
+        "evidence_hash": "f16d255d7ddc68f140e684b55d1fdcb140320bb817e445bb1707290f7d2d5109"
+      }
+    ],
+    "plans": [],
+    "reviews": [],
+    "policies": [],
+    "dossiers": [],
+    "campaigns": [],
+    "prompt_version": "investment-v3",
+    "calculation_contract": "moving-average-ledger-v1",
+    "include_amounts": false,
+    "mode": "manual_evidence",
+    "limitations": [
+      "资料来自本人选择；原文摘录匹配不代表独立核验真实性。",
+      "标的名称、代码、市场与品种来自本人维护，仅标识研究对象，未独立核验上市身份或当前行情。",
+      "尚未核验实时行情与交易规则，所有建议仅为研究或条件草稿。",
+      "隐藏金额只排除结构化金额字段，正文中的金额仍需本人检查。"
+    ]
+  },
+  "snapshot_hash": "7f63ef7b6f4e322743918fe2cbe4917b12c7c0465e63ae58e4eaf9867a46d36b",
+  "account_id": "inv-ab451d3f37b246aaa784b3714babd856"
+}

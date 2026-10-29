@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-28",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "credential_storage": "local .env read for this validation only; no server fallback added",
+  "scope": "real model and real public market data; disposable localhost schema; no private financial data",
+  "results": [
+    {
+      "code": "000001",
+      "name": "平安银行",
+      "kind": "stock",
+      "started_at": "2026-10-28T14:40:40+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-8db5bef171a2447a8a729aeeedd94542",
+      "state": "ready",
+      "analysis_elapsed_seconds": 268.878,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 10,
+      "counterargument_count": 7,
+      "missing_inputs": [
+        "实时或盘中成交与盘口数据",
+        "复权因子、除权除息与公司行动",
+        "停牌状态与下一交易日可交易性",
+        "最近财务报告与公告",
+        "行业催化或可核验新闻",
+        "本人资金使用政策与风险预算",
+        "交易成本、滑点和可执行规则",
+        "当前持仓或组合结构"
+      ],
+      "suggestion_actions": [
+        "wait",
+        "conditional_entry"
+      ],
+      "adopt_http_status": 200,
+      "adoption_idempotent": true,
+      "draft_origin": "adopted_conditional_suggestion",
+      "plan_state": "draft",
+      "plan_intent": "entry",
+      "plan_id": "inv-47fced538c0f45d4b0e5d84fca815ffb",
+      "no_execution": true
+    }
+  ],
+  "model_requests": [
+    {
+      "symbol": "000001",
+      "phase": "analysis",
+      "started_at": "2026-10-28T14:40:42+08:00",
+      "completed": true,
+      "snapshot_hash": "f1d12f88aeffef71912e489e058b1c8130e5bb3b47756df2b833e8056c2ab302",
+      "report_validation": "passed",
+      "output_characters": 4307,
+      "elapsed_seconds": 174.111
+    },
+    {
+      "symbol": "000001",
+      "phase": "countercheck",
+      "started_at": "2026-10-28T14:43:36+08:00",
+      "completed": true,
+      "snapshot_hash": "f1d12f88aeffef71912e489e058b1c8130e5bb3b47756df2b833e8056c2ab302",
+      "report_validation": "passed",
+      "output_characters": 4677,
+      "elapsed_seconds": 93.956
+    }
+  ],
+  "record_counts": {
+    "plans": 1,
+    "fills": 0
+  },
+  "secret_in_database": false
+}

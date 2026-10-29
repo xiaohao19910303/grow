@@ -1,0 +1,12 @@
+{
+  "destination_host": "ark.cn-beijing.volces.com",
+  "model": "deepseek-v4-pro",
+  "started": 1793169202.893173,
+  "http_status": 200,
+  "result": {
+    "ok": true,
+    "message": "连接成功，模型正常响应",
+    "model": "deepseek-v4-pro"
+  },
+  "elapsed_seconds": 2.101
+}

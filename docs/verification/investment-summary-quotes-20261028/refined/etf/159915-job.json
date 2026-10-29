@@ -1,0 +1,330 @@
+{
+  "created_at": "2026-10-28T15:46:35+08:00",
+  "draft_report": {
+    "calculations": [],
+    "counterarguments": [
+      "最新状态为stale、realtime=false、trading_status=unknown，不能据此确认当前可成交或盘中行情。",
+      "价格口径为unadjusted_user_declared，未复权；除权或公司行动可能使均线、ATR与波动指标失真。",
+      "仅展示最近20条、前15条省略；已保存35条不证明应有交易日齐全，也不能据此推断缺失交易日或停牌。",
+      "ETF特有风险未核对：净值、折溢价、流动性、申赎机制和组合影响均缺失。",
+      "各指标为导入程序输出；公式和源数据未独立核验，record_return_std20需21条而在当前20条摘要中不足以独立复算。",
+      "没有本人政策、可用资金、账户规则和可承受风险资料，不能给出任何金额或仓位。"
+    ],
+    "facts": [
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"close\": \"2.563\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"ma5\": \"2.6442\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"ma20\": \"2.94525\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"volume_ratio_5\": \"0.7480561537083427349993119728853553480069942224234310153573\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"atr14\": \"0.113214285714285714285714285714285714285714285714285714285714\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"record_return_std20\": \"0.0203638829378369154688278627825516327678565845344800908229473\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"price_basis\": \"unadjusted_user_declared\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"status\": \"stale\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"latest_day\": \"2026-10-27\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"trading_status\": \"unknown\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"realtime\": false"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"stored_bar_count\": 35"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"summary_omitted_bar_count\": 15"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"return_sample_count\": 20"
+      }
+    ],
+    "inferences": [
+      "最新收盘价低于MA5与MA20，短线与波段均线位置均偏弱。",
+      "volume_ratio_5小于1可能表示量能相对收缩，但缺少公式和基准说明，不能单独作为反转证据。",
+      "在未复权、实时状态未知且缺少ETF净值、折溢价与流动性资料的情况下，当前更适合观察条件而非执行。"
+    ],
+    "missing_inputs": [
+      "2026-10-28及之后的公开日线或本人授权记录",
+      "实时行情、买卖盘和当前可交易状态",
+      "前后复权价格与公司行动记录",
+      "ETF净值、折溢价、流动性、申赎费用和组合影响",
+      "前15条逐条bar记录（仅用于核对指标复算，不等同于源数据缺失）",
+      "指标计算公式与计算合同详情",
+      "交易规则、税费和停牌规则",
+      "个人政策、可用资金、账户限制与可承受风险",
+      "截至2026-10-28的公开公告与风险披露核对结果"
+    ],
+    "scenarios": [],
+    "suggestions": [
+      {
+        "action": "wait",
+        "evidence_ids": [
+          "inv-02b3745bda734f288a43b0d69e2bf672"
+        ],
+        "invalidation": "若截至2026-10-31T15:46:35+08:00仍未取得2026-10-28及以后可核对日线，或出现公司行动导致未复权序列不可比，则保持等待并停止采用该情景。",
+        "reason": "当前data_status为stale、realtime=false、trading_status=unknown，价格basis为unadjusted_user_declared；没有可核验的实时状态、复权数据和ETF净值，不能形成可执行研究条件。",
+        "title": "等待2026-10-28盘后数据与状态更新后再评估",
+        "trigger": "在2026-10-31T15:46:35+08:00前，通过公开行情源或本人授权记录核对：取得2026-10-28及以后连续日线，并确认数据状态不再为stale或trading_status不再是unknown；以可核对的记录为准。",
+        "valid_until": "2026-10-31T15:46:35+08:00"
+      },
+      {
+        "action": "observe",
+        "evidence_ids": [
+          "inv-02b3745bda734f288a43b0d69e2bf672"
+        ],
+        "invalidation": "若截至2026-10-31T15:46:35+08:00仍未出现该日线组合，或价格继续收于MA5下方，或发生公司行动破坏未复权口径可比性，则放弃该观察条件，不转入参与。",
+        "reason": "短线最新收盘低于MA5且volume_ratio_5小于1，显示弱势；不作为参与指令，只观察可核对的日线触发。",
+        "title": "短线观察：同口径收盘重回MA5且量比恢复再评估",
+        "trigger": "在2026-10-31T15:46:35+08:00前，以同一未复权口径公开日线或本人授权记录观察：当日收盘大于当日MA5，且当日volume_ratio_5大于等于1.0；两项均需可核对。",
+        "valid_until": "2026-10-31T15:46:35+08:00"
+      },
+      {
+        "action": "observe",
+        "evidence_ids": [
+          "inv-02b3745bda734f288a43b0d69e2bf672"
+        ],
+        "invalidation": "若截至2026-10-31T15:46:35+08:00价格未站上MA20，或缺失ETF净值、折溢价、流动性，则不进入波段参与评估。",
+        "reason": "波段MA20高于最新收盘，趋势偏弱；ETF还需净值、折溢价和流动性才能评估。",
+        "title": "波段观察：价格站上MA20前仅研究，并行核对ETF折溢价",
+        "trigger": "同一未复权口径下观察收盘是否站上当日MA20，并取得ETF净值、折溢价、成交量或流动性数据。",
+        "valid_until": "2026-10-31T15:46:35+08:00"
+      }
+    ],
+    "summary": "仅作研究/流程验收，不是委托或交易指令。研究对象为本人维护的创业板ETF（159915，SZSE，ETF），其上市身份与行情未独立核验。evidence为本人导入日线：最新日期2026-10-27，收盘2.563；data_status为stale，realtime=false，trading_status=unknown。已保存35条，摘要展示20条，省略较早15条；省略仅表示未逐条展示，不等于源数据缺失，也不能证明应有交易日齐全。短线：最新收盘2.563低于ma5=2.6442和ma20=2.94525，volume_ratio_5为0.7480561537083427349993119728853553480069942224234310153573，价格与均线结构偏弱，量比小于1；但价格basis为unadjusted_user_declared，未复权，公司行动可能影响。波段：ma20高于最新收盘，atr14=0.113214285714285714285714285714285714285714285714285714285714，record_return_std20=0.0203638829378369154688278627825516327678565845344800908229473（20次相邻有效记录样本，不年化）。摘要对MA5、MA20、量比5、ATR14的窗口记录数足够；record_return_std20需21条，当前20条摘要不足以独立复算。证据不足，建议等待/观察，不参与。",
+    "trade_citations": []
+  },
+  "evidence_snapshot_id": "evidence-1e4489816edf4018a0e879d528212b99",
+  "id": "analysis-d413eb8156984cd5bf21d950a61edd28",
+  "model": "deepseek-v4-pro",
+  "phase": "完成；等待本人核对",
+  "preview_id": "preview-f923b3bfd8e647498606db8805a07e41",
+  "prompt_version": "investment-v5",
+  "report": {
+    "calculations": [],
+    "counterarguments": [
+      "最新数据状态为stale、realtime=false、trading_status=unknown，不能据此确认当前可成交或盘中行情；只能等待可核对的状态更新。",
+      "价格basis为unadjusted_user_declared，未复权；除权或公司行动可能使均线、ATR与波动指标失真，未来条件也不能跨口径沿用当前阈值。",
+      "摘要省略与源数据缺失已分离：当前只展示最近20条并省略较早15条；已保存35条不证明应有交易日齐全，也不证明缺交易日或停牌，更不能把摘要不足以复算写成源数据缺失或指标缺输入。content自述source_completeness=not_independently_verified。",
+      "各指标为导入程序输出；MA5、MA20、量比5、ATR14的窗口记录数在20条摘要中够用，但仍须核对公式、字段和来源；record_return_std20需21条，当前20条摘要不足以独立复算。",
+      "ETF特有风险未核对：净值、折溢价、流动性、申赎机制和组合影响均缺失，不能将ETF价格结构直接当作可交易结论。",
+      "没有本人政策、可用资金、账户规则和可承受风险资料，不能给出任何金额或仓位；也未发送私人金额。",
+      "未选择交易计划或campaign，calculations与trade_citations为空；行情indicators与计划calculation/hash是不同合同，未选计划不表示行情指标缺失。"
+    ],
+    "facts": [
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"close\": \"2.563\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"ma5\": \"2.6442\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"ma20\": \"2.94525\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"volume_ratio_5\": \"0.7480561537083427349993119728853553480069942224234310153573\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"atr14\": \"0.113214285714285714285714285714285714285714285714285714285714\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"record_return_std20\": \"0.0203638829378369154688278627825516327678565845344800908229473\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"price_basis\": \"unadjusted_user_declared\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"status\": \"stale\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"latest_day\": \"2026-10-27\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"trading_status\": \"unknown\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"realtime\": false"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"stored_bar_count\": 35"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"included_bar_count\": 20"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"summary_omitted_bar_count\": 15"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"indicator_input_bar_count\": 35"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"indicator_scope\": \"all_stored_input_bars_with_per_indicator_lookbacks\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"record_return_std20\": {\"required_input_records\": 21, \"stored_record_count_sufficient\": true, \"summary_record_count_sufficient\": false}"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"source_completeness\": \"not_independently_verified\""
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"return_sample_count\": 20"
+      },
+      {
+        "evidence_id": "inv-02b3745bda734f288a43b0d69e2bf672",
+        "quote": "\"reason\": \"缺记录不能判断停牌；盘后日线不代表盘中行情。\""
+      }
+    ],
+    "inferences": [
+      "最新收盘2.563低于ma5=2.6442与ma20=2.94525，短线与波段均线位置均偏弱。",
+      "volume_ratio_5小于1；在未核验公式与基准的情况下，只能视为量能相对收缩线索，不能单独作为反转证据。",
+      "在未复权、实时状态未知且缺少ETF净值、折溢价与流动性资料的情况下，当前更适合等待或观察，不执行。"
+    ],
+    "missing_inputs": [
+      "2026-10-28及之后可核对的公开日线或本人授权记录",
+      "实时行情、买卖盘和当前可交易状态",
+      "前后复权价格、复权因子与公司行动记录",
+      "ETF净值、时点折溢价、流动性、申赎费用与组合影响",
+      "指标计算公式与计算合同输出详情",
+      "交易规则、税费、停牌规则及ETF申赎机制",
+      "截至2026-10-28的公开公告与风险披露核对结果",
+      "个人政策、可用资金、账户限制与可承受风险"
+    ],
+    "scenarios": [
+      {
+        "allocation": {},
+        "assumptions": [
+          "未收到本人可投资资金、账户规则或政策，以下仅用于说明比较，不构成个人建议。",
+          "若要比较条件参与，只能以可核对的公开行情触发和ETF流动性/净值数据为前提；此处不预设任何金额或份额。"
+        ],
+        "constraints": [
+          "不提供allocation；未发送金额不得给allocation。",
+          "未取得唯一有效个人政策前，不形成个人草案。",
+          "未核验实时行情、复权口径、ETF净值与折溢价前，不执行任何交易。"
+        ],
+        "missing_inputs": [],
+        "mode": "education",
+        "name": "情景A：仅观察/保留现金（教育）",
+        "next_step": "补齐可投资资金、唯一有效政策、账户规则与风险承受后再从education升级为personal_draft；当前只保留现金观察。"
+      },
+      {
+        "allocation": {},
+        "assumptions": [
+          "可观察触发仅作研究假设：同一未复权口径下收盘站上MA5/MA20、量比恢复、ETF净值与折溢价和流动性可核对；不预设会触发。",
+          "若满足触发并取得本人资金与政策，才可另建personal_draft，且不因单一策略自动入场。"
+        ],
+        "constraints": [
+          "不提供金额、比例或精确仓位；禁止将教育情景当作执行指令。",
+          "条件参与不突破现金缓冲，也不自动补仓或增加预算。",
+          "必须使用同一复权口径，未来阈值需更新，不沿用当前绝对价。"
+        ],
+        "missing_inputs": [],
+        "mode": "education",
+        "name": "情景B：条件参与（教育）",
+        "next_step": "在valid_until前继续观察；若触发条件全部可核对，再请求本人提供政策与可用资金以评估是否进入personal_draft。"
+      }
+    ],
+    "suggestions": [
+      {
+        "action": "wait",
+        "evidence_ids": [
+          "inv-02b3745bda734f288a43b0d69e2bf672"
+        ],
+        "invalidation": "若截至2026-10-31T15:46:35+08:00仍未取得2026-10-28及以后可核对日线，或数据状态仍为stale/trading_status仍为unknown，或出现可核对公司行动使未复权序列不可比，则保持等待并停止采用该情景。",
+        "reason": "当前可核对内容显示data_status.status=stale、realtime=false、trading_status=unknown，price_basis为unadjusted_user_declared；没有可核验的实时状态、复权数据和ETF净值/折溢价/流动性，不能形成可执行研究条件。",
+        "title": "等待2026-10-28及以后状态更新后再评估",
+        "trigger": "在2026-10-31T15:46:35+08:00前，通过公开行情源或本人授权记录核对：取得2026-10-28及以后连续日线，并确认数据状态不再为stale且trading_status不再是unknown；以可核对记录为准。",
+        "valid_until": "2026-10-31T15:46:35+08:00"
+      },
+      {
+        "action": "observe",
+        "evidence_ids": [
+          "inv-02b3745bda734f288a43b0d69e2bf672"
+        ],
+        "invalidation": "若截至2026-10-31T15:46:35+08:00未出现该组合，或价格继续收于当日MA5下方，或发生可核对公司行动破坏同一未复权口径，则放弃该观察条件，不转入参与。",
+        "reason": "最新收盘2.563低于ma5=2.6442，volume_ratio_5小于1；只作为观察条件，不构成参与指令，需同一未复权口径且等待可核对触发。",
+        "title": "短线观察：同口径收盘重回MA5且量比恢复再评估",
+        "trigger": "在2026-10-31T15:46:35+08:00前，以同一未复权口径的公开日线或本人授权记录观察：当日收盘大于当日MA5，且当日volume_ratio_5大于等于1.0；两项均需可核对。",
+        "valid_until": "2026-10-31T15:46:35+08:00"
+      },
+      {
+        "action": "observe",
+        "evidence_ids": [
+          "inv-02b3745bda734f288a43b0d69e2bf672"
+        ],
+        "invalidation": "若截至2026-10-31T15:46:35+08:00收盘未高于当日MA20，或ETF净值、折溢价、流动性仍缺失，则不进入波段参与评估。",
+        "reason": "ma20=2.94525高于最新收盘2.563，波段偏弱；ETF还需净值、折溢价、流动性才能评估。",
+        "title": "波段观察：价格站上MA20前仅研究，并行核对ETF折溢价",
+        "trigger": "在2026-10-31T15:46:35+08:00前，在同一未复权口径下观察收盘是否高于当日MA20，并取得可核对的ETF净值、折溢价、成交量或流动性数据。",
+        "valid_until": "2026-10-31T15:46:35+08:00"
+      }
+    ],
+    "summary": "仅作研究/流程验收，不是委托或交易指令。研究对象为本人维护的创业板ETF（159915，SZSE，ETF），其上市身份、代码与行情未独立核验。证据为本人导入日线：latest_day=2026-10-27，最新收盘2.563；data_status.status=stale，realtime=false，trading_status=unknown。summary_scope显示已保存35条，摘要展示20条，较早15条未逐条展示；省略仅表示未逐条展示，不等于源数据缺失，也不能证明应有交易日齐全或缺失，source_completeness为not_independently_verified。短线：最新收盘2.563低于ma5=2.6442、ma20=2.94525，volume_ratio_5=0.7480561537083427349993119728853553480069942224234310153573，价格结构偏弱，量比小于1；价格basis为unadjusted_user_declared，未复权。波段：ma20高于最新收盘；atr14=0.113214285714285714285714285714285714285714285714285714285714；record_return_std20=0.0203638829378369154688278627825516327678565845344800908229473（20次相邻有效记录样本，不年化）。按indicator_windows，当前20条摘要对MA5、MA20、量比5、ATR14窗口记录数足够；record_return_std20需21条，当前20条摘要不足以独立复算。指标值仍为导入程序输出，公式与来源未独立核验。未选择交易计划或campaign，calculations/trade_citations为空，这不表示行情指标缺失。ETF净值、折溢价、流动性未核对；无个人政策或资金资料，不给金额或仓位。建议等待/观察，不执行。",
+    "trade_citations": []
+  },
+  "same_model_review": true,
+  "snapshot_hash": "235df64d357a8e16bf9d9c0b852b61eda343ebce2c7bfdb48e83c456f09a6675",
+  "state": "ready",
+  "updated_at": "2026-10-28T15:55:31+08:00",
+  "validation_note": "引用与选定原文匹配；建议条件仍需本人根据公开资料与本人记录核对，未独立核验材料真实性。",
+  "changed_input_ids": [],
+  "current_input_status": "unchanged",
+  "evidence_sources": [
+    {
+      "id": "inv-02b3745bda734f288a43b0d69e2bf672",
+      "title": "创业板ETF · 本人导入日线 2026-10-27",
+      "source_url": null,
+      "locator": "CSV导入；来源声明 真实AKShare东方财富历史快照复验；原取数 2026-10-28T14:35:47+08:00",
+      "available_at": "2026-10-28T15:46:35+08:00",
+      "evidence_hash": "462c026c2190d245f8f17d858091803c9485407970b6314a77d8ab99037d3c3e"
+    }
+  ],
+  "expired_suggestion_count": 0
+}

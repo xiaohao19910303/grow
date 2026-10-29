@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from copilot.core import digest, encoded, fail, now
 from .accounting import reconcile
 from .contracts import RESOURCE_MODELS
+from .observable_conditions import UnverifiableCondition
 from .schema import TABLES
 
 
@@ -32,7 +33,12 @@ class InvestmentStore:
             fail('not_found', '投资记录类型不存在。', 404)
         try:
             return model.model_validate(data).model_dump(mode='json')
-        except ValidationError:
+        except ValidationError as exc:
+            # 条件校验只返回固定说明，便于修改草稿；不回显输入或其他校验上下文。
+            for error in exc.errors(include_input=False):
+                cause=error.get('ctx',{}).get('error')
+                if isinstance(cause,UnverifiableCondition):
+                    fail('unverifiable_conditions',str(cause),422)
             fail('validation_error', '请核对必填字段、十进制字符串和带时区的时间。', 422)
 
     @staticmethod

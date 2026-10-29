@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-28",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "credential_storage": "local .env read for this validation only; no server fallback added",
+  "scope": "real model and real public market data; disposable localhost schema; no private financial data",
+  "prompt_version": "investment-v4",
+  "market_source_manifest": [
+    {
+      "symbol": "000001",
+      "original_path": "stock/000001-market.json",
+      "sha256": "d1791bb099c2087708c78ffa09b85261ff31bbf25f6780ae33cc01e78dabf34c",
+      "original_provider": "akshare_eastmoney",
+      "original_retrieved_at": "2026-10-28T14:40:42+08:00",
+      "snapshot_reuse": true
+    },
+    {
+      "symbol": "159915",
+      "original_path": "etf/159915-market.json",
+      "sha256": "07dd52f4a809b1cbac817c4562406659c1a07b948030251e38c3d2baea28279b",
+      "original_provider": "akshare_eastmoney",
+      "original_retrieved_at": "2026-10-28T14:35:47+08:00",
+      "snapshot_reuse": true
+    }
+  ],
+  "results": [
+    {
+      "code": "000001",
+      "name": "平安银行",
+      "kind": "stock",
+      "started_at": "2026-10-28T15:02:52+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-cf0fa38ab7e54419ab84f674bf46866c",
+      "state": "failed",
+      "analysis_elapsed_seconds": 163.674,
+      "same_model_review": true,
+      "has_first_report": false
+    },
+    {
+      "code": "159915",
+      "name": "创业板ETF",
+      "kind": "etf",
+      "started_at": "2026-10-28T15:05:35+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-23d128ebda6e4bc384cbc65d62387974",
+      "state": "ready",
+      "analysis_elapsed_seconds": 340.766,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 19,
+      "counterargument_count": 6,
+      "missing_inputs": [
+        "同一复权口径的前复权或后复权日线及复权因子，用于重新计算MA、ATR、收益波动率。",
+        "ETF管理人公告的IOPV/基金净值、折溢价、现金替代标志、最小申赎单位及申赎限额。",
+        "最新交易所披露的停牌状态、交易规则、涨跌停限制。",
+        "ETF跟踪指数、成分股集中度、行业分布或定期报告，用于评估基本面与组合风险。",
+        "可核对的公告、新闻催化事件；现有证据中无此类内容。",
+        "本人风险政策、现金缓冲、可用资金、费用、可承受损失与暂停新增风险规则。",
+        "若需程序核验，应提供选定计划中的calculation字段与hash；本次未提供，故calculations为空。"
+      ],
+      "suggestion_actions": [
+        "observe",
+        "research",
+        "wait"
+      ],
+      "draft_http_status": 201,
+      "draft_origin": "observation_from_original_ai_text",
+      "plan_state": "draft",
+      "plan_intent": "observe",
+      "plan_id": "inv-ec24a265393948b5ba22dbb8d7321b8d",
+      "no_execution": true
+    }
+  ],
+  "model_requests": [
+    {
+      "symbol": "000001",
+      "phase": "analysis",
+      "started_at": "2026-10-28T15:02:52+08:00",
+      "completed": true,
+      "snapshot_hash": "92fa49d978f05945334d9656b647cd442b3ad9cb8e68a1ede7da7cdd46a6e149",
+      "report_validation": "failed",
+      "validation_error": "事实引用不属于选定原文。",
+      "output_characters": 3998,
+      "elapsed_seconds": 163.361
+    },
+    {
+      "symbol": "159915",
+      "phase": "analysis",
+      "started_at": "2026-10-28T15:05:35+08:00",
+      "completed": true,
+      "snapshot_hash": "aefc05500f9413fa918f28f185c6a621590e15447589cde569dc1f660484988c",
+      "report_validation": "passed",
+      "output_characters": 6820,
+      "elapsed_seconds": 214.721
+    },
+    {
+      "symbol": "159915",
+      "phase": "countercheck",
+      "started_at": "2026-10-28T15:09:10+08:00",
+      "completed": true,
+      "snapshot_hash": "aefc05500f9413fa918f28f185c6a621590e15447589cde569dc1f660484988c",
+      "report_validation": "passed",
+      "output_characters": 7033,
+      "elapsed_seconds": 125.118
+    }
+  ],
+  "record_counts": {
+    "plans": 1,
+    "fills": 0
+  },
+  "secret_in_database": false
+}

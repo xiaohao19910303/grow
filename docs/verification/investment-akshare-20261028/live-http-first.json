@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-28",
+  "scope": "public market requests; disposable localhost schema only",
+  "requests": [
+    {
+      "kind": "stock",
+      "market": "SSE",
+      "code": "600000",
+      "date_range": [
+        "2026-09-01",
+        "2026-10-27"
+      ],
+      "http_status": 200,
+      "elapsed_seconds": 1.28,
+      "error": null,
+      "message": null,
+      "bar_count": 35,
+      "last_bar": [
+        {
+          "date": "2026-10-27",
+          "open": "9.56",
+          "high": "9.87",
+          "low": "9.53",
+          "close": "9.82",
+          "volume_shares": "80753000",
+          "turnover_cny": "789322271",
+          "source_volume": "807530",
+          "source_amount": "789322271"
+        }
+      ]
+    },
+    {
+      "kind": "etf",
+      "market": "SSE",
+      "code": "510300",
+      "date_range": [
+        "2026-09-01",
+        "2026-10-27"
+      ],
+      "http_status": 502,
+      "elapsed_seconds": 0.67,
+      "error": "provider_unavailable",
+      "message": "东方财富日线暂不可用或返回格式已变化；未保存行情、未自动换源。",
+      "bar_count": 0,
+      "last_bar": []
+    }
+  ],
+  "persisted_counts": {
+    "market-snapshots": 1,
+    "research": 1
+  },
+  "akshare_version": "1.20.1"
+}

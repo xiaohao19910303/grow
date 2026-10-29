@@ -62,3 +62,53 @@ class InvestmentAPITests(PostgreSQLFixture):
             'conditions':[{'field':'script','op':'eq','value':'anything'}]},headers=self.headers)
         self.assertEqual(invalid.status_code,422)
         self.assertEqual(self.client.get('/api/investments/data-sources').headers['cache-control'],'no-store')
+
+    def test_akshare_entry_requires_confirmation_and_never_requires_or_sends_tushare_token(self):
+        from unittest.mock import patch
+        instrument=self.store.create('instruments',{'name':'合成股票','code':'600000','market':'SSE','kind':'stock'},'ak-i')
+        body={'instrument_id':instrument['id'],'start_date':'2026-10-23','end_date':'2026-10-27','use_confirmed':True}
+        packet={'library_version':'test','rows':[{'日期':'2026-10-27','开盘':'10','最高':'12','最低':'9',
+            '收盘':'11','成交量':'100','成交额':'110000'}]}
+        with patch('investments.akshare_daily.load_rows',return_value=packet) as loader:
+            response=self.client.post('/api/investments/provider/akshare/daily',json=body,headers=self.headers)
+            self.assertEqual(response.status_code,200,response.text)
+            self.assertEqual(response.json()['provider'],'akshare_eastmoney')
+            self.assertEqual(response.headers['cache-control'],'no-store')
+            self.assertEqual(loader.call_args.args,('stock','600000','2026-10-23','2026-10-27'))
+            replay=self.client.post('/api/investments/provider/akshare/daily',json=body,headers=self.headers)
+            self.assertEqual(replay.json(),response.json());self.assertEqual(loader.call_count,1)
+        denied=self.client.post('/api/investments/provider/akshare/daily',json={**body,'use_confirmed':False},
+            headers={**self.headers,'Idempotency-Key':'not-confirmed'})
+        self.assertEqual(denied.status_code,422)
+        self.assertEqual(self.client.post('/api/investments/provider/akshare/daily',json=body).status_code,403)
+        sources=self.client.get('/api/investments/data-sources').json()['sources']
+        self.assertEqual(next(s for s in sources if s['id']=='akshare')['status'],'adapter_ready')
+        self.assertIn('/api/investments/provider/daily',self.client.get('/openapi.json').json()['paths'])
+
+    def test_plan_conditions_are_checked_on_create_edit_and_legacy_confirmation(self):
+        import db
+        account=self.store.create('accounts',{'name':'校验账户','opening_cash':'0','baseline_date':'2026-10-28'},'condition-a')
+        instrument=self.store.create('instruments',{'name':'合成股票','code':'600000','market':'SSE','kind':'stock'},'condition-i')
+        body={'account_id':account['id'],'instrument_id':instrument['id'],'title':'公开资料研究',
+            'entry_conditions':'核对截至复核日已公开公告；缺资料则等待','invalidation':'公开公告发生更正时重新研究',
+            'valid_until':'2030-01-01T15:00:00+08:00'}
+        bad={**body,'entry_conditions':'确认无未公开重大事项'}
+        response=self.client.post('/api/investments/trade-plans',json=bad,headers=self.headers)
+        self.assertEqual(response.status_code,422)
+        self.assertEqual(response.json()['error'],'unverifiable_conditions')
+        self.assertIn('已公开公告',response.json()['message'])
+        self.assertEqual(self.store.listing('trade-plans')['total'],0)
+        response=self.client.post('/api/investments/trade-plans',json=body,headers=self.headers)
+        self.assertEqual(response.status_code,201,response.text);plan=response.json()
+        response=self.client.put('/api/investments/trade-plans/'+plan['id'],json={'version':1,
+            'data':{'invalidation':'核实内幕消息'}},headers={**self.headers,'Idempotency-Key':'bad-plan-edit'})
+        self.assertEqual(response.status_code,422)
+        self.assertEqual(response.json()['error'],'unverifiable_conditions')
+        self.assertEqual(self.store.get('trade-plans',plan['id'])['version'],1)
+        legacy={**plan,'version':2,'entry_conditions':bad['entry_conditions']}
+        with db.connect() as c:self.store.save(c,'trade-plans',legacy)
+        response=self.client.post('/api/investments/trade-plans/'+plan['id']+'/state',json={'version':2,'state':'confirmed'},
+            headers={**self.headers,'Idempotency-Key':'bad-plan-confirm'})
+        self.assertEqual(response.status_code,422)
+        self.assertEqual(response.json()['error'],'unverifiable_conditions')
+        self.assertEqual(self.store.get('trade-plans',plan['id']),legacy)

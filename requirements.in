@@ -20,3 +20,6 @@ PyJWT[crypto]>=2.10,<3
 
 # Encrypt per-account GitHub tokens
 cryptography>=43.0.0
+
+# 东方财富股票/ETF盘后日线（由隔离取数进程按需加载）
+akshare==1.20.1

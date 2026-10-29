@@ -1,0 +1,139 @@
+{
+  "date": "2026-10-28",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "model_analysis_request_count": 4,
+  "connection_test_request_count": 1,
+  "real_transport": true,
+  "credentials_persisted_in_artifacts": false,
+  "scope": "real HTTP API pipeline in disposable localhost schemas, public daily market evidence only; not a production-browser run",
+  "results": [
+    {
+      "code": "000001",
+      "name": "平安银行",
+      "kind": "stock",
+      "started_at": "2026-10-28T14:40:40+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-8db5bef171a2447a8a729aeeedd94542",
+      "state": "ready",
+      "analysis_elapsed_seconds": 268.878,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 10,
+      "counterargument_count": 7,
+      "missing_inputs": [
+        "实时或盘中成交与盘口数据",
+        "复权因子、除权除息与公司行动",
+        "停牌状态与下一交易日可交易性",
+        "最近财务报告与公告",
+        "行业催化或可核验新闻",
+        "本人资金使用政策与风险预算",
+        "交易成本、滑点和可执行规则",
+        "当前持仓或组合结构"
+      ],
+      "suggestion_actions": [
+        "wait",
+        "conditional_entry"
+      ],
+      "adopt_http_status": 200,
+      "adoption_idempotent": true,
+      "draft_origin": "adopted_conditional_suggestion",
+      "plan_state": "draft",
+      "plan_intent": "entry",
+      "plan_id": "inv-47fced538c0f45d4b0e5d84fca815ffb",
+      "no_execution": true
+    },
+    {
+      "code": "159915",
+      "name": "创业板ETF",
+      "kind": "etf",
+      "started_at": "2026-10-28T14:35:46+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-de8bf634f93f436c8c8f091a9a020a48",
+      "state": "ready",
+      "analysis_elapsed_seconds": 242.628,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 8,
+      "counterargument_count": 6,
+      "missing_inputs": [
+        "实时行情、盘口与交易状态",
+        "ETF净值/NAV、折溢价、现金替代与申赎影响",
+        "除权、分红、公司行动或价格连续性核验",
+        "当日或盘后成交确认与流动性资料",
+        "基本面、新闻和催化信息",
+        "个人投资政策、可承受损失、资金限制与现金缓冲要求",
+        "更长历史、成交量分布与波动期限结构",
+        "其他相关市场或基准对照"
+      ],
+      "suggestion_actions": [
+        "observe",
+        "conditional_entry"
+      ],
+      "adopt_http_status": 200,
+      "adoption_idempotent": true,
+      "draft_origin": "adopted_conditional_suggestion",
+      "plan_state": "draft",
+      "plan_intent": "entry",
+      "plan_id": "inv-d477c66d158d4d4fa507f75ec441c799",
+      "no_execution": true
+    }
+  ],
+  "model_requests": [
+    {
+      "symbol": "000001",
+      "phase": "analysis",
+      "started_at": "2026-10-28T14:40:42+08:00",
+      "completed": true,
+      "snapshot_hash": "f1d12f88aeffef71912e489e058b1c8130e5bb3b47756df2b833e8056c2ab302",
+      "report_validation": "passed",
+      "output_characters": 4307,
+      "elapsed_seconds": 174.111
+    },
+    {
+      "symbol": "000001",
+      "phase": "countercheck",
+      "started_at": "2026-10-28T14:43:36+08:00",
+      "completed": true,
+      "snapshot_hash": "f1d12f88aeffef71912e489e058b1c8130e5bb3b47756df2b833e8056c2ab302",
+      "report_validation": "passed",
+      "output_characters": 4677,
+      "elapsed_seconds": 93.956
+    },
+    {
+      "symbol": "159915",
+      "phase": "analysis",
+      "started_at": "2026-10-28T14:35:47+08:00",
+      "completed": true,
+      "snapshot_hash": "7f63ef7b6f4e322743918fe2cbe4917b12c7c0465e63ae58e4eaf9867a46d36b",
+      "report_validation": "passed",
+      "output_characters": 4081,
+      "elapsed_seconds": 138.66
+    },
+    {
+      "symbol": "159915",
+      "phase": "countercheck",
+      "started_at": "2026-10-28T14:38:05+08:00",
+      "completed": true,
+      "snapshot_hash": "7f63ef7b6f4e322743918fe2cbe4917b12c7c0465e63ae58e4eaf9867a46d36b",
+      "report_validation": "passed",
+      "output_characters": 4756,
+      "elapsed_seconds": 103.238
+    }
+  ],
+  "fills_created": 0,
+  "plans_created": 2,
+  "review_findings": [
+    "股票反证修正了以当前未复权均线作未来复权触发阈值的问题。",
+    "股票最终草稿仍含“确认无未公开重大事项”的不可验证措辞；不应作为可执行条件。",
+    "部分事实引用只摘录数值，字段语义仍需人工对应；未宣称独立验证原文真实性或建议收益。"
+  ]
+}

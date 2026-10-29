@@ -1,0 +1,16 @@
+/Volumes/Xiaohao/学习/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_account_creation_contract_openapi_and_replay (test_investment_api.InvestmentAPITests.test_account_creation_contract_openapi_and_replay) ... ok
+test_akshare_entry_requires_confirmation_and_never_requires_or_sends_tushare_token (test_investment_api.InvestmentAPITests.test_akshare_entry_requires_confirmation_and_never_requires_or_sends_tushare_token) ... ok
+test_market_import_and_conditions_http_boundary (test_investment_api.InvestmentAPITests.test_market_import_and_conditions_http_boundary) ... ok
+test_plan_conditions_are_checked_on_create_edit_and_legacy_confirmation (test_investment_api.InvestmentAPITests.test_plan_conditions_are_checked_on_create_edit_and_legacy_confirmation) ... ok
+test_private_responses_and_unknown_resource (test_investment_api.InvestmentAPITests.test_private_responses_and_unknown_resource) ... ok
+test_validation_does_not_echo_ai_credentials (test_investment_api.InvestmentAPITests.test_validation_does_not_echo_ai_credentials) ... ok
+test_write_header_and_invalid_decimal_rejected (test_investment_api.InvestmentAPITests.test_write_header_and_invalid_decimal_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.034s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 7, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

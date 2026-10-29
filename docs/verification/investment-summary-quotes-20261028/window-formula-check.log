@@ -1,0 +1,11 @@
+test_real_import_path_preserves_all_bars_indicators_and_preview_hints (test_investment_market_evidence.MarketEvidencePreviewTests.test_real_import_path_preserves_all_bars_indicators_and_preview_hints) ... ok
+test_equal_numeric_value_still_does_not_allow_changed_literal_quotes (test_investment_market_evidence.MarketEvidenceTests.test_equal_numeric_value_still_does_not_allow_changed_literal_quotes) ... ok
+test_excerpt_explains_counts_without_claiming_source_completeness (test_investment_market_evidence.MarketEvidenceTests.test_excerpt_explains_counts_without_claiming_source_completeness) ... ok
+test_short_hints_preserve_precision_basis_and_latest_close (test_investment_market_evidence.MarketEvidenceTests.test_short_hints_preserve_precision_basis_and_latest_close) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.060s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 4, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

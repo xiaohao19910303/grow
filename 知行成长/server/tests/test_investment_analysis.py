@@ -42,10 +42,66 @@ class InvestmentAnalysisTests(PostgreSQLFixture):
     def test_exact_preview_and_future_information_rejected(self):
         preview=self.preview()
         self.assertEqual(len(preview['snapshot']['evidence']),1)
+        self.assertIsNone(preview['snapshot']['instrument'])
         self.assertNotIn('opening_cash',json.dumps(preview))
         with self.assertRaises(Problem):
             self.service.preview({'kind':'research','question':'只看当时资料',
                 'evidence_ids':[self.evidence['id']],'decision_at':'2026-10-24T15:00:00+08:00'})
+
+    def test_selected_instrument_identity_reaches_both_passes_without_campaign_mixup(self):
+        account=self.store.create('accounts',{'name':'上下文核对','opening_cash':'10000','baseline_date':'2026-10-26'},'context-a')
+        instrument=self.store.create('instruments',{'name':'合成研究股票','code':'600001','market':'SSE','kind':'stock'},'context-i')
+        other=self.store.create('instruments',{'name':'合成持仓ETF','code':'159001','market':'SZSE','kind':'etf'},'context-other')
+        self.store.create('fills',{'account_id':account['id'],'instrument_id':other['id'],'side':'buy','price':'10',
+            'quantity':'100','fee':'0','tax':'0','executed_at':'2026-10-26T10:00:00+08:00'},'context-fill')
+        campaign=self.store.campaigns(account['id'])[0]
+        preview=self.service.preview({'kind':'research','account_id':account['id'],'instrument_id':instrument['id'],
+            'question':'检查所选对象与另一持仓的风险','evidence_ids':[self.evidence['id']],
+            'campaign_ids':[campaign['id']],'decision_at':'2026-10-26T15:00:00+08:00'})
+        identity={'id':instrument['id'],'name':'合成研究股票','code':'600001','market':'SSE','kind':'stock'}
+        self.assertEqual(preview['snapshot']['instrument'],identity)
+        self.assertEqual(preview['snapshot']['campaigns'][0]['instrument']['code'],'159001')
+        self.assertNotIn('price',preview['snapshot']['campaigns'][0]['fills'][0])
+        async def run():
+            job=await self.service.submit(preview['id'],preview['snapshot_hash'],CONFIG,'context-analysis')
+            await self.service.tasks[job['id']]
+            return self.service.get(job['id'])
+        job=asyncio.run(run())
+        self.assertEqual(job['state'],'ready',job)
+        self.assertEqual(len(self.calls),2)
+        for messages in self.calls:
+            sent=json.loads(messages[1]['content'])['snapshot']
+            self.assertEqual(sent,preview['snapshot'])
+            self.assertEqual(sent['instrument'],identity)
+        saved=self.store.get('analysis-previews',preview['id'])
+        self.assertEqual(saved['snapshot']['instrument'],identity)
+        self.assertEqual(saved['snapshot_hash'],job['snapshot_hash'])
+
+    def test_literal_hints_and_summary_scope_are_frozen_in_both_passes(self):
+        from investments.market_evidence import daily_excerpt
+        content=json.dumps({'indicators':{'ma5':'11.336'},**daily_excerpt([{'close':'11.2'}]*35)})
+        evidence=self.store.create('research',{'title':'合成行情','content':content,
+            'available_at':'2026-10-25T10:00:00+08:00'},'market-hints')
+        calls=[]
+        async def model(messages,cfg):
+            calls.append(messages);snapshot=json.loads(messages[1]['content'])['snapshot']
+            selected=snapshot['evidence'][0]
+            yield {'text':json.dumps({'summary':'摘要只展示20条，源完整性未独立核验',
+                'counterarguments':['摘要不能独立复算不等于源记录缺失'],
+                'facts':[{'evidence_id':selected['id'],'quote':h['quote']} for h in selected['quotation_hints']]})}
+            yield {'done':True}
+        self.service.transport=model
+        preview=self.service.preview({'kind':'research','question':'核对摘要和引用','evidence_ids':[evidence['id']],
+            'decision_at':'2026-10-26T15:00:00+08:00'})
+        async def run():
+            job=await self.service.submit(preview['id'],preview['snapshot_hash'],CONFIG,'scope-and-hints')
+            await self.service.tasks[job['id']];return self.service.get(job['id'])
+        job=asyncio.run(run());self.assertEqual(job['state'],'ready',job);self.assertEqual(len(calls),2)
+        for messages in calls:
+            self.assertEqual(json.loads(messages[1]['content'])['snapshot'],preview['snapshot'])
+            self.assertIn('摘要省略不等于源数据缺失',messages[0]['content'])
+            self.assertIn('不能把11.2补为11.20',messages[0]['content'])
+        self.assertEqual(self.store.get('research',evidence['id'])['content'],content)
 
     def test_capital_context_hides_amounts_and_bounds_scenarios(self):
         account=self.store.create('accounts',{'name':'自用','opening_cash':'10000','baseline_date':'2026-10-26'},'capital-a')
@@ -140,6 +196,59 @@ class InvestmentAnalysisTests(PostgreSQLFixture):
         job=asyncio.run(run())
         self.assertEqual(job['state'],'failed')
         self.assertNotIn('report',job)
+
+    def test_countercheck_repairs_unverifiable_draft_before_ready(self):
+        async def model(messages,cfg):
+            body=json.loads(messages[1]['content'])
+            report={'summary':'只核对公开资料','counterarguments':['无法证明非公开事项不存在'],
+                'suggestions':[{'title':'等待公开资料','action':'research','reason':'资料不足',
+                    'trigger':'确认无未公开重大事项' if body['phase']=='analysis' else '核对截至复核日已公开公告；缺资料则等待',
+                    'invalidation':'公开公告被更正时重新研究','valid_until':'2026-11-01T15:00:00+08:00'}]}
+            yield {'text':json.dumps(report,ensure_ascii=False)};yield {'done':True}
+        self.service.transport=model
+        preview=self.preview()
+        async def run():
+            job=await self.service.submit(preview['id'],preview['snapshot_hash'],CONFIG,'repair-conditions')
+            await self.service.tasks[job['id']]
+            return self.service.get(job['id'])
+        job=asyncio.run(run())
+        self.assertEqual(job['state'],'ready',job)
+        self.assertEqual(job['draft_report']['suggestions'][0]['trigger'],'确认无未公开重大事项')
+        self.assertNotIn('未公开',job['report']['suggestions'][0]['trigger'])
+
+    def test_unrepaired_conditions_fail_final_report(self):
+        async def model(messages,cfg):
+            yield {'text':json.dumps({'summary':'有待复核','counterarguments':['资料不足'],
+                'suggestions':[{'title':'条件','action':'conditional_entry','reason':'待核对',
+                    'trigger':'确认无未公开重大事项','invalidation':'公开资料更正',
+                    'valid_until':'2026-11-01T15:00:00+08:00'}]},ensure_ascii=False)}
+            yield {'done':True}
+        self.service.transport=model;preview=self.preview()
+        async def run():
+            job=await self.service.submit(preview['id'],preview['snapshot_hash'],CONFIG,'bad-final')
+            await self.service.tasks[job['id']]
+            return self.service.get(job['id'])
+        job=asyncio.run(run())
+        self.assertEqual(job['state'],'failed')
+        self.assertIn('draft_report',job);self.assertNotIn('report',job)
+
+    def test_historical_report_bad_conditions_cannot_be_adopted_but_remain_readable(self):
+        account=self.store.create('accounts',{'name':'历史报告','opening_cash':'0','baseline_date':'2026-10-26'},'old-a')
+        instrument=self.store.create('instruments',{'name':'股票','code':'600000','market':'SSE','kind':'stock'},'old-i')
+        preview=self.service.preview({'kind':'research','account_id':account['id'],'instrument_id':instrument['id'],
+            'question':'历史报告','evidence_ids':[self.evidence['id']],'decision_at':'2026-10-26T15:00:00+08:00'})
+        async def run():
+            job=await self.service.submit(preview['id'],preview['snapshot_hash'],CONFIG,'old-job')
+            await self.service.tasks[job['id']];return self.service.get(job['id'])
+        job=asyncio.run(run())
+        legacy=job.copy();legacy['prompt_version']='investment-v3'
+        legacy['report']['suggestions'][0].update(action='conditional_entry',trigger='确认无未公开重大事项')
+        with db.connect() as c:c.execute('UPDATE investment_analysis_jobs SET data=? WHERE id=?',(json.dumps(legacy),job['id']))
+        with self.assertRaises(Problem) as caught:self.service.decide(job['id'],0,'adopted','','new-adopt')
+        self.assertEqual(caught.exception.code,'unverifiable_conditions')
+        self.assertEqual(self.store.listing('trade-plans')['total'],0)
+        self.assertEqual(self.service.get(job['id'])['report']['suggestions'][0]['trigger'],'确认无未公开重大事项')
+        self.assertEqual(self.service.decide(job['id'],0,'rejected','条件不可核验','reject-old')['state'],'rejected')
 
     def test_conflicting_restatement_keeps_sources_and_later_release_is_excluded(self):
         corrected=self.store.create('research',{'title':'更正原文','content':'更正公告：营业收入8亿元。',

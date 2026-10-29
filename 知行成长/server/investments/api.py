@@ -98,13 +98,27 @@ class HistoryCSVInput(Contract):
     use_confirmed: bool
 
 
+class AKShareDailyInput(Contract):
+    instrument_id: str = Field(min_length=1,max_length=100)
+    account_id: str | None = Field(default=None,max_length=100)
+    start_date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
+    end_date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
+    use_confirmed: bool
+
+
 class PrivateRoute(APIRoute):
     def get_route_handler(self):
         original=super().get_route_handler()
         async def safe_handler(request):
             try:
                 return await original(request)
-            except RequestValidationError:
+            except RequestValidationError as exc:
+                from .observable_conditions import UnverifiableCondition
+                for error in exc.errors():
+                    cause=error.get('ctx',{}).get('error')
+                    if isinstance(cause,UnverifiableCondition):
+                        return JSONResponse({'error':'unverifiable_conditions','message':str(cause)},422,
+                                            headers={'Cache-Control':'no-store'})
                 # Default validation details can echo an entire input containing AI credentials.
                 return JSONResponse({'error':'validation_error','message':'请核对输入字段、数值精度与时间格式。'},422,
                                     headers={'Cache-Control':'no-store'})
@@ -141,7 +155,8 @@ def register(app):
         offline=requirements()
         return {'storage':'private_postgresql','currency':'CNY','accounting':'moving_weighted_average',
             'automatic_reference':{'enabled':True,'scope':'沪深公开日历与竞价限价买入参考子集；动态状态仍未知'},
-            'provider':{'verified':False,'mode':'manual','reason':'尚未核验本账号行情权限和使用许可。'},
+            'provider':{'verified':False,'mode':'explicit_source','adapters':['manual_csv','akshare_eastmoney','tushare'],
+                'reason':'手工选择来源；免费公开接口与账号权限不等于完整数据及许可验收。'},
             'realtime':{'enabled':False,'reason':'实时权限、时效和规则尚未验收。'},
             'ai':{'requires_own_config':True,'unattended':False},
             **{k:offline[k] for k in ('offline_replay','forward_observation','condition_drill','execution_study','backtest','intraday_alerts')}}
@@ -282,7 +297,7 @@ def register(app):
     def data_sources():
         return {'sources':[
             {'id':'tushare','name':'Tushare Pro','status':'adapter_ready','scope':'沪深股票/ETF盘后行情与日历适配；账号权限待核验，北交所日历未开放','url':'https://tushare.pro/document/2'},
-            {'id':'akshare','name':'AKShare','status':'planned','scope':'采集库候选；逐项核验上游接口、时效与使用范围','url':'https://akshare.akfamily.xyz/'},
+            {'id':'akshare','name':'AKShare / 东方财富','status':'adapter_ready','scope':'沪深股票及ETF未复权盘后日线，无需Token；公开接口可限流/变更，使用范围需本人核对','url':'https://akshare.akfamily.xyz/'},
             {'id':'baostock','name':'BaoStock','status':'planned','scope':'历史行情候选；当前服务和具体品种覆盖待实测','url':'https://baostock.com/api/'},
             {'id':'ifind','name':'同花顺iFinD','status':'planned','scope':'授权数据接口候选；账号、额度与用途需配置','url':'https://quantapi.51ifind.com/'},
             {'id':'cninfo','name':'巨潮资讯','status':'external','scope':'公告与财报原文核对；非实时行情承诺','url':'https://www.cninfo.com.cn/'},
@@ -309,6 +324,12 @@ def register(app):
         from .market_import import import_history
         return import_history(store,payload.instrument_id,payload.text,payload.volume_unit,
             payload.amount_unit,payload.source_label,payload.use_confirmed,idempotency_key,payload.account_id)
+
+    @router.post('/provider/akshare/daily')
+    def akshare_daily_fetch(payload: AKShareDailyInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .akshare_daily import AKShareDailyProvider
+        return AKShareDailyProvider(store).fetch(payload.instrument_id,payload.start_date,payload.end_date,
+            payload.use_confirmed,idempotency_key,payload.account_id)
 
     @router.post('/analysis/preview')
     def analysis_preview(payload: AnalysisInput):

@@ -1,0 +1,13 @@
+{
+  "created_at": "2026-10-28T15:06:32+08:00",
+  "evidence_snapshot_id": "evidence-89a2c4b3458d46f0ba10ebd778a2eb4c",
+  "id": "analysis-ab8a4e80a4b441f6bdc654d4a213057f",
+  "model": "deepseek-v4-pro",
+  "phase": "分析未完成，或引用与建议条件未通过校验，请核对资料后手动重试。",
+  "preview_id": "preview-de7077b658434ec3ac9a96ff50393768",
+  "prompt_version": "investment-v4",
+  "same_model_review": true,
+  "snapshot_hash": "12c5aa723dffd00ee940aea6f4fb1dd09a508ddeee03ac068c39223f8fcee384",
+  "state": "failed",
+  "updated_at": "2026-10-28T15:09:06+08:00"
+}

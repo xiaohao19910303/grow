@@ -1,0 +1,22 @@
+test_adoption_is_idempotent_and_creates_a_draft_only (test_investment_analysis.InvestmentAnalysisTests.test_adoption_is_idempotent_and_creates_a_draft_only) ... ok
+test_calculation_citations_must_match_frozen_values_and_hash (test_investment_analysis.InvestmentAnalysisTests.test_calculation_citations_must_match_frozen_values_and_hash) ... ok
+test_campaign_review_scope_redacts_amounts_and_checks_trade_citations (test_investment_analysis.InvestmentAnalysisTests.test_campaign_review_scope_redacts_amounts_and_checks_trade_citations) ... ok
+test_cancel_stops_work_and_restart_marks_interrupted (test_investment_analysis.InvestmentAnalysisTests.test_cancel_stops_work_and_restart_marks_interrupted) ... ok
+test_capital_context_hides_amounts_and_bounds_scenarios (test_investment_analysis.InvestmentAnalysisTests.test_capital_context_hides_amounts_and_bounds_scenarios) ... ok
+test_conflicting_restatement_keeps_sources_and_later_release_is_excluded (test_investment_analysis.InvestmentAnalysisTests.test_conflicting_restatement_keeps_sources_and_later_release_is_excluded) ... ok
+test_countercheck_repairs_unverifiable_draft_before_ready (test_investment_analysis.InvestmentAnalysisTests.test_countercheck_repairs_unverifiable_draft_before_ready) ... ok
+test_exact_preview_and_future_information_rejected (test_investment_analysis.InvestmentAnalysisTests.test_exact_preview_and_future_information_rejected) ... ok
+test_expired_or_changed_inputs_block_new_adoption (test_investment_analysis.InvestmentAnalysisTests.test_expired_or_changed_inputs_block_new_adoption) ... ok
+test_historical_report_bad_conditions_cannot_be_adopted_but_remain_readable (test_investment_analysis.InvestmentAnalysisTests.test_historical_report_bad_conditions_cannot_be_adopted_but_remain_readable) ... ok
+test_past_balance_uses_known_versions_not_later_corrections_or_fills (test_investment_analysis.InvestmentAnalysisTests.test_past_balance_uses_known_versions_not_later_corrections_or_fills) ... ok
+test_selected_instrument_identity_reaches_both_passes_without_campaign_mixup (test_investment_analysis.InvestmentAnalysisTests.test_selected_instrument_identity_reaches_both_passes_without_campaign_mixup) ... ok
+test_two_pass_reconnect_deduplicates_and_key_never_persists (test_investment_analysis.InvestmentAnalysisTests.test_two_pass_reconnect_deduplicates_and_key_never_persists) ... ok
+test_unrepaired_conditions_fail_final_report (test_investment_analysis.InvestmentAnalysisTests.test_unrepaired_conditions_fail_final_report) ... ok
+test_unsupported_fact_is_not_accepted (test_investment_analysis.InvestmentAnalysisTests.test_unsupported_fact_is_not_accepted) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 3.649s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 15, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

@@ -37,6 +37,9 @@ class InvestmentProviderTests(PostgreSQLFixture):
         self.assertEqual(bar['volume_shares'],'10000')
         self.assertEqual(bar['turnover_cny'],'123400')
         self.assertEqual(result['coverage'],'daily_only')
+        scope=json.loads(self.store.get('research',result['evidence_id'])['content'])['summary_scope']
+        self.assertEqual(scope['stored_bar_count'],len(result['bars']))
+        self.assertEqual(scope['indicator_input_bar_count'],len(result['bars']))
         self.assertFalse(result['realtime'])
         asyncio.run(self.provider.fetch(self.instrument['id'],'2026-10-23','2026-10-26',
             'PROVIDER_TEST_ONLY',True,'daily-key'))

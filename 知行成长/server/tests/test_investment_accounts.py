@@ -61,6 +61,13 @@ class InvestmentIsolationTests(unittest.TestCase):
         self.client.post('/api/auth/logout',headers=self.headers)
         self.register('bob')
         self.assertEqual(self.client.get('/api/investments/accounts').json()['total'],0)
+        from unittest.mock import patch
+        with patch('investments.akshare_daily.load_rows') as loader:
+            cross=self.client.post('/api/investments/provider/akshare/daily',json={
+                'instrument_id':instrument['id'],'start_date':'2026-10-23','end_date':'2026-10-27','use_confirmed':True},
+                headers={**self.headers,'Idempotency-Key':'cross-akshare'})
+            self.assertEqual(cross.status_code,404,cross.text)
+            loader.assert_not_called()
         for path in ('/api/investments/accounts/'+account['id'],
                      '/api/investments/paths/'+minute_path['id'],
                      '/api/investments/paths?account_id='+account['id'],

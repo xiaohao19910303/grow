@@ -1,0 +1,73 @@
+{
+  "review_type": "manual review of unmodified final reports; separate from automatic literal-quote validation",
+  "passed_for_requested_scope": true,
+  "reviewed_fields": [
+    "summary",
+    "counterarguments",
+    "missing_inputs",
+    "suggestions"
+  ],
+  "initial_findings": [
+    "Both initial reports distinguish summary omission from missing source data, but still request all 35 records or a plan calculation hash to review market indicators.",
+    "Added per-indicator record windows and an explicit market-indicators/plan-hash boundary before repeating both real-model journeys."
+  ],
+  "final_findings": {
+    "stock": {
+      "omission_is_not_source_missing": true,
+      "per_indicator_windows_correct": true,
+      "missing_plan_hash_not_market_data_missing": true,
+      "source_completeness_kept_unknown": true,
+      "report_summary_verbatim": "仅一条本人导入日线证据：摘要展示20条（2026-09-22至2026-10-27），已保存35条，较早15条未逐条展示；省略仅指摘要未展示，不等于源数据缺失。指标按全部已保存输入及各指标窗口计算：MA5为11.336，MA20为11.484，最近收盘为11.47，量比5已提供；MA5、MA20、量比5、ATR14的窗口在摘要内可复核，20次收益波动需要21条，当前20条摘要不足以独立复算，但已保存35条足够。数据状态为stale、realtime=false、latest_day=2026-10-27，不能判断2026-10-28实时或有可成交；价格口径为unadjusted_user_declared，未独立核验。短线/波段均为历史量价研究：短线仅见最近收盘在MA5上方、MA20下方，量比5大于1；波段缺乏公司行动、公告和基本面风险核验。未选择交易计划或交易链，calculations为空，不表示行情指标缺失；未发送私人金额，不给精确仓位。",
+      "counterarguments_verbatim": [
+        "最新数据状态为stale、realtime=false、latest_day=2026-10-27，不能把导入日线当作2026-10-28实时行情或可成交证据。",
+        "摘要省略15条较早记录只限制在20条摘要内独立复算需要21条的20次收益波动；不能据此推断源数据缺失，也不能说MA5、MA20或量比5缺少输入。",
+        "stored_bar_count为35不等于预期交易日齐全；源完整性未独立核验，缺记录不能判断停牌。",
+        "unadjusted_user_declared口径未独立核验，除权除息或公司行动可能破坏未来价格与现有均线之间的同口径比较，不能直接沿用11.336或11.484作为未来阈值。",
+        "量比5、ATR14、20次收益波动均为历史统计，不构成未来方向或主力意图证据；未核验公告、业绩及基本面风险，不能形成催化判断。",
+        "未选择交易链或交易计划，不能伪称已核验交易结果或胜率；后市上涨也不能反推现在应参与。",
+        "instrument中的000001/SZSE平安银行仅标识本人选定的研究对象，不能由内部instrument_id或名称推断已核验上市身份或当前行情。"
+      ],
+      "missing_inputs_verbatim": [
+        "覆盖2026-10-28及之后交易日的同口径未复权日线",
+        "实时或盘后交易状态及当前可成交性",
+        "公司行动、除权除息及复权口径核验",
+        "截至观察时点的公告、业绩与风险披露",
+        "交易日历与缺失交易日核对；停牌与否",
+        "个人资金、风险政策与可投金额",
+        "交易规则、费用、单位与成交方式核验",
+        "较早未逐条展示的15条记录，如需查看独立复算窗口以外的背景"
+      ]
+    },
+    "etf": {
+      "omission_is_not_source_missing": true,
+      "per_indicator_windows_correct": true,
+      "missing_plan_hash_not_market_data_missing": true,
+      "source_completeness_kept_unknown": true,
+      "report_summary_verbatim": "仅作研究/流程验收，不是委托或交易指令。研究对象为本人维护的创业板ETF（159915，SZSE，ETF），其上市身份、代码与行情未独立核验。证据为本人导入日线：latest_day=2026-10-27，最新收盘2.563；data_status.status=stale，realtime=false，trading_status=unknown。summary_scope显示已保存35条，摘要展示20条，较早15条未逐条展示；省略仅表示未逐条展示，不等于源数据缺失，也不能证明应有交易日齐全或缺失，source_completeness为not_independently_verified。短线：最新收盘2.563低于ma5=2.6442、ma20=2.94525，volume_ratio_5=0.7480561537083427349993119728853553480069942224234310153573，价格结构偏弱，量比小于1；价格basis为unadjusted_user_declared，未复权。波段：ma20高于最新收盘；atr14=0.113214285714285714285714285714285714285714285714285714285714；record_return_std20=0.0203638829378369154688278627825516327678565845344800908229473（20次相邻有效记录样本，不年化）。按indicator_windows，当前20条摘要对MA5、MA20、量比5、ATR14窗口记录数足够；record_return_std20需21条，当前20条摘要不足以独立复算。指标值仍为导入程序输出，公式与来源未独立核验。未选择交易计划或campaign，calculations/trade_citations为空，这不表示行情指标缺失。ETF净值、折溢价、流动性未核对；无个人政策或资金资料，不给金额或仓位。建议等待/观察，不执行。",
+      "counterarguments_verbatim": [
+        "最新数据状态为stale、realtime=false、trading_status=unknown，不能据此确认当前可成交或盘中行情；只能等待可核对的状态更新。",
+        "价格basis为unadjusted_user_declared，未复权；除权或公司行动可能使均线、ATR与波动指标失真，未来条件也不能跨口径沿用当前阈值。",
+        "摘要省略与源数据缺失已分离：当前只展示最近20条并省略较早15条；已保存35条不证明应有交易日齐全，也不证明缺交易日或停牌，更不能把摘要不足以复算写成源数据缺失或指标缺输入。content自述source_completeness=not_independently_verified。",
+        "各指标为导入程序输出；MA5、MA20、量比5、ATR14的窗口记录数在20条摘要中够用，但仍须核对公式、字段和来源；record_return_std20需21条，当前20条摘要不足以独立复算。",
+        "ETF特有风险未核对：净值、折溢价、流动性、申赎机制和组合影响均缺失，不能将ETF价格结构直接当作可交易结论。",
+        "没有本人政策、可用资金、账户规则和可承受风险资料，不能给出任何金额或仓位；也未发送私人金额。",
+        "未选择交易计划或campaign，calculations与trade_citations为空；行情indicators与计划calculation/hash是不同合同，未选计划不表示行情指标缺失。"
+      ],
+      "missing_inputs_verbatim": [
+        "2026-10-28及之后可核对的公开日线或本人授权记录",
+        "实时行情、买卖盘和当前可交易状态",
+        "前后复权价格、复权因子与公司行动记录",
+        "ETF净值、时点折溢价、流动性、申赎费用与组合影响",
+        "指标计算公式与计算合同输出详情",
+        "交易规则、税费、停牌规则及ETF申赎机制",
+        "截至2026-10-28的公开公告与风险披露核对结果",
+        "个人政策、可用资金、账户限制与可承受风险"
+      ]
+    }
+  },
+  "remaining_limits": [
+    "35 saved records do not prove expected trading-day completeness or source authenticity.",
+    "Only the selected public historical sample was checked; financial inputs, live trading state and real AI browser interaction were not validated.",
+    "An exact quote match and these examples do not prove every inference is correct."
+  ]
+}

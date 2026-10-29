@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, StrictBool, field_validator, model_validator
+from .observable_conditions import CONDITION_DESCRIPTION,validate_condition_text
 
 
 def decimal_input(value):
@@ -125,8 +126,8 @@ class PlanInput(Contract):
     title: str = Field(min_length=1, max_length=200)
     intent: Literal['entry','exit','observe'] = 'entry'
     rationale: Text = ''
-    entry_conditions: Text = ''
-    invalidation: Text = ''
+    entry_conditions: Text = Field(default='',description=CONDITION_DESCRIPTION)
+    invalidation: Text = Field(default='',description=CONDITION_DESCRIPTION)
     contrary_evidence: Text = ''
     valid_until: AwareDatetime
     holding_sessions: int | None = Field(default=None, ge=1, le=1000)
@@ -136,6 +137,11 @@ class PlanInput(Contract):
     fee_budget: Money | None = None
     planned_for: date | None = None
     check_id: Identifier | None = None
+
+    @field_validator('entry_conditions','invalidation')
+    @classmethod
+    def observable_conditions(cls,value):
+        return validate_condition_text(value)
 
 
 class PlanCheckInput(Contract):

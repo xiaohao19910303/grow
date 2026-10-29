@@ -187,8 +187,9 @@ class DailyProvider:
             old=self.store.replay(c,key,fingerprint)
             if old is not None:
                 return old
+            from .market_evidence import daily_excerpt
             content=encoded({**{k:v for k,v in result.items() if k not in ('instrument_id','calendar','bars')},
-                'bars':bars[-20:],'omitted_bar_count':max(0,len(bars)-20)})
+                **daily_excerpt(bars)})
             if len(content)>12000:
                 fail('evidence_too_large','行情摘要超出资料大小限制，请缩小范围。',422)
             evidence=self.store.validate('research',{'account_id':account_id,'instrument_id':instrument_id,

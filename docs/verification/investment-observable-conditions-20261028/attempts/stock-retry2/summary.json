@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-28",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "credential_storage": "local .env read for this validation only; no server fallback added",
+  "scope": "real model and real public market data; disposable localhost schema; no private financial data",
+  "prompt_version": "investment-v4",
+  "market_source_manifest": [
+    {
+      "symbol": "000001",
+      "original_path": "stock/000001-market.json",
+      "sha256": "d1791bb099c2087708c78ffa09b85261ff31bbf25f6780ae33cc01e78dabf34c",
+      "original_provider": "akshare_eastmoney",
+      "original_retrieved_at": "2026-10-28T14:40:42+08:00",
+      "snapshot_reuse": true
+    }
+  ],
+  "results": [
+    {
+      "code": "000001",
+      "name": "平安银行",
+      "kind": "stock",
+      "started_at": "2026-10-28T15:10:55+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-623009f2832541f589f4526d779dca00",
+      "state": "ready",
+      "analysis_elapsed_seconds": 324.424,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 3,
+      "counterargument_count": 6,
+      "missing_inputs": [
+        "复权口径核验及公司行动/除权记录",
+        "实时交易状态、盘口与可成交性",
+        "近5日量能、前收盘、最高最低连续性数据",
+        "基本面财报、公告、新闻催化",
+        "行业与市场环境资料",
+        "交易规则、费用与持有期约束",
+        "本人政策与资金/风险预算（未发送）"
+      ],
+      "suggestion_actions": [
+        "observe",
+        "conditional_entry"
+      ],
+      "adopt_http_status": 200,
+      "adoption_idempotent": true,
+      "draft_origin": "adopted_conditional_suggestion",
+      "plan_state": "draft",
+      "plan_intent": "entry",
+      "plan_id": "inv-29a45d9542cb4a5e903ab066a70fd2eb",
+      "no_execution": true
+    }
+  ],
+  "model_requests": [
+    {
+      "symbol": "000001",
+      "phase": "analysis",
+      "started_at": "2026-10-28T15:10:55+08:00",
+      "completed": true,
+      "snapshot_hash": "1dd6475305146bf8ed10931e9791ee2bd99f5be14eb6d59a576c9c56da435d35",
+      "report_validation": "passed",
+      "output_characters": 3428,
+      "elapsed_seconds": 232.493
+    },
+    {
+      "symbol": "000001",
+      "phase": "countercheck",
+      "started_at": "2026-10-28T15:14:47+08:00",
+      "completed": true,
+      "snapshot_hash": "1dd6475305146bf8ed10931e9791ee2bd99f5be14eb6d59a576c9c56da435d35",
+      "report_validation": "passed",
+      "output_characters": 3854,
+      "elapsed_seconds": 91.077
+    }
+  ],
+  "record_counts": {
+    "plans": 1,
+    "fills": 0
+  },
+  "secret_in_database": false
+}

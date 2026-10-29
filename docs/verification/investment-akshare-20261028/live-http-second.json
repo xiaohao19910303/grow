@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-28",
+  "scope": "public market requests; disposable localhost schema only",
+  "requests": [
+    {
+      "kind": "stock",
+      "market": "SZSE",
+      "code": "000001",
+      "date_range": [
+        "2026-09-01",
+        "2026-10-27"
+      ],
+      "http_status": 502,
+      "elapsed_seconds": 1.298,
+      "error": "provider_unavailable",
+      "message": "东方财富日线暂不可用或返回格式已变化；未保存行情、未自动换源。",
+      "bar_count": 0,
+      "last_bar": []
+    },
+    {
+      "kind": "etf",
+      "market": "SZSE",
+      "code": "159915",
+      "date_range": [
+        "2026-09-01",
+        "2026-10-27"
+      ],
+      "http_status": 200,
+      "elapsed_seconds": 0.888,
+      "error": null,
+      "message": null,
+      "bar_count": 35,
+      "last_bar": [
+        {
+          "date": "2026-10-27",
+          "open": "2.678",
+          "high": "2.69",
+          "low": "2.563",
+          "close": "2.563",
+          "volume_shares": "3636844800",
+          "turnover_cny": "9574721211.157",
+          "source_volume": "36368448",
+          "source_amount": "9574721211.157"
+        }
+      ]
+    },
+    {
+      "kind": "etf",
+      "market": "SSE",
+      "code": "510300",
+      "date_range": [
+        "2026-09-01",
+        "2026-10-27"
+      ],
+      "http_status": 200,
+      "elapsed_seconds": 0.781,
+      "error": null,
+      "message": null,
+      "bar_count": 35,
+      "last_bar": [
+        {
+          "date": "2026-10-27",
+          "open": "4.186",
+          "high": "4.192",
+          "low": "4.123",
+          "close": "4.123",
+          "volume_shares": "1403988800",
+          "turnover_cny": "5847854734",
+          "source_volume": "14039888",
+          "source_amount": "5847854734"
+        }
+      ]
+    }
+  ],
+  "persisted_counts": {
+    "market-snapshots": 2,
+    "research": 2
+  },
+  "akshare_version": "1.20.1"
+}

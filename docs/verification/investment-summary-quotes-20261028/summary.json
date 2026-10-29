@@ -1,0 +1,389 @@
+{
+  "date": "2026-10-28",
+  "prompt_version": "investment-v5",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "data": "Actual preserved Eastmoney 35-bar snapshots, 2026-09-01 through 2026-10-27, explicitly re-imported via CSV; no fresh market fetch",
+  "actual_transport": "Production qwen_stream; request messages and unmodified responses preserved; no credentials in artifacts",
+  "selected_final_results": [
+    {
+      "code": "000001",
+      "name": "平安银行",
+      "kind": "stock",
+      "started_at": "2026-10-28T15:46:38+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-0f73442104f44524b04c663dc31d5bea",
+      "state": "ready",
+      "analysis_elapsed_seconds": 567.431,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 22,
+      "counterargument_count": 7,
+      "missing_inputs": [
+        "覆盖2026-10-28及之后交易日的同口径未复权日线",
+        "实时或盘后交易状态及当前可成交性",
+        "公司行动、除权除息及复权口径核验",
+        "截至观察时点的公告、业绩与风险披露",
+        "交易日历与缺失交易日核对；停牌与否",
+        "个人资金、风险政策与可投金额",
+        "交易规则、费用、单位与成交方式核验",
+        "较早未逐条展示的15条记录，如需查看独立复算窗口以外的背景"
+      ],
+      "suggestion_actions": [
+        "wait",
+        "research",
+        "observe"
+      ],
+      "draft_http_status": 201,
+      "draft_origin": "observation_from_original_ai_text",
+      "plan_state": "draft",
+      "plan_intent": "observe",
+      "plan_id": "inv-2dac7b618fbf42e9a498800114ac80c8",
+      "no_execution": true
+    },
+    {
+      "code": "159915",
+      "name": "创业板ETF",
+      "kind": "etf",
+      "started_at": "2026-10-28T15:46:35+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-d413eb8156984cd5bf21d950a61edd28",
+      "state": "ready",
+      "analysis_elapsed_seconds": 536.336,
+      "same_model_review": true,
+      "has_first_report": true,
+      "fact_count": 20,
+      "counterargument_count": 7,
+      "missing_inputs": [
+        "2026-10-28及之后可核对的公开日线或本人授权记录",
+        "实时行情、买卖盘和当前可交易状态",
+        "前后复权价格、复权因子与公司行动记录",
+        "ETF净值、时点折溢价、流动性、申赎费用与组合影响",
+        "指标计算公式与计算合同输出详情",
+        "交易规则、税费、停牌规则及ETF申赎机制",
+        "截至2026-10-28的公开公告与风险披露核对结果",
+        "个人政策、可用资金、账户限制与可承受风险"
+      ],
+      "suggestion_actions": [
+        "wait",
+        "observe",
+        "observe"
+      ],
+      "draft_http_status": 201,
+      "draft_origin": "observation_from_original_ai_text",
+      "plan_state": "draft",
+      "plan_intent": "observe",
+      "plan_id": "inv-c994499b0ba44c00a380c832205710ca",
+      "no_execution": true
+    }
+  ],
+  "all_attempts": [
+    {
+      "phase": "initial",
+      "kind": "stock",
+      "results": [
+        {
+          "code": "000001",
+          "name": "平安银行",
+          "kind": "stock",
+          "started_at": "2026-10-28T15:38:23+08:00",
+          "market_http_status": 200,
+          "bar_count": 35,
+          "latest_day": "2026-10-27",
+          "preview_http_status": 200,
+          "submit_http_status": 202,
+          "job_id": "analysis-c6290197c4af471f816391ff3be8946a",
+          "state": "ready",
+          "analysis_elapsed_seconds": 442.548,
+          "same_model_review": true,
+          "has_first_report": true,
+          "fact_count": 13,
+          "counterargument_count": 6,
+          "missing_inputs": [
+            "2026-10-28及之后的公开或本人授权盘后日线，以核对最新状态",
+            "可核验的复权口径与公司行动、分红配股记录",
+            "指标计算过程或calculation hash，以便复算核验",
+            "短线/波段策略定义与持有周期、止损止盈规则",
+            "账户资金、现金缓冲、风险预算及本人政策",
+            "交易规则：费用、最小手数、涨跌停、停牌与流动性限制",
+            "盘中或实时行情与订单簿（仅用于补充，当前非必需）",
+            "公司公告、财报及基本面风险披露，未核验前不推断催化或基本面"
+          ],
+          "suggestion_actions": [
+            "wait",
+            "observe"
+          ],
+          "draft_http_status": 201,
+          "draft_origin": "observation_from_original_ai_text",
+          "plan_state": "draft",
+          "plan_intent": "observe",
+          "plan_id": "inv-0b45df11b6864cf0a23524569f7bc809",
+          "no_execution": true
+        }
+      ],
+      "model_requests": [
+        {
+          "symbol": "000001",
+          "phase": "analysis",
+          "started_at": "2026-10-28T15:38:23+08:00",
+          "completed": true,
+          "snapshot_hash": "9511256e5e3d7533636804cc328012236b5c8958c91eaecd5d4991f54e1f5ce4",
+          "report_validation": "passed",
+          "output_characters": 5488,
+          "elapsed_seconds": 293.541
+        },
+        {
+          "symbol": "000001",
+          "phase": "countercheck",
+          "started_at": "2026-10-28T15:43:17+08:00",
+          "completed": true,
+          "snapshot_hash": "9511256e5e3d7533636804cc328012236b5c8958c91eaecd5d4991f54e1f5ce4",
+          "report_validation": "passed",
+          "output_characters": 5697,
+          "elapsed_seconds": 148.62
+        }
+      ],
+      "record_counts": {
+        "plans": 1,
+        "fills": 0
+      }
+    },
+    {
+      "phase": "initial",
+      "kind": "etf",
+      "results": [
+        {
+          "code": "159915",
+          "name": "创业板ETF",
+          "kind": "etf",
+          "started_at": "2026-10-28T15:38:28+08:00",
+          "market_http_status": 200,
+          "bar_count": 35,
+          "latest_day": "2026-10-27",
+          "preview_http_status": 200,
+          "submit_http_status": 202,
+          "job_id": "analysis-49d0082b6c234cc1aeb155b5bbd2e4f5",
+          "state": "ready",
+          "analysis_elapsed_seconds": 442.446,
+          "same_model_review": true,
+          "has_first_report": true,
+          "fact_count": 15,
+          "counterargument_count": 6,
+          "missing_inputs": [
+            "ETF的IOPV、基金净值与折溢价数据",
+            "实时盘口与当前可成交状态",
+            "完整35条bar的逐条明细，供独立复算指标",
+            "除权、分红或公司行动记录",
+            "基金公告、成分股变动与停复牌信息",
+            "更长时间维度的量价数据",
+            "本人风险预算与后续授权记录，如未来将研究升级为个人草稿"
+          ],
+          "suggestion_actions": [
+            "observe"
+          ],
+          "draft_http_status": 201,
+          "draft_origin": "observation_from_original_ai_text",
+          "plan_state": "draft",
+          "plan_intent": "observe",
+          "plan_id": "inv-5e0698f857ff4e1780ae7fb10a96da6f",
+          "no_execution": true
+        }
+      ],
+      "model_requests": [
+        {
+          "symbol": "159915",
+          "phase": "analysis",
+          "started_at": "2026-10-28T15:38:28+08:00",
+          "completed": true,
+          "snapshot_hash": "16aec235cf143ce730935ba8ed8fa07146845227eb7f8d17644c7620330b4071",
+          "report_validation": "passed",
+          "output_characters": 4530,
+          "elapsed_seconds": 238.165
+        },
+        {
+          "symbol": "159915",
+          "phase": "countercheck",
+          "started_at": "2026-10-28T15:42:26+08:00",
+          "completed": true,
+          "snapshot_hash": "16aec235cf143ce730935ba8ed8fa07146845227eb7f8d17644c7620330b4071",
+          "report_validation": "passed",
+          "output_characters": 5542,
+          "elapsed_seconds": 204.123
+        }
+      ],
+      "record_counts": {
+        "plans": 1,
+        "fills": 0
+      }
+    },
+    {
+      "phase": "refined",
+      "kind": "stock",
+      "results": [
+        {
+          "code": "000001",
+          "name": "平安银行",
+          "kind": "stock",
+          "started_at": "2026-10-28T15:46:38+08:00",
+          "market_http_status": 200,
+          "bar_count": 35,
+          "latest_day": "2026-10-27",
+          "preview_http_status": 200,
+          "submit_http_status": 202,
+          "job_id": "analysis-0f73442104f44524b04c663dc31d5bea",
+          "state": "ready",
+          "analysis_elapsed_seconds": 567.431,
+          "same_model_review": true,
+          "has_first_report": true,
+          "fact_count": 22,
+          "counterargument_count": 7,
+          "missing_inputs": [
+            "覆盖2026-10-28及之后交易日的同口径未复权日线",
+            "实时或盘后交易状态及当前可成交性",
+            "公司行动、除权除息及复权口径核验",
+            "截至观察时点的公告、业绩与风险披露",
+            "交易日历与缺失交易日核对；停牌与否",
+            "个人资金、风险政策与可投金额",
+            "交易规则、费用、单位与成交方式核验",
+            "较早未逐条展示的15条记录，如需查看独立复算窗口以外的背景"
+          ],
+          "suggestion_actions": [
+            "wait",
+            "research",
+            "observe"
+          ],
+          "draft_http_status": 201,
+          "draft_origin": "observation_from_original_ai_text",
+          "plan_state": "draft",
+          "plan_intent": "observe",
+          "plan_id": "inv-2dac7b618fbf42e9a498800114ac80c8",
+          "no_execution": true
+        }
+      ],
+      "model_requests": [
+        {
+          "symbol": "000001",
+          "phase": "analysis",
+          "started_at": "2026-10-28T15:46:39+08:00",
+          "completed": true,
+          "snapshot_hash": "77b0b6a69fc60c1d4e6dec877f968403d67cf57d6cd0b812c0aaf248317567cf",
+          "report_validation": "passed",
+          "output_characters": 6248,
+          "elapsed_seconds": 275.396
+        },
+        {
+          "symbol": "000001",
+          "phase": "countercheck",
+          "started_at": "2026-10-28T15:51:15+08:00",
+          "completed": true,
+          "snapshot_hash": "77b0b6a69fc60c1d4e6dec877f968403d67cf57d6cd0b812c0aaf248317567cf",
+          "report_validation": "passed",
+          "output_characters": 7811,
+          "elapsed_seconds": 290.078
+        }
+      ],
+      "record_counts": {
+        "plans": 1,
+        "fills": 0
+      }
+    },
+    {
+      "phase": "refined",
+      "kind": "etf",
+      "results": [
+        {
+          "code": "159915",
+          "name": "创业板ETF",
+          "kind": "etf",
+          "started_at": "2026-10-28T15:46:35+08:00",
+          "market_http_status": 200,
+          "bar_count": 35,
+          "latest_day": "2026-10-27",
+          "preview_http_status": 200,
+          "submit_http_status": 202,
+          "job_id": "analysis-d413eb8156984cd5bf21d950a61edd28",
+          "state": "ready",
+          "analysis_elapsed_seconds": 536.336,
+          "same_model_review": true,
+          "has_first_report": true,
+          "fact_count": 20,
+          "counterargument_count": 7,
+          "missing_inputs": [
+            "2026-10-28及之后可核对的公开日线或本人授权记录",
+            "实时行情、买卖盘和当前可交易状态",
+            "前后复权价格、复权因子与公司行动记录",
+            "ETF净值、时点折溢价、流动性、申赎费用与组合影响",
+            "指标计算公式与计算合同输出详情",
+            "交易规则、税费、停牌规则及ETF申赎机制",
+            "截至2026-10-28的公开公告与风险披露核对结果",
+            "个人政策、可用资金、账户限制与可承受风险"
+          ],
+          "suggestion_actions": [
+            "wait",
+            "observe",
+            "observe"
+          ],
+          "draft_http_status": 201,
+          "draft_origin": "observation_from_original_ai_text",
+          "plan_state": "draft",
+          "plan_intent": "observe",
+          "plan_id": "inv-c994499b0ba44c00a380c832205710ca",
+          "no_execution": true
+        }
+      ],
+      "model_requests": [
+        {
+          "symbol": "159915",
+          "phase": "analysis",
+          "started_at": "2026-10-28T15:46:35+08:00",
+          "completed": true,
+          "snapshot_hash": "235df64d357a8e16bf9d9c0b852b61eda343ebce2c7bfdb48e83c456f09a6675",
+          "report_validation": "passed",
+          "output_characters": 4985,
+          "elapsed_seconds": 231.678
+        },
+        {
+          "symbol": "159915",
+          "phase": "countercheck",
+          "started_at": "2026-10-28T15:50:27+08:00",
+          "completed": true,
+          "snapshot_hash": "235df64d357a8e16bf9d9c0b852b61eda343ebce2c7bfdb48e83c456f09a6675",
+          "report_validation": "passed",
+          "output_characters": 7490,
+          "elapsed_seconds": 303.978
+        }
+      ],
+      "record_counts": {
+        "plans": 1,
+        "fills": 0
+      }
+    }
+  ],
+  "actual_model_requests": 8,
+  "quotation_validation_failures": 0,
+  "selected_drafts": 2,
+  "drafts_across_initial_and_refined": 4,
+  "fills": 0,
+  "regression": {
+    "tests": 108,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 70.391
+  },
+  "focused_window_formula_check": {
+    "tests": 4,
+    "failures": 0,
+    "seconds": 0.06
+  },
+  "scope": "Temporary HTTP API validation with real model, not a real AI browser journey or guarantee of broad model quality",
+  "changes": "Explicit summary scope and per-indicator windows; literal quote hints; prompts distinguish market indicators from plan calculation/hash; old reports unchanged"
+}

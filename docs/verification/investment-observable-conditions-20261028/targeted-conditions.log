@@ -1,0 +1,12 @@
+test_final_report_rejects_bad_conditions_but_preserves_critical_discussion (test_investment_conditions.ObservableConditionTests.test_final_report_rejects_bad_conditions_but_preserves_critical_discussion) ... ok
+test_public_evidence_unknown_and_bounded_checks_remain_valid (test_investment_conditions.ObservableConditionTests.test_public_evidence_unknown_and_bounded_checks_remain_valid) ... ok
+test_unobservable_information_intent_and_guarantees_are_rejected (test_investment_conditions.ObservableConditionTests.test_unobservable_information_intent_and_guarantees_are_rejected) ... ok
+test_create_and_edit_reject_unverifiable_conditions_without_mutating_versions (test_investment_conditions.ObservablePlanTests.test_create_and_edit_reject_unverifiable_conditions_without_mutating_versions) ... ok
+test_legacy_draft_cannot_confirm_but_can_be_read_corrected_or_declined (test_investment_conditions.ObservablePlanTests.test_legacy_draft_cannot_confirm_but_can_be_read_corrected_or_declined) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.204s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 5, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-28",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "credential_storage": "local .env read for this validation only; no server fallback added",
+  "scope": "real model and real public market data; disposable localhost schema; no private financial data",
+  "prompt_version": "investment-v4",
+  "market_source_manifest": [
+    {
+      "symbol": "000001",
+      "original_path": "stock/000001-market.json",
+      "sha256": "d1791bb099c2087708c78ffa09b85261ff31bbf25f6780ae33cc01e78dabf34c",
+      "original_provider": "akshare_eastmoney",
+      "original_retrieved_at": "2026-10-28T14:40:42+08:00",
+      "snapshot_reuse": true
+    }
+  ],
+  "results": [
+    {
+      "code": "000001",
+      "name": "平安银行",
+      "kind": "stock",
+      "started_at": "2026-10-28T15:06:32+08:00",
+      "market_http_status": 200,
+      "bar_count": 35,
+      "latest_day": "2026-10-27",
+      "preview_http_status": 200,
+      "submit_http_status": 202,
+      "job_id": "analysis-ab8a4e80a4b441f6bdc654d4a213057f",
+      "state": "failed",
+      "analysis_elapsed_seconds": 154.39,
+      "same_model_review": true,
+      "has_first_report": false
+    }
+  ],
+  "model_requests": [
+    {
+      "symbol": "000001",
+      "phase": "analysis",
+      "started_at": "2026-10-28T15:06:32+08:00",
+      "completed": true,
+      "snapshot_hash": "12c5aa723dffd00ee940aea6f4fb1dd09a508ddeee03ac068c39223f8fcee384",
+      "report_validation": "failed",
+      "validation_error": "事实引用不属于选定原文。",
+      "output_characters": 3905,
+      "elapsed_seconds": 153.905
+    }
+  ],
+  "record_counts": {
+    "plans": 0,
+    "fills": 0
+  },
+  "secret_in_database": false
+}

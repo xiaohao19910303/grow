@@ -1,0 +1,88 @@
+{
+  "initial-stock": {
+    "checks": {
+      "source_values_unchanged": true,
+      "bars_35": true,
+      "stored_35_shown_20_omitted_15": true,
+      "indicator_input_35": true,
+      "source_completeness_unknown": true,
+      "all_hints_are_literal_substrings": true,
+      "same_frozen_snapshot": true,
+      "request_messages_preserved": true,
+      "selected_identity": true,
+      "amounts_hidden": true,
+      "unconfirmed_draft": true,
+      "no_fills": true
+    },
+    "facts": 13,
+    "facts_matching_a_provided_hint": 5,
+    "draft_origin": "observation_from_original_ai_text",
+    "first_report_present": true,
+    "source_files_changed_during_run": []
+  },
+  "initial-etf": {
+    "checks": {
+      "source_values_unchanged": true,
+      "bars_35": true,
+      "stored_35_shown_20_omitted_15": true,
+      "indicator_input_35": true,
+      "source_completeness_unknown": true,
+      "all_hints_are_literal_substrings": true,
+      "same_frozen_snapshot": true,
+      "request_messages_preserved": true,
+      "selected_identity": true,
+      "amounts_hidden": true,
+      "unconfirmed_draft": true,
+      "no_fills": true
+    },
+    "facts": 15,
+    "facts_matching_a_provided_hint": 5,
+    "draft_origin": "observation_from_original_ai_text",
+    "first_report_present": true,
+    "source_files_changed_during_run": []
+  },
+  "refined-stock": {
+    "checks": {
+      "source_values_unchanged": true,
+      "bars_35": true,
+      "stored_35_shown_20_omitted_15": true,
+      "indicator_input_35": true,
+      "source_completeness_unknown": true,
+      "all_hints_are_literal_substrings": true,
+      "same_frozen_snapshot": true,
+      "request_messages_preserved": true,
+      "selected_identity": true,
+      "amounts_hidden": true,
+      "unconfirmed_draft": true,
+      "no_fills": true,
+      "window_record_counts_correct": true
+    },
+    "facts": 22,
+    "facts_matching_a_provided_hint": 5,
+    "draft_origin": "observation_from_original_ai_text",
+    "first_report_present": true,
+    "source_files_changed_during_run": []
+  },
+  "refined-etf": {
+    "checks": {
+      "source_values_unchanged": true,
+      "bars_35": true,
+      "stored_35_shown_20_omitted_15": true,
+      "indicator_input_35": true,
+      "source_completeness_unknown": true,
+      "all_hints_are_literal_substrings": true,
+      "same_frozen_snapshot": true,
+      "request_messages_preserved": true,
+      "selected_identity": true,
+      "amounts_hidden": true,
+      "unconfirmed_draft": true,
+      "no_fills": true,
+      "window_record_counts_correct": true
+    },
+    "facts": 20,
+    "facts_matching_a_provided_hint": 5,
+    "draft_origin": "observation_from_original_ai_text",
+    "first_report_present": true,
+    "source_files_changed_during_run": []
+  }
+}
