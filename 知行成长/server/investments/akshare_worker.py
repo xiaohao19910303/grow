@@ -16,6 +16,7 @@ def fetch(request):
     columns=['日期','开盘','最高','最低','收盘','成交量','成交额']
     if len(frame)>200 or (not frame.empty and not set(columns).issubset(frame.columns)):
         raise ValueError('Unexpected daily columns or size')
+    if request['kind']=='stock' and '换手率' in frame.columns:columns.append('换手率')
     rows=[] if frame.empty else [{key:str(value) for key,value in row.items()}
         for row in frame[columns].to_dict(orient='records')]
     return {'rows':rows,'library_version':version('akshare')}

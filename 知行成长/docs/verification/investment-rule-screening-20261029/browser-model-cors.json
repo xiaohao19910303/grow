@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "error_type": "TypeError",
+  "message": "Failed to fetch",
+  "origin": "http://127.0.0.1:8123",
+  "console": [
+    "Access to fetch at 'https://ark.cn-beijing.volces.com/api/plan/v3/chat/completions' from origin 'http://127.0.0.1:8123' has been blocked by CORS policy: The 'Access-Control-Allow-Origin' header contains multiple values '*,*', but only one is allowed. Have the server send the header with a valid value.",
+    "Failed to load resource: net::ERR_FAILED"
+  ],
+  "execution": "Actual Chrome direct model request using production browser transport; no platform proxy"
+}

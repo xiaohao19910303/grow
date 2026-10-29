@@ -13,6 +13,7 @@ from copilot.core import digest,encoded,fail,now
 from .accounting import number
 from .providers import decimal_value,indicators,TZ
 from .market_evidence import daily_excerpt
+from .rule_screening import turnover_value
 from .rules import calendar,freshness,normalize_units,rule_context
 
 _request_slot=threading.BoundedSemaphore(1)
@@ -97,6 +98,8 @@ class AKShareDailyProvider:
             seen.add(day)
             bars.append({'date':day,**{k:number(values[k]) for k in ('open','high','low','close')},
                 **{k:v for k,v in normalize_units(values['volume'],values['amount'],'lots100','cny').items() if k!='source_units'}})
+            try:bars[-1]['turnover_rate_pct']=turnover_value(row.get('换手率')) if kind=='stock' else None
+            except ValueError:fail('provider_invalid','换手率格式无效；未保存本次行情。',502)
         bars.sort(key=lambda b:b['date']);retrieved=now()
         # 保留原始单位和获取时点；与Tushare千元口径区分，旧来源快照不改写。
         result={'instrument_id':instrument_id,'provider':'akshare_eastmoney','upstream':'eastmoney',

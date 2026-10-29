@@ -61,7 +61,7 @@
     const check=()=>{guard(account);if(control.stopped)throw Error('执行已暂停；关闭页面不会继续运行。');};
     check();await io.save(cp);
     if(!cp.run){cp.run=await io.api(account,'local-runs',cp.create,cp.create_key);await io.save(cp);}
-    if(cp.run.protocol_version!==1||cp.run.algorithm!==core.algorithm)throw Error('本地执行协议不兼容，请刷新后核对原批次。');
+    if(!((cp.run.protocol_version===1&&cp.run.algorithm===core.algorithm)||(cp.run.protocol_version===2&&cp.run.algorithm==='browser-screen-rational-v2'&&cp.screened)))throw Error('本地执行协议不兼容，请刷新后核对原批次。');
     control.runId=cp.run.id;
     check();const remote=await io.api(account,'local-runs/'+cp.run.id);
     if(remote.state==='cancelled')throw Error('远端批次已取消，未再次调用模型。');
@@ -75,7 +75,7 @@
       check();cp.run=await io.api(account,'local-runs/'+cp.run.id+'/screening',cp.screen_body,cp.screen_key);
       cp.screened=true;await io.save(cp);
     }
-    for(const item of cp.run.screening.items){
+    for(const item of cp.run.screening.items.filter(i=>cp.run.protocol_version!==2||cp.run.analysis_selection?.includes(i.instrument_id))){
       check();const iid=item.instrument_id;
       const entry=cp.candidates[iid]||(cp.candidates[iid]={create_key:uuid()});await io.save(cp);
       try{
@@ -247,5 +247,5 @@
     d.addEventListener('close',()=>{stop();d.remove();},{once:true});
     history().catch(error);
   }
-  window.InvestmentBrowser={open,execute,configHash};
+  window.InvestmentBrowser={open,execute,configHash,api};
 })();

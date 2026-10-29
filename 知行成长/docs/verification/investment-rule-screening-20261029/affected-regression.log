@@ -1,0 +1,23 @@
+/Volumes/Xiaohao/学习/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_pure_screen_template_version_selection_and_cancel (test_investment_rule_screening.RuleHTTPTests.test_pure_screen_template_version_selection_and_cancel) ... ok
+test_unknown_legacy_turnover_and_malicious_result (test_investment_rule_screening.RuleHTTPTests.test_unknown_legacy_turnover_and_malicious_result) ... ok
+test_parser_safety_javascript (test_investment_rule_screening.RuleReferenceTests.test_parser_safety_javascript) ... ok
+test_python_browser_exact_parity_and_parser_contract (test_investment_rule_screening.RuleReferenceTests.test_python_browser_exact_parity_and_parser_contract) ... ok
+test_unknown_rules_staleness_and_precision (test_investment_rule_screening.RuleReferenceTests.test_unknown_rules_staleness_and_precision) ... ok
+test_windows_missing_unused_fields_and_atomic_ranges (test_investment_rule_screening.RuleReferenceTests.test_windows_missing_unused_fields_and_atomic_ranges) ... ok
+test_context_calendar_and_missing_data_are_private_and_bounded (test_investment_rules.InvestmentRuleHTTPTests.test_context_calendar_and_missing_data_are_private_and_bounded) ... ok
+test_daily_and_minute_units_are_explicit_and_missing_is_not_zero (test_investment_rules.InvestmentRuleTests.test_daily_and_minute_units_are_explicit_and_missing_is_not_zero) ... ok
+test_effective_scope_and_version_do_not_retroactively_apply_rules (test_investment_rules.InvestmentRuleTests.test_effective_scope_and_version_do_not_retroactively_apply_rules) ... ok
+test_exchange_calendar_weekend_holiday_and_out_of_coverage (test_investment_rules.InvestmentRuleTests.test_exchange_calendar_weekend_holiday_and_out_of_coverage) ... ok
+test_freshness_distinguishes_missing_stale_future_and_intraday_claims (test_investment_rules.InvestmentRuleTests.test_freshness_distinguishes_missing_stale_future_and_intraday_claims) ... ok
+test_star_and_chinext_quantity_rules_and_unknown_etf_mechanism (test_investment_rules.InvestmentRuleTests.test_star_and_chinext_quantity_rules_and_unknown_etf_mechanism) ... ok
+test_wrong_manual_t0_quantity_or_calendar_never_matches (test_investment_rules.InvestmentRuleTests.test_wrong_manual_t0_quantity_or_calendar_never_matches) ... ok
+test_desktop_mobile_natural_rules_templates_recovery_and_analysis (test_investment_rules_browser.RulesBrowserTests.test_desktop_mobile_natural_rules_templates_recovery_and_analysis) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 4.684s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 14, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

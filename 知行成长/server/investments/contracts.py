@@ -326,7 +326,9 @@ class FundConfirmation(Contract):
     settlement_amount: Money | None = None
 
 
-RESOURCE_MODELS = {'accounts': AccountInput, 'instruments': InstrumentInput,
+from .rule_screening import ScreeningTemplate
+
+RESOURCE_MODELS = {'screening-templates':ScreeningTemplate,'accounts': AccountInput, 'instruments': InstrumentInput,
                    'fills': FillInput, 'cash-events': CashInput, 'policies': PolicyInput,
                    'strategies': StrategyInput, 'trade-plans': PlanInput, 'reviews': ReviewInput,
                    'research': ResearchInput, 'fund-orders': FundOrderInput,'plan-checks':PlanCheckInput,

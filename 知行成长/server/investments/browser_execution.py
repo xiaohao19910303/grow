@@ -238,6 +238,8 @@ class BrowserExecution:
             run = self.get_in(c, run_id);self.owner(run, request.executor)
             if run['state'] == 'cancelled' or instrument_id not in run['research']:
                 fail('local_state', '批次已取消或此标的未被选中。')
+            if run.get('protocol_version')==2 and instrument_id not in run.get('analysis_selection',[]):
+                fail('invalid_selection','请先选择并冻结需要AI研究的候选。',422)
             if instrument_id in run['jobs']:
                 result = self.analysis.public(self.job_in(c, run['jobs'][instrument_id]))
                 self.store.remember(c, key, fingerprint, result)
@@ -317,7 +319,8 @@ class BrowserExecution:
             run = self.get_in(c, job['local_run_id'])
             jobs = [self.job_in(c, jid) for jid in run['jobs'].values()]
             statuses = [j['state'] for j in jobs]
-            run['state'] = 'ready' if len(statuses) == len(run['screening']['items']) and all(s == 'ready' for s in statuses) else 'running'
+            count=len(run.get('analysis_selection',[])) if run.get('protocol_version')==2 else len(run['screening']['items'])
+            run['state'] = 'ready' if len(statuses) == count and all(s == 'ready' for s in statuses) else 'running'
             if any(s in ('failed', 'interrupted', 'cancelled') for s in statuses) or any(j.get('local_status') for j in jobs): run['state'] = 'partial'
             self.put(c, run)
             result = self.analysis.public(job);self.store.remember(c, key, fingerprint, result)

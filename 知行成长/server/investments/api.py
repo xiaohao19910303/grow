@@ -21,6 +21,8 @@ from .experiments import ExperimentInput
 from .conditions import ConditionInput
 from .execution_studies import ExecutionInput
 from .browser_execution import BrowserExecution, BrowserRunInput, BrowserScreenResult, BrowserOwner, BrowserOutput, BrowserPause
+from .browser_screening_v2 import ExecutionV2,RunInputV2,ResultV2,AnalysisSelection
+from .rule_screening import FIELDS,RuleDraft,PARSER
 
 
 class UpdateInput(Contract):
@@ -129,7 +131,7 @@ class PrivateRoute(APIRoute):
 def register(app):
     store=scoped(app,InvestmentStore,initialize=True)
     analysis=scoped(app,lambda:InvestmentAnalysis(store))
-    browser=scoped(app,lambda:BrowserExecution(store,analysis))
+    browser=scoped(app,lambda:ExecutionV2(store,analysis))
     router=APIRouter(prefix='/api/investments',tags=['investments'],route_class=PrivateRoute)
 
     @app.middleware('http')
@@ -317,7 +319,7 @@ def register(app):
         return link_record(store,payload.legacy_id,payload.target_kind,payload.target_id,payload.note,payload.reconciled,idempotency_key)
 
     @router.post('/local-runs')
-    def browser_run(payload: BrowserRunInput, idempotency_key: str=Header(min_length=1,max_length=160)):
+    def browser_run(payload: BrowserRunInput | RunInputV2, idempotency_key: str=Header(min_length=1,max_length=160)):
         return browser.create(payload,idempotency_key)
 
     @router.get('/market-snapshots/{object_id}')
@@ -334,8 +336,15 @@ def register(app):
     def browser_run_inputs(run_id: str):return browser.get(run_id,include_input=True)
 
     @router.post('/local-runs/{run_id}/screening')
-    def browser_screen_result(run_id: str,payload: BrowserScreenResult,idempotency_key: str=Header(min_length=1,max_length=160)):
+    def browser_screen_result(run_id: str,payload: BrowserScreenResult | ResultV2,idempotency_key: str=Header(min_length=1,max_length=160)):
         return browser.screen_result(run_id,payload,idempotency_key)
+
+    @router.get('/screening-catalog')
+    def screening_catalog():return {'fields':FIELDS,'parser_version':PARSER,'draft_schema':RuleDraft.model_json_schema()}
+
+    @router.post('/local-runs/{run_id}/analysis-selection')
+    def analysis_selection(run_id: str,payload: AnalysisSelection,idempotency_key: str=Header(min_length=1,max_length=160)):
+        return browser.select_analysis(run_id,payload,idempotency_key)
 
     @router.post('/local-runs/{run_id}/candidates/{instrument_id}')
     def browser_candidate(run_id: str,instrument_id: str,payload: BrowserOwner,idempotency_key: str=Header(min_length=1,max_length=160)):
@@ -507,7 +516,7 @@ def register(app):
         router.add_api_route('/'+kind,listers(kind),methods=['GET'])
         router.add_api_route('/'+kind+'/{object_id}',getters(kind),methods=['GET'])
         router.add_api_route('/'+kind+'/{object_id}/history',histories(kind),methods=['GET'])
-        if kind in ('policies','strategies','trade-plans','reviews','period-plans','watchlist','dossiers','principles','ledger-notices'):
+        if kind in ('screening-templates','policies','strategies','trade-plans','reviews','period-plans','watchlist','dossiers','principles','ledger-notices'):
             router.add_api_route('/'+kind+'/{object_id}',editors(kind),methods=['PUT'])
         if kind in ('policies','strategies','trade-plans','period-plans','principles'):
             router.add_api_route('/'+kind+'/{object_id}/state',transitions(kind),methods=['POST'])

@@ -100,6 +100,11 @@ class InvestmentStore:
 
     def references(self,c,kind,data):
         account = self._get(c,'accounts',data['account_id']) if data.get('account_id') else None
+        if kind=='screening-templates':
+            for iid in data['instrument_ids']:
+                instrument=self._get(c,'instruments',iid)
+                if instrument['kind']!='stock' or instrument['market'] not in ('SSE','SZSE'):
+                    fail('invalid_scope','规则模板仅接收指定沪深股票。',422)
         if data.get('instrument_id'):
             self._get(c,'instruments',data['instrument_id'])
         for opening in data.get('opening_positions',[]):
@@ -237,7 +242,7 @@ class InvestmentStore:
             old=self._get(c,kind,object_id)
             if old['version']!=version:
                 fail('version_conflict','记录已更新，请载入最新版本后再修改。')
-            if kind not in ('policies','strategies','trade-plans','reviews','period-plans','watchlist','dossiers','principles','ledger-notices'):
+            if kind not in ('screening-templates','policies','strategies','trade-plans','reviews','period-plans','watchlist','dossiers','principles','ledger-notices'):
                 fail('immutable_fact','此事实需通过专用核对流程更正，不能覆盖。')
             previous={k:old[k] for k in RESOURCE_MODELS[kind].model_fields if k in old}
             data=self.validate(kind,{**previous,**payload})

@@ -1,0 +1,190 @@
+{
+  "actual_chrome_vs_python": "exact equality for all17 metrics and results",
+  "final_parser_revalidation": "passed JS and Python with saved real output; no new model call",
+  "manual_review": {
+    "original_numeric_conditions": "preserved 5days >=3%, turnover inclusive[2,8]%, 5day mean amount >=100000000 yuan",
+    "sort": "volume_ratio_5 descending preserved",
+    "AI_suggestion": "volume_ratio_5 >1; explicitly suggested, not independently validated, requires acceptance",
+    "unsupported": [],
+    "semantic_scope": "only this captured sentence manually reviewed; not general semantic equivalence proof"
+  },
+  "hand_calculation": {
+    "dates": [
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28"
+    ],
+    "closing_prices": [
+      "11.41",
+      "11.3",
+      "11.2",
+      "11.3",
+      "11.47",
+      "11.31"
+    ],
+    "return_5d_formula": "(11.31/11.41-1)*100",
+    "return_5d_exact_fraction": "-1000/1141",
+    "avg_turnover_5d_pct": "94/125",
+    "avg_amount_5d_yuan": "206116334024/125"
+  },
+  "real_draft_result": {
+    "algorithm": "browser-screen-rational-v2",
+    "items": [],
+    "evaluations": [
+      {
+        "instrument_id": "inv-076479a5373443dd8391c2cbf2f6eab2",
+        "code": "000001",
+        "name": "平安银行",
+        "data_date": "2026-10-28",
+        "values": {
+          "close": "11.31",
+          "turnover_cny": "1911547804.41",
+          "turnover_rate_pct": "0.87",
+          "volume_ratio_5": "1.3154269360259908885922761224",
+          "price_above_ma20": false,
+          "return_1d_pct": "-1.3949433304272013949433304272",
+          "return_3d_pct": "0.9821428571428571428571428571",
+          "return_5d_pct": "-0.8764241893076248904469763365",
+          "return_10d_pct": "-1.6521739130434782608695652173",
+          "return_20d_pct": "-3.4158838599487617421007685738",
+          "avg_turnover_3d_pct": "0.78",
+          "avg_turnover_5d_pct": "0.752",
+          "avg_turnover_10d_pct": "0.682",
+          "avg_turnover_20d_pct": "0.599",
+          "avg_amount_5d": "1648930672.192",
+          "avg_amount_10d": "1507278027.995",
+          "avg_amount_20d": "1331939709.5175"
+        },
+        "condition_results": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "details": [
+          {
+            "field": "return_5d_pct",
+            "actual": "-0.8764241893076248904469763365",
+            "result": false,
+            "reason": null,
+            "unit": "%"
+          },
+          {
+            "field": "turnover_rate_pct",
+            "actual": "0.87",
+            "result": false,
+            "reason": null,
+            "unit": "%"
+          },
+          {
+            "field": "avg_amount_5d",
+            "actual": "1648930672.192",
+            "result": true,
+            "reason": null,
+            "unit": "元"
+          },
+          {
+            "field": "volume_ratio_5",
+            "actual": "1.3154269360259908885922761224",
+            "result": true,
+            "reason": null,
+            "unit": "倍"
+          }
+        ],
+        "status": "excluded"
+      }
+    ],
+    "total": 0,
+    "unresolved": 0
+  },
+  "baseline_result": {
+    "algorithm": "browser-screen-rational-v2",
+    "items": [
+      {
+        "instrument_id": "inv-076479a5373443dd8391c2cbf2f6eab2",
+        "code": "000001",
+        "name": "平安银行",
+        "data_date": "2026-10-28",
+        "values": {
+          "close": "11.31",
+          "turnover_cny": "1911547804.41",
+          "turnover_rate_pct": "0.87",
+          "volume_ratio_5": "1.3154269360259908885922761224",
+          "price_above_ma20": false,
+          "return_1d_pct": "-1.3949433304272013949433304272",
+          "return_3d_pct": "0.9821428571428571428571428571",
+          "return_5d_pct": "-0.8764241893076248904469763365",
+          "return_10d_pct": "-1.6521739130434782608695652173",
+          "return_20d_pct": "-3.4158838599487617421007685738",
+          "avg_turnover_3d_pct": "0.78",
+          "avg_turnover_5d_pct": "0.752",
+          "avg_turnover_10d_pct": "0.682",
+          "avg_turnover_20d_pct": "0.599",
+          "avg_amount_5d": "1648930672.192",
+          "avg_amount_10d": "1507278027.995",
+          "avg_amount_20d": "1331939709.5175"
+        },
+        "condition_results": [
+          true
+        ],
+        "details": [
+          {
+            "field": "close",
+            "actual": "11.31",
+            "result": true,
+            "reason": null,
+            "unit": "元"
+          }
+        ],
+        "status": "matched"
+      }
+    ],
+    "evaluations": [
+      {
+        "instrument_id": "inv-076479a5373443dd8391c2cbf2f6eab2",
+        "code": "000001",
+        "name": "平安银行",
+        "data_date": "2026-10-28",
+        "values": {
+          "close": "11.31",
+          "turnover_cny": "1911547804.41",
+          "turnover_rate_pct": "0.87",
+          "volume_ratio_5": "1.3154269360259908885922761224",
+          "price_above_ma20": false,
+          "return_1d_pct": "-1.3949433304272013949433304272",
+          "return_3d_pct": "0.9821428571428571428571428571",
+          "return_5d_pct": "-0.8764241893076248904469763365",
+          "return_10d_pct": "-1.6521739130434782608695652173",
+          "return_20d_pct": "-3.4158838599487617421007685738",
+          "avg_turnover_3d_pct": "0.78",
+          "avg_turnover_5d_pct": "0.752",
+          "avg_turnover_10d_pct": "0.682",
+          "avg_turnover_20d_pct": "0.599",
+          "avg_amount_5d": "1648930672.192",
+          "avg_amount_10d": "1507278027.995",
+          "avg_amount_20d": "1331939709.5175"
+        },
+        "condition_results": [
+          true
+        ],
+        "details": [
+          {
+            "field": "close",
+            "actual": "11.31",
+            "result": true,
+            "reason": null,
+            "unit": "元"
+          }
+        ],
+        "status": "matched"
+      }
+    ],
+    "total": 1,
+    "unresolved": 0
+  },
+  "fills": 0,
+  "plans": 0
+}

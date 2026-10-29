@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-29",
+  "model": "deepseek-v4-pro",
+  "destination_host": "ark.cn-beijing.volces.com",
+  "scope": "Temporary schema, public stocks only; no private financial data",
+  "cors_probe": {
+    "status": 204,
+    "allow_origin": "*",
+    "allow_headers": "Origin,Content-Length,Content-Type",
+    "allow_methods": "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+  },
+  "market_attempts": [
+    {
+      "code": "000001",
+      "status": 200,
+      "seconds": 1.156,
+      "error": null,
+      "bars": 36,
+      "nonmissing_turnover": 36,
+      "last_turnover": "0.87"
+    }
+  ],
+  "fills": 0,
+  "plans": 0,
+  "temporary_schema_dropped": true,
+  "natural_language_attempt1": {
+    "ok": false,
+    "elapsed_seconds": 172.198,
+    "python_validation": null,
+    "error_type": "Error",
+    "error_message": "规则对应结构无效。"
+  },
+  "natural_language_attempt2": {
+    "ok": true,
+    "python_validation": "passed",
+    "elapsed_seconds": 122.066,
+    "manual_semantic_review": "final-public-verification.json"
+  },
+  "browser_model_direct": "blocked_by_provider_CORS",
+  "candidate_real_model": "not_run_due_to_browser_CORS",
+  "regression": {
+    "tests": 163,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "final_affected_regression": {
+    "tests": 14,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "secret_scan": "configured key absent from evidence and changed source files",
+  "dedicated_test_database_stopped": true
+}

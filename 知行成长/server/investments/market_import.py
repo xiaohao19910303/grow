@@ -11,6 +11,7 @@ from copilot.core import Problem, digest, encoded, fail, now
 from .accounting import number
 from .providers import decimal_value, indicators
 from .market_evidence import daily_excerpt
+from .rule_screening import turnover_value
 
 
 def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label,use_confirmed,key,account_id=None):
@@ -32,7 +33,7 @@ def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label
             store._get(c,'accounts',account_id)
         bars=[];seen=set();stamp=now();asof=datetime.fromisoformat(stamp).astimezone(ZoneInfo('Asia/Shanghai'))
         try:
-            aliases={'日期':'date','开盘':'open','最高':'high','最低':'low','收盘':'close','成交量':'volume','成交额':'amount'}
+            aliases={'日期':'date','开盘':'open','最高':'high','最低':'low','收盘':'close','成交量':'volume','成交额':'amount','换手率':'turnover_rate_pct'}
             reader=csv.DictReader(io.StringIO(text.lstrip('\ufeff')))
             required={'date','open','high','low','close','volume','amount'}
             columns=[aliases.get(k,k) for k in reader.fieldnames or []]
@@ -51,6 +52,7 @@ def import_history(store,instrument_id,text,volume_unit,amount_unit,source_label
                     raise ValueError()
                 bars.append({'date':day,**{k:number(values[k]) for k in ('open','high','low','close')},
                     **{k:v for k,v in normalize_units(values['volume'],values['amount'],'lots100' if volume_unit=='lots' else 'shares',amount_unit).items() if k!='source_units'}})
+                bars[-1]['turnover_rate_pct']=turnover_value(row.get('turnover_rate_pct'))
             if not bars:
                 raise ValueError()
         except (Problem,ValueError,KeyError,TypeError,csv.Error):

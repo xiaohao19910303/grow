@@ -153,7 +153,7 @@ class InvestmentBrowserTests(PostgreSQLFixture):
             page.get_by_role('button',name='保存行情与研究证据',exact=True).click()
             expect(page.get_by_text('已保存 2 条日线及研究证据。',exact=False)).to_be_visible()
             page.get_by_role('button',name='关闭',exact=True).click()
-            page.get_by_role('button',name='本地条件筛选',exact=True).click()
+            page.get_by_role('button',name='账号缓存筛选（旧版）',exact=True).click()
             page.get_by_label('数据截至日期',exact=True).fill('2026-10-26')
             page.get_by_label('条件值',exact=True).fill('1.25')
             page.get_by_role('button',name='执行本地筛选',exact=True).click()
