@@ -16,6 +16,10 @@ from .contracts import AnalysisInput, Contract, FundConfirmation, RESOURCE_MODEL
 from .analysis import InvestmentAnalysis
 from .screening import ScreenInput
 from .store import InvestmentStore
+from .replay import PathInput
+from .experiments import ExperimentInput
+from .conditions import ConditionInput
+from .execution_studies import ExecutionInput
 
 
 class UpdateInput(Contract):
@@ -65,6 +69,13 @@ class ReviewActionInput(Contract):
     source_version: int = Field(ge=1)
     title: str = Field(min_length=1,max_length=160)
     date: date
+
+
+class ExperimentFinishInput(Contract):
+    version: int = Field(ge=1)
+    decision: Literal['retain','reject','inconclusive','stopped']
+    reason: str = Field(min_length=1,max_length=3000)
+    evaluation_hash: str = Field(min_length=64,max_length=64)
 
 
 class DailyFetchInput(Contract):
@@ -126,16 +137,102 @@ def register(app):
 
     @router.get('/capabilities')
     def capabilities():
+        from .readiness import requirements
+        offline=requirements()
         return {'storage':'private_postgresql','currency':'CNY','accounting':'moving_weighted_average',
             'automatic_reference':{'enabled':True,'scope':'沪深公开日历与竞价限价买入参考子集；动态状态仍未知'},
             'provider':{'verified':False,'mode':'manual','reason':'尚未核验本账号行情权限和使用许可。'},
             'realtime':{'enabled':False,'reason':'实时权限、时效和规则尚未验收。'},
-            'ai':{'requires_own_config':True,'unattended':False}}
+            'ai':{'requires_own_config':True,'unattended':False},
+            **{k:offline[k] for k in ('offline_replay','forward_observation','condition_drill','execution_study','backtest','intraday_alerts')}}
 
     @router.get('/overview')
     def today_overview(as_of: date):
         from .integration import overview
         return overview(store,as_of.isoformat())
+
+    @router.post('/paths/import')
+    def import_minute_path(payload: PathInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .replay import import_path
+        return import_path(store,payload.model_dump(mode='json'),idempotency_key)
+
+    @router.get('/paths')
+    def minute_paths(account_id: str,instrument_id: str | None=None,page: int=Query(1,ge=1,le=10000)):
+        from .replay import paths
+        return paths(store,account_id,instrument_id,page)
+
+    @router.get('/paths/{object_id}')
+    def original_minute_path(object_id: str):return store.get('intraday-paths',object_id)
+
+    @router.get('/accounts/{account_id}/campaigns/{campaign_id}/replay')
+    def holding_path(account_id: str,campaign_id: str,path_id: str,cutoff: AwareDatetime | None=None):
+        from .replay import replay_campaign
+        return replay_campaign(store,account_id,campaign_id,path_id,cutoff.isoformat() if cutoff else None)
+
+    @router.post('/experiments',status_code=201)
+    def new_experiment(payload: ExperimentInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .experiments import create_experiment
+        return create_experiment(store,payload.model_dump(mode='json'),idempotency_key)
+
+    @router.post('/condition-drills')
+    def condition_drill(payload: ConditionInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .conditions import run_drill
+        return run_drill(store,payload.model_dump(mode='json'),idempotency_key)
+
+    @router.get('/condition-drills')
+    def condition_drills(account_id: str,page: int=Query(1,ge=1,le=10000)):
+        from .conditions import list_drills
+        return list_drills(store,account_id,page)
+
+    @router.get('/condition-drills/{object_id}')
+    def saved_condition_drill(object_id: str):return store.get('condition-drills',object_id)
+
+    @router.post('/execution-studies')
+    def execution_study(payload: ExecutionInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .execution_studies import run_study
+        return run_study(store,payload.model_dump(mode='json'),idempotency_key)
+
+    @router.get('/execution-studies')
+    def execution_studies(account_id: str,page: int=Query(1,ge=1,le=10000)):
+        from .execution_studies import list_studies
+        return list_studies(store,account_id,page)
+
+    @router.get('/execution-studies/{object_id}')
+    def saved_execution_study(object_id: str):return store.get('execution-studies',object_id)
+
+    @router.get('/experiments')
+    def experiments(account_id: str,page: int=Query(1,ge=1,le=10000)):
+        from .experiments import list_experiments
+        return list_experiments(store,account_id,page)
+
+    @router.get('/experiments/{object_id}')
+    def experiment(object_id: str):return store.get('experiments',object_id)
+
+    @router.get('/experiments/{object_id}/history')
+    def experiment_history(object_id: str):return {'items':store.history('experiments',object_id)}
+
+    @router.put('/experiments/{object_id}')
+    def edit_experiment(object_id: str,payload: UpdateInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .experiments import update_experiment
+        return update_experiment(store,object_id,payload.version,payload.data,idempotency_key)
+
+    @router.post('/experiments/{object_id}/register')
+    def register_forward_experiment(object_id: str,payload: StateCommand,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .experiments import register_experiment
+        if payload.state!='confirmed':
+            from copilot.core import fail
+            fail('invalid_experiment_state','请使用confirmed显式登记当前版本。',422)
+        return register_experiment(store,object_id,payload.version,idempotency_key)
+
+    @router.get('/experiments/{object_id}/evaluation')
+    def experiment_evaluation(object_id: str):
+        from .experiments import evaluate_experiment
+        return evaluate_experiment(store,object_id)
+
+    @router.post('/experiments/{object_id}/finish')
+    def finish_forward_experiment(object_id: str,payload: ExperimentFinishInput,idempotency_key: str=Header(min_length=1,max_length=160)):
+        from .experiments import finish_experiment
+        return finish_experiment(store,object_id,payload.version,payload.decision,payload.reason,payload.evaluation_hash,idempotency_key)
 
     @router.get('/readiness')
     def investment_requirements():

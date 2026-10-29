@@ -52,11 +52,13 @@ class LocalCloseoutTests(PostgreSQLFixture):
             self.assertEqual(response.status_code,422,response.text)
             self.assertEqual(response.json()['code'],'VALIDATION_ERROR');self.assertEqual(before,self.snapshot())
         parent=self.create(period='week',completion_mode='time',end_date='2026-10-25')
-        for values in ({'timezone':'UTC'},{'start_date':'2026-10-26','end_date':'2026-10-26'},
-                       {'start_date':None,'end_date':None}):
+        for values in ({'timezone':'UTC'},):
             response=self.client.post('/api/action-plans',headers=self.h,json=dict(title='子项',period='day',
                 completion_mode='check',start_date='2026-10-19',end_date='2026-10-19',parent_id=parent['id'],key=str(uuid.uuid4()))|values)
             self.assertEqual(response.status_code,422,response.text)
+        for start in ('2026-10-26',None):
+            response=self.client.post('/api/action-plans',headers={**self.h,'X-Grow-Workspace-Version':'1'},json=dict(title='柔性安排',period='day',completion_mode='check',start_date=start,end_date=start,parent_id=parent['id'],key=str(uuid.uuid4())))
+            self.assertEqual(response.status_code,200,response.text)
 
     def test_T02_T04_wall_clock_is_not_confirmed_minutes(self):
         p=self.create(completion_mode='time',minimum_minutes=None)

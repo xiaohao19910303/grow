@@ -14,7 +14,7 @@ from copilot.core import digest, encoded, fail, now
 KINDS = {'behavior-report', 'behavior-result', 'course-background', 'course-summary',
          'copilot', 'study', 'plans', 'plan-draft', 'continuations', 'reflection',
          'reflection-result', 'action-review', 'reading', 'reading-result', 'investments',
-         'study-course', 'plan-course', 'plan-result', 'copilot-course'}
+         'study-course', 'plan-course', 'plan-result', 'copilot-course', 'goal-planning'}
 LEGACY = '此历史结果未记录完整证据快照。'
 TABLES = '''CREATE TABLE ai_evidence_snapshots (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE ai_evidence_links (

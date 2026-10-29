@@ -61,8 +61,10 @@ def context(c, scope, include_notes=False, include_review=False):
     # Actual execution can occur after the planned range or on an undated action.
     plans = [actions.public(r) for r in c.execute('SELECT * FROM action_plans')]
     ids = {plan['id']}
-    for _ in range(4):
-        ids |= {p['id'] for p in plans if p.get('parent_id') in ids}
+    while True:
+        extended = ids | {p['id'] for p in plans if p.get('parent_id') in ids}
+        if extended == ids: break
+        ids = extended
     # The business date belongs to the execution snapshot, never the server's timezone.
     records = actions.facts(c)
     records = sorted([r for r in records if r['plan_id'] in ids and begin <= r['business_date'] <= end],

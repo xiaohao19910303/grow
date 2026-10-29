@@ -3,6 +3,7 @@
   'use strict';
   const mounts=new Set();
   let scope='today',page=1,lastDay=null;
+  const batchSelected=new Set();let batchFailures=[];
   const node=(tag,text,cls)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el;};
   const day=()=>window.ActionPlans?.day()||ActionPlanClient.day(new Date());
   function shift(date,amount){const value=new Date(date+'T12:00:00Z');value.setUTCDate(value.getUTCDate()+amount);return value.toISOString().slice(0,10);}
@@ -87,7 +88,7 @@
   }
   function mount(parent,target,title,minutes=20,options={}){const entry={parent,target,title,minutes,compact:!!options.compact};mounts.add(entry);drawControls(entry);}
   function refreshControls(){for(const entry of mounts){if(!entry.parent.isConnected)mounts.delete(entry);else drawControls(entry);}}
-  function reschedule(p){dateDialog('改期 · '+p.title,p.start_date||day(),date=>ActionPlans.change(p,'reschedule',{date}));}
+  function reschedule(p){dateDialog('修改日期 · '+p.title,p.start_date||day(),date=>ActionPlans.change(p,'reschedule',{date}));}
   async function cancel(p){await ActionPlans.change(p,'cancel');toast('已取消日期安排，原内容和笔记仍保留。');}
   // 今日安排／明日预览共用任务行：执行操作外露，日期与记录管理收进「更多」。
   function row(parent,p){
@@ -156,6 +157,10 @@
     button(secondary,'复制为新行动',()=>ActionPlans.copyDay(p));
     button(secondary,'进度复盘',()=>ActionPlans.review(p));
     box.append(more);
+    if(p.goal_id){const goal=data().plans.find(x=>x.id===p.goal_id);if(goal)content.append(node('p','所属目标：'+goal.title,'desc'));}
+    if(p.deadline)content.append(node('p','截止 '+p.deadline+(p.deadline_passed?' · 已超期，请调整':''),'desc'));
+    if(p.outside_period)content.append(node('p','安排超出上级预期周期，关联保留','desc'));
+
     parent.append(box);box.dataset.planId=p.id;
   }
   function forDate(parent,date){
@@ -191,10 +196,18 @@
     const root=document.getElementById('view-action-schedule');if(!root)return;root.replaceChildren(node('h2','日程安排'),node('p','安排今天和未来，过去未完成的事项可改期或取消。','desc'));
     const tabs=node('div',undefined,'action-buttons');root.append(tabs);
     for(const [key,text] of [['today','今日'],['tomorrow','明日'],['future','未来'],['earlier','待调整'],['undated','未安排'],['all','全部日程']]){const b=button(tabs,text,()=>{scope=key;page=1;renderSchedule();},scope===key);b.setAttribute('aria-pressed',String(scope===key));}
-    button(tabs,'新建行动',()=>ActionPlans.newDay());button(tabs,'刷新',()=>ActionPlans.refresh());
+    button(tabs,'新建行动',()=>ActionPlans.newDay());if(data().workspace_version===1)button(tabs,'规划本周',()=>window.GoalPlanning.week());button(tabs,'刷新',()=>ActionPlans.refresh());
     const list=data().plans.filter(p=>p.period==='day'&&p.status!=='archived'&&(scope==='all'||scope==='today'&&p.start_date===day()||scope==='tomorrow'&&p.start_date===shift(day(),1)||scope==='future'&&p.start_date>shift(day(),1)||scope==='undated'&&!p.start_date&&['active','paused'].includes(p.status)||scope==='earlier'&&p.start_date&&p.start_date<ActionPlans.day(p.timezone)&&['active','paused'].includes(p.status)&&p.id!==data().execution?.plan_id));
     const inScope=(date,done)=>scope==='all'||scope==='today'&&date===day()||scope==='tomorrow'&&date===shift(day(),1)||scope==='future'&&date>shift(day(),1)||scope==='earlier'&&date&&date<day()&&!done;
     const legacy=(window.legacyAgendaTasks?.()||[]).filter(task=>inScope(task.date,task.done));
+    if(scope==='earlier'&&list.length){
+      const batch=node('details');batch.append(node('summary','批量调整待安排事项'));root.append(batch);const selected=[];
+      for(const p of list){const label=node('label',p.title,'agenda-check'),input=node('input');input.type='checkbox';input.checked=batchSelected.has(p.id);input.onchange=()=>input.checked?batchSelected.add(p.id):batchSelected.delete(p.id);label.prepend(input);batch.append(label);selected.push({p,input});}
+      const date=node('input');date.type='date';date.setAttribute('aria-label','批量修改日期');date.value=day();batch.append(date);
+      const report=node('p',batchFailures.join('；'));report.setAttribute('role','status');batch.append(report);
+      async function apply(action){const chosen=selected.filter(x=>x.input.checked);if(!chosen.length)throw Error('请先选择要调整的行动。');if(action==='date'&&!date.value)throw Error('请选择日期。');let ok=0;const errors=[];for(const x of chosen){try{await ActionPlans.change(x.p,action==='archive'?'archive':'reschedule',action==='archive'?{}:{date:action==='date'?date.value:null});x.input.checked=false;x.input.disabled=true;batchSelected.delete(x.p.id);ok++;}catch(e){errors.push(x.p.title+'：'+e.message);}}batchFailures=errors;renderSchedule();toast(`已处理 ${ok} 项${errors.length?'；失败 '+errors.length+' 项：'+errors.join('；'):''}`);if(errors.length){const current=document.getElementById('view-action-schedule');const note=node('p',errors.join('；'),'action-error');note.setAttribute('role','alert');current.prepend(note);}}
+      button(batch,'修改所选日期',()=>apply('date'));button(batch,'所选移到未安排',()=>apply('undated'));button(batch,'归档所选',()=>apply('archive'));
+    }
     const combined=[...list.map(plan=>({date:plan.start_date,plan})),...legacy.map(task=>({date:task.date,task}))].sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
     if(!combined.length)root.append(node('p','这个范围里还没有安排。','action-empty'));
     for(const item of combined.slice((page-1)*20,page*20)){

@@ -88,7 +88,7 @@ class LearningCheckinsBrowser(unittest.TestCase):
                     page.goto(base)
                     page.locator('.continue-learning > summary').click()
                     page.locator('#dailyLearning').get_by_role('heading', name='英文阅读', exact=True).wait_for()
-                    page.locator('#dailyLearning').get_by_role('button', name='开始学习', exact=True).click()
+                    page.locator('#dailyLearning').get_by_role('button', name='继续学习', exact=True).click()
                     page.get_by_label('学习笔记（可选）').fill('只暂存，不完成')
                     page.get_by_role('button', name='暂存笔记与答案', exact=True).click()
                     expect(page.locator('.study-notes-form')).to_contain_text('已暂存到云端')
@@ -97,7 +97,7 @@ class LearningCheckinsBrowser(unittest.TestCase):
                     self.assertFalse(completions)
                     for number in (1, 2):
                         page.locator('[data-group="personal"]').click()
-                        page.locator('#dailyLearning').get_by_role('button', name='开始学习', exact=True).click()
+                        page.locator('#dailyLearning').get_by_role('button', name='继续学习', exact=True).click()
                         page.get_by_role('button', name='标记学完并保存', exact=True).click()
                         expect(page.locator('#dailyReader')).to_contain_text('已学完，学习记录已保存')
                         progress(page)

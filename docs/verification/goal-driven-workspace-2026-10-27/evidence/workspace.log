@@ -1,0 +1,40 @@
+/Volumes/肖豪/project/grow/知行成长/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_output_limit_dates_and_cycles (test_goal_model_validation.GoalModelValidation.test_output_limit_dates_and_cycles) ... ok
+test_output_whitelist_never_imports_commands_credentials_or_completions (test_goal_model_validation.GoalModelValidation.test_output_whitelist_never_imports_commands_credentials_or_completions) ... ok
+test_cycle_and_capability_protection (test_goal_planning.GoalPlanningTests.test_cycle_and_capability_protection) ... ok
+test_draft_edit_partial_adoption_idempotent_and_no_credentials (test_goal_planning.GoalPlanningTests.test_draft_edit_partial_adoption_idempotent_and_no_credentials) ... ok
+test_goal_completion_is_explicit_and_goal_operation_checks_type (test_goal_planning.GoalPlanningTests.test_goal_completion_is_explicit_and_goal_operation_checks_type) ... ok
+test_goal_results_reversal_and_legacy_identity (test_goal_planning.GoalPlanningTests.test_goal_results_reversal_and_legacy_identity) ... ok
+test_independent_short_plans_undated_children_and_cross_month_reschedule (test_goal_planning.GoalPlanningTests.test_independent_short_plans_undated_children_and_cross_month_reschedule) ... ok
+test_interruption_and_invalid_items (test_goal_planning.GoalPlanningTests.test_interruption_and_invalid_items) ... ok
+test_manual_and_milestone_history_and_revision (test_goal_planning.GoalPlanningTests.test_manual_and_milestone_history_and_revision) ... ok
+test_partial_adoption_rolls_back_all_created_rows_and_receipts (test_goal_planning.GoalPlanningTests.test_partial_adoption_rolls_back_all_created_rows_and_receipts) ... ok
+test_personal_export_preserves_goal_metric_history_and_future_intentions (test_goal_planning.GoalPlanningTests.test_personal_export_preserves_goal_metric_history_and_future_intentions) ... ok
+test_postgres_restore_preserves_workspace_results_weeks_and_drafts (test_goal_planning.GoalPlanningTests.test_postgres_restore_preserves_workspace_results_weeks_and_drafts) ... ok
+test_root_conflict_preserves_draft_and_adopt_rolls_back_invalid_tree (test_goal_planning.GoalPlanningTests.test_root_conflict_preserves_draft_and_adopt_rolls_back_invalid_tree) ... ok
+test_template_request_replay_is_idempotent_and_keeps_nullable_time (test_goal_planning.GoalPlanningTests.test_template_request_replay_is_idempotent_and_keeps_nullable_time) ... ok
+test_week_intentions_capacity_and_atomic_conflict (test_goal_planning.GoalPlanningTests.test_week_intentions_capacity_and_atomic_conflict) ... ok
+test_workspace_data_cannot_be_silently_handed_off (test_goal_planning.GoalPlanningTests.test_workspace_data_cannot_be_silently_handed_off) ... ok
+test_cycle_and_capability_protection (test_goal_workspace.GoalWorkspaceTests.test_cycle_and_capability_protection) ... ok
+test_goal_completion_is_explicit_and_goal_operation_checks_type (test_goal_workspace.GoalWorkspaceTests.test_goal_completion_is_explicit_and_goal_operation_checks_type) ... ok
+test_goal_results_reversal_and_legacy_identity (test_goal_workspace.GoalWorkspaceTests.test_goal_results_reversal_and_legacy_identity) ... ok
+test_independent_short_plans_undated_children_and_cross_month_reschedule (test_goal_workspace.GoalWorkspaceTests.test_independent_short_plans_undated_children_and_cross_month_reschedule) ... ok
+test_manual_and_milestone_history_and_revision (test_goal_workspace.GoalWorkspaceTests.test_manual_and_milestone_history_and_revision) ... ok
+test_personal_export_preserves_goal_metric_history_and_future_intentions (test_goal_workspace.GoalWorkspaceTests.test_personal_export_preserves_goal_metric_history_and_future_intentions) ... ok
+test_postgres_restore_preserves_workspace_results_weeks_and_drafts (test_goal_workspace.GoalWorkspaceTests.test_postgres_restore_preserves_workspace_results_weeks_and_drafts) ... ok
+test_template_request_replay_is_idempotent_and_keeps_nullable_time (test_goal_workspace.GoalWorkspaceTests.test_template_request_replay_is_idempotent_and_keeps_nullable_time) ... ok
+test_workspace_data_cannot_be_silently_handed_off (test_goal_workspace.GoalWorkspaceTests.test_workspace_data_cannot_be_silently_handed_off) ... ok
+test_batch_adjustments_keep_only_failed_selection (test_goal_workspace_browser.GoalWorkspaceBrowser.test_batch_adjustments_keep_only_failed_selection) ... ok
+test_goal_plan_action_result_week_ai_and_mobile (test_goal_workspace_browser.GoalWorkspaceBrowser.test_goal_plan_action_result_week_ai_and_mobile) ... ok
+test_goal_unknown_save_keeps_later_draft_and_original_receipt (test_goal_workspace_browser.GoalWorkspaceBrowser.test_goal_unknown_save_keeps_later_draft_and_original_receipt) ... ok
+test_independent_plan_draft_restore_and_filter (test_goal_workspace_browser.GoalWorkspaceBrowser.test_independent_plan_draft_restore_and_filter) ... ok
+test_repeat_and_template_keep_the_same_action_draft (test_goal_workspace_browser.GoalWorkspaceBrowser.test_repeat_and_template_keep_the_same_action_draft) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 14.562s
+
+OK
+GOAL_BROWSER_EVIDENCE /tmp/grow-goal-evidence
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 30, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

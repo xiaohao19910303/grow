@@ -1,0 +1,2 @@
+# Preserve original whitespace in generated browser and regression evidence.
+docs/verification/system-integration-closeout-2026-10-28/evidence/*.log -whitespace

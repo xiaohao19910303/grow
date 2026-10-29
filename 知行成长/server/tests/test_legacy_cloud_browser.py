@@ -20,6 +20,8 @@ class LegacyCloudBrowser(CloudHTTPFixture):
         from study_notes import register as register_study_notes
         register_study_notes(self.app)
         static=Path(__file__).resolve().parents[1]/'static'
+        for existing in self.course.scan()['lessons']:
+            self.course.learning(existing['lesson_no'],'completed',existing['version'],'browser-ready-'+str(existing['lesson_no']))
         self.reader.save_full_text(self.aid,'Public saved article body. '*20)
         from test_reading_growth_browser import GUIDE
         async def reading_model(messages,cfg):

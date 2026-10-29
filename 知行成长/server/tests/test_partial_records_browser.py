@@ -4,7 +4,7 @@ from contextlib import ExitStack
 from pathlib import Path
 import tempfile
 import unittest
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright,expect
 import test_accounts as accounts_fixture
 
 class PartialRecordBrowser(unittest.TestCase):
@@ -31,7 +31,7 @@ class PartialRecordBrowser(unittest.TestCase):
                     request.fulfill(status=response.status_code,headers={k:v for k,v in response.headers.items() if k.lower() not in ('content-encoding','content-length','transfer-encoding')},body=response.content)
                 else:request.abort()
             context.route('**/*',route)
-            page.goto('https://learning.example/',wait_until='domcontentloaded');page.locator('#storageStatus').filter(has_text='已连接').wait_for()
+            page.goto('https://learning.example/',wait_until='domcontentloaded');page.get_by_role('button',name='账户菜单',exact=True).click();page.locator('#storageStatus').filter(has_text='已连接').wait_for();page.get_by_role('button',name='账户菜单',exact=True).click()
             page.evaluate("goTab('settings')")
             page.get_by_role('button',name='导出局部记录副本',exact=True).wait_for()
             with page.expect_download() as download:page.get_by_role('button',name='导出局部记录副本',exact=True).click()
@@ -41,9 +41,10 @@ class PartialRecordBrowser(unittest.TestCase):
             self.assertTrue(download.value.suggested_filename.startswith('grow-partial-records-'))
             page.get_by_text('清空局部表单记录',exact=True).click();page.get_by_role('button',name='重置',exact=True).click()
             page.get_by_role('button',name='确认清空局部记录',exact=True).click();page.locator('#resetResult').filter(has_text='失败或结果未确认').wait_for()
+            expect(page.locator('#storageWarning')).to_be_visible();expect(page.locator('#storageWarning')).to_contain_text('本页记录保留')
             self.assertEqual(len(client.get('/api/data').json()['reviews']),1)
             fail[0]=False;page.get_by_role('button',name='确认清空局部记录',exact=True).click()
-            page.locator('#storageStatus').filter(has_text='局部表单记录已清空').wait_for()
+            page.locator('#toast').filter(has_text='局部表单记录已清空').wait_for();expect(page.locator('#storageWarning')).to_be_hidden()
             self.assertEqual(client.get('/api/data').json()['reviews'],[])
             self.assertEqual(client.get('/api/action-plans').json()['plans'][0]['title'],'ACTION MUST REMAIN')
             self.assertEqual(client.get('/api/study-notes/renzhi/1').json()['notes'],'NOTE MUST REMAIN')

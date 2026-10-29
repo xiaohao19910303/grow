@@ -46,3 +46,11 @@ The system SHALL connect reviews to decisions, actions, errors and knowledge thr
 #### Scenario: Referenced object becomes unavailable
 - **WHEN** a linked record is deleted or no longer accessible
 - **THEN** the review preserves its own text and shows an unavailable reference without exposing another account's data
+
+#### Scenario: Declared minute replay has incomplete exposure coverage
+- **WHEN** a retrospective path has missing minutes, a fill inside a bar, unknown fees or a conflict with actual fills
+- **THEN** complete cash MAE/MFE remain unavailable, observed bounds and coverage are disclosed, and known ledger results are not overwritten by the bad path
+
+#### Scenario: Prospectively registered observations retain failed cases
+- **WHEN** an observation protocol is registered before its start
+- **THEN** strategy version, parameters, costs and window are frozen, all matching winning and losing campaigns are observed, and a later ledger correction flags rather than rewrites an archived decision

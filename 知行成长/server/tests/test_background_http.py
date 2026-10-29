@@ -8,6 +8,8 @@ from test_legacy_cloud_content import OWN
 
 class BackgroundHTTPTests(CloudHTTPFixture):
     def test_course_survives_http_client_replacement(self):
+        for lesson in self.course.scan()['lessons']:
+            self.course.learning(lesson['lesson_no'],'completed',lesson['version'],'background-fixture-'+str(lesson['lesson_no']))
         async def run():
             release=asyncio.Event();first=asyncio.Event();calls=[]
             async def model(messages,cfg):
@@ -29,6 +31,19 @@ class BackgroundHTTPTests(CloudHTTPFixture):
                         if final['status']!='generating':break
                         await asyncio.sleep(.01)
                     self.assertEqual(final['status'],'ready',final.get('errors'));self.assertEqual(len(calls),1)
+        asyncio.run(run())
+
+    def test_unconfirmed_courses_block_generation_before_transport(self):
+        async def run():
+            calls=[]
+            async def model(messages,cfg):
+                calls.append(messages);yield {'done':True}
+            transport=httpx.ASGITransport(self.app,client=('127.0.0.1',1234))
+            with patch('copilot.transport.qwen_stream',model):
+                async with httpx.AsyncClient(transport=transport,base_url='http://localhost') as client:
+                    response=await client.post('/api/copilot/generations',json={'lesson_no':3,'key':'blocked-unconfirmed','ai_config':OWN},headers={'X-Copilot-Request':'1','Accept':'application/json'})
+                    self.assertEqual(response.status_code,409,response.text)
+                    self.assertEqual(response.json()['error'],'learning_pending');self.assertEqual(calls,[])
         asyncio.run(run())
 
     def test_summary_reconnect_alias_replay_and_atomic_result(self):

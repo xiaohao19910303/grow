@@ -1,0 +1,103 @@
+/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_late_context_refresh_keeps_generated_course_draft_visible (test_course_continuation_browser.ContinuationBrowserTests.test_late_context_refresh_keeps_generated_course_draft_visible) ... FAIL
+
+======================================================================
+FAIL: test_late_context_refresh_keeps_generated_course_draft_visible (test_course_continuation_browser.ContinuationBrowserTests.test_late_context_refresh_keeps_generated_course_draft_visible)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/grow-system-closeout.0yntak8b/知行成长/server/tests/test_course_continuation_browser.py", line 210, in test_late_context_refresh_keeps_generated_course_draft_visible
+    expect(save).to_be_visible()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/sync_api/_generated.py", line 14811, in to_be_visible
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.to_be_visible(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            timeout=to_milliseconds(timeout), visible=visible
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        )
+        ^
+    )
+    ^
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py", line 111, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 852, in to_be_visible
+    await self._expect_impl(
+    ...<5 lines>...
+    )
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 128, in _expect_impl
+    _record_soft_or_raise(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        AssertionError(
+        ^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        self._is_soft,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 60, in _record_soft_or_raise
+    raise error
+AssertionError: Locator expected to be visible
+Actual value: None
+Error: element(s) not found 
+Call log:
+  - Expect "to_be_visible" locator("#view-course .course-continuation").get_by_role("button", name="保存课程并开始学习", exact=True) with timeout 5000ms
+  - waiting for locator("#view-course .course-continuation").get_by_role("button", name="保存课程并开始学习", exact=True)
+
+Aria snapshot:
+- text: 知
+- heading "知行成长" [level=1]
+- text: 个人学习与成长平台 2026年10月29日 · 周四
+- searchbox "全局搜索"
+- text: ⌘K
+- button "切换到暗黑模式": 🌙
+- button "设置":
+  - img
+- button "账户菜单": tester
+- complementary "行动草稿保存与恢复":
+  - group: 行动草稿副本与恢复
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "我的课程"
+  - button "学习笔记"
+  - button "阅读"
+- button "返回我的课程"
+- paragraph: 我的课程 / 结构化表达
+- heading "结构化表达" [level=2]
+- text: 已发布内容：已学完 1 / 1 课 100%
+- progressbar "结构化表达学习进度"
+- paragraph: 当前阶段：持续学习 · 已学至最新
+- paragraph: 已学完当前发布内容，可在下方选择下一步学习。
+- heading "下一步学什么" [level=3]
+- status
+- button "直接生成下一课"
+- button "给我学习建议"
+- button "自己填写方向"
+- group: 本次参考的私人记录（可选）
+- heading "课程目录" [level=3]
+- group:
+  - text: 已发布课次（1/1）
+  - paragraph: 课程持续更新；打开和暂存笔记不会自动算学完。
+  - strong: 结构化表达基础课
+  - paragraph: 第 1 课 · 本人确认完成
+  - button "再次阅读"
+  - button "查看记录"
+  - button "安排到今日"
+  - button "安排到明日"
+  - button "选择日期"
+- group: 课程工具与设置
+- text: ℹ 表达课程生成已完成，可查看结果。
+- complementary "生成任务中心":
+  - group: 生成任务 · 1 项已完成
+
+----------------------------------------------------------------------
+Ran 1 test in 9.599s
+
+FAILED (failures=1)

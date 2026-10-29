@@ -64,7 +64,7 @@ class ActionStorageRecoveryUI(unittest.TestCase):
         expect(self.page.locator("#agendaList")).not_to_contain_text("正在读取安排")
 
     def editor(self):
-        self.page.locator("#actionHome").get_by_role("button", name="新建行动", exact=True).first.click()
+        self.page.locator("#view-personal .day-actions").get_by_role("button", name="添加行动", exact=True).click()
         return self.page.get_by_role("dialog")
 
     def test_form_warning_download_import_and_same_key_recovery_after_reload(self):

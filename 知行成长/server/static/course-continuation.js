@@ -15,7 +15,11 @@
   function task(job){return window.GenerationTasks?.external('continuations',job,{kind:'course-advice',label:'学习接续建议',title:job.title,ref:job.id,course_key:job.course_key});}
   function track(job){jobs.set(job.id,job);if(window.GenerationTasks)window.GenerationTasks.track(task(job));}
   async function load(s){
-    const c=await api('?course_key='+encodeURIComponent(s.key));s.context=c;
+    const version=s.viewVersion||0;
+    const c=await api('?course_key='+encodeURIComponent(s.key));
+    // A delayed refresh must not replace a direction the user has just opened or edited.
+    if((s.viewVersion||0)!==version)return;
+    s.context=c;
     if(s.session&&s.session.snapshot!==c.snapshot){s.session=null;s.id=null;s.planKey=null;s.adviceKey=null;s.nextKey=null;s.refs.clear();}
     if(!s.session)s.session=c.session?.snapshot===c.snapshot?c.session:null;
     if(!s.dirty&&s.session?.form)s.form=s.session.form;
@@ -25,7 +29,7 @@
     let s=states.get(key);
     if(!s){s={key,node:n('section',undefined,'course-continuation section'),form:null,session:null,dirty:false,refs:new Set()};states.set(key,s);}
     parent.append(s.node);
-    if(!s.loaded||options.refresh){s.loaded=true;if(!s.context)s.node.replaceChildren(n('h3','下一步学什么'),n('p','正在核对课程进度…','desc'));load(s).then(()=>draw(s)).catch(e=>{s.node.replaceChildren(n('h3','下一步学什么'),n('p',e.message,'desc'));button(s.node,'重试读取学习接续',()=>{s.loaded=false;mount(parent,key);});});}
+    if(!s.loaded||options.refresh){const version=s.viewVersion||0;s.loaded=true;if(!s.context)s.node.replaceChildren(n('h3','下一步学什么'),n('p','正在核对课程进度…','desc'));load(s).then(()=>{if((s.viewVersion||0)===version)draw(s);}).catch(e=>{if((s.viewVersion||0)!==version)return;s.node.replaceChildren(n('h3','下一步学什么'),n('p',e.message,'desc'));button(s.node,'重试读取学习接续',()=>{s.loaded=false;mount(parent,key);});});}
     return s.node;
   }
   async function save(s){
@@ -85,6 +89,7 @@
     return manual?form(s):suggest(s);
   }
   async function direct(s){
+    s.viewVersion=(s.viewVersion||0)+1;
     if(s.key.startsWith('plan:')){
       s.nextKey ||= crypto.randomUUID();
       try{const job=await api('/next',{course_key:s.key,key:s.nextKey,ai_config:AIConfig.require()});s.nextKey=null;await window.watchLearningPlanAttempt(job.id);}
@@ -134,6 +139,7 @@
   }
   function readForm(s){return Object.fromEntries(Object.entries(s.inputs).map(([k,e])=>[k,['lesson_count','minutes'].includes(k)?Number(e.value):e.value]));}
   function form(s){
+    s.viewVersion=(s.viewVersion||0)+1;
     s.body.replaceChildren();const values={direction:'',goal:'',scenario:'',difficulty:'',feeling:'',learning_mode:'apply',lesson_count:4,minutes:s.context.brief.minutes||15,...s.form};
     const fields=n('div',undefined,'plan-grid');s.body.append(fields);s.inputs={};
     for(const [key,label] of [['direction','接下来希望学什么？'],['goal','希望达到的目标（可选）'],['scenario','应用场景（可选）'],['difficulty','目前的困惑（可选）'],['feeling','学习感受（可选）']])s.inputs[key]=field(fields,label,values[key],key==='direction'?'text':'textarea');
@@ -141,7 +147,7 @@
     s.inputs.lesson_count=field(fields,'总课数（2–12课）',values.lesson_count,'number');s.inputs.lesson_count.min=2;s.inputs.lesson_count.max=12;
     s.inputs.minutes=field(fields,'每课分钟数',values.minutes,'number');s.inputs.minutes.min=5;s.inputs.minutes.max=120;
     s.body.append(n('p','自由节奏，不自动安排学习日期。填写内容会作为规划生成条件；私人笔记只用于已勾选的建议请求。','desc'));
-    fields.oninput=fields.onchange=()=>{s.dirty=true;s.planKey=null;s.adviceKey=null;clearTimeout(s.timer);s.timer=setTimeout(()=>save(s).catch(()=>{}),800);};
+    fields.oninput=fields.onchange=()=>{s.viewVersion=(s.viewVersion||0)+1;s.dirty=true;s.planKey=null;s.adviceKey=null;clearTimeout(s.timer);s.timer=setTimeout(()=>save(s).catch(()=>{}),800);};
     const actions=n('div',undefined,'course-actions');s.body.append(actions);
     button(actions,'暂存填写',()=>save(s));button(actions,'生成建议规划',async()=>{
       if(!readForm(s).direction.trim())throw Error('请先填写接下来希望学什么。');
