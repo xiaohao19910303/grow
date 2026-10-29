@@ -155,3 +155,31 @@ GET同名列表每页50且须account_id，仅返回摘要；GET同名/{id}取冻
 - 行情新增可选 `turnover_rate_pct`，`3.5`即3.5%，0有效，缺失为null；CSV同时接受中文“换手率”。AKShare股票读取来源换手率，ETF与Tushare旧入口兼容，不增加Tushare权限调用、不回填旧快照。近N日变化严格需N+1个核对交易日，平均换手/成交额按对应窗口；未复权变化未校正公司行动。各股票冻结同一已完成目标日，缺日历/目标日/必要窗口为未知，未使用字段缺失不阻止其他条件。
 - 所选股票AKShare行情串行更新，沿用90自然日与45秒超时；逐只报告失败，旧快照保留，无自动换源。`POST /local-runs/{id}/analysis-selection` 只允许从入选对象冻结1至5个候选，之后复用实际发送预览、主分析与反证。保存重试不重新计算或调用模型。
 - 本次真实行情、解析与CORS边界分别见[验收记录](verification/investment-rule-screening-20261029/README.md)。浏览器真实模型跨域受当前服务响应阻塞，不能把本机直接请求解析通过或模拟模型UI通过表述为浏览器真实AI全流程已通过。
+
+## 研究工具与同源转发（2026-10-30）
+
+使用说明及完整来源字段见[研究工具接入指南](../../docs/investment-research-guide.md)。新建、编辑、来源读取和模型调用使用8–160字符幂等键；回执恢复按executor及冻结阶段重复校验，不发起新调用。JSON数值采用十进制字符串。私人研究对象不可覆盖，方案与提醒修改携带`version`并保留版本。列表返回摘要，详情读取完整冻结对象。
+
+| 方法／路径（前缀 `/api/investments`） | 输入／输出 |
+| --- | --- |
+| GET `/research/catalog` | 指标名、单位、字段与组合目录 |
+| POST `/research/datasets`、`/research/datasets/csv` | 当前投资账户、来源确认、数据日及行／CSV → 冻结数据集 |
+| POST `/research/screens` | 数据集ID、条件、组合、排序 → 全部逐行解释、入选／未知计数 |
+| POST `/research/presets`、`/research/presets/{id}` | 新建／修改版本、启停、归档 |
+| POST `/research/candidate` | 数据集ID及显式选择的代码 → 来源证据、证券记录；不调用模型 |
+| POST `/research/alerts`、`/research/alerts/{id}` | 新建／修改阈值、启停、归档；保留冷却 |
+| POST `/research/alerts/check` | 来源确认及含时区报价 → 状态与新触发事件 |
+| POST `/research/series`、`/research/series/csv` | 行情、价格口径、来源及可选预期交易日／分钟时间表 → 冻结历史 |
+| POST `/research/backtests` | 历史ID、有限策略配置、可选分割及参数组 → 结果、全部试验与样本外 |
+| POST `/research/interface` | 当前请求的HTTPS地址／token、kind（dataset/quotes/series）、来源确认 → 校验后保存 |
+| POST `/research/provider/akshare/market`、`/history` | 本人确认、日期范围等 → 盘后数据或有界失败；缓存不换源 |
+| GET `/research/objects?account_id=&kind=&page=&page_size=` | 摘要分页；kind为dataset/screen/preset/alert/alert-event/series/backtest |
+| GET `/research/objects/{id}`、`/research/export?account_id=` | 完整对象／账户对象及所有版本，导出20MB上限 |
+| GET `/ai-relay/config` | 部署者允许的主机 |
+| POST `/ai-relay` | 显式consent、当前AI配置、parse消息或candidate冻结任务引用 → 完成回执 |
+| GET `/ai-relay/calls/{key}` | 已有完成回执，未确认返回409；不调用模型 |
+| POST `/ai-relay/jobs/{id}/recover` | executor与已完成call_key → 校验后恢复对应冻结阶段，供原输出上传 |
+
+来源读取与模型调用开始前保留请求身份，未知结果同键409，不自动重发。目的地DNS校验后固定公开IP连接，保留TLS主机校验；拒绝内网、重定向及环境代理。原模型地址、接口密钥不持久化。研究请求体最多8MB，接口响应最多8MB；一般投资入口原限制不变。
+
+研究价格／成交量／成交额为元、股／份、元。兼容缓存表`investment_daily_data`仍采用成交量手、成交额千元，适配器精确转换并拒绝需要数据库舍入的值。研究对象、版本和中转回执留在当前私人schema，完整备份枚举包括新表。

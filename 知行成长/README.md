@@ -249,3 +249,5 @@ PYTHONPATH=知行成长/server python -m unittest discover -s 知行成长/serve
 「今日／行动」支持日程、未安排、待调整、三种完成方式及执行恢复；年／月／周计划与历史复盘保留。普通事项直接勾选，计时行动按本人确认的累计分钟达标，文章与课程安排以来源确认回执完成，投入单独记录。使用与提醒边界见 [行动计划说明](docs/action-plans-v1.md)。本地P0回归与浏览器验收通过；LightTick连接端尚未开放P0写入，详见 [验收报告](../openspec/changes/action-plans-p0-clarity/verification.md) 和 [合同缺口](../openspec/changes/action-plans-p0-clarity/contract-gaps.md)。
 
 网页共享设计变量和样式验收约定见[设计变量说明](docs/web-design-tokens.md)。本机运行核验支持 `bash 知行成长/manage.sh check --offline`（从项目根执行），仍须填写有效启动配置；离线检查不连接数据库，不能替代正式启动验收。
+
+投资工作台的市场筛选、价格提醒、历史回放、策略回测及AI跨域配置，见[研究工具指南](../docs/investment-research-guide.md)。

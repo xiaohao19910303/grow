@@ -1,0 +1,10 @@
+{
+  "kind": "synthetic_local_benchmark",
+  "screen_rows": 8000,
+  "conditions": 10,
+  "screen_seconds": 0.1039,
+  "history_bars": 10000,
+  "backtest_seconds": 0.1739,
+  "backtest_status": "complete",
+  "note": "single process only; not a concurrent load or provider benchmark"
+}
