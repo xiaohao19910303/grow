@@ -53,6 +53,18 @@ class ContinuationTests(AsyncCloudFixture):
         if task:await task
         return self.s.get('learning_ai_attempts',job['id'])
 
+    async def test_changed_private_selection_is_rejected_and_snapshot_read_failure_is_terminal(self):
+        r=self.record();choices=self.service.context(self.key)['private_choices'];choice=choices[0]
+        with self.assertRaises(Problem):
+            await self.service.suggest(r['id'],{'key':'stale-selection','selected_refs':[choice['ref']],
+                'selected_versions':{choice['ref']:'old-version'},'ai_config':AI})
+        self.assertEqual(self.calls,[])
+        with patch('ai_evidence.messages',side_effect=RuntimeError('unreadable frozen input')):
+            job=await self.service.suggest(r['id'],{'key':'snapshot-unreadable','ai_config':AI})
+            await self.service.tasks[job['id']]
+        self.assertEqual(self.service.get_job(job['id'])['state'],'failed')
+        self.assertEqual(self.calls,[])
+
     async def test_advice_selection_is_private_and_plan_adoption_first_lesson_is_recoverable(self):
         study_notes.save('plan',self.pid+'/1',study_notes.Draft(notes='PRIVATE_NOTE_MARKER',answers={'q':'PRIVATE_ANSWER'},version='a'*64,revision=0,key='private-note-key'))
         r=self.record();choices=self.service.context(self.key)['private_choices'];self.assertEqual(len(choices),2)
@@ -62,6 +74,18 @@ class ContinuationTests(AsyncCloudFixture):
         job=await self.service.suggest(r['id'],{'key':'advice-selected-notes','selected_refs':[ref],'ai_config':AI});await self.service.tasks[job['id']]
         self.assertIn('PRIVATE_NOTE_MARKER',str(self.calls[-1]));self.assertNotIn('PRIVATE_FEEDBACK',str(self.calls[-1]))
         self.assertEqual(len(self.service.get_job(job['id'])['options']),3)
+        from ai_evidence import read
+        with connection() as c:
+            saved=read(c,job['evidence_snapshot_id'])
+            self.assertEqual(saved['messages'],self.calls[-1])
+            self.assertIn('PRIVATE_NOTE_MARKER',str(saved))
+            self.assertNotIn('PRIVATE_FEEDBACK',str(saved))
+        calls=len(self.calls)
+        with patch.object(self.service.sources,'selected',side_effect=AssertionError('replay must not read sources')):
+            replay=await self.service.suggest(r['id'],{'key':'advice-selected-notes','selected_refs':[ref],'ai_config':AI})
+        self.assertEqual(replay['id'],job['id']);self.assertEqual(len(self.calls),calls)
+
+
         generated=await self.service.generate_plan(r['id'],{'key':'plan-after-advice','ai_config':AI});attempt=await self.finish(self.generator,generated)
         self.assertEqual(attempt['state'],'ready',attempt.get('error'));did=attempt['draft_id']
         self.assertNotIn('PRIVATE_NOTE_MARKER',str(self.calls[-1]));self.assertNotIn('PRIVATE_ANSWER',str(self.calls[-1]))

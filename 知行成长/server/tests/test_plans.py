@@ -227,6 +227,10 @@ class GenerationTests(AsyncCloudFixture):
         async def stream(messages,config):calls.append(messages);yield {'text':json.dumps(D)};yield {'done':True}
         g=PlanGenerator(self.s,stream);body={'key':'k1','kind':'plan','brief':B};g.begin(body);g.begin(body);await asyncio.gather(*list(g.tasks.values()))
         a=self.s.get('learning_ai_attempts','k1');self.assertEqual(a['state'],'ready');self.assertEqual(len(calls),1);self.assertIsNone(a['cost']);g.begin(body);self.assertEqual(len(calls),1)
+        from ai_evidence import read,linked
+        with self.s.conn() as c:
+            self.assertEqual(read(c,a['evidence_snapshot_id'])['messages'],calls[0])
+            self.assertEqual(linked(c,'plan-draft',a['draft_id'])[0]['id'],a['evidence_snapshot_id'])
         with self.assertRaises(Problem):g.begin({**body,'brief':{**B,'title':'other'}})
     async def test_cancel_and_incomplete(self):
         async def truncated(messages,config):yield {'text':'partial'}

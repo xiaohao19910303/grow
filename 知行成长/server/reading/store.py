@@ -261,12 +261,13 @@ class ReadingStore(Plans):
         with self.conn() as c:
             for record in journal['records']:
                 c.execute('INSERT INTO reading_records VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',(record['id'],encoded(record)))
+            for sql,params in journal.get('evidence_links',[]):c.execute(sql,params)
             journal['state']='done';c.execute('UPDATE reading_records SET data=? WHERE id=?',(encoded(journal),journal['id']))
-    def export(self,files,records,expected=None):
+    def export(self,files,records,expected=None,evidence=None):
         self.recover_exports()
         for rel,h in (expected or {}).items():
             if self.hash(rel)!=h:fail('conflict','文件已被外部修改，请重新读取后核对：'+rel)
-        j={'id':'export-'+uuid.uuid4().hex,'type':'export','state':'pending','files':{rel:{'before':self.hash(rel),'text':value} for rel,value in files.items()},'records':records}
+        j={'id':'export-'+uuid.uuid4().hex,'type':'export','state':'pending','files':{rel:{'before':self.hash(rel),'text':value} for rel,value in files.items()},'records':records,'evidence_links':evidence or []}
         self.put(TABLE,j['id'],j);self.finish_export(j)
     def set_preferences_locked(self,value):
         p=preferences(value);old=self.optional('preferences');rel='认知阅读/阅读偏好.md'
@@ -377,7 +378,7 @@ class ReadingStore(Plans):
             log=f'认知阅读/搜集记录/{date}-{jid}.md';files[log]='# 搜集记录\n\n'+encoded({k:job[k] for k in ('date','preferences','sources','warnings')})+'\n';expected[log]=None
             job.update(saved_ids=ids,saved_at=now(),path=str(self.path(index)));records.append(job)
             self.export(files,records,expected);return job
-    def save_guide(self,aid,guide,expected_hash,details=None):
+    def save_guide(self,aid,guide,expected_hash,details=None,evidence=None):
         with self.lock():
             self.recover_exports();a=self.article(aid);rel=f'认知阅读/文章资料/{aid}/中文导读.md'
             if a['hashes'][rel]!=expected_hash:fail('conflict','导读已经更新，请先查看新版。')
@@ -389,23 +390,23 @@ class ReadingStore(Plans):
                 expected[info]=a['hashes'].get(info)
                 files[info]=encoded({k:v for k,v in a.items() if k not in ('hashes','guide')})
                 a['hashes'][info]=digest(files[info])
-            self.export(files,[a],expected);return a
-    def save_summary(self,aid,summary):
+            self.export(files,[a],expected,evidence=evidence);return a
+    def save_summary(self,aid,summary,evidence=None):
         """Save comprehensive AI summary based on full article content."""
         with self.lock():
             self.recover_exports();a=self.article(aid);rel=f'认知阅读/文章资料/{aid}/详细总结.md'
             content=f'# {a["title"]} - 详细总结\n\n{summary}\n'
             expected={rel:a['hashes'].get(rel)}
             a['hashes'][rel]=digest(content)
-            self.export({rel:content},[a],expected);return a
-    def save_english_learning(self,aid,content):
+            self.export({rel:content},[a],expected,evidence=evidence);return a
+    def save_english_learning(self,aid,content,evidence=None):
         """Save English learning material (vocabulary, grammar, sentence analysis)."""
         with self.lock():
             self.recover_exports();a=self.article(aid);rel=f'认知阅读/文章资料/{aid}/英语学习.md'
             full_content=f'# {a["title"]} - 英语学习材料\n\n{content}\n'
             expected={rel:a['hashes'].get(rel)}
             a['hashes'][rel]=digest(full_content)
-            self.export({rel:full_content},[a],expected);return a
+            self.export({rel:full_content},[a],expected,evidence=evidence);return a
     def save_full_text(self,aid,content):
         """Save full article text to local file."""
         with self.lock():

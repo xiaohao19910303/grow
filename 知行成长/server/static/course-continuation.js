@@ -110,7 +110,7 @@
   async function suggest(s){
     if(s.inputs)await save(s);else if(!s.session)await save(s);
     s.adviceKey ||= crypto.randomUUID();s.status.textContent='正在提交学习建议…';
-    const job=await api('/'+s.session.id+'/suggest',{key:s.adviceKey,selected_refs:[...s.refs],ai_config:AIConfig.require()});
+    const job=await api('/'+s.session.id+'/suggest',{key:s.adviceKey,selected_refs:[...s.refs],selected_versions:Object.fromEntries((s.context.private_choices||[]).filter(x=>s.refs.has(x.ref)).map(x=>[x.ref,x.version])),ai_config:AIConfig.require()});
     s.session.advice_job_id=job.id;track(job);watchAdvice(s,job.id);
   }
   async function watchAdvice(s,id){
@@ -127,6 +127,7 @@
     if(!s.body||!s.body.isConnected){s.body=n('div',undefined,'continuation-body');s.node.append(s.body);}
     const stale=s.viewedAdvice?.snapshot&&s.viewedAdvice.snapshot!==s.context.snapshot;
     s.body.replaceChildren(n('p','以下为私人学习建议；采用前可以修改目标和课数。','desc'));s.inputs=null;
+    if(s.viewedAdvice)window.AIEvidence?.mount(s.body,'continuations',s.viewedAdvice.id);
     for(const option of options){const box=n('article',undefined,'continuation-option');box.append(n('h4',option.title),n('p',option.goal),n('p',option.reason,'desc'),n('p','建议 '+option.lesson_count+' 课 · 自由节奏','desc'));
       if(!stale)button(box,'选择并调整',()=>{if(s.viewedAdvice&&s.session?.id!==s.viewedAdvice.continuation_id){s.session=null;s.id=crypto.randomUUID();s.planKey=null;}s.form={...s.form,direction:option.title,goal:option.goal,learning_mode:option.mode,lesson_count:option.lesson_count};form(s);s.dirty=true;save(s).catch(()=>{});},true);s.body.append(box);}
     button(s.body,'我自己填写',()=>newDirection(s,true));s.status.textContent=stale?'这份建议的来源课程已变化，仅供回看；请基于当前课程重新生成。':'已生成巩固、应用、进阶三个方向。';

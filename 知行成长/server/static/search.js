@@ -303,6 +303,9 @@
     if (!result) return;
     const target = result.target || {kind: 'legacy', module: result.module, id: result.id};
     try {
+      if (target.kind === 'course' || target.kind === 'plan') {
+        return await window.CourseLibrary.open(target.course_key || 'plan:'+target.id);
+      }
       if (target.kind === 'study') {
         if (target.module === 'plan') {
           const split = target.course.lastIndexOf('/');

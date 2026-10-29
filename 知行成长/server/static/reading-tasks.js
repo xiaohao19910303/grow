@@ -23,6 +23,7 @@
     for(const job of [...jobs.values()].reverse()){
       const row=node('section',undefined,'reading-task-item');row.append(node('strong',label(job)),node('p',job.title||(job.source?label(job):job.kind==='collect'?'搜集文章':'阅读文章'),'desc'),node('p',job.connectionError||(active(job)?job.phase:null)||states[job.state]||(success(job)?'已完成':job.state==='generating'?'生成中':job.state),'desc'));
       if(job.error)row.append(node('p',job.error,'reading-warning'));
+      window.AIEvidence?.task(row,job);
       action(row,success(job)?'查看结果':'查看进度',async()=>{const provider=providers.get(job.source||'reading');if(!provider)throw new Error('任务入口正在恢复，请稍后再试。');if(await provider.open(job)!==false){job.seen=true;save();render();}});
       if(active(job)&&providers.get(job.source||'reading')?.cancel)action(row,'取消生成',async()=>track(await providers.get(job.source||'reading').cancel(job)));
       else if(!active(job))action(row,'移除记录',()=>{jobs.delete(job.id);dismissed.add(job.id);try{localStorage.setItem(key()+':dismissed',JSON.stringify([...dismissed].slice(-100)));}catch{}save();render();});

@@ -123,8 +123,39 @@ class PlanGenerator:
             if kind=='course':
                 ready=next((d for d in self.store.rows('learning_drafts') if d['kind']=='course' and d['state']=='ready' and d['context']['plan_id']==context['plan_id'] and d['context']['lesson_no']==context['lesson_no'] and d['context']['base_version']==context['base_version'] and d['context']['source_hash']==context['source_hash'] and bool(d['context'].get('strict_sources'))==bool(context.get('strict_sources'))),None)
                 if ready:
-                    a.update(state='ready',phase='ready',draft_id=ready['id']);self.store.put('learning_ai_attempts',key,a);return a
-            self.store.put('learning_ai_attempts',key,a)
+                    a.update(state='ready',phase='ready',draft_id=ready['id'])
+                    with self.store.conn() as c:
+                        if ready.get('evidence_snapshot_id'):
+                            from ai_evidence import bind
+                            a['evidence_snapshot_id']=ready['evidence_snapshot_id'];bind(c,'plans',key,ready['evidence_snapshot_id'])
+                        c.execute('INSERT INTO learning_ai_attempts VALUES (?,?)',(key,encoded(a)))
+                    return a
+            from ai_evidence import freeze, inputs
+            prompt=refinement_messages(context) if a['operation']=='refine' else messages(kind,context)
+            with self.store.conn() as c:
+                from history_sources import record_source, teaching_source
+                origins=inputs(context,'本次规划与备课输入')
+                pid=context.get('plan_id') or context.get('parent',{}).get('plan_id')
+                if pid:
+                    origins.append(record_source(c,'learning_plans',(pid,),'选定规划版本',context.get('base_version',context.get('parent_hash')),
+                        fields=['version','hashes'],scope='仅本次规划版本与选定教学内容'))
+                for feedback in context.get('selected_feedback',[]):
+                    origins.append(record_source(c,'learning_feedback',(pid,feedback['lesson_no']),f"第{feedback['lesson_no']}课选定反馈",feedback))
+                parent=context.get('parent')
+                if parent:
+                    origins.append(record_source(c,'learning_drafts',(parent['id'],),'本次调整基线草稿',payload(parent),
+                        scope='仅选定的调整范围；实际发送基线见发送内容'))
+                if context.get('source_entries') and not context.get('extension'):
+                    origins.append(teaching_source('plan-sources',[pid,context['lesson_no']],'本课备课资料',context['source_entries'],context['source_hash']))
+                if context.get('extension'):
+                    from ai_evidence import source
+                    origins.append(source('submitted','previous-course','上一课教学摘录',context['source_entries'],
+                        scope='上一课正文、参考资料分别至多12000字符',truncated=True,
+                        target={'kind':'study','module':'plan','course':pid+'/'+str(context['lesson_no']-1)}))
+                evidence=freeze(c,'plans',key,prompt,cfg['model'],sources=origins,
+                    prompt_version='learning-plan-'+a['operation']+'-v1')
+                a['evidence_snapshot_id']=evidence['id']
+                c.execute('INSERT INTO learning_ai_attempts VALUES (?,?)',(key,encoded(a)))
         self.tasks[key]=asyncio.create_task(self.run(key, cfg))
         self.tasks[key].add_done_callback(lambda task: self.tasks.pop(key, None))
         return a
@@ -145,7 +176,8 @@ class PlanGenerator:
             from copilot.transport import qwen_stream
             done=False
             last_progress_write = None
-            prompt=refinement_messages(a['context']) if a['operation']=='refine' else messages(a['kind'],a['context'])
+            from ai_evidence import messages as frozen_messages
+            prompt=frozen_messages(self.store.conn,a['evidence_snapshot_id'])
             remaining=(datetime.fromisoformat(a['deadline_at'])-datetime.fromisoformat(now())).total_seconds()
             async with asyncio.timeout(max(0,remaining)):
                 async for packet in (self.transport or qwen_stream)(prompt,c):
@@ -172,22 +204,27 @@ class PlanGenerator:
                 ctx=a['context'];parent=ctx['parent']
                 output=json.loads(a['raw']) if a['kind']=='plan' or ctx['scope']['mode']=='selected' else a['raw']
                 changed=merge(parent,ctx['scope'],output)
-                meta={'parent_id':parent['id'],'parent_hash':ctx['parent_hash'],'operation':'refine','instruction':ctx['instruction'],'scope':ctx['scope']}
+                meta={'parent_id':parent['id'],'parent_hash':ctx['parent_hash'],'operation':'refine','instruction':ctx['instruction'],'scope':ctx['scope'],'evidence_snapshot_id':a['evidence_snapshot_id']}
                 if a['kind']=='plan':
                     d=self.store.draft({**changed,'brief':ctx['brief'],'parent_draft_id':meta.pop('parent_id'),**meta})
                 else:d=self.store.course_draft(parent['context'],changed['content'],changed['sources'],**meta)
             elif a['kind']=='plan':
                 doc=json.loads(a['raw'])
                 d=self.store.draft({'brief':a['context']['brief'],'document':doc,
+                                    'evidence_snapshot_id':a['evidence_snapshot_id'],
                                     'plan_id':a['context']['plan_id'],'base_version':a['context']['base_version'],
                                     **({'continuation_id':a['context']['continuation']['continuation_id'],'continuation_form_hash':a['context']['continuation']['form_hash']} if a['context'].get('continuation') else {})})
             else:
                 pieces=a['raw'].split(SEPARATOR)
                 if len(pieces)!=2:fail('invalid','正文和资料分隔格式不完整。')
-                d=self.store.course_draft(a['context'],*pieces)
+                d=self.store.course_draft(a['context'],*pieces,evidence_snapshot_id=a['evidence_snapshot_id'])
                 if d['state']!='ready':
                     a['draft_id']=d['id'];self.store.validate_course(d)
-            a.update(state='ready',draft_id=d['id'])
+            from ai_evidence import bind
+            with self.store.conn() as connection:
+                bind(connection,'plan-draft',d['id'],a['evidence_snapshot_id'],a['id'])
+                a.update(state='ready',draft_id=d['id'])
+                connection.execute('UPDATE learning_ai_attempts SET data=? WHERE id=?',(encoded(a),key))
         except TimeoutError:
             a.update(state='failed',error='已达到本次生成时限，保留收到的内容；可修改要求后重新生成。')
         except asyncio.CancelledError:

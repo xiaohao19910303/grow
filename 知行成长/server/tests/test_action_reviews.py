@@ -138,5 +138,5 @@ class ActionReviewTests(plan_tests.ActionPlansTests):
             yield {'text':'已起步一次。'}
             yield {'done':True}
         with patch('copilot.transport.qwen_stream',transport):
-            text=asyncio.run(reviews.generate_text({'stats':{'minimum':1}},{'key':'test-only'}))
+            text=asyncio.run(reviews.generate_text({'stats':{'minimum':1}},{'key':'test-only','model':'fixture'}))
         self.assertEqual(text,'进展总结：已起步一次。')

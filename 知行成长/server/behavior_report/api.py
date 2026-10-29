@@ -2,15 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from tenancy import scoped, runtime_root
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response, Query
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 from copilot.ai_config import require_config
 
 from .store import BehaviorReportStore
-from .analyzer import generate_report_content
 
 
 class Generation(BaseModel):
@@ -18,27 +18,38 @@ class Generation(BaseModel):
     ai_config: dict | None = Field(default=None, repr=False)
 
 
-async def connected_generation(request, db_path, period_days, config):
-    """Disconnecting cancels the provider stream before any report is saved."""
+class JobGeneration(Generation):
+    key: str = Field(min_length=8, max_length=160)
+    period_days: int = Field(default=30, ge=7, le=365, strict=True)
+    retry_of: str | None = Field(default=None, max_length=100)
+
+
+async def connected_generation(request, store, period_days, ai_config):
+    """旧同步接口观察同一个后台服务；断线仍明确取消，不创建第二份报告。"""
     if await request.is_disconnected():
         raise HTTPException(499, '生成已取消，未保存报告。')
-
-    async def disconnected():
-        while not await request.is_disconnected():
-            await asyncio.sleep(.1)
-
-    generation = asyncio.create_task(generate_report_content(db_path, period_days, config))
-    disconnect = asyncio.create_task(disconnected())
+    commit_gate=asyncio.Event()
+    submission=asyncio.create_task(store.jobs.submit('legacy-' + uuid.uuid4().hex, period_days, ai_config, deduplicate=False, commit_gate=commit_gate))
+    try:job=await asyncio.shield(submission)
+    except asyncio.CancelledError:
+        job=await submission
+        await asyncio.shield(store.jobs.cancel(job['id']))
+        raise
     try:
-        finished, _ = await asyncio.wait((generation, disconnect), return_when=asyncio.FIRST_COMPLETED)
-        if disconnect in finished or await request.is_disconnected():
-            raise HTTPException(499, '生成已取消，未保存报告。')
-        return await generation
-    finally:
-        for task in (generation, disconnect):
-            if not task.done():
-                task.cancel()
-        await asyncio.gather(generation, disconnect, return_exceptions=True)
+        while True:
+            if await request.is_disconnected():
+                await store.jobs.cancel(job['id'])
+                raise HTTPException(499, '生成已取消，未保存报告。')
+            current = await run_in_threadpool(store.jobs.get, job['id'])
+            if current.get('awaiting_confirmation') and current['state'] in ('queued','generating'):commit_gate.set()
+            if current['state'] == 'ready':
+                return await run_in_threadpool(store.get_report, current['result_id'])
+            if current['state'] not in ('queued', 'generating'):
+                raise HTTPException(502, current.get('error') or '报告生成失败。')
+            await asyncio.sleep(.05)
+    except asyncio.CancelledError:
+        await asyncio.shield(store.jobs.cancel(job['id']))
+        raise
 
 
 def register(app: FastAPI, root, db_path) -> BehaviorReportStore:
@@ -60,26 +71,31 @@ def register(app: FastAPI, root, db_path) -> BehaviorReportStore:
         if period_days < 7 or period_days > 365:
             raise HTTPException(400, "period_days must be 7-365")
 
-        config = require_config(body.ai_config)
-        try:
-            content, data_summary = await connected_generation(request, db_path, period_days, config)
-        except HTTPException:
-            raise
-        except Exception:
-            # Provider errors can contain credentials or raw response bodies.
-            raise HTTPException(502, 'AI 报告生成失败，请核对 AI 配置和服务商状态后重试。') from None
-        if await request.is_disconnected():
-            raise HTTPException(499, '生成已取消，未保存报告。')
-        try:
-            from growth_statistics import shanghai_today
-            return await run_in_threadpool(store.create_report,
-                dt=shanghai_today().isoformat(),
-                period_days=period_days,
-                content=content,
-                data_summary=data_summary,
-            )
-        except Exception:
-            raise HTTPException(503, '报告保存失败，请稍后重试。') from None
+        require_config(body.ai_config)
+        return await connected_generation(request, store, period_days, body.ai_config)
+
+    @router.post('/jobs', status_code=202)
+    async def create_job(body: JobGeneration):
+        return await asyncio.shield(store.jobs.submit(body.key, body.period_days, body.ai_config, body.retry_of))
+
+    @router.get('/jobs')
+    def jobs(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100)):
+        return store.jobs.listing(page, page_size)
+
+    @router.get('/jobs/{job_id}')
+    def job(job_id: str):
+        return store.jobs.get(job_id)
+
+    @router.get('/jobs/by-request/{request_key}')
+    def by_request(request_key: str):
+        with store.conn() as c:
+            row=c.execute('SELECT job_id FROM behavior_report_requests WHERE key=?',(request_key,)).fetchone()
+        if not row:raise HTTPException(404,'未找到已提交任务。')
+        return store.jobs.get(row[0])
+
+    @router.post('/jobs/{job_id}/cancel')
+    async def cancel_job(job_id: str):
+        return await store.jobs.cancel(job_id)
 
     @router.get("")
     def list_reports():

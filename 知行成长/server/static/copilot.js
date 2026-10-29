@@ -138,6 +138,7 @@
     delete editor.dataset.generation;
     currentDraft = d; publicationKey = uid(); dirty = false; editor.hidden = false;
     editor.replaceChildren(el('h3', `第${d.lesson_no}课草稿 · ${d.status}`));
+    window.AIEvidence?.mount(editor,'copilot',d.id);
     bodyInput.value = d.content; sourceInput.value = d.sources;
     editor.append(el('label', '课程正文'), bodyInput, el('label', '参考资料摘要'), sourceInput);
     const actions = el('div', undefined, 'cp-actions');
@@ -180,6 +181,7 @@
     reader.hidden = false; reader.replaceChildren();
     button(window.lessonReturnLabel?.() || '返回学习列表', () => returnFromLesson(), reader);
     readerStatus.textContent='';reader.append(readerStatus);
+    window.AIEvidence?.mount(reader,'copilot-course',number);
     const actions = el('div', undefined, 'cp-actions');
     button('课程正文', () => { markdown(content, lesson.content); notes.bind(content); }, actions);
     button('参考资料', () => markdown(content, lesson.sources), actions);

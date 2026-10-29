@@ -104,6 +104,19 @@ class Generator:
                         'stream_completed': False, 'errors': [], 'plan_snapshot': plan,
                         'source_snapshot': sources, 'record_hash': self.store.file_hash('学习记录.md'),
                         'context': teaching_context(self.store, state['lessons'], number)}
+                from ai_evidence import freeze
+                from history_sources import teaching_source
+                references=[teaching_source('copilot-plan',[],'教学规划',plan,plan['hash']),
+                    teaching_source('copilot-sources',[number],'本课已核验参考资料',sources['entries'],sources['hash'])]
+                for excerpt in data['context']:
+                    lesson=next(x for x in state['lessons'] if x['lesson_no']==excerpt['lesson_no'])
+                    references.append(teaching_source('copilot-lesson',[excerpt['lesson_no']],f"第{excerpt['lesson_no']}课教学摘录",excerpt,
+                        digest(self.store.path(lesson['path']).read_text(encoding='utf-8')),
+                        target={'kind':'copilot','lesson_no':excerpt['lesson_no']},scope='仅核心概念、概念与完整示范、记忆提示章节',truncated=True))
+                evidence=freeze(c,'copilot',draft_id,messages(data),cfg['model'],
+                    sources=references,
+                    prompt_version='cognitive-course-v1')
+                data['evidence_snapshot_id']=evidence['id']
                 c.execute('INSERT INTO copilot_drafts VALUES (?,?,1,?,?,?)',
                           (draft_id, number, 'generating', encoded(data), now()))
                 c.execute('INSERT INTO copilot_generation_attempts VALUES (?,?,?,?,?,?)',
@@ -165,7 +178,9 @@ class Generator:
                 transport = self.transport
             finished = False
             last_progress_write = None
-            async for packet in transport(messages(d), cfg):
+            from ai_evidence import messages as frozen_messages
+            prompt=frozen_messages(self.store.conn,d['evidence_snapshot_id'])
+            async for packet in transport(prompt, cfg):
                 if packet.get('usage') is not None:
                     metrics['usage'] = packet['usage']
                 if packet.get('done'):

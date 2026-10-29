@@ -5,6 +5,7 @@ import db
 from datetime import date
 from pathlib import Path
 from typing import Optional
+from contextlib import contextmanager, closing
 
 
 TABLE_SQL = """
@@ -24,6 +25,15 @@ class BehaviorReportStore:
     def __init__(self, db_path: Path):
         self.db_path = db_path
         self.startup_error: Optional[Exception] = None
+        from .jobs import ReportJobs
+        self.jobs = ReportJobs(self)
+
+    @contextmanager
+    def conn(self):
+        with closing(self._conn()) as c, c: yield c
+
+    async def shutdown(self):
+        await self.jobs.shutdown()
 
     def _conn(self) -> db.CompatConnection:
         conn = db.connect()
@@ -31,10 +41,9 @@ class BehaviorReportStore:
 
     def initialize(self):
         """启动时建表。"""
-        conn = self._conn()
-        conn.executescript(TABLE_SQL)
-        conn.commit()
-        conn.close()
+        with self.conn() as conn:
+            conn.executescript(TABLE_SQL)
+            self.jobs.initialize(conn)
 
     def create_report(
         self,
@@ -62,22 +71,32 @@ class BehaviorReportStore:
         rows = conn.execute(
             "SELECT * FROM behavior_reports ORDER BY date DESC, id DESC"
         ).fetchall()
+        from ai_evidence import metadata
+        result=[{**dict(r),**metadata(conn,'behavior-result',r['id'])} for r in rows]
         conn.close()
-        return [dict(r) for r in rows]
+        return result
 
     def get_report(self, report_id: int) -> Optional[dict]:
         conn = self._conn()
         row = conn.execute(
             "SELECT * FROM behavior_reports WHERE id = ?", (report_id,)
         ).fetchone()
+        from ai_evidence import metadata
+        result={**dict(row),**metadata(conn,'behavior-result',row['id'])} if row else None
         conn.close()
-        return dict(row) if row else None
+        return result
 
     def delete_report(self, report_id: int) -> bool:
-        conn = self._conn()
-        cur = conn.execute(
-            "DELETE FROM behavior_reports WHERE id = ?", (report_id,)
-        )
-        conn.commit()
-        conn.close()
-        return cur.rowcount > 0
+        from ai_evidence import release
+        with self.conn() as conn:
+            cur = conn.execute('DELETE FROM behavior_reports WHERE id=?', (report_id,))
+            removed = cur.rowcount > 0
+            if removed:
+                for row in conn.execute('SELECT id,data FROM behavior_report_jobs WHERE result_id=?', (report_id,)).fetchall():
+                    import json
+                    job = json.loads(row['data']); job.update(result_id=None, result_deleted=True, evidence_snapshot_id=None, evidence_status='deleted', raw='', data_summary={}, phase='报告已删除')
+                    conn.execute('UPDATE behavior_report_jobs SET result_id=NULL,data=? WHERE id=?',
+                                 (json.dumps(job, ensure_ascii=False), row['id']))
+                    release(conn, 'behavior-report', row['id'])
+                release(conn, 'behavior-result', report_id)
+            return removed

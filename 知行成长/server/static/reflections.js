@@ -306,7 +306,8 @@
     if (!e) return;
     const sections = e.adopted_summary && e.adopted_summary.sections ? e.adopted_summary.sections.map(s => {
       const label = { event: '发生的事情', understanding: '我目前的认识', next_step: '下一步想试什么' }[s.kind] || '补充';
-      return '<div class="ref-sect"><div class="ref-sect-label">' + label + '</div><div class="ref-sect-body">' + esc(s.text) + '</div></div>';
+      const basis = s.basis === 'statement' ? '（原文整理）' : s.basis === 'suggestion' ? '（AI 建议）' : '（来源未标注）';
+      return '<div class="ref-sect"><div class="ref-sect-label">' + label + ' ' + basis + '</div><div class="ref-sect-body">' + esc(s.text) + '</div></div>';
     }).join('') : '';
 
     const aiControls = (e.archived_at) ? '' : `
@@ -332,6 +333,7 @@
         <button class="btn" onclick="closeModal()">关闭</button>
       </div>`;
     openModal(html);
+    window.AIEvidence?.mount(document.getElementById('modalBox'),'reflection-result',id);
   }
 
   /* ---------- AI 辅助流程 ---------- */
@@ -426,7 +428,7 @@
     // organize 结果
     const secs = (a.sections || []).map(s => {
       const label = { event: '发生的事情', understanding: '我目前的认识', next_step: '下一步想试什么' }[s.kind] || '补充';
-      const basis = s.basis === 'suggestion' ? '（AI 建议，待确认）' : '';
+      const basis = s.basis === 'suggestion' ? '（AI 建议，待确认）' : s.basis === 'statement' ? '（原文整理）' : '（来源未标注，请重新生成）';
       return '<div class="ref-sect"><div class="ref-sect-label">' + label + ' ' + basis + '</div><textarea rows="2" data-sec="' + s.kind + '">' + esc(s.text) + '</textarea></div>';
     }).join('');
     box.innerHTML = '<div class="ref-ai-result"><div class="ref-ai-result-title">整理草稿（仅保存你确认的版本）</div>' + secs

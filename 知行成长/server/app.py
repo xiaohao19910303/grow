@@ -387,6 +387,8 @@ app.state.multiuser = True
 
 from coach_facts import register as register_coach_facts
 register_coach_facts(app)
+from ai_evidence import register as register_ai_evidence
+register_ai_evidence(app)
 
 @app.middleware('http')
 async def legacy_module_readiness(request: Request, call_next):
@@ -414,6 +416,17 @@ register_migrations(app, copilot_store, LEARN_ROOT)
 materials = register_materials(app, LEARN_ROOT)
 from course_continuations import register as register_course_continuations
 continuations = register_course_continuations(app, plans_store, plans_generator, materials, copilot_store)
+# 教学来源核验在请求账号内解析，不接受任意文件路径，不触发模型。
+from copilot.core import digest as evidence_digest, encoded as evidence_encoded
+app.state.ai_evidence_resolvers = {
+    'study-lesson': lambda module, filename: materials.lesson(module, filename)['lesson']['version'],
+    'copilot-lesson': lambda number: evidence_digest(copilot_store.lesson(number)['content']),
+    'copilot-plan': lambda: copilot_store.plan()['hash'],
+    'copilot-sources': lambda number: copilot_store.sources(number)['hash'],
+    'course-teaching': lambda key: evidence_digest(evidence_encoded(continuations.sources.teaching(key))),
+    'plan-sources': lambda pid, number: plans_store.hash(f'{plans_store.base(pid)}/备课资料/第{number:03d}课.json'),
+}
+
 from mobile_library import register as register_mobile_library
 register_mobile_library(app, plans_store, materials)
 from study_notes import register as register_study_notes

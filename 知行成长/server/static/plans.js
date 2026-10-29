@@ -147,6 +147,7 @@
     const status=shell('计划详情');route('detail',pid);status.textContent='正在读取课程规划…';const turn=navigation;const data=await api('/'+pid);if(turn!==navigation)return;
     root.querySelector('h2').textContent=data.plan.name;status.textContent=pid+' · 当前版本 v'+data.plan.version;
     window.PlanActions?.mount(root,pid);
+    window.AIEvidence?.mount(root,'plan-result',pid);
     button(root,'返回课程详情',()=>window.CourseLibrary.open('plan:'+pid));button(root,'返回列表',window.loadPlans);button(root,'调整后续规划',()=>create(data));
     button(root,'修改显示名称',async()=>{const name=prompt('新的显示名称',data.plan.name);if(name){await api('/'+pid+'/metadata',{name,key:uuid()});await detail(pid);refresh();}});
 
@@ -357,6 +358,7 @@
   async function previewDraft(id){
     const status=shell('生成预览');route('draft',id);page={kind:'draft',id};const turn=navigation;
     const d=await api('/drafts/'+id);if(turn!==navigation)return;
+    window.AIEvidence?.mount(root,'plan-draft',id);
     status.textContent=(d.kind==='plan'?'学习规划':'课程')+' · '+(d.state==='published'?'已正式保存':d.state==='ready'?'草稿，尚未正式保存':'结构检查未通过，请直接编辑修正')+' · '+d.created_at;
     root.querySelector('h2').textContent=d.kind==='plan'?d.brief.title:'课程阅读预览';
     const actions=node('div',undefined,'plan-actions');root.append(actions);button(actions,'返回计划列表',window.loadPlans);
@@ -452,7 +454,7 @@
   window.addEventListener('load',async()=>{if(location.hash.startsWith('#plans/'))goTab('plans');else try{const data=await api('');for(const a of data.attempts){trackGeneration(a);if(['queued','generating'].includes(a.state))observe(a.id);}}catch(_){/* The plans page offers a manual retry. */}});
   window.openPlanCourse=async(pid,n)=>{
     rememberLearningOrigin();if(goTab('reader',{reading:true})===false)return;const turn=window.studyReaderRequest;const reader=document.getElementById('dailyReader');reader.hidden=false;reader.replaceChildren();const loading=window.LoadingState?.start(reader,'正在读取课程规划课程…','正在读取课程正文与个人反馈。');
-    try{const [d,detail]=await Promise.all([api('/'+pid+'/lessons/'+n),api('/'+pid)]);const version=await window.StudyNotes.contentVersion(d.content);if(turn!==window.studyReaderRequest)return;reader.replaceChildren();button(reader,(window.lessonReturnLabel?.() || '返回我的课程'),returnFromLesson);githubLink(reader,'在 GitHub 打开课程',d.github_url);const content=markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);githubLink(source,'在 GitHub 打开参考资料',d.sources_github_url);markdown(source,d.sources);
+    try{const [d,detail]=await Promise.all([api('/'+pid+'/lessons/'+n),api('/'+pid)]);const version=await window.StudyNotes.contentVersion(d.content);if(turn!==window.studyReaderRequest)return;reader.replaceChildren();button(reader,(window.lessonReturnLabel?.() || '返回我的课程'),returnFromLesson);githubLink(reader,'在 GitHub 打开课程',d.github_url);window.AIEvidence?.mount(reader,'plan-course',pid+'/'+n);const content=markdown(reader,d.content);const source=node('details');source.append(node('summary','参考资料与边界'));reader.append(source);githubLink(source,'在 GitHub 打开参考资料',d.sources_github_url);markdown(source,d.sources);
       window.CourseLibrary?.recordOpened('plan:'+pid,n);
       const feedback=detail.feedback.find(item=>item.lesson_no===n);
       const notes=window.StudyNotes.mount({parent:reader,content,kind:'plan',course:pid+'/'+n,version,seedNotes:feedback?.comment||''});

@@ -80,7 +80,8 @@ def _parse_assist(kind, raw):
         if kind_key not in ('event', 'understanding', 'next_step') or not isinstance(text, str) or not text.strip():
             raise ValueError('section fields invalid')
         if basis not in ('statement', 'suggestion'):
-            basis = 'statement'
+            # 复盘整理必须明确区分原文与建议，未知分类不能升级为本人陈述。
+            raise ValueError('section basis invalid')
         out.append({'kind': kind_key, 'text': text.strip()[:2000], 'basis': basis})
     return {'sections': out}
 
@@ -136,6 +137,14 @@ class ReflectionAssistant:
                 'version_at_request': entry['version'],
             }
             with self.store.conn() as c:
+                from ai_evidence import freeze
+                from history_sources import record_source
+                evidence=freeze(c,'reflection',key,_assist_messages(kind,snapshot),cfg['model'],
+                    sources=[record_source(c,'reflection_entries',(entry_id,),'本人确认发送的复盘与回答',snapshot,
+                        target={'kind':'reflection','id':entry_id},fields=['raw_text','guided_answers'],
+                        scope='本次确认的正文与回答；页面尚未保存的编辑以发送内容为准')],
+                    prompt_version='reflection-'+kind+'-v1')
+                attempt['evidence_snapshot_id']=evidence['id']
                 c.execute('INSERT INTO reflection_ai_attempts VALUES (?,?)', (key, encoded(attempt)))
         task = asyncio.create_task(self._run(key, cfg))
         self.tasks[key] = task
@@ -155,7 +164,9 @@ class ReflectionAssistant:
             gate.enter_context(self.store.generation_gate())
             a['model'] = cfg['model']
             done = False
-            async for packet in (self.transport or qwen_stream)(_assist_messages(a['kind'], a['snapshot']), cfg):
+            from ai_evidence import messages as frozen_messages
+            prompt=frozen_messages(self.store.conn,a['evidence_snapshot_id'])
+            async for packet in (self.transport or qwen_stream)(prompt, cfg):
                 if packet.get('usage') is not None:
                     a['usage'] = packet['usage']
                 if packet.get('done'):

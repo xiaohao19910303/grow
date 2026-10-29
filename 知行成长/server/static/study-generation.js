@@ -71,6 +71,7 @@
       if(job)trackGeneration(module.id,job);
       if (job) module.generation = job;
       panel.replaceChildren(node('h4', '生成下一课'));
+      if(job)window.AIEvidence?.mount(panel,'study',job.id);
       panel.append(node('p', '按课号和已学主题接续，不安排学习日期。使用你的 AI 配置，不发送个人学习笔记。', 'desc'));
       status = node('p', '', 'desc'); status.setAttribute('role', 'status'); panel.append(status);
       const actions = node('div', undefined, 'day-actions'); panel.append(actions);

@@ -585,6 +585,11 @@ class Store:
                     c.execute(statement, parameters)
                 if data.get('draft_id'):
                     c.execute("UPDATE copilot_drafts SET status='published' WHERE id=?", (data['draft_id'],))
+                    original=c.execute('SELECT data,lesson_no FROM copilot_drafts WHERE id=?',(data['draft_id'],)).fetchone()
+                    evidence_id=json.loads(original[0]).get('evidence_snapshot_id')
+                    if evidence_id:
+                        from ai_evidence import bind
+                        bind(c,'copilot-course',original[1],evidence_id)
                 c.execute("UPDATE copilot_operations SET status='done' WHERE id=?", (op_id,))
             return {'operation_id': op_id, 'status': 'done'}
         except (OSError, db.Error, db.psycopg2.Error, Problem) as e:
@@ -893,15 +898,18 @@ class Store:
             items.append(d)
         return items
 
-    def save_summary(self, module_id, round_id, scope, content, feedback_snapshot):
+    def save_summary(self, module_id, round_id, scope, content, feedback_snapshot, *, evidence_snapshot_id=None):
         with self.lock():
             with self.conn() as c:
-                c.execute('''
+                cur=c.execute('''
                     INSERT INTO copilot_summaries
                     (module_id, round_id, scope, content, feedback_snapshot, created_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                 ''', (module_id, round_id, scope, content,
                       encoded(feedback_snapshot), now()))
+                if evidence_snapshot_id:
+                    from ai_evidence import bind
+                    bind(c,'course-summary',cur.lastrowid,evidence_snapshot_id)
             # Cloud summaries contain personal feedback and stay in the database.
             if getattr(self, 'remote', False):
                 return True

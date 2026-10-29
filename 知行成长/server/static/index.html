@@ -2090,6 +2090,7 @@ async function viewAIReport(id){
       <div class="actions"><button class="btn" onclick="closeModal()">关闭</button></div>
     `;
     openModal(html);
+    window.AIEvidence?.mount(document.getElementById('modalBox'),'behavior-result',id);
   } catch(e) {
     toast('加载失败','err');
   }
@@ -2720,43 +2721,44 @@ init();
   <aside id="actionExecution" class="action-execution" aria-label="正在执行的行动" hidden></aside>
 </div>
 <script src="/static/floating-panels.js?v=20261021-audit"></script>
-<script src="/static/reading-tasks.js?v=20261021-audit"></script>
-<script src="/static/behavior-report.js?v=20261021-p1"></script>
+<script src="/static/ai-evidence.js?v=20261028-evidence"></script>
+<script src="/static/reading-tasks.js?v=20261028-evidence"></script>
+<script src="/static/behavior-report.js?v=20261028-evidence"></script>
 <script src="/static/learning-completion.js?v=20261025-c1c3"></script>
-<script src="/static/copilot.js?v=20261027-continuation"></script>
+<script src="/static/copilot.js?v=20261028-evidence"></script>
 <script src="/static/course-feedback.js?v=20261019-1"></script>
 <script src="/static/course-archive.js?v=20261019-1"></script>
-<script src="/static/course-summary.js?v=20261021-background"></script>
+<script src="/static/course-summary.js?v=20261028-evidence"></script>
 <script src="/static/study-note-session.js?v=20261018-1"></script>
 <script src="/static/study-notes.js?v=20261018-1"></script>
 <script src="/static/learning-plan-actions.js?v=20261025-c1c3"></script>
 <script src="/static/ai-setup.js?v=20261025-e1"></script>
-<script src="/static/plans.js?v=20261027-continuation"></script>
-<script src="/static/study-generation.js?v=20261021-unified"></script>
+<script src="/static/plans.js?v=20261028-evidence"></script>
+<script src="/static/study-generation.js?v=20261028-evidence"></script>
 <script src="/static/course-library-model.js?v=20261026-1"></script>
-<script src="/static/course-continuation.js?v=20261027-1"></script>
+<script src="/static/course-continuation.js?v=20261028-evidence"></script>
 <script src="/static/course-library.js?v=20261027-continuation"></script>
-<script src="/static/daily-learning.js?v=20261028-main"></script>
+<script src="/static/daily-learning.js?v=20261028-evidence"></script>
 
 <script src="/static/reading-growth.js?v=20261025-e1"></script>
 <script src="/static/reading-body.js?v=20261017-onsite2"></script>
 <script src="/static/reading-position.js?v=20261021-merge"></script>
-<script src="/static/reading.js?v=20261024-merge"></script>
-<script src="/static/reflections.js?v=20261024-merge"></script>
+<script src="/static/reading.js?v=20261028-evidence"></script>
+<script src="/static/reflections.js?v=20261028-evidence"></script>
 <script src="/static/learning-notebook.js?v=20261025-1"></script>
 <script src="/static/learning-history.js?v=20261021-p1-navigation"></script>
 <script src="/static/stocks.js?v=20261021-merge"></script>
 <script src="/static/investments.js?v=20261028-rules"></script>
-<script src="/static/investment-analysis.js?v=20261028-rules"></script>
+<script src="/static/investment-analysis.js?v=20261028-evidence"></script>
 <script src="/static/investment-market.js?v=20261028-rules"></script>
-<script src="/static/search.js?v=20261023-autofill"></script>
+<script src="/static/search.js?v=20261028-evidence"></script>
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>
 <link rel="stylesheet" href="/static/action-recovery.css?v=20261024-merge">
 <script src="/static/action-plan-client.js?v=20261024-merge"></script>
 <script src="/static/action-recovery.js?v=20261024-merge"></script>
 <script src="/static/rhythm-client.js?v=20261023"></script>
-<script src="/static/action-reviews.js?v=20261021-merge"></script>
+<script src="/static/action-reviews.js?v=20261028-evidence"></script>
 <script src="/static/record-link.js?v=20261025"></script>
 <script src="/static/mobile-learning.js?v=20261025-reader"></script>
 <script src="/static/action-link.js?v=20261021-merge"></script>

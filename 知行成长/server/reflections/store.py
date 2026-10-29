@@ -499,6 +499,9 @@ class ReflectionsStore:
             sections = attempt.get('sections') or []
             if not sections:
                 fail('invalid', '整理内容为空。', 422)
+            # 采用复盘整理时再次核对来源，防止旧就绪结果绕过生成阶段的分类校验。
+            if not isinstance(sections, list) or any(not isinstance(s, dict) or s.get('basis') not in ('statement', 'suggestion') for s in sections):
+                fail('invalid', '整理来源分类缺失或无效，请重新生成后核对。', 422)
             expected_hash = self.expected_mirror(entry)
             new_version = entry['version'] + 1
             entry.update(
@@ -510,6 +513,11 @@ class ReflectionsStore:
             files = {entry['path']: {'old': expected_hash, 'content': md, 'new': digest(md)}}
             records = [{'sql': 'INSERT INTO reflection_entries VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
                         'params': [entry_id, encoded(entry)]}]
+            if attempt.get('evidence_snapshot_id'):
+                # 随本人采用的版本关联，不覆盖同一记录之前的分析依据。
+                from ai_evidence import link_statement
+                sql,params=link_statement('reflection-result',entry_id,attempt['evidence_snapshot_id'],str(new_version))
+                records.append({'sql':sql,'params':params})
             return self.publish(key, request, files, records, {'id': entry_id, 'version': new_version})
 
     def archive(self, entry_id, key):

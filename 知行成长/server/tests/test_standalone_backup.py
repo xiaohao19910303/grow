@@ -29,6 +29,13 @@ class StandaloneBackupTests(unittest.TestCase):
                 cur.execute(sql.SQL('INSERT INTO {}.cloud_documents VALUES (%s,%s)').format(sql.Identifier(schema)),('lesson',json.dumps({'storage':'github','commit_sha':self.sha,'hash':'hash','text':'PRIVATE_NOTE'})))
                 cur.execute(sql.SQL('CREATE TABLE {}.action_facts(id TEXT PRIMARY KEY, minutes INTEGER)').format(sql.Identifier(schema)))
                 cur.execute(sql.SQL('INSERT INTO {}.action_facts VALUES (%s,20)').format(sql.Identifier(schema)),('fact-1',))
+                import db, ai_evidence
+                cur.execute(sql.SQL('SET LOCAL search_path TO {}').format(sql.Identifier(schema)))
+                snapshot=ai_evidence.freeze(db.CompatConnection(c),'behavior-report','backup-task',
+                    [{'role':'user','content':'PRIVATE_EVIDENCE_FIXTURE'}],'fixture')
+                ai_evidence.bind(db.CompatConnection(c),'behavior-result','backup-result',snapshot['id'])
+            cur.execute('SET LOCAL search_path TO public')
+
         self.backup=self.root/'backup'
     def database(self):
         name='web_backup_'+uuid.uuid4().hex;self.names.append(name)
@@ -50,6 +57,10 @@ class StandaloneBackupTests(unittest.TestCase):
         with psycopg2.connect(self.target) as c:
             cur=c.cursor();cur.execute('SELECT sum(minutes) FROM tenant_fixture.action_facts');self.assertEqual(cur.fetchone()[0],20)
             cur.execute('SELECT data FROM tenant_fixture.cloud_documents');self.assertEqual(json.loads(cur.fetchone()[0])['text'],'PRIVATE_NOTE')
+            cur.execute('SELECT count(*) FROM tenant_fixture.ai_evidence_links');self.assertEqual(cur.fetchone()[0],2)
+            cur.execute('SELECT data FROM tenant_fixture.ai_evidence_snapshots');self.assertEqual(json.loads(cur.fetchone()[0])['messages'][0]['content'],'PRIVATE_EVIDENCE_FIXTURE')
+            cur.execute('SELECT version FROM tenant_fixture.ai_evidence_migrations');self.assertEqual(cur.fetchone()[0],1)
+
             cur.execute("SELECT github_config FROM auth_users WHERE id='alice'");self.assertEqual(Fernet(self.key.encode()).decrypt(json.loads(cur.fetchone()[0])['token'].encode()),b'PRIVATE_TOKEN')
         self.assertEqual(self.gitcmd('--git-dir',str(restored/'content-0.git'),'show',self.sha+':lesson.md').strip(),'Public synthetic lesson')
         with self.assertRaises(BackupError):restore(self.target,self.backup,self.root/'again',env=self.env,writers_stopped=True)

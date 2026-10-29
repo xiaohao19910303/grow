@@ -102,6 +102,9 @@ class StudyGenerationTests(PostgreSQLFixture):
         self.assertEqual(job['state'], 'ready', job)
         self.assertEqual(job['lesson_no'], 2)
         self.assertEqual(self.repo.ref_updates, 0, 'Generating a draft must not publish it')
+        from ai_evidence import read
+        with self.materials.conn() as c:
+            self.assertEqual(read(c,job['evidence_snapshot_id'])['messages'],self.calls[0]['messages'])
         context = json.loads(self.calls[0]['messages'][1]['content'])
         self.assertEqual(context['lesson_no'], 2)
         self.assertNotIn('date', context)

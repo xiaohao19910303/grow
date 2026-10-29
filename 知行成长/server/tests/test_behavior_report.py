@@ -1,6 +1,7 @@
 """Behavior reports use request AI credentials and only save completed responses."""
 import asyncio
 import json
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,6 +15,19 @@ from test_legacy_cloud_schema import PostgreSQLFixture
 
 AI = {'api_base_url': 'https://provider.example/v1', 'api_key': 'PRIVATE_TEST_KEY', 'model_name': 'test-report'}
 SUMMARY = {'period': '近30天', 'checkins': {'total_days': 3}, 'habits': {'total_minutes': 20}}
+
+
+class BehaviorReportEvidenceTests(unittest.TestCase):
+    def test_single_period_summary_requires_missing_evidence_and_sample_limits(self):
+        from behavior_report.analyzer import build_prompt
+        data = {**SUMMARY, 'predictions': {'total': 0, 'resolved': 0, 'accuracy': 0},
+                'errors': {'total': 0, 'repeat_rate': 0}}
+        prompt = build_prompt(data)
+        self.assertIn(json.dumps(data, ensure_ascii=False, indent=2), prompt)
+        for boundary in ('没有记录不等于没有学习', '不得判断上升、下滑或改善',
+                         '不能判断过度自信、保守或校准水平', '不解释为表现差或真实的0%水平',
+                         '不是计划或课程完成率', '不能证明应用效果', '待验证解释与建议'):
+            self.assertIn(boundary, prompt)
 
 
 class BehaviorReportTests(PostgreSQLFixture):
@@ -33,7 +47,7 @@ class BehaviorReportTests(PostgreSQLFixture):
         self.calls = []
 
         async def model(messages, config):
-            self.calls.append((messages, config))
+            self.calls.append((messages, dict(config)))
             yield {'text': '## 行为模式\n已坚持三天，建议继续保持。'}
             yield {'done': True}
 
@@ -43,6 +57,29 @@ class BehaviorReportTests(PostgreSQLFixture):
     def generate(self, **updates):
         return self.client.post('/api/behavior-report/generate?period_days=30',
                                 json={'ai_config': AI} | updates, headers=self.headers)
+
+    def test_background_api_202_replay_pagination_and_request_lookup_never_restart_model(self):
+        import time
+        body={'key':'api-background-request','period_days':30,'ai_config':AI}
+        response=self.client.post('/api/behavior-report/jobs',json=body,headers=self.headers)
+        self.assertEqual(response.status_code,202,response.text);job=response.json()
+        self.assertTrue(job['evidence_snapshot_id'])
+        for _ in range(100):
+            current=self.client.get('/api/behavior-report/jobs/'+job['id']).json()
+            if current['state'] not in ('queued','generating'):break
+            time.sleep(.01)
+        self.assertEqual(current['state'],'ready')
+        replay=self.client.post('/api/behavior-report/jobs',json={**body,'ai_config':None},headers=self.headers)
+        self.assertEqual(replay.status_code,202);self.assertEqual(replay.json()['result_id'],current['result_id'])
+        lookup=self.client.get('/api/behavior-report/jobs/by-request/'+body['key'])
+        self.assertEqual(lookup.status_code,200);self.assertEqual(lookup.json()['id'],job['id'])
+        page=self.client.get('/api/behavior-report/jobs?page=1&page_size=1').json()
+        self.assertEqual(page['total'],1);self.assertEqual(page['items'][0]['id'],job['id'])
+        self.assertEqual(self.client.post('/api/behavior-report/jobs/'+job['id']+'/cancel',json={},headers=self.headers).json()['state'],'ready')
+        self.assertEqual(self.client.post('/api/behavior-report/jobs',json={**body,'period_days':7},headers=self.headers).status_code,409)
+        self.assertEqual(self.client.post('/api/behavior-report/jobs',json={**body,'period_days':'30'},headers=self.headers).status_code,422)
+        self.assertEqual(len(self.calls),1)
+        self.assertEqual(lookup.headers['cache-control'],'no-store')
 
     def test_missing_configuration_and_cross_origin_writes_do_not_generate_or_save(self):
         self.assertEqual(self.generate(ai_config=None).status_code, 422)
@@ -83,6 +120,17 @@ class BehaviorReportTests(PostgreSQLFixture):
             self.assertEqual(self.client.get('/api/behavior-report').json(), [])
         self.assertEqual(self.generate().status_code, 201, 'an explicit retry can save a real report')
         self.assertEqual(len(self.client.get('/api/behavior-report').json()), 1)
+
+    def test_legacy_disconnect_after_full_model_output_still_cancels_before_result_save(self):
+        from starlette.requests import Request
+        async def disconnect_when_finished(request):
+            with self.store.conn() as c:
+                return any(json.loads(r[0]).get('awaiting_confirmation') for r in c.execute('SELECT data FROM behavior_report_jobs'))
+        with patch.object(Request,'is_disconnected',disconnect_when_finished):
+            response=self.generate()
+        self.assertEqual(response.status_code,499,response.text)
+        self.assertEqual(len(self.calls),1)
+        self.assertEqual(self.client.get('/api/behavior-report').json(),[])
 
     def test_disconnect_cancels_inflight_model_without_saving(self):
         cancelled = []

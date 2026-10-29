@@ -392,8 +392,13 @@ class Plans:
         d.update(family_id=parent.get('family_id',parent['id']) if parent else d['id'],
                  parent_draft_id=parent['id'] if parent else None, operation=operation,
                  instruction=instruction, scope=scope)
-        if not parent:self.put('learning_draft_families',d['family_id'],{'id':d['family_id'],'published_draft_id':None})
-        self.put('learning_drafts',d['id'],d)
+        if parent and parent.get('evidence_snapshot_id'):d.setdefault('evidence_snapshot_id',parent['evidence_snapshot_id'])
+        with self.conn() as c:
+            if not parent:c.execute('INSERT INTO learning_draft_families VALUES (?,?)',(d['family_id'],encoded({'id':d['family_id'],'published_draft_id':None})))
+            c.execute('INSERT INTO learning_drafts VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',(d['id'],encoded(d)))
+            if d.get('evidence_snapshot_id'):
+                from ai_evidence import bind
+                bind(c,'plan-draft',d['id'],d['evidence_snapshot_id'])
         return self.read_draft(d['id'])
 
     def draft(self, data):
@@ -417,6 +422,7 @@ class Plans:
                  'base_version': base_version, 'overrides': overrides, 'state': 'ready', 'created_at': now()}
             for k in ('continuation_id','continuation_form_hash'):
                 if (parent or data).get(k):d[k]=(parent or data)[k]
+            if data.get('evidence_snapshot_id'):d['evidence_snapshot_id']=data['evidence_snapshot_id']
             return self.save_draft_locked(d,parent,data.get('operation','manual'),data.get('instruction'),data.get('scope'))
 
     def draft_history(self, did, offset=0, limit=20):
@@ -489,6 +495,9 @@ class Plans:
             sql = [('INSERT INTO learning_plans VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data', [pid, encoded(p)]),
                    ('INSERT INTO learning_plan_versions VALUES (?,?,?)', [pid,p['version'],encoded(v)]),
                    ('UPDATE learning_drafts SET data=? WHERE id=?', [encoded(d),did])]
+            if d.get('evidence_snapshot_id'):
+                from ai_evidence import link_statement
+                sql.append(link_statement('plan-result',pid,d['evidence_snapshot_id'],str(p['version'])))
             sql.append(self.family_sql(d,{'plan_id':pid,'version':p['version']}))
             return self.publish(key, request, files, sql, {'plan_id': pid, 'version': p['version']})
 
@@ -543,12 +552,13 @@ class Plans:
             fail('invalid','本课未提供链接资料，不能加入未经提供的引用链接。',422)
         if '<script' in content.lower() or '<script' in notes.lower(): fail('invalid','内容含不可接受的脚本。',422)
 
-    def course_draft(self, context, content, notes, complete=True, parent_id=None, parent_hash=None, operation='manual', instruction=None, scope=None):
+    def course_draft(self, context, content, notes, complete=True, parent_id=None, parent_hash=None, operation='manual', instruction=None, scope=None, evidence_snapshot_id=None):
         with self.lock():
             parent=self.parent(parent_id,parent_hash,'course') if parent_id else None
             if parent and context!=parent['context']:fail('conflict','不能静默改变课程上下文。')
             d = {'id':str(uuid.uuid4()), 'kind':'course', 'context':copy.deepcopy(context), 'content':content, 'sources':notes,
                  'complete':complete, 'state':'ready', 'created_at':now()}
+            if evidence_snapshot_id:d['evidence_snapshot_id']=evidence_snapshot_id
             try: self.validate_course(d)
             except Exception:
                 if parent:raise
@@ -603,6 +613,9 @@ class Plans:
             p['hashes'].update({k:digest(v) for k,v in files.items()})
             lesson={'lesson_no':n,'topic':ctx['lesson']['topic'],'date':ctx['date'],'path':course,'source':source,
                     'version':p['version'],'learning_state':'unknown','learning_label':'待本人反馈'}
+            if d.get('evidence_snapshot_id'):
+                from ai_evidence import link_statement
+                extension_sql.append(link_statement('plan-course',pid+'/'+str(n),d['evidence_snapshot_id']))
             d['state']='published'
             return self.publish(key,request,files,[('INSERT INTO learning_lessons VALUES (?,?,?)',[pid,n,encoded(lesson)]),
                 ('UPDATE learning_plans SET data=? WHERE id=?',[encoded(p),pid]),

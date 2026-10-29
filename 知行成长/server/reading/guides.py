@@ -22,8 +22,9 @@ def source_context(store,article):
     if len(text.strip())<100 or ('内容获取失败' in text and len(text)<300):
         text=article.get('summary') or '';basis='summary'
     if len(text.strip())<50:fail('invalid','现有内容太少，请先获取原文再生成导读。',422)
+    truncated=len(text)>12000
     text=text[:12000]
-    return {'source_text':text,'source_basis':basis,'source_hash':digest(text)}
+    return {'source_text':text,'source_basis':basis,'source_hash':digest(text),'source_truncated':truncated}
 
 
 def validate_guide(text):

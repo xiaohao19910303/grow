@@ -1,7 +1,9 @@
 """Private reflection records remain in PostgreSQL; legacy mirrors stay untouched."""
 import copy
-from contextlib import contextmanager
-from unittest.mock import patch
+import json
+import unittest
+from contextlib import contextmanager, nullcontext
+from unittest.mock import Mock, patch
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
@@ -9,6 +11,84 @@ from cloud_fixtures import CloudFixture
 from copilot.core import Problem,digest
 from reflections.store import ReflectionsStore,render_markdown,entry_path
 from reflections.api import register
+
+
+class ReflectionBasisTests(unittest.IsolatedAsyncioTestCase):
+    def adoption_store(self, sections, status='ready'):
+        entry = {'id': 'ref-' + 'a' * 32, 'record_date': '2026-10-28',
+                 'version': 1, 'raw_text': 'PRIVATE ORIGINAL', 'path': '执行复盘/日常记录/2026-10/ref-test.md'}
+        attempt = {'kind': 'organize', 'status': status, 'version_at_request': 1, 'sections': sections}
+        connection = Mock()
+        connection.execute.return_value.fetchone.return_value = (json.dumps(attempt),)
+        store = Mock(spec=ReflectionsStore)
+        store.lock.return_value = nullcontext()
+        store.conn.return_value = nullcontext(connection)
+        store.replay.return_value = None
+        store.get.return_value = entry
+        return store, entry
+
+    def test_adoption_rejects_legacy_ready_results_without_valid_classification(self):
+        for sections in ([{'kind': 'event', 'text': '未标来源'}],
+                         [{'kind': 'next_step', 'text': '未知来源', 'basis': 'unknown'}],
+                         [{'kind': 'event', 'text': '原文整理', 'basis': 'statement'},
+                          {'kind': 'next_step', 'text': '混入无分类建议'}]):
+            with self.subTest(sections=sections):
+                store, entry = self.adoption_store(sections)
+                before = copy.deepcopy(entry)
+                with self.assertRaises(Problem):
+                    ReflectionsStore.adopt(store, entry['id'], 'ready-attempt', 'adopt-key')
+                self.assertEqual(entry, before)
+                store.publish.assert_not_called()
+
+    def test_adoption_preserves_valid_classifications_and_original_text(self):
+        sections = [{'kind': 'event', 'text': '今天开会', 'basis': 'statement'},
+                    {'kind': 'next_step', 'text': '下次先写结论', 'basis': 'suggestion'}]
+        store, entry = self.adoption_store(sections)
+        ReflectionsStore.adopt(store, entry['id'], 'ready-attempt', 'adopt-key')
+        self.assertEqual(entry['raw_text'], 'PRIVATE ORIGINAL')
+        saved = json.loads(store.publish.call_args.args[3][0]['params'][1])
+        self.assertEqual(saved['adopted_summary']['sections'], sections)
+
+    def test_failed_organizing_attempt_cannot_be_adopted(self):
+        store, entry = self.adoption_store([], status='failed')
+        with self.assertRaises(Problem) as error:
+            ReflectionsStore.adopt(store, entry['id'], 'failed-attempt', 'adopt-key')
+        self.assertEqual(error.exception.status, 409)
+        self.assertEqual(entry['raw_text'], 'PRIVATE ORIGINAL')
+        store.publish.assert_not_called()
+
+    def test_invalid_or_missing_basis_is_rejected(self):
+        from reflections.assist import _parse_assist
+        for extra in ({}, {'basis': None}, {'basis': ''}, {'basis': 'unknown'}, {'basis': 1}):
+            with self.subTest(extra=extra), self.assertRaises(ValueError):
+                _parse_assist('organize', json.dumps({'sections': [{'kind': 'event', 'text': '待核实', **extra}]}))
+
+    def test_valid_statement_and_suggestion_remain_distinct(self):
+        from reflections.assist import _parse_assist
+        sections = [{'kind': 'event', 'text': '今天开会', 'basis': 'statement'},
+                    {'kind': 'next_step', 'text': '下次先写结论', 'basis': 'suggestion'}]
+        self.assertEqual(_parse_assist('organize', json.dumps({'sections': sections})), {'sections': sections})
+
+    async def test_invalid_model_classification_cannot_become_an_adoptable_result(self):
+        from reflections.assist import ReflectionAssistant
+        attempt = {'id': 'attempt', 'kind': 'organize', 'status': 'queued', 'raw': '',
+                   'sections': [], 'evidence_snapshot_id':'fixture', 'snapshot': {'text': 'PRIVATE ORIGINAL', 'answers': []}}
+        saved = {}
+        store = Mock()
+        store.get.return_value = attempt
+        store._put.side_effect = lambda table, key, value: saved.update(copy.deepcopy(value))
+        store.generation_gate.return_value = nullcontext()
+        async def model(messages, cfg):
+            yield {'text': json.dumps({'sections': [{'kind': 'event', 'text': '无分类的AI推测'}]})}
+            yield {'done': True}
+        from reflections.assist import _assist_messages
+        with patch('ai_evidence.messages', return_value=_assist_messages('organize',attempt['snapshot'])):
+            result = await ReflectionAssistant(store, model)._run('attempt', {'model': 'fixture'})
+        self.assertEqual(result['status'], 'failed')
+        self.assertEqual(saved['status'], 'failed')
+        self.assertEqual(saved['sections'], [])
+        self.assertEqual(saved['snapshot']['text'], 'PRIVATE ORIGINAL')
+
 
 class ReflectionProtectionTests(CloudFixture):
     def setUp(self):
@@ -20,7 +100,7 @@ class ReflectionProtectionTests(CloudFixture):
     def mirror(self):
         path=self.root/self.entry()['path'];path.parent.mkdir(parents=True,exist_ok=True);return path
     def organize(self):
-        self.s._put('reflection_ai_attempts','ready-attempt',{'id':'ready-attempt','entry_id':self.id,'kind':'organize','status':'ready','version_at_request':self.entry()['version'],'sections':[{'kind':'event','text':'PRIVATE ADOPTED'}]})
+        self.s._put('reflection_ai_attempts','ready-attempt',{'id':'ready-attempt','entry_id':self.id,'kind':'organize','status':'ready','version_at_request':self.entry()['version'],'sections':[{'kind':'event','text':'PRIVATE ADOPTED','basis':'statement'}]})
     def assert_private(self):
         self.assertEqual(self.repo.commits[self.repo.head]['files'],{'README.md':'Content repository'})
     def test_mutations_preserve_legacy_mirrors_and_private_records(self):

@@ -78,12 +78,15 @@ class BackgroundGenerations:
                     return running,None
             require_config(ai_config)
             # Prompt preparation is read-only; the model starts only in the detached worker.
-            stream=(self.summary.generate('renzhi',1,values.get('scope','full_course'),ai_config=ai_config,persist=False)
-                    if kind=='summary' else self.summary.generate_advanced(values['summary_content'],ai_config=ai_config,persist=False))
             job={'id':str(uuid.uuid4()),'kind':kind,'state':'queued','raw':'','phase':'已提交',
                  'created_at':now(),'updated_at':now(),'worker':self.worker,'request_hash':fingerprint,
                  'scope':values.get('scope','full_course'),'result_id':None,'draft_id':None,'error':None}
             with self.store.conn() as c:
+                stream=(self.summary.generate('renzhi',1,values.get('scope','full_course'),ai_config=ai_config,persist=False,evidence_resource_id=job['id'],evidence_connection=c)
+                        if kind=='summary' else self.summary.generate_advanced(values['summary_content'],ai_config=ai_config,persist=False,evidence_resource_id=job['id'],evidence_connection=c))
+                from ai_evidence import linked
+                snapshots=linked(c,'course-background',job['id'])
+                if snapshots:job['evidence_snapshot_id']=snapshots[0]['id']
                 c.execute('INSERT INTO copilot_background_jobs VALUES (?,?,?,?,?,?)',
                           (job['id'],key,fingerprint,kind,'queued',encoded(job)))
                 c.execute('INSERT INTO copilot_background_requests VALUES (?,?,?)',(key,fingerprint,job['id']))
@@ -110,12 +113,21 @@ class BackgroundGenerations:
             row=c.execute('SELECT state FROM copilot_background_jobs WHERE id=?',(job['id'],)).fetchone()
             if not row or row['state'] not in ACTIVE:return self.get(job['id'])
             if job['kind']=='summary':
+                # 整课复盘沿用生成时的反馈快照；缺失时拒绝保存，不伪造空依据。
+                feedback=payload.get('feedback_snapshot')
+                if not isinstance(feedback,list):raise ValueError('Missing feedback snapshot')
                 row=c.execute('''INSERT INTO copilot_summaries(module_id,round_id,scope,content,feedback_snapshot,created_at)
-                    VALUES ('renzhi',1,?,?,?,?) RETURNING id''',(job['scope'],content,encoded([]),now())).fetchone()
+                    VALUES ('renzhi',1,?,?,?,?) RETURNING id''',(job['scope'],content,encoded(feedback),now())).fetchone()
                 job['result_id']=row[0]
+                if payload.get('evidence_snapshot_id'):
+                    from ai_evidence import bind
+                    bind(c,'course-summary',job['result_id'],payload['evidence_snapshot_id'])
             else:
                 draft=payload['draft'];number=payload['lesson_no'];job.update(draft_id=job['id'],lesson_no=number)
                 c.execute('INSERT INTO copilot_drafts VALUES (?,?,1,?,?,?)',(job['id'],number,'draft',encoded(draft),now()))
+                if payload.get('evidence_snapshot_id'):
+                    from ai_evidence import bind
+                    bind(c,'copilot',job['id'],payload['evidence_snapshot_id'])
             job.update(state='ready',raw=content,phase='已完成并保存',finished_at=now(),updated_at=now())
             c.execute('UPDATE copilot_background_jobs SET state=?,data=? WHERE id=?',('ready',encoded(job),job['id']))
         return job

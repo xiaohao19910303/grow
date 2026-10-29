@@ -16,6 +16,8 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,'../static/reflections.js'),
  context.Reflections.openEditor('2026-10-18');assert.equal(element('refDate').value,'2026-10-18');
  element('refRaw').value='历史日期的新增记录';await context.Reflections.saveEntry();assert.equal(writes.at(-1).record_date,'2026-10-18');assert.equal(writes.at(-1).base_version,undefined);
  context.Reflections.openEditor(null,'record-one');assert(modal.includes('已有原文'));
+ record.adopted_summary={sections:[{kind:'event',text:'已有原文',basis:'statement'},{kind:'next_step',text:'可以尝试先写结论',basis:'suggestion'},{kind:'understanding',text:'旧整理未标来源',basis:'toString'}]};
+ context.Reflections.viewEntry('record-one');assert(modal.includes('发生的事情 （原文整理）'));assert(modal.includes('下一步想试什么 （AI 建议）'));assert(modal.includes('我目前的认识 （来源未标注）'));assert.equal(record.raw_text,'已有原文');
  modal='';context.Reflections.openEditor(null,'missing');assert.equal(modal,'');assert(message,'unknown IDs should show a visible recovery hint');
  context.Reflections.openEditor('2026-10-18');element('refRaw').value='尚未提交的本机草稿';context.Reflections.preserveDraft();context.Reflections.closeEditor();context.Reflections.openEditor('2026-10-18');assert(modal.includes('尚未提交的本机草稿'));
  context.window.Account.user.id='other';context.Reflections.openEditor('2026-10-18');assert(!modal.includes('尚未提交的本机草稿'),'drafts are account scoped');context.window.Account.user.id='owner';

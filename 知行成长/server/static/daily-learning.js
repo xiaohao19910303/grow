@@ -214,6 +214,7 @@
       const data = await get('/api/study-materials/' + module.id + '/' + encodeURIComponent(lesson.filename));
       if (request !== reading || turn !== window.studyReaderRequest) return;
       reader.replaceChildren();
+      window.AIEvidence?.mount(reader,'study-course',module.id+'/'+lesson.filename);
 
       // 添加计时器显示
       const timerContainer = node('div', undefined, 'learning-timer-container');

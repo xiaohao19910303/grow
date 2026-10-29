@@ -514,6 +514,31 @@ class AccountIntegrationTests(unittest.TestCase):
             self.assertEqual(restored.json()['mode'],'default')
         self.assertEqual(self.client.get('/api/plans').status_code,200)
 
+    def test_behavior_jobs_and_evidence_are_isolated_across_accounts_with_same_request_key(self):
+        calls=[]
+        async def model(messages,cfg):
+            calls.append(cfg['key']);yield {'text':'仅依据统计摘要。'};yield {'done':True}
+        ai={'api_base_url':'https://model.example/v1','api_key':'EVIDENCE_FIXTURE_SECRET','model_name':'fixture'}
+        with patch('copilot.transport.qwen_stream',model):
+            self.register('alice')
+            first=self.client.post('/api/behavior-report/jobs',json={'key':'same-report-request','period_days':7,'ai_config':ai},headers=self.headers)
+            self.assertEqual(first.status_code,202,first.text);first=first.json()
+            self.assertEqual(self.client.get('/api/ai/evidence/'+first['evidence_snapshot_id']).status_code,200)
+            self.register('bob')
+            self.assertEqual(self.client.get('/api/behavior-report/jobs/'+first['id']).status_code,404)
+            self.assertEqual(self.client.get('/api/ai/evidence/'+first['evidence_snapshot_id']).status_code,404)
+            second=self.client.post('/api/behavior-report/jobs',json={'key':'same-report-request','period_days':7,'ai_config':ai},headers=self.headers)
+            self.assertEqual(second.status_code,202,second.text);second=second.json()
+            self.assertNotEqual(second['id'],first['id']);self.assertNotEqual(second['evidence_snapshot_id'],first['evidence_snapshot_id'])
+            response=self.client.get('/api/ai/evidence/'+second['evidence_snapshot_id'])
+            self.assertEqual(response.status_code,200);self.assertNotIn(ai['api_key'],response.text)
+            for _ in range(100):
+                job=self.client.get('/api/behavior-report/jobs/'+second['id']).json()
+                if job['state'] not in ('queued','generating'):break
+                time.sleep(.01)
+            self.assertEqual(job['state'],'ready')
+        self.assertEqual(len(calls),2)
+
     def test_background_generation_keeps_identity_and_same_keys_are_independent(self):
         calls = []
         async def model(messages, cfg):

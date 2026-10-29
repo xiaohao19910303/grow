@@ -97,6 +97,7 @@
         const job=await api('analysis/jobs/'+encodeURIComponent(id));
         if(!d.isConnected)return;track(job);
         body.innerHTML=`<p role="status">${esc(job.phase)}</p><small>模型 ${esc(job.model || '')} · ${esc(job.updated_at)}</small>`;
+        window.AIEvidence?.mount(body,'investments',id);
         if(job.state==='ready') {
           body.insertAdjacentHTML('beforeend',reportHTML(job));
           body.querySelectorAll('[data-inv-evidence]').forEach(button=>button.onclick=async()=>{try{await window.Investments.openRecord({resource:'research',id:button.dataset.invEvidence});}catch(e){error(d,e);}});

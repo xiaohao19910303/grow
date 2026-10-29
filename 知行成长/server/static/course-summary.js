@@ -462,6 +462,7 @@
       output.style.display = '';
       outputContent.innerHTML = `<div class="cp-summary-result">${data.content.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>`;
       outputActions.style.display = '';
+      window.AIEvidence?.mount(outputContent,'course-summary',summaryId);
       currentSummaryContent = data.content;
       const generate=document.getElementById('btnGenerateSummary');if(generate&&!activeTask(summaryTask)){generate.disabled=false;generate.textContent='生成整课总结';}
       document.getElementById('summaryPostActions').style.display = '';

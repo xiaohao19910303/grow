@@ -121,6 +121,11 @@ class CloudStore(Store):
             if self.documents.hash(path) not in (old,digest(files[path])):fail('conflict','课程资料已变化，原文保留。')
         sql=[("UPDATE copilot_operations SET status='done' WHERE id=?",[op_id])]
         if data.get('draft_id'):sql.append(("UPDATE copilot_drafts SET status='published' WHERE id=?",[data['draft_id']]))
+        if data.get('draft_id'):
+            d=self.draft(data['draft_id'])
+            if d.get('evidence_snapshot_id'):
+                from ai_evidence import link_statement
+                sql.append(link_statement('copilot-course',d['lesson_no'],d['evidence_snapshot_id']))
         guards={path:self.documents.hash(path) for path in self.documents.names(MODULE+'/')
                 if path.endswith(('学习规划.md','课程主题规划.md')) or '/备课资料/' in path and path.endswith('.md')}
         return self.documents.publish(op_id,{'operation':op_id},files,sql,{'operation_id':op_id,'status':'done'},guards=guards)

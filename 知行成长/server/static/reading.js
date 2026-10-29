@@ -345,6 +345,7 @@
     if(turn!==revision)return;loadingBox.remove();status.classList.remove('reading-loading');const a=d.article;root.querySelector('h2').textContent=a.zh_title||a.title;status.textContent=`${a.source} · ${a.language==='zh'?'中文':'英文'} · ${a.access}`;
 
     window.ReadingTasks?.nameArticle(id,a.zh_title||a.title);
+    window.AIEvidence?.mount(root,'reading-result',id);
     // 操作按钮区
     const actions=node('div',undefined,'reading-actions');root.append(actions);
 

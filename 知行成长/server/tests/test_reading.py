@@ -80,6 +80,11 @@ class ReadingTests(AsyncCloudFixture):
         j=await self.collect();aid=j['candidates'][0]['id'];self.s.save_selection(j['id'],[aid]);self.s.update_personal(aid,{'note':'SECRET NOTE','note_hash':None});old=self.s.article(aid)['guide'];calls=[]
         async def truncated(messages,config):calls.append(messages);yield {'text':'没有结束信号'}
         r=Reader(self.s,transport=truncated);a=r.begin({'key':'guide','kind':'guide','article_id':aid});await asyncio.gather(*list(r.tasks.values()));self.assertEqual(self.s.record(a['id'])['state'],'failed');self.assertEqual(self.s.article(aid)['guide'],old);self.assertNotIn('SECRET NOTE',str(calls))
+        from ai_evidence import read
+        with self.s.conn() as c:
+            evidence=read(c,a['evidence_snapshot_id'])
+            self.assertEqual(evidence['messages'],calls[0])
+            self.assertNotIn('SECRET NOTE',str(evidence))
         async def complete(messages,config):yield {'text':'核心观点：先审视证据。边界：只读过摘要。思考：还有什么解释？'};yield {'done':True}
         r=Reader(self.s,transport=complete);a=r.begin({'key':'good','kind':'guide','article_id':aid});await asyncio.gather(*list(r.tasks.values()));self.assertEqual(self.s.record(a['id'])['state'],'ready');self.assertIn('核心观点：先审视证据',self.s.article(aid)['guide']);self.assertFalse(self.s.article(aid)['read'])
 
