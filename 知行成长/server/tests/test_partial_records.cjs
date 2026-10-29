@@ -3,7 +3,7 @@ const html=fs.readFileSync('static/index.html','utf8');
 function fixture(response){
  const statuses=[],toasts=[],calls=[],nodes={legacyConflict:{hidden:true},resetResult:{textContent:''}};
  const state={_revision:'v1',modules:[{id:'m'}],checkins:{},habits:{},customFields:[],customRecords:[],decisions:[],predictions:[],reviews:[{id:7,thought:'keep me'}],insights:[],todos:[]};
- const c={state,dataLoaded:true,saveInFlight:false,legacyConflict:false,editGeneration:0,saveTimer:null,
+ const c={state,dataLoaded:true,saveInFlight:false,legacyConflict:false,editGeneration:0,saveTimer:null,legacyPending:null,legacyWholeCurrent:true,
   document:{getElementById:id=>nodes[id],querySelectorAll:()=>[]},clearTimeout:()=>{},setStatus:s=>statuses.push(s),toast:s=>toasts.push(s),render:()=>{},refreshModuleNames:()=>{},closeModal:()=>{c.closed=true},
   fetch:async(url,options)=>{calls.push({url,options});return response(c)},openModal:s=>{c.modal=s}};
  vm.createContext(c);vm.runInContext(html.slice(html.indexOf('function resetData(){'),html.indexOf('function apiSettingsValue(){')),c);
@@ -21,5 +21,9 @@ function fixture(response){
  assert.equal(f.calls[0].url,'/api/data');assert.equal(f.calls[0].options.headers['X-Legacy-State-Protocol'],'1');
  const during=fixture(async c=>{c.state.reviews[0].thought='typed';c.editGeneration++;return {ok:true,json:async()=>({state:{_revision:'v2'}})}});
  assert.equal(await during.c.doReset(),false);assert.equal(during.c.state.reviews[0].thought,'typed');assert.equal(during.c.legacyConflict,true);
- assert.match(html,/局部记录副本/);assert.match(html,/不包含.*行动/);console.log('5 partial record cases passed: failure, lost response, conflict, acknowledged reset, edits during reset.');
+ for(const guard of [{legacyPending:{body:'uncertain'}},{legacyWholeCurrent:false}]){
+  const blocked=fixture(async()=>{throw Error('must not send reset')});Object.assign(blocked.c,guard);
+  assert.equal(await blocked.c.doReset(),false);assert.equal(blocked.calls.length,0);assert.equal(blocked.c.state.reviews.length,1);
+ }
+ assert.match(html,/局部记录副本/);assert.match(html,/不包含.*行动/);console.log('7 partial record cases passed: failures, conflict, acknowledged reset, edits during reset, uncertain save and unread server changes.');
 })().catch(e=>{console.error(e);process.exitCode=1});

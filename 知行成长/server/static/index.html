@@ -773,7 +773,7 @@
 
 <script src="/static/loading-state.js?v=web-batch1-20261023"></script>
 <script src="/static/event-bus.js?v=20261021-1"></script>
-<script src="/static/account.js?v=20261018-loading"></script>
+<script src="/static/account.js?v=20261029-session"></script>
 <script src="/static/ai-config.js?v=20261025-e1"></script>
 <script src="/static/theme.js?v=20261025-structure"></script>
 <script>
@@ -940,12 +940,60 @@ async function loadFromServer(){
     if(!d || !Array.isArray(d.todos) || typeof d._revision !== 'string'){
       setStatus('请重启服务并刷新页面以启用安全保存','warn'); return false;
     }
-    state = d; dataLoaded = true; legacyConflict = false;
+    state = d; legacyBase = legacyCopy(d); legacyPending = null; legacyWholeCurrent = true;
+    dataLoaded = true; legacyConflict = false;
     document.getElementById('legacyConflict').hidden = true;
     refreshModuleNames(); setStatus('已连接个人数据库','on'); render(); return true;
   }catch(e){ setStatus('读取失败，本地修改未替换','err'); return false; }
 }
 let saveTimer = null, saveInFlight = false, legacyConflict = false, editGeneration = 0;
+let legacyBase = null, legacyPending = null, legacyWholeCurrent = true;
+const legacySections = ['modules','checkins','habits','customFields','customRecords','decisions','predictions','reviews','insights','todos'];
+const legacyCopy = value => JSON.parse(JSON.stringify(value));
+const legacyEqual = (a,b) => {
+  const ordered = (_key,value) => value && typeof value==='object' && !Array.isArray(value)
+    ? Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])) : value;
+  return JSON.stringify(a,ordered)===JSON.stringify(b,ordered);
+};
+function prepareLegacyPatch(){
+  if(legacyPending)return legacyPending;
+  const changes={},base_revisions={};
+  for(const key of legacySections)if(!legacyEqual(state[key],legacyBase[key])){
+    changes[key]=legacyCopy(state[key]);base_revisions[key]=legacyBase._section_revisions[key];
+  }
+  if(!Object.keys(changes).length)return null;
+  const key=crypto.randomUUID?crypto.randomUUID():'legacy-'+Date.now()+'-'+Math.random();
+  legacyPending={changes,generation:editGeneration,body:JSON.stringify({key,changes,base_revisions})};
+  return legacyPending;
+}
+function applyLegacyIds(rows,key,identities){
+  const field=key==='customRecords'?'_record_id':'id';
+  for(const item of rows){
+    if(Object.prototype.hasOwnProperty.call(identities,item._client_id))item[field]=identities[item._client_id];
+    if(item[field]!=null)delete item._client_id;
+  }
+}
+function acceptLegacyPatch(pending,data){
+  if(!data?.ok||typeof data._revision!=='string'||!legacySections.every(key=>typeof data._section_revisions?.[key]==='string'))throw Error('unconfirmed save');
+  // 先验证完整身份回执，再合并；保存期间的新编辑不被响应替换。
+  for(const key of Object.keys(pending.changes))if(['customRecords','decisions','predictions','reviews','insights'].includes(key)){
+    const field=key==='customRecords'?'_record_id':'id',ids=data.assigned_ids?.[key]||{};
+    for(const row of pending.changes[key])if(row[field]==null&&(!Object.prototype.hasOwnProperty.call(ids,row._client_id)||!Number.isInteger(ids[row._client_id])||ids[row._client_id]<=0))throw Error('missing identity');
+  }
+  for(const key of Object.keys(pending.changes)){
+    const saved=legacyCopy(pending.changes[key]);
+    if(['customRecords','decisions','predictions','reviews','insights'].includes(key)){
+      const ids=data.assigned_ids?.[key]||{};applyLegacyIds(saved,key,ids);applyLegacyIds(state[key],key,ids);
+    }
+    legacyBase[key]=saved;legacyBase._section_revisions[key]=data._section_revisions[key];
+    state._section_revisions[key]=data._section_revisions[key];
+  }
+  // 不给未读取的新记录冒领全量修订；清空旧记录前必须重新读取确认。
+  legacyWholeCurrent=legacySections.every(key=>legacyBase._section_revisions[key]===data._section_revisions[key]);
+  if(legacyWholeCurrent)state._revision=legacyBase._revision=data._revision;
+  legacyPending=null;
+}
+
 function persist(){
   editGeneration++;
   clearTimeout(saveTimer);
@@ -970,27 +1018,38 @@ async function saveToServer(){
         item._client_id = crypto.randomUUID ? crypto.randomUUID() : 'draft-'+Date.now()+'-'+Math.random();
     }
   }
-  const payload = JSON.stringify(state), generation = editGeneration;
+  const incremental=legacyBase&&state._section_revisions;
+  const pending=incremental?prepareLegacyPatch():null;
+  if(incremental&&!pending){setStatus('已保存 · 个人数据库','on');return true;}
+  const payload=pending?pending.body:JSON.stringify(state), generation=pending?pending.generation:editGeneration;
   saveInFlight = true;
   let saved = false;
   try{
-    const r = await fetch('/api/data', {method:'PUT', headers:{'Content-Type':'application/json','X-Legacy-State-Protocol':'1'}, body:payload});
+    const r = await fetch('/api/data', {method:pending?'PATCH':'PUT', headers:{'Content-Type':'application/json','X-Legacy-State-Protocol':pending?'2':'1'}, body:payload});
     const d = await r.json();
     if(!r.ok){
       if(r.status === 409){
         legacyConflict = true; document.getElementById('legacyConflict').hidden = false;
         setStatus('其他页面或同步已更新记录；本地修改未覆盖，请先保留副本','warn');
-      }else setStatus(d.message || '保存失败，本地修改仍保留','err');
+      }else{
+        // 字段校验失败已回滚，可修改后重新发送；网络失败仍保留原请求重试。
+        if(pending&&r.status===422)legacyPending=null;
+        setStatus(d.message || '保存失败，本地修改仍保留','err');
+      }
       return;
     }
-    if(!d.state || typeof d.state._revision !== 'string') throw Error('old server');
-    for(const [key, identities] of Object.entries(d.assigned_ids || {})){
-      const field = key === 'customRecords' ? '_record_id' : 'id';
-      for(const item of state[key] || []){
-        if(Object.prototype.hasOwnProperty.call(identities, item._client_id)) item[field] = identities[item._client_id];
+    if(pending)acceptLegacyPatch(pending,d);
+    else{
+      if(!d.state || typeof d.state._revision !== 'string') throw Error('old server');
+      for(const [key, identities] of Object.entries(d.assigned_ids || {})){
+        const field = key === 'customRecords' ? '_record_id' : 'id';
+        for(const item of state[key] || []){
+          if(Object.prototype.hasOwnProperty.call(identities, item._client_id)) item[field] = identities[item._client_id];
+        }
       }
+      state._revision = d.state._revision;
     }
-    state._revision = d.state._revision; saved = true;
+    saved = true;
     window.CoachFacts?.invalidate();
     setStatus(editGeneration === generation ? '已保存 · 个人数据库' : '仍有新修改，正在继续保存', editGeneration === generation ? 'on' : '');
   }catch(e){ setStatus('保存失败 · 本地修改保留，请重试；若有冲突请先导出副本','err'); }
@@ -998,7 +1057,8 @@ async function saveToServer(){
     saveInFlight = false;
     if(saved && editGeneration !== generation) saveTimer = setTimeout(saveToServer, 0);
   }
-  return saved;
+  // 退出登录等调用方只有在本页最新编辑也已确认时，才能离开页面。
+  return saved && editGeneration === generation;
 }
 function setStatus(txt, cls){
   const warning=document.getElementById('storageWarning');
@@ -1022,7 +1082,7 @@ function resetData(){
   openModal('<h3>清空局部表单记录</h3><p style="color:var(--muted);font-size:13px">仅清空模块设置、打卡、习惯、自定义字段与记录、决策、预测、复盘、洞见和待办。行动及执行事实、独立笔记与自由记录、课程和文章不在此范围。建议先下载局部记录副本。确认成功后不可撤销。</p><p id="resetResult" role="status"></p><div class="actions"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="doReset()">确认清空局部记录</button></div>');
 }
 async function doReset(){
-  if(saveInFlight || legacyConflict || !dataLoaded){setStatus('请先完成保存或保留副本后重新读取，再清空局部记录','warn');return false;}
+  if(saveInFlight || legacyConflict || !dataLoaded || legacyPending || !legacyWholeCurrent){setStatus('请先确认保存结果，或保留副本后重新读取，再清空局部记录','warn');return false;}
   clearTimeout(saveTimer);
   const generation=editGeneration;
   const empty={_revision:state._revision,modules:[],checkins:{},habits:{},customFields:[],customRecords:[],decisions:[],predictions:[],reviews:[],insights:[],todos:[]};
@@ -1042,7 +1102,8 @@ async function doReset(){
       const message='服务端局部记录已清空；本页有新修改，请导出副本后重新读取';
       setStatus(message,'warn');if(result)result.textContent=message;return false;
     }
-    state=body.state;editGeneration++;refreshModuleNames();render();closeModal();
+    state=body.state;legacyBase=JSON.parse(JSON.stringify(body.state));legacyPending=null;legacyWholeCurrent=true;
+    editGeneration++;refreshModuleNames();render();closeModal();
     setStatus('局部表单记录已清空','on');toast('局部表单记录已清空；行动、笔记和正式内容保留');return true;
   }catch(error){
     const message='清空失败或结果未确认；本页记录保留。请先导出副本，再重新读取确认';
@@ -2767,9 +2828,11 @@ init();
 <script src="/static/learning-notebook.js?v=20261025-1"></script>
 <script src="/static/learning-history.js?v=20261021-p1-navigation"></script>
 <script src="/static/stocks.js?v=20261021-merge"></script>
-<script src="/static/investments.js?v=20261028-akshare"></script>
-<script src="/static/investment-analysis.js?v=20261028-evidence"></script>
+<script src="/static/investments.js?v=20261029-browser"></script>
+<script src="/static/investment-analysis.js?v=20261029-browser"></script>
 <script src="/static/investment-market.js?v=20261028-akshare"></script>
+<script src="/static/investment-browser-core.js?v=20261029-1"></script>
+<script src="/static/investment-browser.js?v=20261029-review"></script>
 <script src="/static/search.js?v=20261028-evidence"></script>
 <script src="/static/timeline.js?v=20261021-p1-navigation"></script>
 <div id="actionReminder" class="action-reminder" role="status" hidden></div>

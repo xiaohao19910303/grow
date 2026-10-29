@@ -4,6 +4,7 @@ TEST_POSTGRES_DSN='host=127.0.0.1 port=55446 user=grow_audit dbname=postgres' \
 PYTHONPATH=知行成长/server:知行成长/server/tests 知行成长/.venv/bin/python -B 知行成长/server/tests/serve_ux_acceptance_fixture.py
 """
 import ast
+import asyncio
 import importlib
 import json
 from pathlib import Path
@@ -22,7 +23,7 @@ def main():
     from fastapi.responses import FileResponse, JSONResponse
     from fastapi.staticfiles import StaticFiles
     import uvicorn, db, httpx
-    from legacy_state import load_state, save_state
+    from legacy_state import load_state, save_state, patch_state
     from action_plans import register as actions
     from study_materials import initialize, register as materials
     from study_notes import register as notes
@@ -75,6 +76,9 @@ def main():
         @app.put('/api/data')
         async def put_data(request: Request):
             return save_state(db.connect, await request.json(), require_revision=True)
+        @app.patch('/api/data')
+        async def patch_data(request: Request):
+            return await asyncio.to_thread(patch_state, db.connect, await request.json())
         @app.get('/api/learning-checkins')
         def checkins():
             with db.connect() as conn: return read_checkins(conn)

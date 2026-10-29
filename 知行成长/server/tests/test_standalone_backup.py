@@ -49,6 +49,70 @@ class StandaloneBackupTests(unittest.TestCase):
     def create(self):
         from standalone_backup import create
         return create(self.source,self.backup,{'other-owner/content':self.git},env=self.env,writers_stopped=True)
+    def test_incremental_save_receipt_restores_without_duplicate_records(self):
+        import db
+        import app as dashboard
+        from legacy_state import patch_state
+        from standalone_backup import restore, verify
+        self.env['GROW_REVISION'] = self.sha
+        original = db.connect
+        def connect_to(dsn):
+            return patch('db.connect', lambda *a, **kw: original(dsn+' options=-csearch_path=tenant_fixture', tenant=False))
+        with connect_to(self.source):
+            dashboard.init_db()
+            state = dashboard.load_state()
+            request = {'key':'restore-save-request', 'changes':{'reviews':[{'thought':'PRIVATE LEGACY DRAFT','_client_id':'draft'}]},
+                       'base_revisions':{'reviews':state['_section_revisions']['reviews']}}
+            receipt = patch_state(dashboard.get_conn, request)
+        self.create()
+        manifest = verify(self.backup)
+        self.assertEqual(manifest['tables']['tenant_fixture.legacy_state_requests'], 1)
+        self.assertNotIn('PRIVATE LEGACY DRAFT', json.dumps(manifest))
+        restore(self.target,self.backup,self.root/'incremental-restored',env=self.env,writers_stopped=True)
+        with connect_to(self.target):
+            self.assertEqual(patch_state(dashboard.get_conn, request), receipt)
+            restored = dashboard.load_state()['reviews']
+            self.assertEqual(len(restored), 1)
+            self.assertEqual(restored[0]['thought'], 'PRIVATE LEGACY DRAFT')
+            self.assertEqual(restored[0]['id'], receipt['assigned_ids']['reviews']['draft'])
+    def test_browser_investment_batch_and_two_stage_results_restore(self):
+        import db
+        from investments.store import InvestmentStore
+        from investments.analysis import InvestmentAnalysis
+        from investments.browser_execution import BrowserExecution, BrowserRunInput, BrowserScreenResult, BrowserOwner, BrowserOutput
+        from investments.market_import import import_history
+        from standalone_backup import restore, verify
+        self.env['GROW_REVISION'] = self.sha
+        original = db.connect
+        def connect_to(dsn):
+            return patch('db.connect',lambda *a,**kw:original(dsn+' options=-csearch_path=tenant_fixture',tenant=False))
+        with connect_to(self.source):
+            store=InvestmentStore();store.initialize();analysis=InvestmentAnalysis(store);service=BrowserExecution(store,analysis)
+            a=store.create('accounts',{'name':'PRIVATE BROWSER','baseline_date':'2026-10-26','opening_cash':'1000'},'browser-account')
+            i=store.create('instruments',{'name':'Synthetic','code':'510000','market':'SSE','kind':'etf'},'browser-instrument')
+            import_history(store,i['id'],'date,open,high,low,close,volume,amount\n2026-10-26,10,12,9,11,100,1100\n','shares','cny','Synthetic',True,'browser-market',a['id'])
+            owner='backup-browser-executor'
+            run=service.create(BrowserRunInput(account_id=a['id'],instrument_ids=[i['id']],model='test',question='PRIVATE BROWSER QUESTION',executor=owner,
+                screen={'as_of':'2026-10-26','conditions':[],'limit':1}),'browser-create')
+            service.screen_result(run['id'],BrowserScreenResult(algorithm='browser-screen-rational-v1',input_hash=run['input_hash'],executor=owner,total=1,unresolved=0,
+                items=[{'instrument_id':i['id'],'data_date':'2026-10-26','condition_results':[], 'values':{'market':'SSE','kind':'etf','name':'Synthetic','close':'11','turnover_cny':'1100','close_change_pct':None,'volume_ratio_5':None,'price_above_ma20':None}}]),'browser-screen')
+            job=service.start_candidate(run['id'],i['id'],BrowserOwner(executor=owner),'browser-candidate')
+            raw=json.dumps({'summary':'PRIVATE BROWSER REPORT','facts':[],'counterarguments':['Missing data'],'suggestions':[]})
+            first=service.job_input(job['id'],owner)
+            service.output(job['id'],'draft',BrowserOutput(executor=owner,input_hash=first['evidence']['input_hash'],raw=raw),'browser-draft')
+            second=service.job_input(job['id'],owner)
+            body=BrowserOutput(executor=owner,input_hash=second['evidence']['input_hash'],raw=raw)
+            receipt=service.output(job['id'],'result',body,'browser-result')
+            before=service.get(run['id'])
+        self.create();manifest=verify(self.backup)
+        self.assertEqual(manifest['tables']['tenant_fixture.investment_local_runs'],1)
+        self.assertNotIn('PRIVATE BROWSER',json.dumps(manifest))
+        restore(self.target,self.backup,self.root/'browser-restored',env=self.env,writers_stopped=True)
+        with connect_to(self.target):
+            self.assertEqual(service.get(run['id']),before)
+            self.assertEqual(service.output(job['id'],'result',body,'browser-result'),receipt)
+            self.assertEqual(analysis.get(job['id'])['state'],'ready')
+
     def test_real_snapshot_bundle_restore_and_repeat_refusal(self):
         from standalone_backup import restore, verify, BackupError
         result=self.create();self.assertEqual(result['version'],1);self.assertEqual(verify(self.backup)['tables']['tenant_fixture.action_facts'],1)

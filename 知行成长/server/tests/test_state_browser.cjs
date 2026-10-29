@@ -32,7 +32,7 @@ dashboard.save_state(s,require_revision=True)
 api=FastAPI()
 @api.exception_handler(Problem)
 async def problem(request,error):return JSONResponse({'error':error.code,'message':error.message},status_code=error.status)
-api.get('/api/data')(dashboard.get_data);api.put('/api/data')(dashboard.put_data)
+api.get('/api/data')(dashboard.get_data);api.put('/api/data')(dashboard.put_data);api.patch('/api/data')(dashboard.patch_data)
 store,_=register(api,root,root/'runtime');store.initialize()
 entry=store.create({'record_date':'2026-10-16','raw_text':'original reflection','tags':['keep'],'guided_answers':{}},'browser-create-key')
 api.mount('/static',StaticFiles(directory=server/'static'),name='static')
@@ -59,7 +59,7 @@ const child = spawn(process.env.TEST_PYTHON||'python3', ['-c',fixture], {
 });
 let stderr='';child.stderr.on('data',x=>stderr+=x);
 async function response(page,status){
-  return page.waitForResponse(r=>new URL(r.url()).pathname==='/api/data' && r.request().method()==='PUT' && r.status()===status);
+  return page.waitForResponse(r=>new URL(r.url()).pathname==='/api/data' && r.request().method()==='PATCH' && r.status()===status);
 }
 (async()=>{
   const meta=await new Promise((resolve,reject)=>{

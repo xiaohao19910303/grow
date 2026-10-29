@@ -344,6 +344,50 @@ class AccountIntegrationTests(unittest.TestCase):
         self.assertEqual(self.login('owner',os.environ['APP_PASSWORD']).status_code,200)
         self.assertEqual(self.client.get('/api/data').json()['todos'][0]['title'],'OWNER PRIVATE')
 
+    def test_incremental_state_receipts_and_account_context_are_isolated(self):
+        alice = self.register('alice')
+        state = self.client.get('/api/data').json()
+        body = {'key':'shared-browser-request-key', 'changes':{'reviews':[{'thought':'ALICE PATCH PRIVATE','_client_id':'draft'}]},
+                'base_revisions':{'reviews':state['_section_revisions']['reviews']}}
+        headers = {**self.headers, 'X-Legacy-State-Protocol':'2', 'X-Account-Id':alice['id']}
+        response = self.client.patch('/api/data', json=body, headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        first = response.json()
+        self.register('bob')
+        stale = self.client.patch('/api/data', json=body, headers=headers)
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(stale.headers['X-Account-Changed'], '1')
+        self.assertEqual(self.client.get('/api/data').json()['reviews'], [])
+        # Same key in another account is independent, never Alice's receipt.
+        bob_state = self.client.get('/api/data').json()
+        body['changes']['reviews'][0]['thought'] = 'BOB PATCH PRIVATE'
+        body['base_revisions']['reviews'] = bob_state['_section_revisions']['reviews']
+        self.assertEqual(self.client.patch('/api/data',json=body,headers={**self.headers,'X-Legacy-State-Protocol':'2'}).status_code,200)
+        self.assertEqual(self.login('alice').status_code, 200)
+        self.assertEqual(self.client.get('/api/data').json()['reviews'][0]['thought'], 'ALICE PATCH PRIVATE')
+        body['changes']['reviews'][0]['thought'] = 'ALICE PATCH PRIVATE'
+        body['base_revisions']['reviews'] = state['_section_revisions']['reviews']
+        self.assertEqual(self.client.patch('/api/data',json=body,headers=headers).json(),first)
+
+    def test_browser_investment_batches_and_input_snapshots_are_private(self):
+        alice = self.register('alice')
+        headers = {**self.headers, 'Idempotency-Key':'browser-account'}
+        response = self.client.post('/api/investments/accounts',json={'name':'ALICE PRIVATE','baseline_date':'2026-10-26','opening_cash':'1000'},headers=headers)
+        self.assertEqual(response.status_code,201,response.text);aid=response.json()['id']
+        response = self.client.post('/api/investments/instruments',json={'name':'Synthetic','code':'510000','market':'SSE','kind':'etf'},headers={**headers,'Idempotency-Key':'browser-instrument'})
+        self.assertEqual(response.status_code,201,response.text);iid=response.json()['id']
+        body = {'account_id':aid,'instrument_ids':[iid],'screen':{'as_of':'2026-10-26','conditions':[],'limit':1},
+                'question':'ALICE BROWSER QUESTION','model':'browser-test','executor':'alice-browser-executor'}
+        response = self.client.post('/api/investments/local-runs',json=body,headers={**headers,'Idempotency-Key':'browser-batch'})
+        self.assertEqual(response.status_code,200,response.text);run=response.json()
+        self.register('bob')
+        self.assertEqual(self.client.get('/api/investments/local-runs/'+run['id']+'/inputs').status_code,404)
+        self.assertEqual(self.client.get('/api/investments/local-runs').json()['total'],0)
+        stale = self.client.post('/api/investments/local-runs',json=body,headers={**headers,'X-Account-Id':alice['id']})
+        self.assertEqual(stale.status_code,409);self.assertEqual(stale.headers['X-Account-Changed'],'1')
+        self.assertEqual(self.login('alice').status_code,200)
+        self.assertEqual(self.client.get('/api/investments/local-runs/'+run['id']+'/inputs').json()['input_hash'],run['input_hash'])
+
     def test_coach_facts_are_private_and_require_no_ai_configuration(self):
         self.assertEqual(self.client.get('/api/coach-facts').status_code, 401)
         alice = self.register('alice')

@@ -108,7 +108,7 @@
     if (!root()) return;
     root().innerHTML = `<div class="inv-workspace"><header><h2>投资工作台</h2><p class="inv-muted">资金、计划、实际交易和复盘放在一起。</p><div class="inv-actions">
       <label>当前账户<select data-inv-account aria-label="当前账户"><option value="">请选择账户</option>${s.accounts.map(a => `<option value="${a.id}" ${a.id === s.accountId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
-      ${button('新建账户','account')}${button('刷新','refresh')}${button('行情与查询来源','sources')}${button('添加盘后行情','market')}${button('本地条件筛选','screen')}${button('查找投资记录','private-search')}</div></header>
+      ${button('新建账户','account')}${button('刷新','refresh')}${button('行情与查询来源','sources')}${button('添加盘后行情','market')}${button('账号缓存筛选','screen')}${button('浏览器筛选与评估','browser-screen')}${button('查找投资记录','private-search')}</div></header>
       <p class="inv-notice">支持CSV、AKShare东方财富及Tushare盘后日线。请核对来源、数据日期和使用范围，实时判断尚未开放。</p>
       <p data-inv-status role="status" aria-live="polite"></p>
       <nav class="inv-tabs" role="tablist" aria-label="投资视图">${[['today','今日与计划'],['ledger','交易簿'],['review','复盘与策略']].map(([key,text]) => `<button role="tab" type="button" aria-selected="${s.view === key}" aria-controls="investment-panel" data-inv-view="${key}">${text}</button>`).join('')}</nav>
@@ -291,6 +291,7 @@
         document.body.append(dialog);dialog.showModal();dialog.querySelector('button').onclick=closeDialog;return;
       }
       if(action==='campaign-review')return campaignDialog(data.id);
+      if(action==='browser-screen')return window.InvestmentBrowser.open({accountId:s.accountId,instruments:s.instruments});
       if(['sources','market','screen'].includes(action)) {
         if(!window.InvestmentMarket)throw new Error('行情入口尚未载入，请刷新。');
         if(action==='sources')return window.InvestmentMarket.sources();
@@ -431,11 +432,11 @@
   }
 
   async function openRecord(target) {
-    if(!['reviews','trade-plans','period-plans','dossiers','principles','research','policies'].includes(target.resource))throw new Error('此投资引用暂不支持打开。');
+    if(!['reviews','trade-plans','period-plans','dossiers','principles','research','policies','instruments','market-snapshots'].includes(target.resource))throw new Error('此投资引用暂不支持打开。');
     const record=await api(`${target.resource}/${encodeURIComponent(target.id)}`);
     s.accountId=record.account_id || s.accountId;s.view=['reviews','principles'].includes(target.resource)?'review':'today';await load();
     closeDialog();dialog=document.createElement('dialog');dialog.className='inv-dialog';
-    dialog.innerHTML=`<h3>${esc(record.title || '投资复盘')}</h3><p class="inv-preserve">${esc(record.text || record.rule || record.rationale || record.content || record.purpose || record.focus || record.technical_case || '请展开查看本人保存的研究内容。')}</p><p>版本 ${record.version}</p><details><summary>完整私有记录</summary><pre>${esc(JSON.stringify(record,null,2))}</pre></details><button class="btn">关闭</button>`;
+    dialog.innerHTML=`<h3>${esc(record.title || record.name || (target.resource==='market-snapshots'?'盘后行情快照':'投资复盘'))}</h3><p class="inv-preserve">${esc(record.text || record.rule || record.rationale || record.content || record.purpose || record.focus || record.technical_case || '请展开查看本人保存的研究内容。')}</p><p>版本 ${record.version}</p><details><summary>完整私有记录</summary><pre>${esc(JSON.stringify(record,null,2))}</pre></details><button class="btn">关闭</button>`;
     document.body.append(dialog);dialog.showModal();dialog.querySelector('button').onclick=closeDialog;
   }
   let overviewGeneration=0;

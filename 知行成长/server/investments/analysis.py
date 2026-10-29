@@ -145,7 +145,7 @@ class InvestmentAnalysis:
             self.store.lock(c);c.executescript(TABLES)
             for row in c.execute("SELECT data FROM investment_analysis_jobs WHERE state IN ('queued','running')"):
                 job=json.loads(row[0])
-                if job.get('worker')!=self.worker:
+                if job.get('execution_location') != 'browser' and job.get('worker')!=self.worker:
                     job.update(state='interrupted',phase='进程已中断，未自动重试。',updated_at=now())
                     c.execute('UPDATE investment_analysis_jobs SET state=?,data=? WHERE id=?',
                               ('interrupted',encoded(job),job['id']))
@@ -233,7 +233,7 @@ class InvestmentAnalysis:
 
     @staticmethod
     def public(job):
-        return {k:v for k,v in job.items() if k not in ('worker','fingerprint')}
+        return {k:v for k,v in job.items() if k not in ('worker','fingerprint','owner_hash')}
 
     def changed_inputs(self,c,snapshot,account_id):
         changed=[]
@@ -277,6 +277,8 @@ class InvestmentAnalysis:
         with db.connect() as c:
             self.store.lock(c)
             preview=self.store._get(c,'analysis-previews',preview_id)
+            if preview['snapshot'].get('mode') == 'browser_screen':
+                fail('browser_execution_only','浏览器批次只能在原浏览器执行，不能改由平台调用模型。')
             if preview['snapshot_hash']!=snapshot_hash:
                 fail('preview_changed','发送预览已变化，请重新核对。')
             fingerprint=digest(encoded({'snapshot_hash':snapshot_hash,'model':cfg['model'],'url':cfg['url']}))
@@ -285,6 +287,8 @@ class InvestmentAnalysis:
                 return self.get(old['id']),None
             for row in c.execute("SELECT data FROM investment_analysis_jobs WHERE state IN ('queued','running')"):
                 active=json.loads(row[0])
+                if active.get('execution_location') == 'browser':
+                    continue
                 if active['fingerprint']!=fingerprint:
                     fail('analysis_busy','已有投资分析进行中，请先等待或取消。')
                 self.store.remember(c,key,fingerprint,{'id':active['id']})

@@ -23,7 +23,7 @@
   function error(d,e) {if(d.isConnected)d.querySelector('[data-inv-ai-error]').textContent=e.message;}
   function metadata(job) {
     return {id:job.id,kind:'investment_analysis',source:'investments',label:'投资研究与复盘',
-      title:'本人选定资料分析',state:job.state,phase:job.phase};
+      title:job.execution_location==='browser'?'浏览器投资评估':'本人选定资料分析',state:job.state,phase:job.phase};
   }
   function track(job) {window.GenerationTasks?.track(metadata(job));}
   function checkboxes(items,type,title) {

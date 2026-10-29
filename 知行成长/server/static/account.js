@@ -6,6 +6,11 @@
   document.querySelector('.topbar').after(identityBox);
   const identityLoading = window.LoadingState?.start(identityBox, '正在验证登录信息…', '验证后会恢复你的学习内容与记录。');
   let switched = false;
+  // 账号会话通知：其他标签页登录/退出后，立即暂停旧页面及浏览器模型请求。
+  account.isCurrent = id => !switched && account.user?.id === id;
+  window.addEventListener('storage', event => {
+    if (event.key === 'grow-account-session') accountChanged();
+  });
   function loginRedirect(){
     const fragment=/^#(?:plans\/detail\/plan-[a-zA-Z0-9-]{1,70}|mobile\/action\/action-[a-zA-Z0-9-]+|mobile\/learn\/lesson-[a-z0-9-]{1,70})$/.test(location.hash)?location.hash:'';
     location.replace('/login'+fragment);
@@ -13,6 +18,7 @@
   function accountChanged() {
     if (switched) return;
     switched = true;
+    window.dispatchEvent(new Event('account-session-changed'));
     document.querySelector('.topbar').inert = true;
     document.querySelector('.wrap').inert = true;
     const notice = document.createElement('div');
@@ -45,9 +51,17 @@
     const method = (options.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
     if (!['GET','HEAD','OPTIONS'].includes(method)) headers.set('X-Copilot-Request', '1');
     const response = await originalFetch(input, {...options, headers});
-    if (response.status === 401) { loginRedirect(); throw new Error('登录已过期，请重新登录。'); }
+    if (response.status === 401) { accountChanged(); loginRedirect(); throw new Error('登录已过期，请重新登录。'); }
     if (response.headers.get('X-Account-Changed') === '1') { accountChanged(); throw new Error('账号已变更。'); }
     return response;
+  };
+  account.verify = async (id, signal) => {
+    const response = await fetch('/api/auth/me', {cache:'no-store', credentials:'same-origin', signal});
+    if (!response.ok) throw new Error('登录信息暂时无法确认，尚未调用模型。');
+    const user = (await response.json()).user;
+    if (!account.isCurrent(id) || user?.id !== id) {
+      accountChanged(); throw new Error('账号已变更，已停止本地执行。');
+    }
   };
   account.logout = async () => {
     try {
@@ -59,6 +73,8 @@
       }
       const response = await fetch('/api/auth/logout', {method:'POST'});
       if (!response.ok) throw new Error('退出失败，请重试。');
+      try { localStorage.setItem('grow-account-session', Date.now() + ':' + Math.random()); } catch {}
+      accountChanged();
       location.replace('/login');
     } catch (error) { toast(error.message); }
   };

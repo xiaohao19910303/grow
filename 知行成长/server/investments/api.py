@@ -20,6 +20,7 @@ from .replay import PathInput
 from .experiments import ExperimentInput
 from .conditions import ConditionInput
 from .execution_studies import ExecutionInput
+from .browser_execution import BrowserExecution, BrowserRunInput, BrowserScreenResult, BrowserOwner, BrowserOutput, BrowserPause
 
 
 class UpdateInput(Contract):
@@ -128,6 +129,7 @@ class PrivateRoute(APIRoute):
 def register(app):
     store=scoped(app,InvestmentStore,initialize=True)
     analysis=scoped(app,lambda:InvestmentAnalysis(store))
+    browser=scoped(app,lambda:BrowserExecution(store,analysis))
     router=APIRouter(prefix='/api/investments',tags=['investments'],route_class=PrivateRoute)
 
     @app.middleware('http')
@@ -313,6 +315,46 @@ def register(app):
     def legacy_link(payload: LegacyLinkInput,idempotency_key: str=Header(min_length=1,max_length=160)):
         from .legacy import link_record
         return link_record(store,payload.legacy_id,payload.target_kind,payload.target_id,payload.note,payload.reconciled,idempotency_key)
+
+    @router.post('/local-runs')
+    def browser_run(payload: BrowserRunInput, idempotency_key: str=Header(min_length=1,max_length=160)):
+        return browser.create(payload,idempotency_key)
+
+    @router.get('/market-snapshots/{object_id}')
+    def captured_market_snapshot(object_id: str):return store.get('market-snapshots',object_id)
+
+    @router.get('/local-runs')
+    def browser_runs(page: int=Query(1,ge=1,le=10000)):
+        return browser.listing(page)
+
+    @router.get('/local-runs/{run_id}')
+    def browser_run_detail(run_id: str):return browser.get(run_id)
+
+    @router.get('/local-runs/{run_id}/inputs')
+    def browser_run_inputs(run_id: str):return browser.get(run_id,include_input=True)
+
+    @router.post('/local-runs/{run_id}/screening')
+    def browser_screen_result(run_id: str,payload: BrowserScreenResult,idempotency_key: str=Header(min_length=1,max_length=160)):
+        return browser.screen_result(run_id,payload,idempotency_key)
+
+    @router.post('/local-runs/{run_id}/candidates/{instrument_id}')
+    def browser_candidate(run_id: str,instrument_id: str,payload: BrowserOwner,idempotency_key: str=Header(min_length=1,max_length=160)):
+        return browser.start_candidate(run_id,instrument_id,payload,idempotency_key)
+
+    @router.post('/local-runs/{run_id}/cancel')
+    def browser_cancel(run_id: str):return browser.cancel(run_id)
+
+    @router.get('/local-jobs/{job_id}/input')
+    def browser_input(job_id: str,x_local_executor: str=Header(min_length=16,max_length=100)):
+        return browser.job_input(job_id,x_local_executor)
+
+    @router.post('/local-jobs/{job_id}/pause')
+    def browser_pause(job_id: str,payload: BrowserPause):return browser.pause(job_id,payload)
+
+    @router.post('/local-jobs/{job_id}/{stage}')
+    def browser_output(job_id: str,stage: Literal['draft','result'],payload: BrowserOutput,
+                       idempotency_key: str=Header(min_length=1,max_length=160)):
+        return browser.output(job_id,stage,payload,idempotency_key)
 
     @router.post('/screen')
     def screening(payload: ScreenInput):

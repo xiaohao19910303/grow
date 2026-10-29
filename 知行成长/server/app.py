@@ -1,7 +1,7 @@
 """知行成长 · 云端服务端（FastAPI + PostgreSQL）
 
 - 多用户应用，按账号隔离 PostgreSQL schema，采用带快照修订的 state 同步：前端 GET /api/data 读取状态与修订，
-  PUT /api/data 在同一事务内校验修订并保存，保留既有记录ID。
+  PATCH /api/data 按模块修订增量保存；旧 PUT 保留全量修订和显式清空语义，均保留记录ID。
 - 规范化表结构便于后续做 SQL 查询 / 周月报 / 知识图谱。
 - v3：扫描工作区 Markdown 生成知识图谱（knowledge 表）+ 周报/月报汇总。
 - 数据库使用 Supabase PostgreSQL，支持多设备同步。
@@ -39,7 +39,7 @@ from study_materials import register as register_materials, initialize as initia
 from search_api import register as register_search
 from timeline_api import register as register_timeline
 import asyncio
-from legacy_state import load_state as read_legacy_state, save_state as write_legacy_state
+from legacy_state import load_state as read_legacy_state, save_state as write_legacy_state, patch_state as patch_legacy_state
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -477,11 +477,25 @@ async def put_data(request: Request):
                              'message': '页面保存协议过旧，请先导出本地修改，再刷新页面。'}, status_code=409)
     try:
         data = await request.json()
-        return save_state(data, require_revision=True)
+        return await asyncio.to_thread(save_state, data, require_revision=True)
     except Problem as exc:
         return JSONResponse({'code': exc.code, 'message': exc.message}, status_code=exc.status)
     except (ValueError, db.IntegrityError):
         return JSONResponse({'code': 'invalid', 'message': '记录格式或编号无效，未保存。'}, status_code=422)
+
+
+@app.patch('/api/data')
+async def patch_data(request: Request):
+    if request.headers.get('x-legacy-state-protocol') != '2':
+        return JSONResponse({'code': 'client_outdated', 'message': '保存协议过旧，请保留本地修改后刷新页面。'}, status_code=409)
+    try:
+        data = await request.json()
+        result = await asyncio.to_thread(patch_legacy_state, get_conn, data)
+        return JSONResponse(result, headers={'Cache-Control': 'no-store'})
+    except Problem as exc:
+        return JSONResponse({'code': exc.code, 'message': exc.message}, status_code=exc.status, headers={'Cache-Control': 'no-store'})
+    except ValueError:
+        return JSONResponse({'code': 'invalid', 'message': '记录格式无效，未保存。'}, status_code=422, headers={'Cache-Control': 'no-store'})
 
 
 @app.get("/api/knowledge")
