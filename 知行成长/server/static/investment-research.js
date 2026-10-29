@@ -5,7 +5,7 @@
   const uid=()=>crypto.randomUUID(),day=offset=>{const t=new Date(Date.now()+28800000);t.setUTCDate(t.getUTCDate()+(offset||0));return t.toISOString().slice(0,10);};
   const money=value=>value==null?'未知':Number(value).toLocaleString('zh-CN',{maximumFractionDigits:4});
   function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  function csv(rows){const safe=value=>{const s=String(value??'');return /^[=+@\t\r]/.test(s)||(/^[-]/.test(s)&&!/^[-]\d+(\.\d+)?$/.test(s))?"'"+s:s;};return '\ufeff'+rows.map(row=>row.map(v=>'"'+safe(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
+  function csv(rows){const safe=value=>{const s=String(value??''),lead=s.replace(/^[\s\uFEFF]+/,'');return /^[=+@\t\r\n]/.test(s)||/^[=+@]/.test(lead)||(/^[-]/.test(lead)&&!/^[-]\d+(\.\d+)?$/.test(s))?"'"+s:s;};return '\ufeff'+rows.map(row=>row.map(v=>'"'+safe(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
   async function open(context){
     if(!context.accountId)throw Error('请先选择投资账户。');
     await window.Account.ready;const owner=window.Account.user.id;await window.Account.verify(owner);
