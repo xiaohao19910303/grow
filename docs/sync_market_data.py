@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '知行成长', 'server'))
 
 import db
-from investments.market_data import get_provider, MarketDataError
+from investments.market_data import get_provider, MarketDataError, canonical_code
 from investments.market_data_schema import TABLES
 
 
@@ -44,7 +44,7 @@ def sync_stock_list(source: str = None, **kwargs):
 
             count = 0
             for stock in stocks:
-                ts_code = stock.get('ts_code') or stock.get('code')
+                ts_code = canonical_code(stock.get('ts_code') or stock.get('code'))
                 if not ts_code:
                     continue
 
@@ -56,7 +56,7 @@ def sync_stock_list(source: str = None, **kwargs):
                 elif ts_code.endswith('.BJ'):
                     market = 'BSE'
                 else:
-                    market = 'SSE'  # 默认
+                    raise MarketDataError('市场身份缺失，未保存。')
 
                 symbol = ts_code.split('.')[0]
                 name = stock.get('name', '')
@@ -110,6 +110,7 @@ def sync_daily_data(ts_code: str, start_date: date, end_date: date,
     print(f"\n同步日线数据: {ts_code} ({start_date} ~ {end_date})")
 
     try:
+        ts_code = canonical_code(ts_code)
         provider = get_provider(source, **kwargs)
         data = provider.get_daily_data(ts_code, start_date, end_date)
 

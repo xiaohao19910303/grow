@@ -15,7 +15,9 @@ from legacy_schema import migrate, columns
 class PostgreSQLFixture(unittest.TestCase):
     def setUp(self):
         self.dsn=os.environ['TEST_LEGACY_PG_DSN']
-        if 'host=127.0.0.1' not in self.dsn:raise RuntimeError('localhost only')
+        settings=psycopg2.extensions.parse_dsn(self.dsn)
+        if settings.get('host')!='127.0.0.1' or settings.get('port') in (None,'5432') or not settings.get('user') or not settings.get('dbname'):
+            raise RuntimeError('Explicit disposable localhost PostgreSQL on a non-default port required')
         self.schema='legacy_cloud_'+uuid.uuid4().hex
         with psycopg2.connect(self.dsn) as c:c.cursor().execute('CREATE SCHEMA '+self.schema)
         original=db.connect

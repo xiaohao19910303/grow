@@ -5,8 +5,9 @@
 """
 
 import os
+import re
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, localcontext
 from typing import Optional, List, Dict, Any
 from zoneinfo import ZoneInfo
 
@@ -24,6 +25,86 @@ class RateLimitError(MarketDataError):
 class DataNotFoundError(MarketDataError):
     """数据不存在异常"""
     pass
+
+
+def canonical_code(value):
+    """Keep exchange identity explicit; never default an unknown symbol to Shanghai."""
+    if not isinstance(value, str):
+        raise MarketDataError('证券代码须为保留前导零的字符串。')
+    match = re.fullmatch(r'(?:(sh|sz|bj))?(\d{6})(?:\.(SH|SZ|BJ))?', value, re.I)
+    if not match:
+        raise MarketDataError('证券代码格式无效。')
+    prefix, symbol, suffix = match.groups()
+    exchange = 'SH' if symbol[0] in '56' else 'SZ' if symbol[0] in '013' else 'BJ' if symbol[0] in '489' else None
+    if exchange is None or any(x and x.upper() != exchange for x in (prefix, suffix)):
+        raise MarketDataError('证券代码与市场不一致或尚未覆盖。')
+    return symbol + '.' + exchange
+
+
+def stock_identity(row):
+    code = canonical_code(row.get('ts_code') or row.get('code'))
+    for field in ('code', 'symbol', 'ts_code'):
+        if row.get(field) and canonical_code(row[field]) != code:
+            raise MarketDataError('供应商返回的证券身份冲突。')
+    market = {'SH':'SSE','SZ':'SZSE','BJ':'BSE'}[code[-2:]]
+    if row.get('market') and row['market'] not in (market, code[-2:]):
+        raise MarketDataError('供应商返回的市场身份冲突。')
+    name = row.get('name')
+    if not isinstance(name, str) or not name.strip():
+        raise MarketDataError('证券名称缺失。')
+    listed = row.get('list_date')
+    if listed and str(listed).strip().lower() not in ('nan', 'nat', 'none'):
+        try: listed = datetime.strptime(str(listed), '%Y%m%d').date() if len(str(listed)) == 8 else date.fromisoformat(str(listed))
+        except ValueError as exc: raise MarketDataError('上市日期无效。') from exc
+    else: listed = None
+    return {**row, 'ts_code': code, 'symbol': code[:6], 'name': name.strip(),
+            'market': market, 'list_date': listed}
+
+
+def normalized_daily(rows, code, start, end, source):
+    """Compatibility cache uses lots and thousands of CNY, for both suppliers."""
+    code = canonical_code(code)
+    if start > end or (end-start).days > 3660:
+        raise MarketDataError('行情日期范围无效或超过十年。')
+    output, seen = [], set()
+    def number(value, *, positive=False):
+        raw = str(value)
+        if len(raw) > 100: raise MarketDataError('行情数值过长。')
+        try: n = Decimal(raw)
+        except (InvalidOperation, ValueError): raise MarketDataError('行情数值缺失或无效。')
+        if not n.is_finite() or n < 0 or (positive and n == 0) or n >= Decimal('1e18'):
+            raise MarketDataError('行情数值缺失、非有限或超出范围。')
+        return n
+    def stored(value):
+        with localcontext() as ctx:
+            ctx.prec = 80
+            if value != value.quantize(Decimal('0.0000000001')):
+                raise MarketDataError('数值超过缓存十位小数精度，未舍入保存。')
+        return format(value,'f')
+    for row in rows:
+        if row.get('ts_code') and canonical_code(row['ts_code']) != code:
+            raise MarketDataError('行情证券身份与请求不一致。')
+        raw = row.get('date') if source == 'akshare' else row.get('trade_date')
+        try:
+            day = raw.date() if isinstance(raw,datetime) else raw if isinstance(raw,date) else datetime.strptime(str(raw),'%Y%m%d').date() if len(str(raw)) == 8 else date.fromisoformat(str(raw))
+        except (TypeError,ValueError) as exc: raise MarketDataError('交易日期无效。') from exc
+        if not start <= day <= end or day in seen:
+            raise MarketDataError('交易日期重复或超出所选范围。')
+        prices = {key:number(row.get(key),positive=True) for key in ('open','high','low','close')}
+        if not prices['low'] <= min(prices['open'],prices['close']) <= max(prices['open'],prices['close']) <= prices['high']:
+            raise MarketDataError('行情高低价与开收盘价冲突。')
+        volume = number(row.get('volume') if source == 'akshare' else row.get('vol'))
+        amount = number(row.get('amount'))
+        if source == 'akshare':
+            with localcontext() as ctx:
+                ctx.prec = 80
+                volume /= 100; amount /= 1000
+        output.append({**{k:stored(v) for k,v in prices.items()},'ts_code':code,'trade_date':day,
+            'vol':stored(volume),'amount':stored(amount),
+            'pre_close':None if row.get('pre_close') is None else stored(number(row['pre_close'],positive=True)),
+            'change':None,'pct_chg':None})
+        seen.add(day)
+    return sorted(output,key=lambda r:r['trade_date'])
 
 
 class MarketDataProvider:
@@ -80,7 +161,7 @@ class TushareProvider(MarketDataProvider):
                 list_status='L',
                 fields='ts_code,symbol,name,area,industry,list_date'
             )
-            return df.to_dict('records')
+            return [stock_identity(row) for row in df.to_dict('records')]
         except Exception as e:
             raise MarketDataError(f"获取股票列表失败: {e}")
 
@@ -106,11 +187,11 @@ class TushareProvider(MarketDataProvider):
         """
         try:
             df = self.api.daily(
-                ts_code=code,
+                ts_code=canonical_code(code),
                 start_date=start_date.strftime('%Y%m%d'),
                 end_date=end_date.strftime('%Y%m%d')
             )
-            return df.to_dict('records')
+            return normalized_daily(df.to_dict('records'), code, start_date, end_date, 'tushare')
         except Exception as e:
             raise MarketDataError(f"获取日线数据失败: {e}")
 
@@ -179,22 +260,19 @@ class AKShareProvider(MarketDataProvider):
         """获取股票列表"""
         try:
             df = self.ak.stock_info_a_code_name()
-            return df.to_dict('records')
+            return [stock_identity(row) for row in df.to_dict('records')]
         except Exception as e:
             raise MarketDataError(f"获取股票列表失败: {e}")
 
     def get_daily_data(self, code: str, start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """获取日线数据"""
         try:
-            # AKShare 的代码格式不带后缀
-            pure_code = code.split('.')[0]
-            df = self.ak.stock_zh_a_daily(symbol=pure_code)
-            # 过滤日期范围
-            df['date'] = df['date'].astype(str).str[:10]
-            mask = (df['date'] >= start_date.strftime('%Y-%m-%d')) & \
-                   (df['date'] <= end_date.strftime('%Y-%m-%d'))
-            df = df[mask]
-            return df.to_dict('records')
+            canonical = canonical_code(code)
+            if canonical.endswith('.BJ'):
+                raise MarketDataError('当前新浪日线适配未覆盖北交所，请显式选择其他已授权来源。')
+            df = self.ak.stock_zh_a_daily(symbol=canonical[-2:].lower()+canonical[:6],
+                start_date=start_date.strftime('%Y%m%d'), end_date=end_date.strftime('%Y%m%d'), adjust='')
+            return normalized_daily(df.to_dict('records'), canonical, start_date, end_date, 'akshare')
         except Exception as e:
             raise MarketDataError(f"获取日线数据失败: {e}")
 
