@@ -10,6 +10,7 @@
 
 - [仓库结构与维护约定](docs/project-structure.md)
 - [学习笔记：保存后找回并继续](docs/learning-notebook.md)
+- [学后用：一次实践与应用反馈](docs/learning-practices.md)
 
 - [知行成长平台说明](知行成长/README.md)
 - [当前版本与功能状态](docs/verification/current-state-2026-10-24/README.md)

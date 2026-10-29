@@ -238,6 +238,7 @@
         link.target = '_blank'; link.rel = 'noopener noreferrer'; reader.append(link);
       }
       if (['yingyu', 'biaoda'].includes(module.id)) renderStudyRecord(module, lesson, data, content);
+      window.LearningPractices?.mount(reader,{module_id:module.id,filename:lesson.filename});
       window.CourseLibrary?.recordOpened(module.id, lesson.lesson_no);
       reader.scrollIntoView({behavior: 'smooth', block: 'start'});
     } catch (error) {

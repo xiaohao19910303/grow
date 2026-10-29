@@ -133,6 +133,8 @@ def sync(store,materials=None):
 def register(app,store,materials):
     from mobile_private import register as register_private
     register_private(app)
+    from learning_practices import register as register_practices
+    register_practices(app)
     @app.get('/api/mobile-learning')
     def read():return status()
 

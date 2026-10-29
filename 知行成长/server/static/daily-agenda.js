@@ -99,6 +99,7 @@
     content.append(node('p',type+' · '+(p.start_date||'未安排')+(p.at?' '+p.at:'')+' · '+(done?'已完成':p.blocked?'上级已暂停':p.status==='paused'?'已暂停':running?'正在进行':'待执行'),'action-kicker'),node('h3',p.title));
     if(mode!=='check')content.append(node('p',mode==='time'?`标准 ${p.target_minutes} 分钟 · 已确认累计 ${p.progress?.minutes||0} 分钟`:(p.estimated_minutes?`预计 ${p.estimated_minutes} 分钟 · `:'')+'在原内容中确认读完／学完','desc'));
     const actions=node('div',undefined,'action-buttons');box.append(actions);
+    if(p.practice_source)button(actions,'实践来源与应用反馈',()=>window.LearningPractices.open(p.id));
     actions.className='action-buttons agenda-primary';
     const more=node('details',undefined,'agenda-more'),summary=node('summary','更多','btn');
     summary.setAttribute('aria-label','更多操作：'+p.title);more.append(summary);

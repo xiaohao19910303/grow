@@ -385,7 +385,7 @@
     const target=document.getElementById('view-action-records');target.replaceChildren(n('h2','执行记录'),n('p','本人确认的完成、投入与中断记录；内容完成不推算时长。','desc'));
     try{await initialized;await renderRecords(target,1);}catch(e){target.append(n('p',e.message));button(target,'重试',records);}
   }
-  window.ActionPlans={enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','目标与计划'),n('p','正在读取计划与进度…'));try{await initialized;await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},
+  window.ActionPlans={practiceClient:async()=>{await initialized;return client;},enter:async()=>{root.setAttribute('aria-busy','true');if(!root.childElementCount)root.append(n('h2','目标与计划'),n('p','正在读取计划与进度…'));try{await initialized;await load();renderWorkspace();}catch(e){root.replaceChildren(n('p',e.message));button(root,'重试读取计划',()=>window.ActionPlans.enter());}finally{root.removeAttribute('aria-busy');}},
     resumeExecution:()=>{if(snapshot.execution)return openTarget(snapshot.execution.target,snapshot.execution.plan_id);},
     refresh:async()=>{await initialized;return load(snapshot.action_schema_version!==undefined);},snapshot:()=>snapshot,day,newDay:async options=>{await initialized;if(snapshot.action_schema_version===undefined)await load();return quick(null,options?.parent||null,options||{});},editDay:p=>quick(p),copyDay:p=>quick(null,null,{seedValues:{...p,status:undefined,revision:undefined},fresh:true}),
 
@@ -402,7 +402,7 @@
   });
   async function openMobileAction(){
     const match=location.hash.match(/^#mobile\/action\/(action-[a-zA-Z0-9-]+)$/);if(!match)return;
-    try{await initialized;await load(true);const p=planById(match[1]);if(!p)throw Error('当前 Grow 账号中没有这项行动，请核对连接账号。');if(goTab('action-plans')===false)return;await openTarget(p.target,p.id);}
+    try{await initialized;await load(true);const p=planById(match[1]);if(!p)throw Error('当前 Grow 账号中没有这项行动，请核对连接账号。');if(goTab('action-plans')===false)return;if(p.target)await openTarget(p.target,p.id);else await window.ActionPlans.openRecord(p.id);}
     catch(e){toast(e.message);}
   }
   window.addEventListener('hashchange',openMobileAction);

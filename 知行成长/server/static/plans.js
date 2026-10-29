@@ -461,6 +461,7 @@
       const status=node('p',d.lesson.learning_state==='completed'?'本课已完成；修改笔记不会改变完成状态。':'本课尚未完成；笔记与答案可先暂存。','desc');notes.form.insertBefore(status,notes.status);
       button(notes.actions,'本人确认学完',async()=>{await notes.flush();await api('/'+pid+'/lessons/'+n+'/feedback',{key:uuid(),state:'completed',comment:feedback?.comment||'',...(window.actionContentOrigin?.target?.kind==='plan'&&window.actionContentOrigin.target.plan_id===pid&&window.actionContentOrigin.target.lesson_no===n?{origin_action_id:window.actionContentOrigin.actionId}:{})});d.lesson.learning_state='completed';status.textContent='本课已完成，笔记与练习答案已独立暂存。';refresh();window.CourseContinuation?.mount(reader,'plan:'+pid,{refresh:true});},true);
       if(d.lesson.learning_state==='completed')window.CourseContinuation?.mount(reader,'plan:'+pid,{refresh:true});
+      window.LearningPractices?.mount(reader,{plan_id:pid,lesson_no:n});
     }catch(e){if(turn!==window.studyReaderRequest)return;reader.replaceChildren(node('p',e.message));button(reader,(window.lessonReturnLabel?.() || '返回我的课程'),returnFromLesson);button(reader,'重试读取课程',()=>window.openPlanCourse(pid,n));}finally{loading?.finish();}
   };
   window.openPlanDraft=async id=>{if(goTab('plans',{create:true})===false)return false;return previewDraft(id);};
