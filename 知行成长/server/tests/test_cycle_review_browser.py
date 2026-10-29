@@ -49,11 +49,15 @@ class CycleReviewBrowser(unittest.TestCase):
                 result = {'plans': [], 'execution': None, 'server_time': stamp}
             elif path == '/api/behavior-report':
                 result = reports
-            elif path == '/api/behavior-report/generate':
+            elif path == '/api/behavior-report/jobs' and request.method == 'GET':
+                result = {'items': [], 'total': 0}
+            elif path == '/api/behavior-report/jobs' and request.method == 'POST':
                 self.assertEqual(request.post_data_json['ai_config']['api_key'], 'TEST_ONLY')
                 self.assertEqual(request.headers['x-copilot-request'], '1')
                 reports.append({'id': 2, 'date': day, 'period_days': 30, 'content': '新生成的复盘报告'})
-                result = reports[-1]
+                result = {'id': 'report-job', 'state': 'ready', 'period_days': 30, 'result_id': 2}
+            elif path == '/api/behavior-report/jobs/report-job':
+                result = {'id': 'report-job', 'state': 'ready', 'period_days': 30, 'result_id': 2}
             elif path.startswith('/api/behavior-report/'):
                 number = int(path.rsplit('/', 1)[-1])
                 if request.method == 'DELETE':
@@ -159,7 +163,7 @@ class CycleReviewBrowser(unittest.TestCase):
                     expect(page.locator('#view-cycle-review')).to_be_visible()
                     self.assertTrue(any(path == '/api/timeline' and query.get('types') == ['decision'] for path, query in requests))
                     self.assertTrue(any(path == '/api/search' and query.get('page') == ['2'] for path, query in requests))
-                    self.assertEqual(writes, [('POST', '/api/behavior-report/generate'), ('DELETE', '/api/behavior-report/2')])
+                    self.assertEqual(writes, [('POST', '/api/behavior-report/jobs'), ('DELETE', '/api/behavior-report/2')])
                     self.assertEqual(errors, [])
                 finally:
                     browser.close()

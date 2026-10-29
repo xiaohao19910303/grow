@@ -76,7 +76,20 @@ class CoachFactsBrowserTests(unittest.TestCase):
         self.page.screenshot(path=str(self.evidence/'prediction-fact.png'),full_page=True)
         self.page.route('**/api/coach-facts',lambda route:route.fulfill(status=503,content_type='application/json',body='{"detail":"synthetic outage"}'))
         self.page.reload();card=self.page.locator('#coachFactToday');expect(card).to_contain_text('暂未读取')
-        self.assertNotIn('80%',card.inner_text());self.page.unroute('**/api/coach-facts')
+        self.assertNotIn('80%',card.inner_text())
+        # Drain the initial/queued read while the outage is still active; otherwise
+        # a late automatic response can remove the retry button before the click.
+        self.page.evaluate('()=>window.CoachFacts.refresh(true)')
+        self.page.unroute('**/api/coach-facts')
+        # Recover the synthetic service on the user's click, not a racing startup
+        # refresh. The real button and successful HTTP request are still exercised.
+        self.page.evaluate('''()=>{
+          window.__coachUserRetry=false;
+          document.addEventListener('click',e=>{if(e.target.closest('#coachFactToday button')?.textContent==='重试')window.__coachUserRetry=true;},true);
+          const original=window.fetch;
+          window.fetch=(url,options={})=>original(url,{...options,headers:{...options.headers,'X-Coach-Fixture-Retry':window.__coachUserRetry?'1':'0'}});
+        }''')
+        self.page.route('**/api/coach-facts',lambda route:route.continue_() if route.request.headers.get('x-coach-fixture-retry')=='1' else route.fulfill(status=503,content_type='application/json',body='{"detail":"synthetic outage"}'))
         card.get_by_role('button',name='重试',exact=True).click();expect(card).to_contain_text('80%')
 
     def test_due_action_yields_coach_and_completion_restores_the_card(self):

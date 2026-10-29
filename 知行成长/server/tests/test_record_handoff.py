@@ -59,7 +59,7 @@ class RecordHandoffTests(CloudFixture):
         self.api('DELETE','account')
     def test_01_preserves_history_gaps_ai_and_cross_end_edits(self):
         self.store.update(self.id,{**self.data,'base_version':1,'raw_text':'PRIVATE second'},'source-update-key')
-        self.store._put('reflection_ai_attempts','source-ready-attempt',{'id':'source-ready-attempt','entry_id':self.id,'kind':'organize','status':'ready','version_at_request':2,'sections':[{'kind':'event','text':'PRIVATE AI SUMMARY'}]})
+        self.store._put('reflection_ai_attempts','source-ready-attempt',{'id':'source-ready-attempt','entry_id':self.id,'kind':'organize','status':'ready','version_at_request':2,'sections':[{'kind':'event','text':'PRIVATE AI SUMMARY','basis':'statement'}]})
         self.store.adopt(self.id,'source-ready-attempt','source-adopt-key');self.store.archive(self.id,'source-archive-key');self.store.restore(self.id,'source-restore-key')
         code,preview=self.preview();self.assertEqual(preview['counts'],{'records':1,'versions':2,'history_gaps':2})
         result=handoff.confirm(self.store,code,preview['preview_id'],True);self.assertEqual(result['phase'],'active')
@@ -132,7 +132,7 @@ class RecordHandoffTests(CloudFixture):
         self.owner=self.fixture['owners'][3]
         def adopt(key,text):
             version=self.store.entry(self.id)['version']
-            self.store._put('reflection_ai_attempts',key,{'id':key,'entry_id':self.id,'kind':'organize','status':'ready','version_at_request':version,'sections':[{'kind':'event','text':text}]})
+            self.store._put('reflection_ai_attempts',key,{'id':key,'entry_id':self.id,'kind':'organize','status':'ready','version_at_request':version,'sections':[{'kind':'event','text':text,'basis':'statement'}]})
             self.store.adopt(self.id,key,key+'-adopt')
         def update(key):self.store.update(self.id,{**self.data,'base_version':self.store.entry(self.id)['version']},key)
         adopt('first-summary','PRIVATE FIRST SUMMARY');update('edit-3');update('edit-4');update('edit-5')

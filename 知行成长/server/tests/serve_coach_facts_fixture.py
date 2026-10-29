@@ -14,7 +14,7 @@ if __name__ == '__main__':
         def customize(app, fixture):
             register(app)
             from behavior_report.api import register as reports
-            reports(app, fixture.root, Path(fixture.tmp.name)/'runtime')
+            reports(app, fixture.root, Path(fixture.tmp.name)/'runtime').initialize()
             fixed = datetime(2026, 10, 25, 4, tzinfo=timezone.utc)
             for mock in (patch('action_plans.clock',return_value=fixed),
                          patch('growth_statistics.shanghai_today',return_value=date(2026,10,25))):

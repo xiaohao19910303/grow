@@ -24,6 +24,7 @@ class CycleReviewAPITests(PostgreSQLFixture):
         self.store = register(self.app, Path(self.temp.name), Path(self.temp.name))
         self.store.initialize()
         self.original = self.store.create_report('2026-10-20', 30, '原有报告', '{}')
+        self.original = self.store.get_report(self.original['id'])
 
     def test_generate_view_and_delete_keep_original_reports(self):
         async def model(messages, cfg):

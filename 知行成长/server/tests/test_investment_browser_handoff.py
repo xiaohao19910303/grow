@@ -2,6 +2,7 @@
 import copy
 import json
 import subprocess
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
@@ -170,7 +171,7 @@ class InvestmentBrowserTests(PostgreSQLFixture):
             for combine in ('all','any'):
                 request=ScreenInput(as_of='2026-10-26',conditions=[condition],combine=combine,limit=5)
                 packet={'algorithm':'browser-screen-rational-v1','universe':universe,'request':request.model_dump(mode='json')}
-                browser=json.loads(subprocess.run(['node','-e',script],input=json.dumps(packet),text=True,capture_output=True,check=True).stdout)
+                browser=json.loads(subprocess.run(['node','-e',script],input=json.dumps(packet),text=True,capture_output=True,check=True,cwd=Path(__file__).resolve().parents[1]).stdout)
                 existing=filter_snapshots(universe,request)
                 for field in ('total','unresolved'):self.assertEqual(browser[field],existing[field])
                 self.assertEqual([i['instrument_id'] for i in browser['items']],[i['instrument_id'] for i in existing['items']])

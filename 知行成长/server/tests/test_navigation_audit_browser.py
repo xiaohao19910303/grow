@@ -178,14 +178,14 @@ class NavigationAuditBrowser(unittest.TestCase):
                     expect(page.locator('#readingTaskCenter')).to_be_visible()
                     expect(page.locator('#actionExecution')).to_be_visible()
                     for panel in ('readingTaskCenter', 'actionExecution'):
-                        expect(page.locator(f'#{panel} details')).not_to_have_attribute('open', '')
+                        expect(page.locator(f'#{panel} > details')).not_to_have_attribute('open', '')
                     shots = Path(os.getenv('NAV_SCREENSHOT_DIR', '/tmp/grow-navigation-audit-after'))
                     shots.mkdir(parents=True, exist_ok=True)
                     for width in (320, 768, 1024, 1440):
                         page.set_viewport_size({'width': width, 'height': 960})
                         for expanded in (True, False):
                             for panel in ('readingTaskCenter', 'actionExecution'):
-                                page.locator(f'#{panel} summary').click()
+                                page.locator(f'#{panel} > details > summary').click()
                             expect(page.locator('#actionExecution details')).to_have_js_property('open', expanded)
                             page.locator('#knowledgeList').scroll_into_view_if_needed()
                             page.keyboard.press('ControlOrMeta+End')
@@ -213,7 +213,7 @@ class NavigationAuditBrowser(unittest.TestCase):
                     page.get_by_role('button', name='确认并记录', exact=True).click()
                     expect(page.locator('#actionExecution')).to_be_hidden()
                     expect(page.locator('#readingTaskCenter')).to_be_visible()
-                    page.locator('#readingTaskCenter summary').click()
+                    page.locator('#readingTaskCenter > details > summary').click()
                     page.locator('#readingTaskCenter').get_by_role('button', name='移除记录', exact=True).click()
                     expect(page.locator('#readingTaskCenter')).to_be_hidden()
                     expect(page.locator('#floatingPanels')).to_have_css('height', '0px')
