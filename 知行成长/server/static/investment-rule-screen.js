@@ -29,7 +29,7 @@
       <div class="inv-form"><label>选择模板<select data-template><option value="">新模板</option></select></label><div><button class="btn" data-load>载入模板</button><button class="btn" data-disable>停用模板</button></div>
       <fieldset><legend>指定股票池</legend>${stocks.map(i=>`<label class="inv-choice"><input type="checkbox" data-iid="${esc(i.id)}">${esc(i.name)} · ${esc(i.code)}</label>`).join('')||'<p>请先添加沪深股票及盘后行情。</p>'}</fieldset>
       <label>筛选截至日期<input type="date" data-date required></label><label><input type="checkbox" data-use>确认合法来源及本人用途，接受未复权口径</label><button class="btn" data-update>更新所选股票行情（AKShare）</button><div data-update-log role="status"></div>
-      <details><summary>模型配置（仅生成条件或研究候选时需要）</summary><label>模型地址<input data-url autocomplete="off" maxlength="2048"></label><label>模型名称<input data-model maxlength="100"></label><label>API Key<input data-secret type="password" autocomplete="off"></label><p>配置不进入本页草稿、批次或平台请求；跨域失败不通过平台代理。</p></details>
+      <details><summary>模型配置（仅生成条件或研究候选时需要）</summary><label>模型地址<input data-url autocomplete="off" maxlength="2048"></label><label>模型名称<input data-model maxlength="100"></label><label>API Key<input data-secret type="password" autocomplete="off"></label><label>调用方式<select data-transport><option value="direct">浏览器直连</option><option value="relay">同源服务端转发（兼容跨域限制）</option></select></label><label><input type="checkbox" data-relay-consent>本次选择转发时，同意密钥和已预览资料经过当前应用服务端，仅用于请求所填模型，不入库、不自动重试。</label><p>密钥不进入草稿或检查点。直连不会发送密钥到平台；转发只允许部署者配置的公开目的地。</p></details>
       <label>自然语言选股描述<textarea data-text maxlength="2000" placeholder="例如：近5日涨幅3%到10%，换手率2%到8%，按量比排序"></textarea></label><button class="btn" data-generate>AI生成条件草稿</button><div data-draft></div>
       <label>组合方式<select data-combine><option value="all">全部满足</option><option value="any">任一满足</option></select></label><div data-conditions></div><button class="btn" data-add>添加手工条件</button>
       <label>主排序<select data-sort>${fields}</select></label><label><input data-desc type="checkbox">主排序从高到低</label><label>次排序<select data-secondary><option value="">不设置</option>${fields}</select></label><label><input data-second-desc type="checkbox">次排序从高到低</label>
@@ -40,7 +40,9 @@
     document.body.append(d);d.showModal();const q=s=>d.querySelector(s),all=s=>[...d.querySelectorAll(s)];
     const notify=s=>{q('[data-status]').textContent=s;},error=e=>{q('[data-error]').textContent=e.message||String(e);};
     const cfg=window.AIConfig?.read()||{};q('[data-url]').value=cfg.api_base_url||'';q('[data-model]').value=cfg.model_name||'';q('[data-secret]').value=cfg.api_key||'';
-    const config=()=>base.modelConfig({api_base_url:q('[data-url]').value,model_name:q('[data-model]').value,api_key:q('[data-secret]').value});
+    q('[data-transport]').value=state.transport||'direct';
+    const config=()=>{const cfg=base.modelConfig({api_base_url:q('[data-url]').value,model_name:q('[data-model]').value,api_key:q('[data-secret]').value});
+      if(q('[data-transport]').value==='relay'){if(!q('[data-relay-consent]').checked)throw Error('请先确认本次转发的发送范围和密钥处理方式。');if(!q('[data-secret]').value.trim())throw Error('请填写本次转发所需的API Key。');cfg.transport='relay';}return cfg;};
     let saving=Promise.resolve();
     async function save(){guard();const current=state;const work=saving.then(()=>put(current,current.revision||0));saving=work.catch(()=>{});await work;guard();}
     const ops={gte:'至少／≥',gt:'超过／>',lte:'不超过／≤',lt:'低于／<',eq:'等于',ne:'不等于',between:'区间（含上下界）'};
@@ -57,6 +59,7 @@
       state.form_draft={as_of:q('[data-date]').value,conditions:all('[data-conditions] fieldset').map(row=>({field:row.querySelector('[data-field]').value,op:row.querySelector('[data-op]').value,value:row.querySelector('[data-field]').value==='price_above_ma20'?row.querySelector('[data-bool]').value:row.querySelector('[data-value]').value,upper_value:row.querySelector('[data-op]').value==='between'?row.querySelector('[data-upper]').value:null})),
         combine:q('[data-combine]').value,sort_by:q('[data-sort]').value,descending:q('[data-desc]').checked,secondary_sort_by:q('[data-secondary]').value||null,secondary_descending:q('[data-second-desc]').checked,limit:20};
       state.text=q('[data-text]').value;state.name=q('[data-name]').value;state.description=q('[data-description]').value;
+      state.transport=q('[data-transport]').value;
       state.accepted=q('[data-accept]')?.checked??state.accepted;state.resolved=q('[data-resolve]')?.checked??state.resolved;
       if(!state.ids.length||state.ids.length>20)throw Error('请选择1至20只沪深股票。');
       state.screen=core.validateScreen(state.form_draft,catalog.fields);state.form_draft=null;
@@ -82,6 +85,10 @@
         q('[data-clear]').onclick=()=>{if(!busy){state.generation=null;state.parse_started=false;state.parse_raw=null;drawDraft();save().catch(error);}};
       }
       if(state.parse_started){const p=document.createElement('p');p.textContent='上次生成结果未确认；不会自动重发。可主动重新生成。';root.append(p);}
+      if(state.parse_started&&state.parse_request_key&&state.transport==='relay'){
+        const button=document.createElement('button');button.className='btn';button.textContent='读取原转发回执（不调用模型）';
+        button.onclick=()=>action(async()=>{const receipt=await api('ai-relay/calls/'+encodeURIComponent(state.parse_request_key));if(receipt.account_id!==context.accountId)throw Error('回执不属于当前投资账户。');state.parse_raw=receipt.raw;await save();drawDraft();});root.append(button);
+      }
       if(state.parse_started){const b=document.createElement('button');b.className='btn';b.textContent='放弃本次解析，改用手工条件';b.onclick=()=>action(async()=>{state.parse_started=false;state.parse_raw=null;state.generation=null;state.accepted=false;state.resolved=false;await save();drawDraft();});root.append(b);}
       if(state.parse_started&&state.parse_raw){const b=document.createElement('button');b.className='btn';b.textContent='恢复已收到的解析输出（不调用模型）';b.onclick=()=>action(async()=>{
         const draft=core.parse(state.parse_raw,state.parse_text,state.parse_context,catalog);state.screen=draft.screen;state.form_draft=null;state.text=state.parse_text;
@@ -124,11 +131,11 @@
       state.text=q('[data-text]').value;state.ids=all('[data-iid]:checked').map(n=>n.dataset.iid);const text=state.text,contextForModel={as_of:q('[data-date]').value,selected_instrument_count:state.ids.length};
       if(!state.ids.length||state.ids.length>20)throw Error('请先选择1至20只股票。');
       const configuration=config(),messages=core.messages(text,contextForModel,catalog);
-      state.parse_started=true;state.parse_raw=null;state.generation=null;state.accepted=false;state.resolved=false;state.parse_text=text;state.parse_context=contextForModel;state.parse_model=configuration.model;await save();drawDraft();
+      state.parse_started=true;state.parse_request_key=uuid();state.parse_raw=null;state.generation=null;state.accepted=false;state.resolved=false;state.parse_text=text;state.parse_context=contextForModel;state.parse_model=configuration.model;await save();drawDraft();
       const controller=new AbortController();control.controller=controller;const timer=setTimeout(()=>controller.abort(),180000);
       notify('浏览器直接生成条件草稿；尚不执行筛选。');
       try{
-        const raw=await base.model(messages,configuration,controller.signal);guard();state.parse_raw=raw;state.parse_model=configuration.model;state.parse_context=contextForModel;await save();
+        const raw=await base.model(messages,{...configuration,relayContext:{purpose:'parse',key:state.parse_request_key,account_id:context.accountId}},controller.signal);guard();state.parse_raw=raw;state.parse_model=configuration.model;state.parse_context=contextForModel;await save();
         const draft=core.parse(raw,text,contextForModel,catalog);state.screen=draft.screen;state.form_draft=null;state.generation={source_text:text,model:configuration.model,parser_version:core.parser,raw,draft};
         state.accepted=false;state.resolved=false;state.parse_started=false;await save();fill();notify('草稿已生成，请核对原文、建议和问题，再执行表单。');
       }finally{clearTimeout(timer);control.controller=null;if(!closed&&state.parse_started)drawDraft();}

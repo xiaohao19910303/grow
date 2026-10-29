@@ -76,6 +76,19 @@
     const url=u.href.replace(/\/+$/,'');return {url:url.endsWith('/chat/completions')?url:url+'/chat/completions',model,key};
   }
   async function model(messages,config,signal,fetcher=fetch){
+    if(config.transport==='relay'){
+      const ctx=config.relayContext;if(!ctx?.key||!ctx.account_id)throw Error('缺少本次转发身份，尚未调用模型。');
+      const login=globalThis.Account?.user?.id;
+      const body={account_id:ctx.account_id,purpose:ctx.purpose,consent:true,
+        ai_config:{api_base_url:config.url,api_key:config.key,model_name:config.model},
+        ...(ctx.purpose==='candidate'?{job_id:ctx.job_id,executor:ctx.executor,input_hash:ctx.input_hash}:{messages})};
+      const response=await fetcher('/api/investments/ai-relay',{method:'POST',credentials:'same-origin',redirect:'error',cache:'no-store',signal,
+        headers:{'Content-Type':'application/json','X-Copilot-Request':'1','Idempotency-Key':ctx.key},body:JSON.stringify(body)});
+      const value=await response.json();
+      if(login!==globalThis.Account?.user?.id)throw Error('账号已变化，转发结果未展示。');
+      if(!response.ok||value.state!=='ready'||typeof value.raw!=='string')throw Error(value.message||'转发结果未确认，不会自动重发。');
+      return value.raw;
+    }
     const response=await fetcher(config.url,{method:'POST',mode:'cors',credentials:'omit',redirect:'error',cache:'no-store',referrerPolicy:'no-referrer',signal,
       headers:{'Content-Type':'application/json',...(config.key?{Authorization:'Bearer '+config.key}:{})},
       body:JSON.stringify({model:config.model,messages,stream:false})});

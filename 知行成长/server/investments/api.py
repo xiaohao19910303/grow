@@ -133,6 +133,8 @@ def register(app):
     analysis=scoped(app,lambda:InvestmentAnalysis(store))
     browser=scoped(app,lambda:ExecutionV2(store,analysis))
     router=APIRouter(prefix='/api/investments',tags=['investments'],route_class=PrivateRoute)
+    from .ai_relay import register as register_relay
+    register_relay(router,store,browser)
 
     @app.middleware('http')
     async def boundary(request: Request,call_next):

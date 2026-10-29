@@ -11,7 +11,8 @@ async def qwen_stream(messages, config):
         raise ValueError('Model endpoint must be a valid URL')
     payload = {'model': config['model'], 'messages': messages, 'stream': True}
     stopped = False
-    async with httpx.AsyncClient(timeout=httpx.Timeout(180, connect=15), follow_redirects=False) as client:
+    options={'transport':config['_transport'],'trust_env':False} if config.get('_transport') is not None else {}
+    async with httpx.AsyncClient(timeout=httpx.Timeout(180, connect=15), follow_redirects=False,**options) as client:
         async with client.stream('POST', config['url'], json=payload,
                                  headers={'Authorization': 'Bearer ' + config['key']}) as response:
             response.raise_for_status()

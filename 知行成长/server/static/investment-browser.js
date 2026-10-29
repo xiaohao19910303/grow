@@ -48,7 +48,7 @@
     });
   }
   async function configHash(config){
-    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({url:config.url,model:config.model})));
+    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({url:config.url,model:config.model,...(config.transport==='relay'?{transport:'relay'}:{})})));
     return [...new Uint8Array(bytes)].map(v=>v.toString(16).padStart(2,'0')).join('');
   }
   // 开始调用先落盘；拿到输出先落盘再上传。刷新后不会把 call_started 当成可自动重试。
@@ -89,6 +89,12 @@
             entry.pending=null;entry.started=null;await io.save(cp);
             if(entry.job.state==='ready')break;
           }
+          if(entry.started&&config.transport==='relay'&&entry.started.call_key){
+            const receipt=await io.api(account,'ai-relay/jobs/'+encodeURIComponent(entry.job.id)+'/recover',{executor:cp.create.executor,call_key:entry.started.call_key});
+            entry.pending={stage:entry.started.stage==='analysis'?'draft':'result',key:uuid(),body:{raw:receipt.raw,input_hash:entry.started.input_hash,executor:cp.create.executor}};
+            await io.save(cp);entry.job=await io.api(account,`local-jobs/${entry.job.id}/${entry.pending.stage}`,entry.pending.body,entry.pending.key);
+            entry.pending=null;entry.started=null;await io.save(cp);if(entry.job.state==='ready')break;
+          }
           if(entry.started)throw Error('上次模型调用结果未确认，已停止自动重发。请核对后取消并新建尝试。');
           check();const input=await io.api(account,'local-jobs/'+entry.job.id+'/input',null,null,{'X-Local-Executor':cp.create.executor});
           if(!['analysis','countercheck'].includes(input.stage)||input.evidence.prompt_version!=='investment-v5')throw Error('模型阶段或提示词协议不兼容，尚未调用模型。');
@@ -107,10 +113,10 @@
           try{
             // Cookie 可能已在别页变化；每次模型调用前重新核对当前登录身份。
             await io.verify(account,controller.signal);check();
-            entry.started={stage:input.stage,input_hash:input.evidence.input_hash};await io.save(cp);check();
+            entry.started={stage:input.stage,input_hash:input.evidence.input_hash,...(config.transport==='relay'?{call_key:uuid()}:{})};await io.save(cp);check();
             if(controller.signal.aborted)throw Error('执行已暂停，尚未调用模型。');
             notify((input.stage==='analysis'?'浏览器正在直接请求主分析':'浏览器正在直接请求同模型反证')+'；关闭页面会中断…');
-            raw=await io.model(input.evidence.messages,config,controller.signal);
+            raw=await io.model(input.evidence.messages,{...config,relayContext:{account_id:cp.create.account_id,purpose:'candidate',key:entry.started.call_key,job_id:entry.job.id,executor:cp.create.executor,input_hash:input.evidence.input_hash}},controller.signal);
           }
           finally{clearTimeout(timeout);clearInterval(watch);window.removeEventListener('account-session-changed',sessionChanged);control.controller=null;}
           entry.pending={stage:input.stage==='analysis'?'draft':'result',key:uuid(),
