@@ -43,7 +43,7 @@ class ConditionHTTPTests(PostgreSQLFixture):
         self.assertEqual(self.s.listing('fills',account_id=self.a['id'])['total'],0)
         self.assertEqual(self.client.put('/api/investments/condition-drills/'+result['id'],json={},headers=self.headers).status_code,405)
         self.assertTrue(self.client.get('/api/investments/capabilities').json()['condition_drill']['enabled'])
-        self.assertFalse(self.client.get('/api/investments/capabilities').json()['intraday_alerts']['enabled'])
+        alerts=self.client.get('/api/investments/capabilities').json()['intraday_alerts'];self.assertTrue(alerts['enabled']);self.assertFalse(alerts['background'])
 
     def test_clock_delay_does_not_look_ahead_and_high_price_does_not_replace_close(self):
         r=self.submit(arrival_delay_seconds=120,probe_at=['2026-10-27T10:02:30+08:00'])

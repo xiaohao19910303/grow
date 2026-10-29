@@ -49,5 +49,5 @@ class InvestmentOfflineHTTPTests(PostgreSQLFixture):
         self.assertEqual(len(self.client.get(base+'/history').json()['items']),3)
         gates=self.client.get('/api/investments/readiness').json()
         self.assertTrue(gates['offline_replay']['enabled']);self.assertFalse(gates['realtime']['enabled'])
-        self.assertFalse(gates['backtest']['enabled']);self.assertFalse(gates['intraday_alerts']['enabled'])
+        self.assertTrue(gates['backtest']['enabled']);self.assertTrue(gates['intraday_alerts']['enabled']);self.assertFalse(gates['intraday_alerts']['background'])
         self.assertEqual(self.client.post('/api/investments/backtests',json={},headers=self.headers).status_code,404)

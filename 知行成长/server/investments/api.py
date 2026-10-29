@@ -8,7 +8,8 @@ from fastapi import APIRouter, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, ValidationError
+from .market_data import MarketDataError
 
 from copilot.core import Problem
 from tenancy import scoped
@@ -115,7 +116,7 @@ class PrivateRoute(APIRoute):
         async def safe_handler(request):
             try:
                 return await original(request)
-            except RequestValidationError as exc:
+            except (RequestValidationError,ValidationError) as exc:
                 from .observable_conditions import UnverifiableCondition
                 for error in exc.errors():
                     cause=error.get('ctx',{}).get('error')
@@ -125,6 +126,8 @@ class PrivateRoute(APIRoute):
                 # Default validation details can echo an entire input containing AI credentials.
                 return JSONResponse({'error':'validation_error','message':'请核对输入字段、数值精度与时间格式。'},422,
                                     headers={'Cache-Control':'no-store'})
+            except MarketDataError:
+                return JSONResponse({'error':'market_input','message':'行情身份、数值或来源合同未通过，原数据保留。'},422,headers={'Cache-Control':'no-store'})
         return safe_handler
 
 
@@ -135,6 +138,12 @@ def register(app):
     router=APIRouter(prefix='/api/investments',tags=['investments'],route_class=PrivateRoute)
     from .ai_relay import register as register_relay
     register_relay(router,store,browser)
+    from .research_tools import register as register_research
+    research_tools=register_research(router,store)
+    from .research_history import register as register_history
+    register_history(router,research_tools)
+    from .research_sources import register as register_sources
+    register_sources(router,research_tools)
 
     @app.middleware('http')
     async def boundary(request: Request,call_next):
@@ -145,7 +154,8 @@ def register(app):
             if request.method not in ('GET','HEAD','OPTIONS'):
                 if request.headers.get('x-copilot-request')!='1':
                     return JSONResponse({'error':'same_origin_required','message':'缺少同源写入标识。'},403,headers=headers)
-                if len(await request.body())>400000:
+                limit=8_000_000 if request.url.path.startswith('/api/investments/research/') else 400000
+                if len(await request.body())>limit:
                     return JSONResponse({'error':'too_large','message':'投资请求超过大小限制。'},413,headers=headers)
             if store.startup_error:
                 return JSONResponse({'error':'storage_unavailable','message':'投资工作台暂不可用，原记录保留。'},503,headers=headers)

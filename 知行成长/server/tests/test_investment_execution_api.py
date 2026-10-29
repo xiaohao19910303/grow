@@ -45,7 +45,7 @@ class ExecutionStudyHTTPTests(PostgreSQLFixture):
         self.assertEqual(self.s.listing('fills',account_id=self.a['id'])['total'],0)
         self.assertEqual(self.s.balance(self.a['id'])['cash'],'10000')
         self.assertEqual(self.client.put('/api/investments/execution-studies/'+saved['id'],json={},headers=self.headers).status_code,405)
-        gates=self.client.get('/api/investments/capabilities').json();self.assertTrue(gates['execution_study']['enabled']);self.assertFalse(gates['backtest']['enabled'])
+        gates=self.client.get('/api/investments/capabilities').json();self.assertTrue(gates['execution_study']['enabled']);self.assertTrue(gates['backtest']['enabled']);self.assertFalse(gates['backtest']['source_verified'])
 
     def test_future_evidence_and_missing_limits_are_saved_as_failed_or_unresolved(self):
         r=self.submit(evidence_available_at='2026-10-28T10:00:00+08:00');self.assertEqual(r.status_code,200,r.text)

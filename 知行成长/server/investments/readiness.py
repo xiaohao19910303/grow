@@ -10,8 +10,8 @@ def requirements():
         'forward_observation':{'enabled':True,'credentials':[],'scope':'事前冻结观察协议、保留全部相符策略版本样本和费用压力；非参数回测'},
         'condition_drill':{'enabled':True,'credentials':[],'scope':'本人分钟CSV与核对资料的离线价格阈值、延迟及去重演练；仅页面模拟，不发送通知'},
         'execution_study':{'enabled':True,'credentials':[],'scope':'声明分钟路径的一笔假设撮合及费用验证；非历史策略回测或样本外验证'},
-        'backtest':{'enabled':False,'reason':'已提供单笔声明撮合情景；历史时点/全样本、复权及样本外参数重跑仍未交付。'},
-        'intraday_alerts':{'enabled':False,'reason':'已提供独立离线演练；实时适配、自动调度与实际通知未验收，不产生盘中交易提醒。'},
+        'backtest':{'enabled':True,'source_verified':False,'scope':'研究工具：本人声明完整的CSV/接口资料，收盘信号下一开盘、成本约束、样本外与有限参数试验；缺规则/时间表不输出绩效'},
+        'intraday_alerts':{'enabled':True,'background':False,'source_verified':False,'scope':'本人配置报价接口并显式开启的网页内轮询；时效、交易时段及冷却校验；通知须浏览器授权，关闭页面即停止'},
         'akshare_daily':{'enabled':True,'verified':False,'adapter':'AKShare / 东方财富','credentials':[],
             'required_endpoints':['stock_zh_a_hist（股票）','fund_etf_hist_em（ETF）'],
             'requirements':['服务端安装锁定依赖','沪深标的身份与有效公开日历','本人用途与上游使用范围核对'],
@@ -29,6 +29,6 @@ def requirements():
             'cost':'一次分析含主分析与同模型反证两次请求；真实调用仅在本人显式发送后发生'},
         'realtime':{'enabled':False,'credentials':[],
             'requirements':['另选并授权分钟/实时供应商','历史分钟与逐笔时序覆盖','时区/延迟/断流阈值','存储与使用许可'],
-            'reason':'当前无分钟/实时适配；提供Token本身不会开放此能力。'},
+            'reason':'未内置已验收的实时供应商；研究工具支持本人接口报价和历史分钟CSV，接口须另行核对时效与许可。'},
         'unneeded':['券商登录密码','交易密码','短信验证码','自动下单权限'],
-        'release':{'full_v1_verified':False,'p2_enabled':False}}
+        'release':{'full_v1_verified':False,'p2_enabled':True}}
