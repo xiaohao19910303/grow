@@ -42,6 +42,9 @@
       <button type="submit" class="btn">预览将发送的资料</button></form>
       <section data-inv-ai-preview hidden></section>`;
     const form=body.querySelector('form'),previewBox=body.querySelector('[data-inv-ai-preview]');
+    if(context.selectedInstrumentId)form.querySelector('[name="instrument_id"]').value=context.selectedInstrumentId;
+    if(context.question)form.querySelector('[name="question"]').value=context.question;
+    for(const id of context.selectedEvidenceIds||[]){const input=[...form.querySelectorAll('[data-inv-source="evidence_ids"]')].find(n=>n.value===id);if(input)input.checked=true;}
     let preview=null,requestKey=crypto.randomUUID(),busy=false;
     const invalidate=()=>{preview=null;previewBox.hidden=true;previewBox.replaceChildren();};
     form.addEventListener('input',invalidate);

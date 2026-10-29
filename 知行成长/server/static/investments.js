@@ -108,7 +108,7 @@
     if (!root()) return;
     root().innerHTML = `<div class="inv-workspace"><header><h2>投资工作台</h2><p class="inv-muted">资金、计划、实际交易和复盘放在一起。</p><div class="inv-actions">
       <label>当前账户<select data-inv-account aria-label="当前账户"><option value="">请选择账户</option>${s.accounts.map(a => `<option value="${a.id}" ${a.id === s.accountId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
-      ${button('新建账户','account')}${button('刷新','refresh')}${button('行情与查询来源','sources')}${button('添加盘后行情','market')}${button('规则选股','browser-screen')}${button('账号缓存筛选（旧版）','screen')}${button('查找投资记录','private-search')}</div></header>
+      ${button('新建账户','account')}${button('刷新','refresh')}${button('行情与查询来源','sources')}${button('添加盘后行情','market')}${button('规则选股','browser-screen')}${button('市场研究工具','research-tools')}${button('账号缓存筛选（旧版）','screen')}${button('查找投资记录','private-search')}</div></header>
       <p class="inv-notice">支持CSV、AKShare东方财富及Tushare盘后日线。请核对来源、数据日期和使用范围，实时判断尚未开放。</p>
       <p data-inv-status role="status" aria-live="polite"></p>
       <nav class="inv-tabs" role="tablist" aria-label="投资视图">${[['today','今日与计划'],['ledger','交易簿'],['review','复盘与策略']].map(([key,text]) => `<button role="tab" type="button" aria-selected="${s.view === key}" aria-controls="investment-panel" data-inv-view="${key}">${text}</button>`).join('')}</nav>
@@ -292,6 +292,7 @@
       }
       if(action==='campaign-review')return campaignDialog(data.id);
       if(action==='browser-screen')return window.InvestmentRuleScreen.open({accountId:s.accountId,instruments:s.instruments});
+      if(action==='research-tools')return window.InvestmentResearch.open({accountId:s.accountId});
       if(['sources','market','screen'].includes(action)) {
         if(!window.InvestmentMarket)throw new Error('行情入口尚未载入，请刷新。');
         if(action==='sources')return window.InvestmentMarket.sources();
