@@ -32,7 +32,7 @@ def register(app,store):
     @router.get('/export')
     def export():
         if state(store)['phase']!='active':fail('not_active','记录尚未完成联动。')
-        return call({'action':'request','method':'GET','path':'export'})
+        return remote('export')
     app.include_router(router)
 
 def legacy(record,history=None):
@@ -43,7 +43,12 @@ def legacy(record,history=None):
         result['status']='organized' if record.get('summary_basis_version')==record['version']-1 else 'basis_updated'
     return result
 
-def remote(path,method='GET',**fields):return call({'action':'request','path':path,'method':method,**fields})
+def remote(path,method='GET',**fields):
+    from zook_web_auth import enabled
+    if enabled():
+        from zook_web_proxy import records
+        return records(path, method, **fields)
+    return call({'action':'request','path':path,'method':method,**fields})
 
 def proxy(store,path,method,query,body):
     phase=state(store)['phase']

@@ -48,6 +48,8 @@ def configuration():
     return (url,secret,instance) if valid and len(secret)>=32 and instance else None
 
 def call(body):
+    from zook_web_auth import enabled
+    if body.get('action') == 'claim' and enabled(): call({'action': 'preview', 'code': body.get('code')})
     config=configuration()
     if not config:fail('handoff_unavailable','记录联动尚未配置；已冻结内容保留，请稍后重试。',503)
     url,secret,instance=config;subject=identity();stamp=str(int(time.time()));nonce=uuid.uuid4().hex
@@ -59,7 +61,11 @@ def call(body):
     except (httpx.HTTPError,ValueError):fail('handoff_unknown','连接结果尚未确认。内容已保留，请重试恢复。',503)
     if not isinstance(payload,dict):fail('handoff_unknown','联动响应无效，请重试恢复。',503)
     if response.status_code>=400:fail(str(payload.get('code','handoff_rejected')),str(payload.get('message','记录联动暂未完成。'))[:200],response.status_code)
-    return payload.get('data')
+    result = payload.get('data')
+    if body.get('action') == 'preview':
+        from zook_web_auth import assert_target
+        assert_target(result.get('target_user_id'))
+    return result
 
 def state(store):
     with store.conn() as c:row=c.execute('SELECT data FROM reflection_link_state WHERE id=1').fetchone()

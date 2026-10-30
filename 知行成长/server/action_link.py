@@ -39,6 +39,12 @@ def configuration():
 
 
 def call(source,body):
+    from zook_web_auth import enabled
+    if body.get('action') == 'claim' and enabled(): call(source, {'action': 'preview', 'code': body.get('code')})
+    if body.get('action') == 'request' and enabled():
+        from zook_web_proxy import action
+        if source != identity(): fail(403, '账号来源不一致。')
+        return action(body.get('path', ''), body.get('method'), body.get('body', {}), body.get('query', {}))
     config=configuration()
     if not config:fail(503,'联动服务尚未配置，已接管的数据不会退回本地写入。')
     url,secret=config
@@ -53,7 +59,11 @@ def call(source,body):
     if not isinstance(data,dict):fail(503,'联动响应格式无效，已保存的数据保留。')
     if response.status_code>=400:
         fail(response.status_code,'LightTick：'+str(data.get('message','联动暂未完成，请稍后重试。'))[:200],str(data.get('code','REQUEST_REJECTED')))
-    return data.get('data')
+    result = data.get('data')
+    if body.get('action') == 'preview':
+        from zook_web_auth import assert_target
+        assert_target(result.get('target_user_id'))
+    return result
 
 
 def state(c):

@@ -131,6 +131,9 @@ class Accounts:
                     c.execute("UPDATE auth_users SET password_hash=? WHERE id='owner'", (hash_password(password),))
                     c.execute("DELETE FROM auth_sessions WHERE user_id='owner'")
 
+        from zook_web_auth import Sessions
+        Sessions(self).initialize()
+
     def throttle(self, peer):
         now = int(time.time())
         bucket = hashlib.sha256(peer.encode()).hexdigest()
@@ -310,30 +313,40 @@ class Accounts:
 def install(app, static_dir, prepare_user):
     accounts = Accounts()
     app.state.accounts = accounts
+    from zook_web_auth import install as install_zook, COOKIE as ZOOK_COOKIE, active as zook_active
+    zook = install_zook(app, accounts)
     router = APIRouter(prefix='/api/auth')
 
     @router.post('/register')
     def register(body: Registration, request: Request):
         accounts.throttle(request.client.host if request.client else '')
         user = accounts.register(body)
-        return accounts.signed_in(user, request)
+        zook.logout(request.cookies.get(ZOOK_COOKIE, ''))
+        response = accounts.signed_in(user, request)
+        response.delete_cookie(ZOOK_COOKIE)
+        return response
 
     @router.post('/login')
     def login(body: Credentials, request: Request):
         accounts.throttle(request.client.host if request.client else '')
         user = accounts.login(body)
+        zook.logout(request.cookies.get(ZOOK_COOKIE, ''))
         accounts.revoke(request.cookies.get(COOKIE, ''))
-        return accounts.signed_in(user, request)
+        response = accounts.signed_in(user, request)
+        response.delete_cookie(ZOOK_COOKIE)
+        return response
 
     @router.post('/logout')
     def logout(request: Request):
+        zook.logout(request.cookies.get(ZOOK_COOKIE, ''))
         accounts.revoke(request.cookies.get(COOKIE, ''))
         response = JSONResponse({'ok': True})
         response.delete_cookie(COOKIE)
+        response.delete_cookie(ZOOK_COOKIE)
         return response
 
     @router.get('/me')
-    def me(): return {'user': public_user(current_user.get())}
+    def me(): return {'user': public_user(current_user.get()), 'auth_mode': 'zook' if zook_active.get() else 'grow'}
 
     @app.get('/api/account/invitations')
     def invitations(): return accounts.invitations(current_user.get())
@@ -365,7 +378,7 @@ def install(app, static_dir, prepare_user):
     @app.middleware('http')
     async def authenticate(request, call_next):
         path = request.url.path
-        public = path in ('/login', '/api/health', '/api/auth/register', '/api/auth/login') or path.startswith('/static/')
+        public = path in ('/login', '/api/health', '/api/auth/register', '/api/auth/login', '/api/auth/logout', '/api/auth/zook/login', '/api/auth/zook/config') or path.startswith('/static/')
         if path.startswith('/api/') and request.method not in ('GET', 'HEAD', 'OPTIONS'):
             origin = request.headers.get('origin')
             if (origin and origin != f'{request.url.scheme}://{request.url.netloc}') or request.headers.get('sec-fetch-site') == 'cross-site':
@@ -378,9 +391,15 @@ def install(app, static_dir, prepare_user):
             if int(length) > 500000:
                 return JSONResponse({'message': '请求内容过长。'}, status_code=413)
         token = None
+        zook_token = None
+        identity_lock = None
         try:
             if not public:
-                user = await run_in_threadpool(accounts.session, request.cookies.get(COOKIE, ''))
+                if ZOOK_COOKIE in request.cookies:
+                    user, session = await run_in_threadpool(zook.resolve, request.cookies.get(ZOOK_COOKIE, ''))
+                    zook_token = zook_active.set(session)
+                else:
+                    user = await run_in_threadpool(accounts.session, request.cookies.get(COOKIE, ''))
                 # Existing daily-reading automation uses GitHub OIDC, scoped to
                 # this one route. It cannot log in, invite users or read other APIs.
                 if not user and path == '/api/reading/scheduled-run' and request.method in ('GET','POST'):
@@ -390,6 +409,11 @@ def install(app, static_dir, prepare_user):
                 if not user:
                     return JSONResponse({'message': '请先登录。', 'code': 'login_required'}, status_code=401,
                                         headers={'Cache-Control':'no-store'}) if path.startswith('/api/') else RedirectResponse('/login', status_code=303, headers={'Cache-Control':'no-store'})
+                from zook_web_auth import enabled
+                if enabled():
+                    if request.method not in ('GET','HEAD','OPTIONS') and (path == '/api/auth/zook/link' or path.startswith(('/api/action-link/', '/api/record-link/', '/api/mobile-learning/'))):
+                        identity_lock = await run_in_threadpool(zook.acquire_identity, user)
+                    user = {**user, 'zook_target_user_id': await run_in_threadpool(zook.association, user['id'])}
                 page_user = request.headers.get('x-account-id')
                 if path.startswith('/api/') and page_user and page_user != user['id']:
                     return JSONResponse({'message': '账号已变更，请重新打开页面。'}, status_code=409,
@@ -401,7 +425,9 @@ def install(app, static_dir, prepare_user):
         except Problem as exc:
             response = JSONResponse({'code': exc.code, 'message': exc.message}, status_code=exc.status)
         finally:
+            if identity_lock is not None: await run_in_threadpool(identity_lock.__exit__, None, None, None)
             if token is not None: current_user.reset(token)
+            if zook_token is not None: zook_active.reset(zook_token)
         if path.startswith('/api/') or path in ('/', '/login'):
             response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
