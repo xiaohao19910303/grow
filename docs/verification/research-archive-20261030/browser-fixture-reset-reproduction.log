@@ -1,0 +1,131 @@
+test_completion_checks_in_without_manual_write_and_survives_reload (test_learning_checkins_browser.LearningCheckinsBrowser.test_completion_checks_in_without_manual_write_and_survives_reload) ... REQUEST_FAILED http://127.0.0.1:53456/static/account.js net::ERR_CONNECTION_RESET
+REQUEST_FAILED http://127.0.0.1:53456/static/course-summary.js net::ERR_CONNECTION_RESET
+REQUEST_FAILED http://127.0.0.1:53456/static/study-note-session.js net::ERR_CONNECTION_RESET
+REQUEST_FAILED http://127.0.0.1:53456/static/study-notes.js net::ERR_CONNECTION_RESET
+REQUEST_FAILED http://127.0.0.1:53456/static/learning-plan-actions.js net::ERR_CONNECTION_RESET
+PAGE_ERROR ReferenceError: Account is not defined
+    at init (http://127.0.0.1:53456/:2787:3)
+    at http://127.0.0.1:53456/:2798:1
+REQUEST_FAILED http://127.0.0.1:53456/static/reading-body.js net::ERR_CONNECTION_RESET
+REQUEST_FAILED http://127.0.0.1:53456/static/reading-position.js net::ERR_CONNECTION_RESET
+REQUEST_FAILED http://127.0.0.1:53456/static/reading.js net::ERR_CONNECTION_RESET
+REQUEST_FAILED http://127.0.0.1:53456/static/reflections.js net::ERR_CONNECTION_RESET
+FAIL
+
+======================================================================
+FAIL: test_completion_checks_in_without_manual_write_and_survives_reload (test_learning_checkins_browser.LearningCheckinsBrowser.test_completion_checks_in_without_manual_write_and_survives_reload)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_learning_checkins_browser.py", line 112, in test_completion_checks_in_without_manual_write_and_survives_reload
+    expect(page.locator('#todayChips .chip').filter(has_text='英文阅读')).to_contain_text('已完成 · 自动记录')
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/sync_api/_generated.py", line 14961, in to_contain_text
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.to_contain_text(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        )
+        ^
+    )
+    ^
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py", line 111, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 303, in to_contain_text
+    await self._expect_impl(
+    ...<9 lines>...
+    )
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 128, in _expect_impl
+    _record_soft_or_raise(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        AssertionError(
+        ^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        self._is_soft,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/playwright/_impl/_assertions.py", line 60, in _record_soft_or_raise
+    raise error
+AssertionError: Locator expected to contain text '已完成 · 自动记录'
+Actual value: None
+Error: element(s) not found 
+Call log:
+  - Expect "to_contain_text" locator("#todayChips .chip").filter(has_text="英文阅读") with timeout 5000ms
+  - waiting for locator("#todayChips .chip").filter(has_text="英文阅读")
+
+Aria snapshot:
+- text: 知
+- heading "知行成长" [level=1]
+- text: 个人学习与成长平台
+- searchbox "全局搜索"
+- text: ⌘K
+- button "切换到暗黑模式": 🌙
+- button "设置":
+  - img
+- button "账户菜单": 用户
+- complementary "行动草稿保存与恢复":
+  - group: 行动草稿副本与恢复
+- navigation "主导航":
+  - button "今日"
+  - button "行动"
+  - button "学习"
+  - button "记录"
+  - button "成长"
+- navigation "栏目导航":
+  - button "成长总览"
+  - button "学习回顾"
+  - button "知识图谱"
+  - button "周期复盘"
+- navigation "页面视图":
+  - button "学习日历"
+  - button "分类足迹"
+  - button "时长趋势"
+- heading "今日分类足迹" [level=2]
+- paragraph: 课程标记学完后，自动按分类记录，无需重复打卡。同一天同一分类只记一次，暂存笔记不会记录为完成。
+- status: 已按课程完成日期自动汇总（北京时间）。
+- button "刷新记录"
+- text: 沟通练习 暂无完成记录
+- heading "分类足迹（近 14 天）" [level=2]
+- paragraph: ✓ 表示当天已学完该分类的课程；历史手动打卡记录继续保留。
+- table:
+  - rowgroup:
+    - row "模块 10/17 10/18 10/19 10/20 10/21 10/22 10/23 10/24 10/25 10/26 10/27 10/28 10/29 10/30":
+      - columnheader "模块"
+      - columnheader "10/17"
+      - columnheader "10/18"
+      - columnheader "10/19"
+      - columnheader "10/20"
+      - columnheader "10/21"
+      - columnheader "10/22"
+      - columnheader "10/23"
+      - columnheader "10/24"
+      - columnheader "10/25"
+      - columnheader "10/26"
+      - columnheader "10/27"
+      - columnheader "10/28"
+      - columnheader "10/29"
+      - columnheader "10/30"
+    - row "沟通练习 沟通练习 2026-10-17：暂无完成记录 沟通练习 2026-10-18：暂无完成记录 沟通练习 2026-10-19：暂无完成记录 沟通练习 2026-10-20：暂无完成记录 沟通练习 2026-10-21：暂无完成记录 沟通练习 2026-10-22：暂无完成记录 沟通练习 2026-10-23：暂无完成记录 沟通练习 2026-10-24：暂无完成记录 沟通练习 2026-10-25：暂无完成记录 沟通练习 2026-10-26：暂无完成记录 沟通练习 2026-10-27：暂无完成记录 沟通练习 2026-10-28：暂无完成记录 沟通练习 2026-10-29：暂无完成记录 沟通练习 2026-10-30：暂无完成记录":
+      - cell "沟通练习"
+      - cell "沟通练习 2026-10-17：暂无完成记录"
+      - cell "沟通练习 2026-10-18：暂无完成记录"
+      - cell "沟通练习 2026-10-19：暂无完成记录"
+      - cell "沟通练习 2026-10-20：暂无完成记录"
+      - cell "沟通练习 2026-10-21：暂无完成记录"
+      - cell "沟通练习 2026-10-22：暂无完成记录"
+      - cell "沟通练习 2026-10-23：暂无完成记录"
+      - cell "沟通练习 2026-10-24：暂无完成记录"
+      - cell "沟通练习 2026-10-25：暂无完成记录"
+      - cell "沟通练习 2026-10-26：暂无完成记录"
+      - cell "沟通练习 2026-10-27：暂无完成记录"
+      - cell "沟通练习 2026-10-28：暂无完成记录"
+      - cell "沟通练习 2026-10-29：暂无完成记录"
+      - cell "沟通练习 2026-10-30：暂无完成记录"
+
+----------------------------------------------------------------------
+Ran 1 test in 9.284s
+
+FAILED (failures=1)
+AUDIT {'sqlite_connections': 0, 'blocked_real_database_access': 0, 'blocked_workspace_writes': 0, 'blocked_network_access': 0}

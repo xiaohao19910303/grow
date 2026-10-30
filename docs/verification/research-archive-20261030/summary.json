@@ -1,0 +1,262 @@
+{
+  "software_revision": "4bd1326b9bd30cd7ed5d0e43c0c7652b93ca5dbb",
+  "initial_full": {
+    "python_tests": 1080,
+    "skipped": 0,
+    "failures": 2,
+    "errors": 1,
+    "javascript": [
+      {
+        "file": "test_action_p0_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_action_plan_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_action_storage_recovery.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_ai_config_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_ai_connection_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_ai_evidence_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_background_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_behavior_report_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_coach_facts_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_completion_producers.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_course_library_model.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_daily_agenda_capabilities.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_daily_rhythm_settings.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_investment_browser.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_investment_research.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_investment_rules_v2.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_learning_actions_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_learning_completion_sync.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_learning_loading.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_learning_notebook_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_legacy_state_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_loading_state.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_loading_state_contract.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_login_loading.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_navigation_layout.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_partial_records.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_plan_observer.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_reading_navigation.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_reading_startup_browser.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_reading_tasks.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_reflection_entrypoints.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_rhythm_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_search_autofill.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_search_loading.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_search_timeline_navigation.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_state_browser.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_study_note_session.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_theme_client.cjs",
+        "returncode": 0
+      },
+      {
+        "file": "test_weekly_rhythm_requests.cjs",
+        "returncode": 0
+      }
+    ]
+  },
+  "repaired_browser_cases": {
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "request_resets": 0
+  },
+  "focused_final": {
+    "errors": 0,
+    "failures": 0,
+    "isolation": {
+      "blocked_network_access": 0,
+      "blocked_real_database_access": 0,
+      "blocked_workspace_writes": 0,
+      "sqlite_connections": 0
+    },
+    "python_tests": 19,
+    "skipped": 0
+  },
+  "local_service": {
+    "url": "http://127.0.0.1:8756",
+    "expected_revision": "4bd1326b9bd30cd7ed5d0e43c0c7652b93ca5dbb",
+    "browser": [
+      {
+        "width": 1440,
+        "workspace_visible": true,
+        "document_overflow": false
+      },
+      {
+        "width": 390,
+        "workspace_visible": true,
+        "document_overflow": false
+      }
+    ],
+    "health": {
+      "ok": true,
+      "revision": "4bd1326b9bd30cd7ed5d0e43c0c7652b93ca5dbb",
+      "plan_storage": "github",
+      "learning_plans_ready": true
+    },
+    "archive_configuration": {
+      "enabled": true,
+      "mode": "0o700",
+      "outside_source": true
+    },
+    "login": true,
+    "modules": {
+      "plans": {
+        "ready": true,
+        "reason": null
+      },
+      "copilot": {
+        "ready": true,
+        "reason": null
+      },
+      "reading": {
+        "ready": true,
+        "reason": null
+      },
+      "reflections": {
+        "ready": true,
+        "reason": null
+      },
+      "stocks": {
+        "ready": true,
+        "reason": null
+      },
+      "investments": {
+        "ready": true,
+        "reason": null
+      },
+      "behavior": {
+        "ready": true,
+        "reason": null
+      },
+      "errors": {
+        "ready": true,
+        "reason": null
+      },
+      "behavior_report": {
+        "ready": true,
+        "reason": null
+      },
+      "knowledge": {
+        "ready": true,
+        "reason": null
+      }
+    },
+    "archive_resource_status": 200,
+    "investment_accounts": 0,
+    "page_errors": [],
+    "http_5xx": [],
+    "investment_writes": [],
+    "ok": true
+  },
+  "note": "首轮全量有3个临时HTTP测试服务连接重置相关失败，增大测试服务backlog后3项定向通过；未声称修复后再次完整全站运行。"
+}

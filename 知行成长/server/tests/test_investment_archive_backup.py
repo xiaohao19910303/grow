@@ -29,6 +29,12 @@ class ResearchArchiveBackupTests(backup_fixture.StandaloneBackupTests):
         with self.assertRaises(BackupError):create(self.source,self.root/'incomplete',{'other-owner/content':self.git},env=missing,writers_stopped=True)
         manifest=self.create();self.assertEqual(manifest['research_archives']['count'],5)
         self.assertNotIn('PRIVATE NAME',json.dumps(manifest));verify(self.backup)
+        from investments import research_archive_backup
+        from investments.research_files import ArchiveFileError
+        outside=self.root/'outside';outside.mkdir();alias=self.root/'alias';alias.symlink_to(outside,target_is_directory=True)
+        with self.assertRaises(ArchiveFileError):research_archive_backup.restore(self.backup/'research-archives.zip',alias/'escaped',5)
+        self.assertFalse((outside/'escaped').exists())
+
         with self.assertRaises(BackupError):restore(self.target,self.backup,self.root/'no-root',env=self.env,writers_stopped=True)
         # Even if a damaged manifest omits archive metadata and its ZIP, DB ready
         # references must prevent a falsely successful restore.

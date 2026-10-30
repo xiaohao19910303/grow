@@ -12,6 +12,11 @@ from urllib.parse import unquote
 
 
 def setup_isolation():
+    # Chrome preconnects across the production page's many static assets. The
+    # stdlib fixture server's default backlog of 5 causes macOS TCP resets and
+    # missing globals during reloads; production Uvicorn uses a larger backlog.
+    from http.server import ThreadingHTTPServer
+    ThreadingHTTPServer.request_queue_size = 128
     server = Path(__file__).resolve().parents[1]
     workspace = server.parent.parent
     sys.path.insert(0, str(server))

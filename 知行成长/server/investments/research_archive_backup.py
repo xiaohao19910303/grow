@@ -35,6 +35,7 @@ def check_record(schema,state,record,manifest,files):
 def create(connection,root,destination):
     saved=records(connection)
     if not saved:return None
+    if len(saved)>20000:raise ArchiveFileError('归档记录超过完整备份上限20000，请先规划分卷备份。')
     if not root:raise ArchiveFileError('数据库含已归档引用，完整备份必须配置研究归档根目录。')
     store=ArchiveFiles(root);index=[];available={(schema,record['id'],record['version']):record for schema,_,record in saved}
     with zipfile.ZipFile(destination,'w',compression=zipfile.ZIP_DEFLATED) as bundle:
@@ -46,7 +47,9 @@ def create(connection,root,destination):
             prefix='/'.join(state['key'])+'/'
             for name,data in {'manifest.json':canonical(manifest),**files}.items():bundle.writestr(prefix+name,data)
             index.append({'key':state['key'],'manifest_hash':state['manifest_hash']})
-        bundle.writestr('archive-index.json',canonical({'format':'grow-research-full-backup-v1','records':index}))
+        raw=canonical({'format':'grow-research-full-backup-v1','records':index})
+        if len(raw)>10_000_000:raise ArchiveFileError('归档备份索引超过10MB。')
+        bundle.writestr('archive-index.json',raw)
     return {'file':FILENAME,'count':len(index),'format':'grow-research-full-backup-v1'}
 
 
@@ -55,7 +58,7 @@ def entries(path):
     try:
         with zipfile.ZipFile(path) as bundle:
             infos=bundle.infolist();names=[i.filename for i in infos]
-            if len(names)!=len(set(names)) or len(names)>500000 or any(i.is_dir() or stat.S_ISLNK(i.external_attr>>16) or i.file_size>LIMIT for i in infos):raise ArchiveFileError('归档备份条目无效。')
+            if len(names)!=len(set(names)) or len(names)>500001 or any(i.is_dir() or stat.S_ISLNK(i.external_attr>>16) or i.file_size>LIMIT for i in infos):raise ArchiveFileError('归档备份条目无效。')
             info=bundle.getinfo('archive-index.json')
             if info.file_size>10_000_000:raise ArchiveFileError('归档索引过大。')
             index=json.loads(bundle.read(info))
@@ -93,9 +96,12 @@ def verify(path,count):
 def restore(path,root,count):
     root=Path(root)
     if not root.is_absolute() or root.exists() or root.is_symlink():raise ArchiveFileError('归档恢复必须使用新的绝对目录。')
-    verify(path,count);root.mkdir(mode=0o700,parents=True)
+    verify(path,count);store=ArchiveFiles(root)
+    try:fd=store.root_fd(True)
+    except OSError as error:raise ArchiveFileError('归档恢复路径缺失或不安全。') from error
+    os.close(fd)
     for key,expected,manifest,files in entries(path):
-        metadata={k:v for k,v in manifest.items() if k not in ('format','files')};written=ArchiveFiles(root).write(key,metadata,files)
+        metadata={k:v for k,v in manifest.items() if k not in ('format','files')};written=store.write(key,metadata,files)
         if written['manifest_hash']!=expected:raise ArchiveFileError('归档恢复哈希不符。')
 
 

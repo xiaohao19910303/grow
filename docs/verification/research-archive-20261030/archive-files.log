@@ -1,0 +1,14 @@
+test_arbitrary_ancestor_symlink_and_fifo_are_rejected (test_investment_archive_files.ArchiveFilesTests.test_arbitrary_ancestor_symlink_and_fifo_are_rejected) ... ok
+test_full_backup_rejects_unrestorable_archive_count_before_publishing (test_investment_archive_files.ArchiveFilesTests.test_full_backup_rejects_unrestorable_archive_count_before_publishing) ... ok
+test_immutable_publish_permissions_and_verified_roundtrip (test_investment_archive_files.ArchiveFilesTests.test_immutable_publish_permissions_and_verified_roundtrip) ... ok
+test_interrupted_publish_has_no_ready_partial_and_explicit_retry_recovers (test_investment_archive_files.ArchiveFilesTests.test_interrupted_publish_has_no_ready_partial_and_explicit_retry_recovers) ... ok
+test_parent_file_and_root_symlinks_are_rejected (test_investment_archive_files.ArchiveFilesTests.test_parent_file_and_root_symlinks_are_rejected) ... ok
+test_paths_cannot_escape_and_download_names_are_not_interpreted (test_investment_archive_files.ArchiveFilesTests.test_paths_cannot_escape_and_download_names_are_not_interpreted) ... ok
+test_tamper_and_manifest_rewriting_are_detected (test_investment_archive_files.ArchiveFilesTests.test_tamper_and_manifest_rewriting_are_detected) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.147s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 7, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

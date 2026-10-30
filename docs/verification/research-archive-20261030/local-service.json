@@ -1,0 +1,76 @@
+{
+  "url": "http://127.0.0.1:8756",
+  "expected_revision": "4bd1326b9bd30cd7ed5d0e43c0c7652b93ca5dbb",
+  "browser": [
+    {
+      "width": 1440,
+      "workspace_visible": true,
+      "document_overflow": false
+    },
+    {
+      "width": 390,
+      "workspace_visible": true,
+      "document_overflow": false
+    }
+  ],
+  "health": {
+    "ok": true,
+    "revision": "4bd1326b9bd30cd7ed5d0e43c0c7652b93ca5dbb",
+    "plan_storage": "github",
+    "learning_plans_ready": true
+  },
+  "archive_configuration": {
+    "enabled": true,
+    "mode": "0o700",
+    "outside_source": true
+  },
+  "login": true,
+  "modules": {
+    "plans": {
+      "ready": true,
+      "reason": null
+    },
+    "copilot": {
+      "ready": true,
+      "reason": null
+    },
+    "reading": {
+      "ready": true,
+      "reason": null
+    },
+    "reflections": {
+      "ready": true,
+      "reason": null
+    },
+    "stocks": {
+      "ready": true,
+      "reason": null
+    },
+    "investments": {
+      "ready": true,
+      "reason": null
+    },
+    "behavior": {
+      "ready": true,
+      "reason": null
+    },
+    "errors": {
+      "ready": true,
+      "reason": null
+    },
+    "behavior_report": {
+      "ready": true,
+      "reason": null
+    },
+    "knowledge": {
+      "ready": true,
+      "reason": null
+    }
+  },
+  "archive_resource_status": 200,
+  "investment_accounts": 0,
+  "page_errors": [],
+  "http_5xx": [],
+  "investment_writes": [],
+  "ok": true
+}

@@ -1,0 +1,27 @@
+/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_arbitrary_ancestor_symlink_and_fifo_are_rejected (test_investment_archive_files.ArchiveFilesTests.test_arbitrary_ancestor_symlink_and_fifo_are_rejected) ... ok
+test_full_backup_rejects_unrestorable_archive_count_before_publishing (test_investment_archive_files.ArchiveFilesTests.test_full_backup_rejects_unrestorable_archive_count_before_publishing) ... ok
+test_immutable_publish_permissions_and_verified_roundtrip (test_investment_archive_files.ArchiveFilesTests.test_immutable_publish_permissions_and_verified_roundtrip) ... ok
+test_interrupted_publish_has_no_ready_partial_and_explicit_retry_recovers (test_investment_archive_files.ArchiveFilesTests.test_interrupted_publish_has_no_ready_partial_and_explicit_retry_recovers) ... ok
+test_parent_file_and_root_symlinks_are_rejected (test_investment_archive_files.ArchiveFilesTests.test_parent_file_and_root_symlinks_are_rejected) ... ok
+test_paths_cannot_escape_and_download_names_are_not_interpreted (test_investment_archive_files.ArchiveFilesTests.test_paths_cannot_escape_and_download_names_are_not_interpreted) ... ok
+test_tamper_and_manifest_rewriting_are_detected (test_investment_archive_files.ArchiveFilesTests.test_tamper_and_manifest_rewriting_are_detected) ... ok
+test_archive_run_includes_immutable_parent_and_roundtrip_exact_values (test_investment_research_archive.ResearchArchiveTests.test_archive_run_includes_immutable_parent_and_roundtrip_exact_values) ... ok
+test_auto_archive_verified_download_and_replay_do_not_change_business_receipt (test_investment_research_archive.ResearchArchiveTests.test_auto_archive_verified_download_and_replay_do_not_change_business_receipt) ... ok
+test_comparison_verification_reaches_damaged_grandparent_dataset (test_investment_research_archive.ResearchArchiveTests.test_comparison_verification_reaches_damaged_grandparent_dataset) ... ok
+test_tamper_blocks_download_and_wrong_account_has_no_access (test_investment_research_archive.ResearchArchiveTests.test_tamper_blocks_download_and_wrong_account_has_no_access) ... ok
+test_write_failure_is_recorded_after_business_commit_then_retry_uses_saved_data (test_investment_research_archive.ResearchArchiveTests.test_write_failure_is_recorded_after_business_commit_then_retry_uses_saved_data) ... ok
+test_backtest_cost_difference_matches_exact_hand_calculation (test_investment_research_comparison.ResearchComparisonTests.test_backtest_cost_difference_matches_exact_hand_calculation) ... ok
+test_date_comparison_distinguishes_unknown_and_coverage_from_rule_exit (test_investment_research_comparison.ResearchComparisonTests.test_date_comparison_distinguishes_unknown_and_coverage_from_rule_exit) ... ok
+test_incompatible_baseline_suppresses_every_delta_and_csv_retains_null (test_investment_research_comparison.ResearchComparisonTests.test_incompatible_baseline_suppresses_every_delta_and_csv_retains_null) ... ok
+test_mixed_inputs_are_labeled_and_other_account_cannot_compare (test_investment_research_comparison.ResearchComparisonTests.test_mixed_inputs_are_labeled_and_other_account_cannot_compare) ... ok
+test_archive_backup_restores_exact_comparison_and_dependencies (test_investment_archive_backup.ResearchArchiveBackupTests.test_archive_backup_restores_exact_comparison_and_dependencies) ... ok
+test_archive_compare_export_reopen_paging_desktop_mobile (test_investment_archive_browser.ResearchArchiveBrowserTests.test_archive_compare_export_reopen_paging_desktop_mobile) ... ok
+test_dirfd_writes_remain_guarded_in_child_process (test_isolation_dirfd.IsolationDirfdTests.test_dirfd_writes_remain_guarded_in_child_process) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 6.693s
+
+OK
+RESEARCH_ARCHIVE_RESULT {"errors": 0, "failures": 0, "isolation": {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}, "python_tests": 19, "skipped": 0}

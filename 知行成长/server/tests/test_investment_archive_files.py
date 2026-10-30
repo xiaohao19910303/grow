@@ -48,3 +48,9 @@ class ArchiveFilesTests(TestCase):
         self.assertEqual(list(outside.iterdir()),[])
         saved=self.files.write(KEY,META,{'record.json':b'body'});path=self.root.joinpath(*KEY,'record.json');path.unlink();os.mkfifo(path)
         with self.assertRaises(ArchiveFileError):self.files.read(KEY,saved['manifest_hash'])
+
+    def test_full_backup_rejects_unrestorable_archive_count_before_publishing(self):
+        from investments import research_archive_backup
+        with patch.object(research_archive_backup,'records',return_value=[None]*20001):
+            with self.assertRaisesRegex(ArchiveFileError,'20000'):research_archive_backup.create(None,str(self.root),self.root/'backup.zip')
+        self.assertFalse((self.root/'backup.zip').exists())

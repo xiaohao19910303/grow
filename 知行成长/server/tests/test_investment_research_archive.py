@@ -42,3 +42,11 @@ class ResearchArchiveTests(PostgreSQLFixture):
         self.assertEqual(archive.read_record(dataset['id'],1,self.account['id']),dataset)
         response=self.client.get('/api/investments/research/archives/'+run['id']+'/download',params={'account_id':self.account['id'],'version':1})
         with zipfile.ZipFile(io.BytesIO(response.content)) as z:self.assertEqual(len(json.loads(z.read('bundle.json'))['records']),2)
+
+    def test_comparison_verification_reaches_damaged_grandparent_dataset(self):
+        dataset=self.dataset();left=self.post('screens',{'account_id':self.account['id'],'dataset_id':dataset['id'],'conditions':[]},'archive-left-screen')
+        right=self.post('screens',{'account_id':self.account['id'],'dataset_id':dataset['id'],'conditions':[{'field':'close','op':'gt','value':'1'}]},'archive-right-screen')
+        comparison=self.post('comparisons',{'account_id':self.account['id'],'left_id':left['id'],'left_version':1,'right_id':right['id'],'right_version':1},'archive-comparison')
+        path=next(Path(os.environ['INVESTMENT_RESEARCH_ARCHIVE_ROOT']).rglob('rows.jsonl.gz'));path.write_bytes(b'damaged dependency')
+        self.post('archives/verify',{'account_id':self.account['id'],'object_id':comparison['id'],'version':1},'archive-verify-grandparent',409)
+        response=self.client.get('/api/investments/research/archives/'+comparison['id']+'/download',params={'account_id':self.account['id'],'version':1});self.assertEqual(response.status_code,409)

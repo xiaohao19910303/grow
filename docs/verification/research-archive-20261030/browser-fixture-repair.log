@@ -1,0 +1,9 @@
+test_navigation_preserves_reports_timeline_search_and_exports (test_cycle_review_browser.CycleReviewBrowser.test_navigation_preserves_reports_timeline_search_and_exports) ... ok
+test_completion_checks_in_without_manual_write_and_survives_reload (test_learning_checkins_browser.LearningCheckinsBrowser.test_completion_checks_in_without_manual_write_and_survives_reload) ... ok
+test_relocated_entries_keep_history_and_course_tools (test_navigation_organization_browser.NavigationOrganizationBrowser.test_relocated_entries_keep_history_and_course_tools) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 18.476s
+
+OK
+AUDIT {'sqlite_connections': 0, 'blocked_real_database_access': 0, 'blocked_workspace_writes': 0, 'blocked_network_access': 0}
