@@ -17,6 +17,20 @@ class InvestmentJourneyBrowserTests(unittest.TestCase):
     cleanup_database=account_fixture.AccountIntegrationTests.cleanup_database
     login=account_fixture.AccountIntegrationTests.login
 
+    def test_authenticated_full_market_csv_limit_matches_research_route(self):
+        self.login('owner',os.environ['APP_PASSWORD'])
+        headers={'X-Copilot-Request':'1','Idempotency-Key':'local-deploy-large-account'}
+        account=self.client.post('/api/investments/accounts',json={'name':'大CSV隔离验收','baseline_date':'2026-10-28','opening_cash':'0'},headers=headers)
+        self.assertEqual(account.status_code,201,account.text)
+        text='code,name,close,turnover_rate_pct,pe\n'+''.join(f'{i:06d},'+('Synthetic'*10)+',10,3,8\n' for i in range(1,8001))
+        body={'account_id':account.json()['id'],'market_date':'2026-10-28','source_label':'合成全市场CSV','use_confirmed':True,'text':text}
+        self.assertGreater(len(json.dumps(body).encode()),500000)
+        saved=self.client.post('/api/investments/research/datasets/csv',json=body,headers={**headers,'Idempotency-Key':'local-deploy-large-csv'})
+        self.assertEqual(saved.status_code,201,saved.text[:300])
+        self.assertEqual(saved.json()['data']['actual_count'],8000)
+        oversized=self.client.post('/api/investments/research/datasets/csv',content=b'x'*8_000_001,headers={**headers,'Idempotency-Key':'local-deploy-oversize','Content-Type':'application/json'})
+        self.assertEqual(oversized.status_code,413)
+
     def journey(self,width):
         self.stamp='2026-10-28T09:00:00+08:00'
         for target in ('store','analysis','planning','operations','plan_checks','rules'):

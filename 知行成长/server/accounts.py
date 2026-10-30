@@ -375,7 +375,10 @@ def install(app, static_dir, prepare_user):
             length = request.headers.get('content-length', '0')
             if not length.isdecimal():
                 return JSONResponse({'message': '请求长度无效。'}, status_code=400)
-            if int(length) > 500000:
+            # Research CSV/dataset inputs have their own 8MB route contract.
+            # The outer authentication layer must not reject them at 500KB.
+            limit = 8_000_000 if path.startswith('/api/investments/research/') else 500000
+            if int(length) > limit:
                 return JSONResponse({'message': '请求内容过长。'}, status_code=413)
         token = None
         try:
