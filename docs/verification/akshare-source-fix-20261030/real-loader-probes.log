@@ -1,0 +1,12 @@
+[
+  {
+    "probe": "tx_market",
+    "result": "{\"ok\": true, \"probe\": \"tx_market\", \"rows\": 5577, \"columns\": [\"code\", \"hsl\", \"lb\", \"ltsz\", \"name\", \"pe_ttm\", \"pn\", \"speed\", \"state\", \"stock_type\", \"turnover\", \"volume\", \"zd\", \"zdf\", \"zdf_d10\", \"zdf_d20\", \"zdf_d5\", \"zdf_d60\", \"zdf_w52\", \"zdf_y\", \"zf\", \"zljlr\", \"zllc\", \"zllc_d5\", \"zllr\", \"zllr_d5\", \"zsz\", \"zxj\"], \"sample\": [{\"code\": \"sh600519\", \"hsl\": \"0.48\", \"lb\": \"1.36\", \"ltsz\": \"17401.76\", \"name\": \"贵州茅台\", \"pe_ttm\": \"21.18\", \"pn\": \"6.42\", \"speed\": \"0.08\", \"state\": \"\", \"stock_type\": \"GP-A\", \"turnover\": \"825738\", \"volume\": \"59927.00\", \"zd\": \"38.05\", \"zdf\": \"2.81\", \"zdf_d10\": \"4.74\", \"zdf_d20\": \"12.53\", \"zdf_d5\": \"4.27\", \"zdf_d60\": \"2.22\", \"zdf_w52\": \"1.26\", \"zdf_y\": \"3.18\", \"zf\": \"2.98\", \"zljlr\": \"47087.46\", \"zllc\": \"468487.11\", \"zllc_d5\": \"1719434.32\", \"zllr\": \"515574.57\", \"zllr_d5\": \"1783733.38\", \"zsz\": \"17401.76\", \"zxj\": \"1392.05\"}], \"seconds\": 6.27}\n",
+    "exit": 0
+  },
+  {
+    "probe": "em_daily",
+    "result": "{\"ok\": false, \"probe\": \"em_daily\", \"error_type\": \"ProxyError\", \"detail\": \"HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58%2Cf59%2Cf60%2Cf61%2Cf116&ut=7eea3edcaed734bea9cbfc24409ed989&klt=101&fqt=0&secid=0.000001&beg=20261028&end=20261030 (Caused by ProxyError('Unable to connect to proxy', RemoteDisconnected('Remot\", \"seconds\": 0.13}\n",
+    "exit": 0
+  }
+]

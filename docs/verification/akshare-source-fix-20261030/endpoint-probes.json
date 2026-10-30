@@ -1,0 +1,24 @@
+[
+  {
+    "probe": "original",
+    "status": 200,
+    "rc": 0,
+    "has_data": true,
+    "total": 3488,
+    "seconds": 0.58
+  },
+  {
+    "probe": "canonical",
+    "error_type": "ProxyError",
+    "detail": "HTTPSConnectionPool(host='push2.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/clist/get?pn=1&pz=2&po=1&np=1&fltt=2&invt=2&fid=f12&fs=m%3A0+t%3A6%2Cm%3A1+t%3A2&fields=f12%2Cf14%2Cf2%2Cf5%2Cf6&ut=bd1d9d",
+    "seconds": 0.22
+  },
+  {
+    "probe": "history",
+    "status": 200,
+    "rc": 0,
+    "has_data": true,
+    "total": null,
+    "seconds": 0.38
+  }
+]

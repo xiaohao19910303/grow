@@ -1,0 +1,6 @@
+{
+  "ok": false,
+  "scope": "real Tencent network + production research UI/API + disposable local schema",
+  "error_type": "AssertionError",
+  "error": "Locator expected to contain text '腾讯全市场快照'\nActual value:  \nCall log:\n  - Expect \"to_contain_text\" get_by_role(\"dialog\", name=\"市场研究工具\").locator(\"[data-dataset-note]\") with timeout 5000ms\n  - waiting for get_by_role(\"dialog\", name=\"市场研究工具\").locator(\"[data-dataset-note]\")\n    14 × locator resolved to <p data-dataset-note=\"\"></p>\n       - unexpected value \"\"\n\nAria snapshot:\n- paragraph"
+}

@@ -72,3 +72,9 @@ time,open_at,available_at,open,high,low,close,volume_shares,suspended,limit_up,l
 本次软件验收、真实来源与发布状态见[交付验证记录](investment-delivery-closeout-20261030.md)。
 
 用户追加的本地中间资料归档与后续对比，见[资料库设计](investment-research-archive-design.md)。当前为设计，归档目录及跨批次对比尚未实现，既有研究对象仍由PostgreSQL保存。
+
+## 2026-10-30 AKShare上游修复
+
+在「AKShare全市场上游」明确选择腾讯或东方财富后读取；页面初始选腾讯，失败不会自动换源。腾讯全市场已验证真实读取，支持TTM市盈率字段，动态市盈率缺失仍为未知；成交量、成交额、市值统一为股、元、元。已保存资料保留上游与原始单位，旧东方财富记录不改写。
+
+历史区可选腾讯沪深股票日线；ETF、分钟及北交所不在腾讯日线适配范围。腾讯日线从原始字符串精确换算，避免库中深圳000股票成交量和金额浮点口径问题；普通日线仍缺涨跌停／可知时间等，不能直接输出完整回测。东方财富当前网络下可能连接中断，错误会分别提示连接、限流、超时、依赖或格式问题。详见[修复与真实验证](verification/akshare-source-fix-20261030/README.md)。

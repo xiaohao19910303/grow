@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "scope": "real Tencent network + production research UI/API + disposable local schema",
+  "market": {
+    "rows": 5577,
+    "upstream": "tencent",
+    "seconds": 7.52,
+    "source_label": "AKShare / 腾讯全市场快照 · 1.20.1",
+    "source_units": {
+      "amount": "ten_thousand_cny",
+      "market_cap": "hundred_million_cny",
+      "volume": "lots100"
+    }
+  },
+  "screen": {
+    "condition": "pe_ttm > 0",
+    "matched": 3850,
+    "unknown": 0,
+    "independently_recomputed": true
+  },
+  "history": {
+    "rows": 3,
+    "last": {
+      "adj_factor": null,
+      "available_at": null,
+      "benchmark_close": null,
+      "cash_dividend": "0",
+      "close": "11.64",
+      "corporate_actions_known": null,
+      "high": "11.67",
+      "limit_down": null,
+      "limit_up": null,
+      "low": "11.40",
+      "open": "11.53",
+      "open_at": null,
+      "split_ratio": "1",
+      "suspended": null,
+      "time": "2026-10-30T15:00:00+08:00",
+      "turnover_cny": "2152393900.00",
+      "volume_shares": "186424500.00"
+    },
+    "exact_units_verified": true
+  },
+  "page_errors": []
+}

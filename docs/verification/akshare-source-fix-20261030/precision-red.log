@@ -1,0 +1,41 @@
+test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry (test_investment_research_akshare.ResearchAKShareTests.test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry) ... ok
+test_eastmoney_connection_failure_is_attempted_once_without_switching (test_investment_research_akshare.ResearchAKShareTests.test_eastmoney_connection_failure_is_attempted_once_without_switching) ... ok
+test_http_429_is_rate_limit_even_when_supplier_json_has_no_data (test_investment_research_akshare.ResearchAKShareTests.test_http_429_is_rate_limit_even_when_supplier_json_has_no_data) ... ERROR
+test_tencent_daily_keeps_raw_decimal_amount_and_market_specific_volume (test_investment_research_akshare.ResearchAKShareTests.test_tencent_daily_keeps_raw_decimal_amount_and_market_specific_volume) ... ERROR
+test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields (test_investment_research_akshare.ResearchAKShareTests.test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields) ... ok
+
+======================================================================
+ERROR: test_http_429_is_rate_limit_even_when_supplier_json_has_no_data (test_investment_research_akshare.ResearchAKShareTests.test_http_429_is_rate_limit_even_when_supplier_json_has_no_data)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_investment_research_akshare.py", line 37, in test_http_429_is_rate_limit_even_when_supplier_json_has_no_data
+    with self.assertRaises(requests.HTTPError) as raised:fetch({'task':'market','source':'tencent'})
+                                                         ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/肖豪/project/grow/知行成长/server/investments/research_worker.py", line 43, in fetch
+    frame=(ak.stock_zh_a_spot_tx if source=='tencent' else ak.stock_zh_a_spot_em)()
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/akshare/stock/quote/stock_zh_a_tx.py", line 36, in stock_zh_a_spot_tx
+    total = int(data_json["data"]["total"])
+                ~~~~~~~~~^^^^^^^^
+KeyError: 'data'
+
+======================================================================
+ERROR: test_tencent_daily_keeps_raw_decimal_amount_and_market_specific_volume (test_investment_research_akshare.ResearchAKShareTests.test_tencent_daily_keeps_raw_decimal_amount_and_market_specific_volume)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_investment_research_akshare.py", line 29, in test_tencent_daily_keeps_raw_decimal_amount_and_market_specific_volume
+    packet=fetch({'task':'history','source':'tencent','kind':'stock','code':code,'interval':'day','start':'2026-10-28','end':'2026-10-30'})
+  File "/Volumes/肖豪/project/grow/知行成长/server/investments/research_worker.py", line 50, in fetch
+    frame=ak.stock_zh_a_hist_tx(symbol=symbol,start_date=request['start'].replace('-',''),end_date=request['end'].replace('-',''),adjust='',timeout=15)
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/akshare/stock/quote/stock_hist_tx.py", line 64, in stock_zh_a_hist_tx
+    init_start_date = get_tx_start_year(symbol=symbol)
+  File "/Volumes/肖豪/project/grow/.venv/lib/python3.13/site-packages/akshare/index/index_stock_zh.py", line 350, in get_tx_start_year
+    start_date = demjson.decode(data_text[data_text.find("={") + 1 :])["data"][0][0]
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+KeyError: 0
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.282s
+
+FAILED (errors=2)
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 5, "skipped": 0, "failures": 0, "errors": 2, "javascript": []}

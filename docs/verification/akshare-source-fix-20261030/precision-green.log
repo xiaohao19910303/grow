@@ -1,0 +1,12 @@
+test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry (test_investment_research_akshare.ResearchAKShareTests.test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry) ... ok
+test_eastmoney_connection_failure_is_attempted_once_without_switching (test_investment_research_akshare.ResearchAKShareTests.test_eastmoney_connection_failure_is_attempted_once_without_switching) ... ok
+test_http_429_is_rate_limit_even_when_supplier_json_has_no_data (test_investment_research_akshare.ResearchAKShareTests.test_http_429_is_rate_limit_even_when_supplier_json_has_no_data) ... ok
+test_tencent_daily_keeps_raw_decimal_amount_and_market_specific_volume (test_investment_research_akshare.ResearchAKShareTests.test_tencent_daily_keeps_raw_decimal_amount_and_market_specific_volume) ... ok
+test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields (test_investment_research_akshare.ResearchAKShareTests.test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.225s
+
+OK
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 5, "skipped": 0, "failures": 0, "errors": 0, "javascript": []}

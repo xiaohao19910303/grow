@@ -1,0 +1,16 @@
+[
+  {
+    "probe": "market",
+    "error_type": "ConnectionError",
+    "detail": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+    "seconds": 1.24
+  },
+  {
+    "probe": "daily",
+    "status": 200,
+    "has_data": true,
+    "total": null,
+    "rows": 3,
+    "seconds": 0.64
+  }
+]

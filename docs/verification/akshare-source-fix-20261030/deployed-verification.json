@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "revision": "4a4ea0cf7531d18003cdbbee6f624bc17b006b17",
+  "health": {
+    "ok": true,
+    "revision": "4a4ea0cf7531d18003cdbbee6f624bc17b006b17",
+    "plan_storage": "github",
+    "learning_plans_ready": true
+  },
+  "startup_seconds": 89.54,
+  "ttm_field_present": true,
+  "module_readiness": {
+    "plans": true,
+    "copilot": true,
+    "reading": true,
+    "reflections": true,
+    "stocks": true,
+    "investments": true,
+    "behavior": true,
+    "errors": true,
+    "behavior_report": true,
+    "knowledge": true
+  },
+  "source_selector_present": true
+}

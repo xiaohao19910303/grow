@@ -1,0 +1,9 @@
+{
+  "revision": "4a4ea0cf7531d18003cdbbee6f624bc17b006b17",
+  "sha256": {
+    "知行成长/server/investments/research_worker.py": "14dddbf955a6d3c9af312c78626fecd09e71caed96c7057e378151de85ae453a",
+    "知行成长/server/investments/research_sources.py": "63f8a454bf1bc3b6d242a21eba61d7bd519c69c68e160331464969c83526aa31",
+    "知行成长/server/static/investment-research.js": "705eb28ac39a40159a25f86fcfa3aa615dece9669f9dbf71a701688876e0b999",
+    "知行成长/server/tests/test_investment_research_akshare.py": "d44f847172b61a2a830d1e3d7f20f6362bc512c0d08f055ee83e9c230b9a9c3a"
+  }
+}

@@ -1,0 +1,54 @@
+test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry (test_investment_research_akshare.ResearchAKShareTests.test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry) ... ERROR
+test_tencent_daily_corrects_000_stock_lots_without_rescaling_star_shares (test_investment_research_akshare.ResearchAKShareTests.test_tencent_daily_corrects_000_stock_lots_without_rescaling_star_shares) ... FAIL
+test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields (test_investment_research_akshare.ResearchAKShareTests.test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields) ... FAIL
+
+======================================================================
+ERROR: test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry (test_investment_research_akshare.ResearchAKShareTests.test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_investment_research_akshare.py", line 31, in test_connection_errors_are_specific_and_never_leak_raw_exception_or_retry
+    from investments.research_worker import error_packet
+ImportError: cannot import name 'error_packet' from 'investments.research_worker' (/Volumes/肖豪/project/grow/知行成长/server/investments/research_worker.py)
+
+======================================================================
+FAIL: test_tencent_daily_corrects_000_stock_lots_without_rescaling_star_shares (test_investment_research_akshare.ResearchAKShareTests.test_tencent_daily_corrects_000_stock_lots_without_rescaling_star_shares)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_investment_research_akshare.py", line 26, in test_tencent_daily_corrects_000_stock_lots_without_rescaling_star_shares
+    packet=fetch({'task':'history','source':'tencent','kind':'stock','code':code,'interval':'day','start':'2026-10-28','end':'2026-10-30'})
+  File "/Volumes/肖豪/project/grow/知行成长/server/investments/research_worker.py", line 17, in fetch
+    frame=loader(symbol=request['code'],period='daily',start_date=request['start'].replace('-',''),end_date=request['end'].replace('-',''),adjust='',**({'timeout':15} if kind=='stock' else {}))
+  File "/opt/anaconda3/lib/python3.13/unittest/mock.py", line 1169, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/unittest/mock.py", line 1173, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/unittest/mock.py", line 1228, in _execute_mock_call
+    raise effect
+AssertionError: unexpected supplier
+
+======================================================================
+FAIL: test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields (test_investment_research_akshare.ResearchAKShareTests.test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/肖豪/project/grow/知行成长/server/tests/test_investment_research_akshare.py", line 15, in test_tencent_market_calls_only_selected_supplier_and_preserves_raw_fields
+    packet=fetch({'task':'market','source':'tencent'})
+  File "/Volumes/肖豪/project/grow/知行成长/server/investments/research_worker.py", line 11, in fetch
+    frame=ak.stock_zh_a_spot_em()
+  File "/opt/anaconda3/lib/python3.13/unittest/mock.py", line 1169, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/unittest/mock.py", line 1173, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/unittest/mock.py", line 1228, in _execute_mock_call
+    raise effect
+AssertionError: unexpected supplier
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.236s
+
+FAILED (failures=2, errors=1)
+ISOLATION_AUDIT {"blocked_network_access": 0, "blocked_real_database_access": 0, "blocked_workspace_writes": 0, "sqlite_connections": 0}
+REGRESSION_RESULT {"python_tests": 3, "skipped": 0, "failures": 2, "errors": 1, "javascript": []}
