@@ -1,0 +1,89 @@
+{
+  "base_url": "http://127.0.0.1:8756",
+  "checks": {
+    "health": {
+      "ok": true,
+      "revision": "9eb280b0572455671e02ba4a175a778eefc6e1ff",
+      "plan_storage": "github",
+      "learning_plans_ready": true
+    },
+    "unauthenticated_investment_status": 401,
+    "real_browser_login": true,
+    "storage_status": {
+      "records": "postgresql",
+      "formal_markdown": "github",
+      "ai_config": "browser",
+      "requires_own_ai_config": true,
+      "modules": {
+        "plans": {
+          "ready": true,
+          "reason": null
+        },
+        "copilot": {
+          "ready": true,
+          "reason": null
+        },
+        "reading": {
+          "ready": true,
+          "reason": null
+        },
+        "reflections": {
+          "ready": true,
+          "reason": null
+        },
+        "stocks": {
+          "ready": true,
+          "reason": null
+        },
+        "investments": {
+          "ready": true,
+          "reason": null
+        },
+        "behavior": {
+          "ready": true,
+          "reason": null
+        },
+        "errors": {
+          "ready": true,
+          "reason": null
+        },
+        "behavior_report": {
+          "ready": true,
+          "reason": null
+        },
+        "knowledge": {
+          "ready": true,
+          "reason": null
+        }
+      }
+    },
+    "/api/investments/capabilities": {
+      "status": 200,
+      "cache_control": "no-store"
+    },
+    "/api/investments/research/catalog": {
+      "status": 200,
+      "cache_control": "no-store"
+    },
+    "/api/investments/ai-relay/config": {
+      "status": 200,
+      "cache_control": "no-store"
+    },
+    "page_errors": [],
+    "http_5xx": [],
+    "blocked_investment_writes": []
+  },
+  "browser": [
+    {
+      "width": 1440,
+      "workspace_visible": true,
+      "document_overflow": false
+    },
+    {
+      "width": 390,
+      "workspace_visible": true,
+      "document_overflow": false
+    }
+  ],
+  "ok": true
+}

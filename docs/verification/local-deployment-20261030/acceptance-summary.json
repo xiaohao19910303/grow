@@ -1,0 +1,91 @@
+{
+  "python_tests": 23,
+  "skipped": 0,
+  "failed_modules": [],
+  "results": [
+    {
+      "tests": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_investment_journey_browser.py",
+      "returncode": 0
+    },
+    {
+      "tests": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_investment_market_data.py",
+      "returncode": 0
+    },
+    {
+      "tests": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_investment_relay.py",
+      "returncode": 0
+    },
+    {
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_investment_research_browser.py",
+      "returncode": 0
+    },
+    {
+      "tests": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_investment_research_sources.py",
+      "returncode": 0
+    },
+    {
+      "tests": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "isolation": {
+        "sqlite_connections": 0,
+        "blocked_real_database_access": 0,
+        "blocked_workspace_writes": 0,
+        "blocked_network_access": 0
+      },
+      "file": "test_investment_research_tools.py",
+      "returncode": 0
+    }
+  ]
+}
