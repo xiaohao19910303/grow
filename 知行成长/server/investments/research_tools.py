@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS investment_research_versions (
  object_id TEXT NOT NULL REFERENCES investment_research_objects(id),version INTEGER NOT NULL,data TEXT NOT NULL,
  PRIMARY KEY(object_id,version));'''
 FIELDS={'close':'价格（元）','change_1d_pct':'当日变化（%）','volume_shares':'成交量（股）','turnover_cny':'成交额（元）',
- 'volume_ratio_5':'来源量比','turnover_rate_pct':'换手率（%）','pe':'动态市盈率','pb':'市净率','roe_pct':'净资产收益率（%）',
+ 'volume_ratio_5':'来源量比','turnover_rate_pct':'换手率（%）','pe':'动态市盈率','pe_ttm':'市盈率（TTM）','pb':'市净率','roe_pct':'净资产收益率（%）',
  'market_cap_cny':'总市值（元）','revenue_growth_pct':'营收增长（%）','distance_high_pct':'距区间高点（%）','distance_low_pct':'距区间低点（%）'}
 for n in (1,3,5,7,10,20,30,60):FIELDS[f'return_{n}d_pct']=f'近{n}日变化（%）'
 for n in (5,10,20,60):FIELDS[f'close_to_ma{n}_pct']=f'价格相对MA{n}（%）'

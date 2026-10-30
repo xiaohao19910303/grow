@@ -103,4 +103,16 @@ class ResearchBrowserTests(PostgreSQLFixture):
                 expect(dialog.locator('[data-backtest-history] option[value]:not([value=""])')).not_to_have_count(0)
                 dialog.locator('[data-backtest-history]').select_option(index=1);dialog.get_by_role('button',name='打开历史结果',exact=True).click();expect(dialog.locator('[data-backtest-results]')).to_contain_text('-410.4')
                 dialog.get_by_role('tab',name='市场筛选',exact=True).click();dialog.locator('[data-screen-history]').select_option(index=1);dialog.get_by_role('button',name='打开历史筛选',exact=True).click();expect(dialog.locator('[data-screen-results]')).to_contain_text('入选 1 · 未知 1')
+                dialog.locator('[data-use]').check();dialog.locator('[data-ak-market-source]').select_option('eastmoney')
+                previous_dataset=dialog.locator('[data-dataset]').input_value()
+                def selected_source(request):
+                    if request.get('source')=='eastmoney':fail('provider_connection','东方财富连接中断，未自动换源。',502)
+                    return {'upstream':'tencent','library_version':'1.20.1','rows':[{'code':'sz000001','name':'合成腾讯','zxj':'11','volume':'123','turnover':'456','hsl':'3','pe_ttm':'5.2'}]}
+                with patch('investments.research_sources.worker',side_effect=selected_source) as selected:
+                    dialog.get_by_role('button',name='读取盘后全市场（AKShare）',exact=True).click();expect(dialog.locator('[data-error]')).to_contain_text('东方财富连接中断')
+                    self.assertEqual(selected.call_count,1);self.assertEqual(dialog.locator('[data-dataset]').input_value(),previous_dataset)
+                    dialog.locator('[data-ak-market-source]').select_option('tencent');dialog.get_by_role('button',name='读取盘后全市场（AKShare）',exact=True).click();expect(dialog.locator('[data-dataset-note]')).to_contain_text('腾讯全市场快照')
+                    self.assertEqual([c.args[0]['source'] for c in selected.call_args_list],['eastmoney','tencent'])
+                self.assertEqual(errors,[])
+                page.screenshot(path='/tmp/grow-akshare-fix-20261030/source-choice-'+str(width)+'.png',full_page=True)
                 context.close()

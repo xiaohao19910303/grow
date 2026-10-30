@@ -35,7 +35,13 @@ def worker(request):
         response=subprocess.run([sys.executable,'-B',str(Path(__file__).with_name('research_worker.py'))],input=encoded(request),capture_output=True,text=True,timeout=90,env=env)
         if response.returncode or len(response.stdout)>8_000_000:raise ValueError()
         packet=json.loads(response.stdout)
-        if packet.get('error'):fail('provider_unavailable','行情来源暂不可用或依赖缺失；旧资料保留，请选择手动重试或CSV。',502)
+        if packet.get('error'):
+            errors={'dependency_missing':('provider_dependency_missing','服务端缺少锁定的AKShare依赖。',503),
+                'upstream_connection':('provider_connection','所选上游连接中断，可能受到网络或上游访问限制；可稍后明确新建读取，或手动选择其他上游。未自动重试或换源。',502),
+                'upstream_rate_limit':('provider_rate_limited','所选上游返回限流，请稍后再试；未自动重试或换源。',429),
+                'upstream_timeout':('provider_timeout','所选上游响应超时，旧资料保留；未自动重试或换源。',504),
+                'upstream_format':('provider_invalid','所选上游返回字段不完整或格式变化，未保存本次资料。',502)}
+            code,message,status=errors.get(packet['error'],('provider_unavailable','所选行情上游未返回有效结果，旧资料保留；请稍后手动重试或选择其他上游。',502));fail(code,message,status)
         if not isinstance(packet.get('rows'),list):raise ValueError()
         return packet
     except subprocess.TimeoutExpired:fail('provider_timeout','行情读取超过90秒已停止，未自动重试或换源。',504)
@@ -56,6 +62,7 @@ class DatasetCSV(Contract):
 class AKMarket(Contract):
     account_id:Identifier
     use_confirmed:StrictBool
+    source:Literal['eastmoney','tencent']='eastmoney'
 
 
 class AKHistory(AKMarket):
@@ -87,7 +94,11 @@ def numeric(value,multiplier='1',positive=False):
     except (ValueError,ArithmeticError):return None
 
 
-def normalize_spot(rows):
+def normalize_spot(rows,source='eastmoney'):
+    if source=='tencent':
+        mapping={'close':'zxj','change_1d_pct':'zdf','volume_shares':'volume','turnover_cny':'turnover','volume_ratio_5':'lb','turnover_rate_pct':'hsl','pe_ttm':'pe_ttm','pb':'pn','market_cap_cny':'zsz','return_5d_pct':'zdf_d5','return_10d_pct':'zdf_d10','return_20d_pct':'zdf_d20','return_60d_pct':'zdf_d60'}
+        scales={'volume_shares':'100','turnover_cny':'10000','market_cap_cny':'100000000'}
+        return [{'code':canonical_code(r['code']),'name':r['name'],'values':{k:numeric(r.get(v),scales.get(k,'1'),k=='close') for k,v in mapping.items()}} for r in rows]
     mapping={'close':'最新价','change_1d_pct':'涨跌幅','volume_shares':'成交量','turnover_cny':'成交额','volume_ratio_5':'量比',
              'turnover_rate_pct':'换手率','pe':'市盈率-动态','pb':'市净率','market_cap_cny':'总市值','return_60d_pct':'60日涨跌幅'}
     return [{'code':canonical_code(r['代码']),'name':r['名称'],'values':{k:numeric(r.get(v),'100' if k=='volume_shares' else '1',k=='close') for k,v in mapping.items()}} for r in rows]
@@ -145,7 +156,9 @@ def register(router,service):
     @router.post('/research/provider/akshare/market',status_code=201)
     def market(payload:AKMarket,idempotency_key:str=Header(min_length=8,max_length=160)):
         if not payload.use_confirmed:fail('source_consent','请确认来源及用途。',422)
-        fingerprint=digest(encoded({'ak_market':payload.model_dump(mode='json')}))
+        request=payload.model_dump(mode='json')
+        if payload.source=='eastmoney':request.pop('source')
+        fingerprint=digest(encoded({'ak_market':request}))
         with db.connect() as c:
             service.store._get(c,'accounts',payload.account_id);old=service.store.replay(c,idempotency_key,fingerprint)
             if old is not None:return old
@@ -157,16 +170,21 @@ def register(router,service):
         if not sessions:fail('calendar_unknown','缺少已核对交易日。',422)
         old=reserve_source(payload.account_id,idempotency_key,fingerprint,idempotency_key)
         if old is not None:return old
-        packet=worker({'task':'market'});rows=normalize_spot(packet['rows'])
-        validated=DatasetInput(account_id=payload.account_id,source_label='AKShare / 东方财富全市场快照 · '+packet.get('library_version','unknown'),use_confirmed=True,market_date=sessions[-1],coverage='full_market_claimed',rows=rows)
+        packet=worker({'task':'market','source':payload.source})
+        if packet.get('upstream',payload.source)!=payload.source:fail('provider_identity','返回上游与本人选择不一致，未保存。',502)
+        rows=normalize_spot(packet['rows'],payload.source)
+        source_name='腾讯' if payload.source=='tencent' else '东方财富'
+        validated=DatasetInput(account_id=payload.account_id,source_label='AKShare / '+source_name+'全市场快照 · '+packet.get('library_version','unknown'),use_confirmed=True,market_date=sessions[-1],coverage='full_market_claimed',rows=rows)
         data=validated.model_dump(mode='json',exclude={'account_id','use_confirmed'})
-        data.update(captured_at=now(),actual_count=len(rows),metrics_origin='source_provided',source_verification='not_independently_verified',market_date_verification='reference_date_only_upstream_has_no_quote_timestamp')
+        data.update(upstream=payload.source,adapter_version=packet.get('adapter_version','akshare-selected-v1'),source_units={'volume':'lots100','amount':'ten_thousand_cny' if payload.source=='tencent' else 'cny','market_cap':'hundred_million_cny' if payload.source=='tencent' else 'cny'},captured_at=now(),actual_count=len(rows),metrics_origin='source_provided',source_verification='not_independently_verified',market_date_verification='reference_date_only_upstream_has_no_quote_timestamp')
         return service.create('dataset',payload.account_id,data,idempotency_key,fingerprint)
 
     @router.post('/research/provider/akshare/history',status_code=201)
     def history(payload:AKHistory,idempotency_key:str=Header(min_length=8,max_length=160)):
         canonical=canonical_code(payload.code)
         provider_request={**payload.model_dump(mode='json',exclude={'account_id','use_confirmed','refresh'}),'code':canonical}
+        if payload.source=='eastmoney':provider_request.pop('source')
+        elif payload.kind!='stock' or payload.interval!='day' or canonical.endswith('.BJ') or canonical[:3] not in ('000','001','002','003','300','301','600','601','603','605','688'):fail('provider_scope','腾讯历史目前仅支持沪深股票日线；分钟、ETF及北交所请明确选择东方财富或导入CSV。',422)
         fingerprint=digest(encoded({'ak_history':provider_request,'account_id':payload.account_id,'refresh':payload.refresh}))
         if not payload.use_confirmed or payload.start>payload.end or (payload.end-payload.start).days>(90 if payload.interval=='day' else 7):fail('source_range','请确认来源，并选择日线90天以内或分钟7天以内。',422)
         instant=datetime.fromisoformat(now()).astimezone(ZoneInfo('Asia/Shanghai'))
@@ -183,15 +201,16 @@ def register(router,service):
                         return saved
         old=reserve_source(payload.account_id,idempotency_key,fingerprint,idempotency_key)
         if old is not None:return old
-        packet=worker({'task':'history','code':canonical[:6],'kind':payload.kind,'interval':payload.interval,'start':payload.start.isoformat(),'end':payload.end.isoformat()})
+        packet=worker({'task':'history','source':payload.source,'code':canonical[:6],'kind':payload.kind,'interval':payload.interval,'start':payload.start.isoformat(),'end':payload.end.isoformat()})
+        if packet.get('upstream',payload.source)!=payload.source:fail('provider_identity','返回上游与本人选择不一致，未保存。',502)
         bars=[]
         for raw in packet['rows']:
             stamp=timestamp(raw.get('日期') or raw.get('时间'),payload.interval=='day')
             if not payload.start<=datetime.fromisoformat(stamp).date()<=payload.end:fail('provider_range','来源返回了所选范围外的行情，未保存。',422)
             bars.append({'time':stamp,**{key:numeric(raw.get(source),positive=True) for key,source in [('open','开盘'),('high','最高'),('low','最低'),('close','收盘')]},
-                'volume_shares':numeric(raw.get('成交量'),'100'),'turnover_cny':numeric(raw.get('成交额'))})
-        source=SeriesInput(account_id=payload.account_id,code=canonical,name=payload.name,interval=payload.interval,price_basis='unadjusted',source_label='AKShare / 东方财富 · '+packet.get('library_version','unknown'),use_confirmed=True,bars=bars)
-        return save_series(service,source,idempotency_key,{'provider_request':provider_request},fingerprint)
+                'volume_shares':numeric(raw.get('成交量'),'1' if packet.get('volume_unit')=='shares' else '100'),'turnover_cny':numeric(raw.get('成交额'))})
+        source=SeriesInput(account_id=payload.account_id,code=canonical,name=payload.name,interval=payload.interval,price_basis='unadjusted',source_label='AKShare / '+('腾讯' if payload.source=='tencent' else '东方财富')+' · '+packet.get('library_version','unknown'),use_confirmed=True,bars=bars)
+        return save_series(service,source,idempotency_key,{'provider_request':provider_request,'upstream':payload.source,'adapter_version':packet.get('adapter_version','akshare-selected-v1')},fingerprint)
 
     @router.post('/research/interface')
     async def interface(payload:InterfaceInput,idempotency_key:str=Header(min_length=8,max_length=160)):

@@ -36,6 +36,10 @@ def load_rows(kind,code,start,end):
         if not isinstance(packet,dict):raise ValueError('Unexpected worker response')
         if packet.get('error')=='dependency_missing':
             fail('provider_dependency_missing','服务端尚未安装锁定的AKShare依赖，请按项目依赖清单安装。',503)
+        if packet.get('error')=='upstream_connection':
+            fail('provider_connection','东方财富连接中断，可能受到网络或上游访问限制。可在市场研究工具中明确选择腾讯股票日线，未自动换源。',502)
+        if packet.get('error')=='upstream_timeout':
+            fail('provider_timeout','东方财富响应超时，未保存行情或自动重试。',504)
         if packet.get('error'):
             fail('provider_unavailable','东方财富日线暂不可用或返回格式已变化；未保存行情、未自动换源。',502)
         return packet

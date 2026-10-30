@@ -35,6 +35,24 @@ class ResearchSourceTests(PostgreSQLFixture):
             cached=self.post('provider/akshare/history',payload,'source-cache')
         self.assertEqual(saved['id'],cached['id']);self.assertEqual(fetch.call_count,1)
         self.assertIsNone(saved['data']['bars'][0]['suspended'])
+    def test_tencent_market_is_explicit_and_history_shares_are_not_multiplied_twice(self):
+        packet={'library_version':'1.20.1','upstream':'tencent','rows':[{'code':'sz000001','name':'合成甲','zxj':'11','volume':'123','turnover':'456','zsz':'789','pe_ttm':'5.2','pn':'0.47'}]}
+        body={'account_id':self.account['id'],'use_confirmed':True,'source':'tencent'}
+        with patch('investments.research_sources.now',return_value='2026-10-30T16:00:00+08:00'),patch('investments.research_sources.worker',return_value=packet) as fetch:
+            saved=self.post('provider/akshare/market',body,'source-tencent-market')
+            self.assertEqual(self.post('provider/akshare/market',body,'source-tencent-market'),saved)
+        self.assertEqual(fetch.call_count,1);self.assertEqual(fetch.call_args.args[0]['source'],'tencent')
+        values=saved['data']['rows'][0]['values'];self.assertEqual(values['turnover_cny'],'4560000');self.assertNotIn('pe',values)
+        self.assertEqual(saved['data']['upstream'],'tencent');self.assertIn('腾讯',saved['data']['source_label'])
+        history={'library_version':'1.20.1','upstream':'tencent','volume_unit':'shares','rows':[{'日期':'2026-10-28','开盘':'10','最高':'11','最低':'9','收盘':'10','成交量':'12300','成交额':'123000'}]}
+        payload={**body,'code':'000001','name':'合成甲','interval':'day','start':'2026-10-28','end':'2026-10-28'}
+        with patch('investments.research_sources.worker',return_value=history) as fetch:
+            source=self.post('provider/akshare/history',payload,'source-tencent-history')
+            cached=self.post('provider/akshare/history',payload,'source-tencent-cache')
+            self.post('provider/akshare/history',{**payload,'interval':'minute'},'source-tencent-minute',422)
+        self.assertEqual(fetch.call_count,1);self.assertEqual(source['id'],cached['id'])
+        self.assertEqual(source['data']['bars'][0]['volume_shares'],'12300')
+
     def test_configured_interface_is_not_refetched_and_never_persists_token(self):
         calls=[]
         async def interface(payload):
