@@ -12,7 +12,7 @@
     if (event.key === 'grow-account-session') accountChanged();
   });
   function loginRedirect(){
-    const fragment=/^#(?:plans\/detail\/plan-[a-zA-Z0-9-]{1,70}|mobile\/action\/action-[a-zA-Z0-9-]+|mobile\/learn\/lesson-[a-z0-9-]{1,70})$/.test(location.hash)?location.hash:'';
+    const fragment=/^#(?:plans\/detail\/plan-[a-zA-Z0-9-]{1,70}|mobile\/action\/action-[a-zA-Z0-9-]+|mobile\/practice\/action-[a-zA-Z0-9-]+\/feedback-[a-zA-Z0-9-]+|mobile\/learn\/lesson-[a-z0-9-]{1,70})$/.test(location.hash)?location.hash:'';
     location.replace('/login'+fragment);
   }
   function accountChanged() {

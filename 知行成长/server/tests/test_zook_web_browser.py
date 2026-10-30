@@ -36,11 +36,16 @@ class CanonicalWebBrowserTests(unittest.TestCase):
         self.assertTrue(any(c['name']=='grow_zook_session' and c['httpOnly'] for c in context.cookies()))
         # Exit from the actual page and re-enter through the original lesson deep link.
         page.evaluate('Account.logout()');expect(page).to_have_url(base+'/login')
+        fragment=self.fixture['followup_fragment']
         page.goto(base+'/login'+fragment);page.get_by_role('button',name='LightTick账号',exact=True).click()
         page.locator('#username').fill(self.fixture['account']);page.locator('#password').fill('Password1234');page.locator('#authSubmit').click()
         expect(page).to_have_url(base+'/'+fragment)
         self.assertEqual(context.request.get(base+'/api/auth/me').json()['auth_mode'],'zook')
+        expect(page.get_by_label('下次准备实践什么',exact=True)).to_have_value('Ask a colleague')
+        page.get_by_role('button',name='确认后续安排',exact=True).click()
+        expect(page.get_by_text('后续实践已保存，原反馈与完成状态保持不变。',exact=True)).to_be_visible()
+        self.assertEqual(len(context.request.get(base+'/api/action-plans/practices').json()['practices']),2)
         browser_values=page.evaluate('JSON.stringify(Object.entries(localStorage))')
         self.assertNotIn('accessToken',browser_values);self.assertNotIn('refreshToken',browser_values);self.assertNotIn('Password1234',browser_values)
         self.assertEqual(errors,[])
-        out=Path(os.getenv('GROW_C05_BROWSER_EVIDENCE',tempfile.mkdtemp(prefix='grow-c05-browser-')));out.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(out/'canonical-login-lesson.png'),full_page=True)
+        out=Path(os.getenv('GROW_C05_BROWSER_EVIDENCE',tempfile.mkdtemp(prefix='grow-c05-browser-')));out.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(out/'canonical-login-context.png'),full_page=True)

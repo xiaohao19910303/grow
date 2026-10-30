@@ -14,8 +14,8 @@ def session():
 
 def action(path, method, body, query):
     if method not in ('GET', 'POST'): fail('zook_proxy_forbidden', '请求方式不在接续范围。', 403)
-    allowed_get = r'/(?:practices(?:/action-[a-zA-Z0-9-]+/source)?|records|reviews|learning-progress|requests/[a-zA-Z0-9_.:-]{8,160}|action-[a-zA-Z0-9-]+/calendar\.ics)'
-    allowed_post = r'/(?:practices|schedules|reviews(?:/preview|/generate)?|action-[a-zA-Z0-9-]+/(?:operations|reminder-claim))'
+    allowed_get = r'/(?:practices(?:/action-[a-zA-Z0-9-]+/(?:source|follow-up))?|records|reviews|learning-progress|requests/[a-zA-Z0-9_.:-]{8,160}|action-[a-zA-Z0-9-]+/calendar\.ics)'
+    allowed_post = r'/(?:practices(?:/action-[a-zA-Z0-9-]+/follow-up)?|schedules|reviews(?:/preview|/generate)?|action-[a-zA-Z0-9-]+/(?:operations|reminder-claim))'
     if not (path == '' or method == 'GET' and re.fullmatch(allowed_get, path) or method == 'POST' and re.fullmatch(allowed_post, path)):
         fail('zook_proxy_forbidden', '此路径不在网页接续范围。', 403)
     value = session()

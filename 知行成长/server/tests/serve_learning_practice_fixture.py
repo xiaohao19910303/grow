@@ -26,7 +26,7 @@ if __name__ == '__main__':
         async def synthetic_identity_and_response_loss(request, call_next):
             token = current_user.set(user)
             try:
-                dropping = faults['drop'] and request.method == 'POST' and request.url.path == '/api/action-plans/practices'
+                dropping = faults['drop'] and request.method == 'POST' and (request.url.path == '/api/action-plans/practices' or request.url.path.endswith('/follow-up'))
                 if dropping:
                     faults['drop'] = False
                 response = await call_next(request)
@@ -38,13 +38,19 @@ if __name__ == '__main__':
 
         study_materials.register(app, fixture.root)
         study_notes.register(app)
-        _, lesson = fixture.prepare_practice()
+        materials, lesson = fixture.prepare_practice()
         static = Path(__file__).resolve().parents[1] / 'static'
         app.mount('/static', StaticFiles(directory=static))
 
         @app.get('/')
         def index():
             return HTMLResponse((static / 'index.html').read_text())
+
+        @app.post('/fixture/withdraw-reading')
+        def withdraw_reading():
+            import mobile_library
+            mobile_library.consent(False);mobile_library.sync(fixture.s, materials)
+            return {'withdrawn':True}
 
         @app.get('/api/auth/me')
         def who():

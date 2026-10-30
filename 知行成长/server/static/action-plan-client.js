@@ -20,6 +20,11 @@
     function remove(name) { memory.delete(name);deleted.add(name);persist(name);notify(); }
     function storageStatus() { return {durable:failure === null,reason:failure,unsaved:[...dirty].some(name=>name!=='device')}; }
     function retryStorage() { for (const name of [...dirty]) persist(name);if (!dirty.size && storage) failure=null;notify();return storageStatus(); }
+    function durablePending(name,item) {
+      const status=retryStorage();
+      try{if(!status.durable||storage.getItem(prefix+name)!==JSON.stringify(item))throw Error('pending not durable');}
+      catch(error){failed(error);throw Error('原请求尚未可靠保存在本机，请恢复存储后重试；尚未发送。');}
+    }
     function recoveryEntries() {
       const names = new Set(memory.keys());
       try { for(let i=0;i<storage.length;i++){const key=storage.key(i);if(key?.startsWith(prefix))names.add(key.slice(prefix.length));} }
@@ -83,9 +88,10 @@
       if(window.GenerationTasks){const reports=result.reports||[result.report].filter(Boolean);for(const report of reports)window.GenerationTasks.track(window.GenerationTasks.external('action-review',report,{kind:'action-review',label:'行动复盘建议生成',title:report.plan_title||'行动计划复盘',plan_id:report.plan_id}));}
       return result;
     }
-    async function write(identity, path, payload, ephemeral = {}) {
+    async function write(identity, path, payload, ephemeral = {}, requireDurable = false) {
       const name = 'pending.' + identity;
       let pending = get(name);
+      if(requireDurable){try{storage.getItem(prefix+name);}catch(error){failed(error);throw Error('本机请求记录无法读取，请恢复存储后重试；尚未发送。');}}
       const signature = JSON.stringify(payload);
       if (pending && pending.signature !== signature) {
         const saved = await send('/requests/' + encodeURIComponent(pending.body.key));
@@ -93,8 +99,9 @@
         throw new Error('上次提交结果尚未确认，请先恢复上次内容并重试，避免重复创建。');
       }
       if (!pending) { pending={signature,body:{...payload,key:random()}};put(name,pending); }
+      if(requireDurable)durablePending(name,pending);
       try { const result=await send(path,{...pending.body,...ephemeral});remove(name);return result; }
-      catch(error) { if(error.status && error.status<500)remove(name);throw error; }
+      catch(error) { if(error.status && error.status<500&&(!requireDurable||[400,404,409,422].includes(error.status)))remove(name);throw error; }
     }
     function listDrafts(context) {
       const key=JSON.stringify(context);
@@ -119,8 +126,13 @@
       const item=get('pending.'+identity);if(!item)throw Error('没有待确认请求。');
       const result=await send(path,item.body);remove('pending.'+identity);return result;
     }
+    async function retryPendingDurable(identity,path) {
+      const item=get('pending.'+identity);if(!item)throw Error('没有待确认请求。');durablePending('pending.'+identity,item);
+      try{return await retryPending(identity,path);}
+      catch(error){if([400,404,409,422].includes(error.status))remove('pending.'+identity);throw error;}
+    }
     let device = get('device');if(!device){device=random();put('device',device);}
-    return {read:send,write,device,get,put,remove,listDrafts,newDraft,saveDraft,pendingDrafts,deleteDraft,resolvePending,retryPending,storageStatus,retryStorage,exportRecovery,importRecovery,
+    return {read:send,write,writeDurable:(identity,path,payload)=>write(identity,path,payload,{},true),device,get,put,remove,listDrafts,newDraft,saveDraft,pendingDrafts,deleteDraft,resolvePending,retryPending,retryPendingDurable,storageStatus,retryStorage,exportRecovery,importRecovery,
       subscribe:listener=>{listeners.add(listener);return ()=>listeners.delete(listener);},pending:identity=>get('pending.'+identity)?.body};
   }
   function day(now, zone='Asia/Shanghai') {

@@ -61,7 +61,7 @@
       if (!response.ok) throw new Error(result.message || '暂时无法登录，请稍后再试。');
       try { localStorage.setItem('grow-account-session', Date.now() + ':' + Math.random()); } catch {}
       $('authMessage').textContent = mode === 'register' ? '账号已创建，正在打开学习首页…' : '登录成功，正在打开学习首页…';
-      const continuation=/^#(?:plans\/detail\/plan-[a-zA-Z0-9-]{1,70}|mobile\/action\/action-[a-zA-Z0-9-]+|mobile\/learn\/lesson-[a-z0-9-]{1,70})$/.test(location.hash)?location.hash:'';
+      const continuation=/^#(?:plans\/detail\/plan-[a-zA-Z0-9-]{1,70}|mobile\/action\/action-[a-zA-Z0-9-]+|mobile\/practice\/action-[a-zA-Z0-9-]+\/feedback-[a-zA-Z0-9-]+|mobile\/learn\/lesson-[a-z0-9-]{1,70})$/.test(location.hash)?location.hash:'';
       location.replace('/'+continuation);
     } catch (error) {
       $('authMessage').textContent = error.message === 'Failed to fetch' ? '连接中断，请检查网络后重试。' : error.message;

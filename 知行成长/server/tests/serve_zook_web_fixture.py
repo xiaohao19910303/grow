@@ -12,6 +12,10 @@ if __name__ == '__main__':
         from test_zook_web_http import CanonicalWebHTTPTests
         fixture=CanonicalWebHTTPTests();fixture.setUp();app=fixture.f.app
         _,lesson=fixture.f.prepare_practice()
+        practice=fixture.f.native('POST','action-plans/practices',{'key':'browser-canonical-practice','title':'First real report','source_kind':'lesson','source_id':lesson['id'],'source_version':lesson['content_version'],'date':None})['plan']
+        practice=fixture.f.native('POST','action-plans/'+practice['id']+'/operations',{'key':'browser-canonical-feedback','revision':practice['revision'],'action':'practice-feedback','feedback':{'outcome':'unknown','result':'Tried one report','next_step':'Ask a colleague'}})['plan']
+        followup_fragment='#mobile/practice/'+practice['id']+'/'+practice['practice_feedback'][0]['id']
+
         static=Path(__file__).resolve().parents[1]/'static'
         app.mount('/static',StaticFiles(directory=static))
         @app.get('/')
@@ -27,7 +31,7 @@ if __name__ == '__main__':
         def empty(rest:str):return dict(invitations=[],modules=[],lessons=[],plans=[],records=[],items=[],articles=[],jobs=[],entries=[],reports=[],stats={},preferences={},budget={},attempts=[],legacy=[],drafts=[])
         sock=socket.socket();sock.bind(('127.0.0.1',0));server=uvicorn.Server(uvicorn.Config(app,log_level='error'))
         signal.signal(signal.SIGTERM,lambda *_:setattr(server,'should_exit',True))
-        print(json.dumps({'url':'http://127.0.0.1:'+str(sock.getsockname()[1]),'lesson_id':lesson['id'],'account':fixture.f.owners[0]['account'],'grow_password':os.environ['APP_PASSWORD']}),flush=True)
+        print(json.dumps({'url':'http://127.0.0.1:'+str(sock.getsockname()[1]),'lesson_id':lesson['id'],'followup_fragment':followup_fragment,'account':fixture.f.owners[0]['account'],'grow_password':os.environ['APP_PASSWORD']}),flush=True)
         server.run(sockets=[sock])
     finally:
         if fixture:fixture.doCleanups()
