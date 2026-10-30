@@ -16,6 +16,8 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import parse_dsn
 from cryptography.fernet import Fernet, InvalidToken
+from investments import research_archive_backup as research_backup
+from investments.research_files import ArchiveFileError
 
 
 class BackupError(ValueError):pass
@@ -119,6 +121,8 @@ def create(dsn, destination, mirrors, *, env=None, writers_stopped=False):
             connection.set_session(isolation_level='REPEATABLE READ',readonly=True)
             cur=connection.cursor();cur.execute('SELECT pg_export_snapshot(), current_database(), current_setting(\'server_version\')');snapshot,dbname,pgversion=cur.fetchone()
             contents=inventory(connection,env)
+            try:research_archives=research_backup.create(connection,env.get('INVESTMENT_RESEARCH_ARCHIVE_ROOT'),staging/research_backup.FILENAME)
+            except ArchiveFileError as error:raise BackupError(str(error)) from None
             for repo in contents['repositories']:
                 if repo not in mirrors:raise BackupError('缺少内容镜像：'+repo)
             command(['pg_dump','--format=custom','--no-owner','--no-acl','--snapshot='+snapshot,'--file='+str(staging/'database.dump')],subprocess_env)
@@ -144,6 +148,7 @@ def create(dsn, destination, mirrors, *, env=None, writers_stopped=False):
                   'postgres_version':pgversion,'source_database':dbname,'encryption_key_sha256':key_hash,
                   'default_content':{'repository':env.get('GITHUB_CONTENT_REPO',''),'branch':env.get('GITHUB_CONTENT_BRANCH','main')},
                   'excluded':['browser_drafts','browser_ai_config','external_credentials','runtime_cache'],**contents}
+        if research_archives:manifest['research_archives']=research_archives
         manifest['files']={p.name:digest(p) for p in staging.iterdir()}
         (staging/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
         for file in staging.iterdir():os.chmod(file,0o600)
@@ -176,11 +181,16 @@ def verify(directory):
             if not isinstance(item['bundle'],str):raise ValueError()
         if any(not hexadecimal(value,64) for value in manifest['files'].values()):raise ValueError()
         expected={'database.dump',*(r['bundle'] for r in manifest['repositories'].values())}
-        if set(manifest['files'])!=expected:raise ValueError()
+        research=manifest.get('research_archives')
+        if research is not None:
+            if not isinstance(research,dict) or research.get('file')!=research_backup.FILENAME or research.get('format')!='grow-research-full-backup-v1' or type(research.get('count')) is not int or not 1<=research['count']<=20000:raise ValueError()
+            expected.add(research_backup.FILENAME)
+        if set(manifest['files'])!=expected or {p.name for p in directory.iterdir()}!={*expected,'manifest.json'}:raise ValueError()
         for name,checksum in manifest['files'].items():
-            if not re.fullmatch(r'database\.dump|content-[0-9]+\.bundle',name):raise ValueError()
+            if not re.fullmatch(r'database\.dump|content-[0-9]+\.bundle|research-archives\.zip',name):raise ValueError()
             path=directory/name
             if path.is_symlink() or not path.is_file() or digest(path)!=checksum:raise ValueError()
+        if research is not None:research_backup.verify(directory/research_backup.FILENAME,research['count'])
         with tempfile.TemporaryDirectory(prefix='grow-bundle-check-') as tmp:
             command(['git','init','--bare',tmp])
             for item in manifest['repositories'].values():
@@ -189,7 +199,7 @@ def verify(directory):
     except (OSError,ValueError,KeyError,TypeError):raise BackupError('备份包清单或校验失败。') from None
 
 
-def restore(dsn, directory, content_directory, *, env=None, writers_stopped=False):
+def restore(dsn, directory, content_directory, *, env=None, writers_stopped=False, archive_directory=None):
     env=os.environ if env is None else env
     if not writers_stopped:raise BackupError('恢复前必须停止全部写入。')
     manifest=verify(directory);directory=Path(directory).resolve();content_directory=Path(content_directory).absolute()
@@ -203,6 +213,11 @@ def restore(dsn, directory, content_directory, *, env=None, writers_stopped=Fals
         namespaces=cur.fetchone()[0]
         cur.execute("SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'")
         if namespaces or cur.fetchone()[0]:raise BackupError('恢复仅允许空数据库，拒绝覆盖现有数据。')
+    research=manifest.get('research_archives')
+    if research:
+        if archive_directory is None:raise BackupError('含研究归档的备份必须提供 --archive-directory，指向新的绝对目录。')
+        try:research_backup.restore(directory/research_backup.FILENAME,archive_directory,research['count'])
+        except ArchiveFileError as error:raise BackupError(str(error)) from None
     # Validate Git data before touching PostgreSQL. Never push or alter a remote branch.
     content_directory.mkdir(mode=0o700)
     for index,item in enumerate(manifest['repositories'].values()):
@@ -211,7 +226,10 @@ def restore(dsn, directory, content_directory, *, env=None, writers_stopped=Fals
         command(['git','--git-dir',str(mirror),'fsck','--full'])
         for sha in item['commits']:command(['git','--git-dir',str(mirror),'cat-file','-e',sha+'^{commit}'])
     command(['pg_restore','--single-transaction','--exit-on-error','--no-owner','--no-acl','--dbname='+subprocess_env['PGDATABASE'],str(directory/'database.dump')],subprocess_env)
-    with psycopg2.connect(dsn,connect_timeout=10) as connection:actual=inventory(connection,env)
+    with psycopg2.connect(dsn,connect_timeout=10) as connection:
+        actual=inventory(connection,env)
+        try:research_backup.verify_database(connection,archive_directory,research['count'] if research else 0)
+        except ArchiveFileError as error:raise BackupError(str(error)) from None
     expected_repositories={repo:{key:value for key,value in item.items() if key!='bundle'} for repo,item in manifest['repositories'].items()}
     if actual['tables']!=manifest['tables'] or actual['row_hashes']!=manifest['row_hashes'] or actual['repositories']!=expected_repositories:raise BackupError('恢复后数据核对未通过；不要启动写入，请保留现场检查。')
     return {'ok':True,'tables':len(actual['tables']),'repositories':len(manifest['repositories'])}
@@ -222,7 +240,7 @@ def main():
     load_environment(Path(__file__).resolve().parent)
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('command',choices=('create','verify','restore'))
     parser.add_argument('directory');parser.add_argument('--content-mirror',action='append',default=[],metavar='OWNER/REPO=/ABS/PATH.git')
-    parser.add_argument('--content-directory');parser.add_argument('--writers-stopped',action='store_true');args=parser.parse_args()
+    parser.add_argument('--archive-directory');parser.add_argument('--content-directory');parser.add_argument('--writers-stopped',action='store_true');args=parser.parse_args()
     try:
         if args.command=='verify':result={'ok':True,'tables':len(verify(args.directory)['tables'])}
         elif args.command=='create':
@@ -231,7 +249,7 @@ def main():
             result={'ok':True,'tables':len(manifest['tables']),'repositories':len(manifest['repositories'])}
         else:
             if not args.content_directory:raise BackupError('restore 需要 --content-directory。')
-            result=restore(os.environ['DATABASE_URL'],args.directory,args.content_directory,writers_stopped=args.writers_stopped)
+            result=restore(os.environ['DATABASE_URL'],args.directory,args.content_directory,writers_stopped=args.writers_stopped,archive_directory=args.archive_directory)
         print(json.dumps(result));return 0
     except BackupError as error:
         print(str(error),file=__import__('sys').stderr);return 2

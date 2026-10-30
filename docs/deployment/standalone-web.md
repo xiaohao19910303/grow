@@ -130,3 +130,5 @@ runner 按模块隔离；38项账号文件按三个既有测试类分别隔离�
 市场筛选、网页价格提醒、历史回放和有限策略回测沿用私人PostgreSQL，无新增服务。模型同源中转需本人在页面显式开启；`INVESTMENT_AI_RELAY_HOSTS`可限制精确主机，空值禁用。本人行情接口默认关闭，部署者配置`INVESTMENT_MARKET_HOSTS`后方可访问公开HTTPS目标；密钥由本次页面输入，不能放入URL。当前实现继续要求单实例、单worker。AKShare工作进程90秒上限、单并发，失败不自动重试或换源。
 
 研究表、版本及调用回执由现有完整schema备份覆盖；管理员恢复后需检查研究对象与版本、提醒冷却及既有模型回执。不能将恢复备份当作重新发起外部调用授权。价格监控只在本人开启的网页内运行，页面关闭即停止，没有新增后台推送服务。完整配置、字段和限制见[研究指南](../investment-research-guide.md)，当前验收见[交付记录](../investment-delivery-closeout-20261030.md)。
+
+本地研究归档通过`INVESTMENT_RESEARCH_ARCHIVE_ROOT`配置私有持久目录（源码、static和runtime之外）。开启后完整备份自动包含并验证文件归档；恢复含归档的备份需新增`--archive-directory /ABS/NEW_RESEARCH`，且必须是新目录。恢复完成后切换环境配置到新目录再启动服务。详细操作及失败处理见[研究归档说明](../investment-research-archive-delivery-20261030.md)。

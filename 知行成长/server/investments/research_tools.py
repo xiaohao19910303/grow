@@ -209,9 +209,12 @@ class ResearchTools:
     def create(self,kind,account_id,data,key,fingerprint=None):
         fingerprint=fingerprint or digest(encoded({'research':kind,'account_id':account_id,'data':data}))
         with db.connect() as c:
-            self.store.lock(c);self.initialize(c);old=self.store.replay(c,key,fingerprint)
-            if old is not None:return old
-            result=self.save(c,kind,account_id,data);self.store.remember(c,key,fingerprint,result);return result
+            self.store.lock(c);self.initialize(c);result=self.store.replay(c,key,fingerprint)
+            if result is None:
+                result=self.save(c,kind,account_id,data);self.store.remember(c,key,fingerprint,result)
+        from .research_archive import ResearchArchive
+        ResearchArchive(self).ensure(result)
+        return result
     def dataset(self,payload,key):
         data=payload.model_dump(mode='json',exclude={'account_id','use_confirmed'})
         local=datetime.fromisoformat(now()).astimezone(ZoneInfo('Asia/Shanghai'))
@@ -259,6 +262,7 @@ class ResearchTools:
             rows=[json.loads(r[0]) for r in c.execute("SELECT data FROM investment_research_objects WHERE "+where+" ORDER BY data::jsonb->>'created_at' DESC,id DESC LIMIT ? OFFSET ?",(*args,page_size,(page-1)*page_size))]
         for row in rows:
             row['data']={k:v for k,v in row['data'].items() if k not in ('rows','bars','items','evaluations','equity','trades','out_of_sample','sensitivity')}
+            if row['kind']=='comparison':row['data'].pop('result',None)
             if row['kind']=='backtest':row['data']['result']={k:v for k,v in row['data']['result'].items() if k not in ('equity','trades','orders')}
         return {'items':rows,'total':total,'page':page,'page_size':page_size}
     def export(self,account_id):
@@ -355,6 +359,6 @@ def register(router,store):
     def detail(identity:str):
         with db.connect() as c:service.initialize(c);return service.get(c,identity)
     @router.get('/research/objects')
-    def listing(account_id:str,kind:str=Query(pattern='^(dataset|screen|preset|alert|alert-event|series|backtest)$'),page:int=Query(1,ge=1),page_size:int=Query(50,ge=1,le=100)):
+    def listing(account_id:str,kind:str=Query(pattern='^(dataset|screen|preset|alert|alert-event|series|backtest|comparison)$'),page:int=Query(1,ge=1),page_size:int=Query(50,ge=1,le=100)):
         return service.listing(account_id,kind,page,page_size)
     return service

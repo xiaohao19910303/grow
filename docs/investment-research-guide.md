@@ -71,7 +71,7 @@ time,open_at,available_at,open,high,low,close,volume_shares,suspended,limit_up,l
 
 本次软件验收、真实来源与发布状态见[交付验证记录](investment-delivery-closeout-20261030.md)。
 
-用户追加的本地中间资料归档与后续对比，见[资料库设计](investment-research-archive-design.md)。当前为设计，归档目录及跨批次对比尚未实现，既有研究对象仍由PostgreSQL保存。
+用户追加的本地中间资料归档与后续对比，见[资料库设计](investment-research-archive-design.md)。已实现冻结版本归档及筛选／回测对比，操作与备份见[归档交付记录](investment-research-archive-delivery-20261030.md)，既有研究对象仍由PostgreSQL保存。
 
 ## 2026-10-30 AKShare上游修复
 

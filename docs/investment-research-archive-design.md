@@ -1,12 +1,12 @@
 # 本地研究资料库与对比分析设计
 
-状态：2026-10-30追加设计，尚未实现目录归档与跨批次对比。现有交付已经把市场数据、筛选、提醒、历史、回测和版本保存在私人PostgreSQL中，并支持账户JSON导出。本设计与现有持久化兼容，先增加可验证归档和对比，不立即迁走数据库真值。
+状态：2026-10-30已实现不可变目录归档及筛选／回测批次对比，PostgreSQL继续保存真值及版本。具体操作和验收见[归档交付记录](investment-research-archive-delivery-20261030.md)。本文后续的事前观察协议、模型报告语义对比及Parquet卸载仍为扩展设计。
 
 ## 推荐选择
 
 第一阶段采用「PostgreSQL真值与索引 + 本地不可变快照归档」。数据库继续负责租户隔离、权限、批次身份、配置版本和恢复；专用目录保存可搬运、可核验的完整数据与分析产物。对比读取冻结版本，通过来源、条件及算法身份解释差异。
 
-本机建议位置：`/Volumes/肖豪/project/grow-data/investment-research`。这是候选数据目录，本设计不创建或启用它。服务器通过独立配置`INVESTMENT_RESEARCH_ARCHIVE_ROOT`选择持久磁盘，避免把机器路径写死。目录独立于Git源码、可清理runtime和浏览器缓存；安装者配置，网页只接收记录ID，不接收任意服务器路径。
+本机建议位置：`/Volumes/肖豪/project/grow-data/investment-research`。本轮已在本机创建并启用该私有目录（权限700），文件权限600。服务器通过独立配置`INVESTMENT_RESEARCH_ARCHIVE_ROOT`选择持久磁盘，避免把机器路径写死。目录独立于Git源码、可清理runtime和浏览器缓存；安装者配置，网页只接收记录ID，不接收任意服务器路径。
 
 这里的「本地目录」指运行Grow服务的机器。若服务在当前Mac上，使用上述磁盘位置；若部署云端，归档位于服务器持久卷，用户电脑通过下载研究归档保存副本，网页不直接写任意客户端路径。
 
@@ -16,21 +16,16 @@
 
 ```text
 investment-research/
-  <opaque-tenant-id>/<investment-account-id>/
-    datasets/<dataset-id>/
+  <sha256(schema)前32位>/<sha256(account)前32位>/
+    datasets|runs|comparisons/<sha256(object-id)>/v1/
       manifest.json
-      rows.jsonl.gz
-    runs/<run-id>/
-      manifest.json
-      input.json
-      screen.jsonl.gz
-      summary.json
-      trades.csv
-      equity.jsonl.gz
-    comparisons/<comparison-id>/
-      manifest.json
-      result.json
-      changes.csv
+      record.json
+      rows.jsonl.gz            # 数据集按类型存在
+      bars.jsonl.gz            # 历史数据
+      evaluations.jsonl.gz     # 完整筛选判断
+      result_trades.jsonl.gz   # 回测成交
+      result_equity.jsonl.gz   # 回测净值
+      result_changes.jsonl.gz  # 对比差异
 ```
 
 产物按任务类型存在，例如筛选没有交易文件；空文件与未知状态不能伪称已完成。行情仅保存一份数据集，筛选、模型研究、回测批次引用其ID和哈希，避免每个结果重复抄整套行情。目录ID由服务端生成，不使用姓名、证券名称或自由输入作为路径。

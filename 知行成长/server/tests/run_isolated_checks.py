@@ -5,6 +5,7 @@ import os
 import sys
 import unittest
 import fcntl
+from contextvars import ContextVar
 import tempfile
 from pathlib import Path
 from urllib.parse import unquote
@@ -52,6 +53,18 @@ def setup_isolation():
             stats['blocked_workspace_writes'] += 1
             raise RuntimeError('隔离检查拒绝写入真实工作区。')
 
+    # CPython's open audit event omits dir_fd. Carry it only around the actual
+    # os.open call so FD-relative writes receive the same workspace protection.
+    relative_open = ContextVar('isolated_relative_open', default=None)
+    original_open = os.open
+    def checked_open(path, flags, mode=0o777, *, dir_fd=None):
+        token = relative_open.set((os.fspath(path), dir_fd))
+        try:
+            return original_open(path, flags, mode, dir_fd=dir_fd)
+        finally:
+            relative_open.reset(token)
+    os.open = checked_open
+
     def audit(event, values):
         if event == 'socket.connect' and isinstance(values[1],tuple) and values[1][0] not in ('127.0.0.1','localhost','::1'):
             stats['blocked_network_access'] += 1
@@ -67,7 +80,8 @@ def setup_isolation():
         elif event == 'open':
             flags = values[2] or 0
             if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND):
-                deny_write(values[0])
+                active = relative_open.get()
+                deny_write(values[0], active[1] if active and os.fsdecode(active[0]) == os.fsdecode(values[0]) else None)
         elif event in ('os.remove', 'os.rmdir'):
             deny_write(values[0], values[1])
         elif event in ('os.mkdir', 'os.chmod'):

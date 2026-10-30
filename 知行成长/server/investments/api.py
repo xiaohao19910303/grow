@@ -140,6 +140,10 @@ def register(app):
     register_relay(router,store,browser)
     from .research_tools import register as register_research
     research_tools=register_research(router,store)
+    from .research_archive import register as register_archives
+    register_archives(router,research_tools)
+    from .research_comparison import register as register_comparisons
+    register_comparisons(router,research_tools)
     from .research_history import register as register_history
     register_history(router,research_tools)
     from .research_sources import register as register_sources
