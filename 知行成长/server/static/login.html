@@ -17,9 +17,10 @@
     <div class="auth-tabs" role="group" aria-label="账号操作">
       <button type="button" id="loginTab" aria-pressed="true">登录</button>
       <button type="button" id="registerTab" aria-pressed="false" hidden>受邀注册</button>
+      <button type="button" id="zookLoginTab" aria-pressed="false" hidden>LightTick账号</button>
     </div>
     <form id="authForm">
-      <label for="username">用户名</label>
+      <label for="username" id="accountLabel">用户名</label>
       <input id="username" name="username" autocomplete="username" maxlength="32" required autofocus>
       <label for="password">密码</label>
       <input id="password" name="password" type="password" autocomplete="current-password" maxlength="256" required>
@@ -34,5 +35,6 @@
   </main>
   <script src="/static/loading-state.js?v=20261018-1"></script>
   <script src="/static/login.js?v=20261029-session"></script>
+  <script src="/static/zook-web-login.js?v=20261030"></script>
 </body>
 </html>

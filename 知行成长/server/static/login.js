@@ -7,10 +7,15 @@
     if (next === 'register' && !invitation) return;
     mode = next;
     const registering = mode === 'register';
+    const unified = mode === 'zook';
     $('loginTab').setAttribute('aria-pressed', String(!registering));
     $('registerTab').setAttribute('aria-pressed', String(registering));
+    $('zookLoginTab')?.setAttribute('aria-pressed', String(unified));
+    $('username').maxLength = unified ? 254 : 32;
+    if ($('accountLabel')) $('accountLabel').textContent = unified ? 'LightTick账号（邮箱或手机号）' : '用户名';
     $('loginTitle').textContent = registering ? '开始积累你的成长' : '继续你的学习';
     $('loginDescription').textContent = registering ? '用户名使用 3–32 位字母、数字、下划线或短横线，密码至少 10 位。' : '登录后，接着记录每一天的思考与成长。';
+    if (unified) $('loginDescription').textContent = '使用已明确关联的LightTick账号继续。首次关联请先用原Grow账号登录，在设置中完成。';
     $('authSubmit').textContent = registering ? '注册并开始学习' : '登录';
     $('password').autocomplete = registering ? 'new-password' : 'current-password';
     $('password').minLength = registering ? 10 : 1;
@@ -20,6 +25,7 @@
   }
   $('loginTab').onclick = () => choose('login');
   $('registerTab').onclick = () => choose('register');
+  window.GrowLogin = {choose};
   function readInvitation() {
     invitation = new URLSearchParams(location.hash.slice(1)).get('invite') || '';
     $('registerTab').hidden = !invitation;
@@ -38,7 +44,7 @@
       $('confirmPassword').focus(); return;
     }
     submitting = true;
-    const controls = [$('authSubmit'), $('loginTab'), $('registerTab')];
+    const controls = [$('authSubmit'), $('loginTab'), $('registerTab'), $('zookLoginTab')].filter(Boolean);
     controls.forEach(control => control.disabled = true);
     $('authForm').setAttribute('aria-busy', 'true');
     $('authMessage').replaceChildren();
@@ -46,9 +52,9 @@
     const loading = window.LoadingState?.start($('authMessage'), mode === 'register' ? '正在创建账号…' : '正在登录…', '正在确认账号信息，请勿重复提交。');
     if (!loading) $('authMessage').textContent = mode === 'register' ? '正在创建账号…' : '正在登录…';
     try {
-      const response = await fetch('/api/auth/' + mode, {
+      const response = await fetch('/api/auth/' + (mode === 'zook' ? 'zook/login' : mode), {
         method:'POST', headers:{'Content-Type':'application/json', 'X-Copilot-Request':'1'},
-        body:JSON.stringify({username:$('username').value.trim(), password:$('password').value,
+        body:JSON.stringify({[mode === 'zook' ? 'account' : 'username']:$('username').value.trim(), password:$('password').value,
           ...(mode === 'register' ? {invitation} : {})})
       });
       const result = await response.json();
