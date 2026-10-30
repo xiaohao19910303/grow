@@ -258,5 +258,198 @@
     "investment_writes": [],
     "ok": true
   },
-  "note": "首轮全量有3个临时HTTP测试服务连接重置相关失败，增大测试服务backlog后3项定向通过；未声称修复后再次完整全站运行。"
+  "note": "修复后在cfd9d49重新完整执行：1082项Python及39份JS全部通过，零失败、零错误、零跳过，隔离审计通过。initial_full保留为历史。",
+  "latest_full": {
+    "revision": "cfd9d49eac7d902cdf5248be8e8b9a1acff5143f",
+    "started_at": "2026-10-30T15:17:41.534004+00:00",
+    "finished_at": "2026-10-30T15:29:09.736982+00:00",
+    "exit_code": 0,
+    "python_result": {
+      "python_tests": 1082,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "javascript": [
+        {
+          "file": "test_action_p0_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_action_plan_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_action_storage_recovery.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_ai_config_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_ai_connection_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_ai_evidence_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_background_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_behavior_report_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_coach_facts_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_completion_producers.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_course_library_model.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_daily_agenda_capabilities.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_daily_rhythm_settings.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_investment_browser.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_investment_research.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_investment_rules_v2.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_learning_actions_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_learning_completion_sync.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_learning_loading.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_learning_notebook_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_legacy_state_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_loading_state.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_loading_state_contract.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_login_loading.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_navigation_layout.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_partial_records.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_plan_observer.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_reading_navigation.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_reading_startup_browser.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_reading_tasks.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_reflection_entrypoints.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_rhythm_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_search_autofill.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_search_loading.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_search_timeline_navigation.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_state_browser.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_study_note_session.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_theme_client.cjs",
+          "returncode": 0
+        },
+        {
+          "file": "test_weekly_rhythm_requests.cjs",
+          "returncode": 0
+        }
+      ]
+    },
+    "isolation_audit": {
+      "blocked_network_access": 0,
+      "blocked_real_database_access": 0,
+      "blocked_workspace_writes": 0,
+      "sqlite_connections": 454
+    },
+    "python_runtime": "3.13.9",
+    "node_runtime": "25.6.0",
+    "postgres_runtime": "15.17",
+    "python_elapsed_seconds": 602.904,
+    "command": ".venv/bin/python -B 知行成长/server/tests/run_isolated_checks.py --full",
+    "environment": {
+      "TEST_POSTGRES_DSN": "disposable localhost PostgreSQL, non-default port",
+      "TEST_ZOOK_WORKTREE": "/Volumes/肖豪/project/Zook",
+      "TEST_NODE": "/opt/homebrew/bin/node",
+      "CHROME_EXECUTABLE": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "NODE_PATH": "/tmp/grow-web-test-node/node_modules"
+    },
+    "previous_failures_passed_in_this_full_run": [
+      "test_cycle_review_browser.CycleReviewBrowser.test_navigation_preserves_reports_timeline_search_and_exports",
+      "test_learning_checkins_browser.LearningCheckinsBrowser.test_completion_checks_in_without_manual_write_and_survives_reload",
+      "test_navigation_organization_browser.NavigationOrganizationBrowser.test_relocated_entries_keep_history_and_course_tools"
+    ]
+  }
 }
