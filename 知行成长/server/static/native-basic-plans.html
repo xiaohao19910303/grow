@@ -1,0 +1,6 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>基础目标与计划</title><link rel="stylesheet" href="/static/native-basic-plans.css"></head>
+<body><header><a href="/">返回成长</a><h1>基础目标与计划</h1><p>与 App 使用同一份账户计划。草稿经本人确认后才成为执行安排。</p></header>
+<p id="message" role="status" aria-live="polite"></p><div class="layout"><aside><h2>账户计划</h2><button id="refresh">读取最新状态</button><button id="new">新建草稿</button><div id="plans"></div></aside>
+<main><form id="editor"><fieldset id="fields"><legend>目标与近期窗口</legend><label>目标<select id="goal"></select></label><label>想推进什么目标<input id="title" maxlength="200" required></label><label>完成判据<textarea id="criteria" maxlength="1000"></textarea></label><div class="dates"><label>开始日期<input id="start" type="date" required></label><label>结束日期（最多31天）<input id="end" type="date" required></label></div><h2>可执行的小事</h2><div id="actions"></div><button type="button" id="add">再加一项行动</button></fieldset><button id="save" type="submit">保存账户草稿</button></form>
+<section aria-label="本次审阅"><h2>本次审阅</h2><div id="review"></div><button id="rebase" hidden>保留输入，按最新版本重新审阅</button><button id="confirm" disabled>确认保存安排</button><button id="retry" hidden>核对上次原请求</button></section></main></div>
+<script src="/static/native-basic-plans.js"></script></body></html>

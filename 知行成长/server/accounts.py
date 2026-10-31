@@ -315,6 +315,8 @@ def install(app, static_dir, prepare_user):
     app.state.accounts = accounts
     from zook_web_auth import install as install_zook, COOKIE as ZOOK_COOKIE, active as zook_active
     zook = install_zook(app, accounts)
+    from native_basic_plans import install as install_native_plans
+    install_native_plans(app)
     router = APIRouter(prefix='/api/auth')
 
     @router.post('/register')
@@ -411,7 +413,7 @@ def install(app, static_dir, prepare_user):
                                         headers={'Cache-Control':'no-store'}) if path.startswith('/api/') else RedirectResponse('/login', status_code=303, headers={'Cache-Control':'no-store'})
                 from zook_web_auth import enabled
                 if enabled():
-                    if request.method not in ('GET','HEAD','OPTIONS') and (path == '/api/auth/zook/link' or path.startswith(('/api/action-link/', '/api/record-link/', '/api/mobile-learning/'))):
+                    if request.method not in ('GET','HEAD','OPTIONS') and (path == '/api/auth/zook/link' or path.startswith(('/api/action-link/', '/api/record-link/', '/api/mobile-learning/', '/api/native-plans/'))):
                         identity_lock = await run_in_threadpool(zook.acquire_identity, user)
                     user = {**user, 'zook_target_user_id': await run_in_threadpool(zook.association, user['id'])}
                 page_user = request.headers.get('x-account-id')
