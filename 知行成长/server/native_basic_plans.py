@@ -1,12 +1,13 @@
 """Optional C05 consumer; canonical basic plans are never copied into Grow storage."""
 import os
+import hashlib
 import re
 from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.concurrency import run_in_threadpool
 from copilot.core import fail
-from zook_web_auth import enabled as identity_enabled, upstream
+from zook_web_auth import enabled as identity_enabled, upstream, base_url
 from zook_web_proxy import session
 
 
@@ -19,7 +20,9 @@ def install(app):
     @router.get('/api/native-plans/config')
     def config():
         from zook_web_auth import active
-        return {'enabled': enabled(), 'unified': bool(active.get())}
+        value = active.get()
+        scope = hashlib.sha256((base_url() + '\0' + value['target']).encode()).hexdigest() if value else None
+        return {'enabled': enabled(), 'unified': bool(value), 'scope': scope}
 
     @router.get('/native-plans')
     def page():

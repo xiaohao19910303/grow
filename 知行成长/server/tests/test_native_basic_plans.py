@@ -50,8 +50,9 @@ class NativeBasicPlansTests(CanonicalWebHTTPTests):
         self.assertEqual(self.native_plan('manual-plans').status_code,200)
 
     def test_expired_web_session_refreshes_then_revocation_rejects(self):
-        self.assertEqual(self.link().status_code,200);self.expire()
+        self.assertEqual(self.link().status_code,200);scope=self.client.get('/api/native-plans/config').json()['scope'];self.assertRegex(scope,r'^[a-f0-9]{64}$');self.expire()
         self.assertEqual(self.web_plan('manual-plans').status_code,200)
+        self.assertEqual(self.client.get('/api/native-plans/config').json()['scope'],scope)
         self.assertEqual(self.client.post('/api/auth/logout',headers=self.headers).status_code,200)
         self.assertEqual(self.web_plan('manual-plans').status_code,401)
         self.assertEqual(self.native_plan('manual-plans').status_code,200)
