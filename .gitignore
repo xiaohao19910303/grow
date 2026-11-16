@@ -12,3 +12,4 @@ __pycache__/
 .venv/
 .pytest_cache/
 .worktrees/
+知行成长/server/server.log
